@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AURORA DIVINE | Initialize Session</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;600;700&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        colors: {
+          secondary: "#0059bb",
+          "surface-container": "#eeedf2",
+          "surface-variant": "#e2e2e7",
+          "secondary-fixed-dim": "#adc7ff",
+          "primary-container": "#003366",
+          "outline-variant": "#c3c6d1",
+          outline: "#737780",
+          "secondary-fixed": "#d8e2ff",
+          "on-tertiary": "#ffffff",
+          "on-error": "#ffffff",
+          "surface-container-lowest": "#ffffff",
+          "surface-container-highest": "#e2e2e7",
+          "inverse-primary": "#a7c8ff",
+          "primary-fixed": "#d5e3ff",
+          "on-tertiary-container": "#503d00",
+          "tertiary-container": "#caa747",
+          surface: "#f9f9fe",
+          "on-primary": "#ffffff",
+          "surface-tint": "#3a5f94",
+          "on-tertiary-fixed": "#241a00",
+          "surface-bright": "#f9f9fe",
+          tertiary: "#755b00",
+          "surface-dim": "#dad9de",
+          "on-error-container": "#93000a",
+          "primary-fixed-dim": "#a7c8ff",
+          "inverse-surface": "#2f3034",
+          "on-secondary": "#ffffff",
+          "error-container": "#ffdad6",
+          "on-tertiary-fixed-variant": "#594400",
+          "on-surface-variant": "#43474f",
+          "on-primary-fixed": "#001b3c",
+          "on-primary-container": "#799dd6",
+          "on-secondary-fixed": "#001a41",
+          "secondary-container": "#0070ea",
+          "on-background": "#1a1c1f",
+          "tertiary-fixed-dim": "#e8c25f",
+          "inverse-on-surface": "#f1f0f5",
+          "tertiary-fixed": "#ffdf91",
+          "surface-container-low": "#f4f3f8",
+          "on-secondary-container": "#fefcff",
+          "on-primary-fixed-variant": "#1f477b",
+          error: "#ba1a1a",
+          primary: "#001e40",
+          background: "#f9f9fe",
+          "surface-container-high": "#e8e8ed",
+          "on-surface": "#1a1c1f",
+          "on-secondary-fixed-variant": "#004493"
+        },
+        borderRadius: {
+          DEFAULT: "1rem",
+          lg: "2rem",
+          xl: "3rem",
+          full: "9999px"
+        },
+        spacing: {
+          gutter: "16px",
+          "stack-sm": "4px",
+          "stack-md": "12px",
+          base: "8px",
+          "stack-lg": "32px",
+          "margin-mobile": "24px"
+        },
+        fontFamily: {
+          "body-md": ["Inter"],
+          "label-caps": ["Inter"],
+          "headline-md": ["Hanken Grotesk"],
+          "display-lg": ["Hanken Grotesk"],
+          "security-numeric": ["Hanken Grotesk"],
+          "body-lg": ["Inter"],
+          headline: ["Hanken Grotesk"],
+          display: ["Hanken Grotesk"],
+          body: ["Inter"],
+          label: ["Inter"]
+        },
+        fontSize: {
+          "body-md": ["14px", {lineHeight: "20px", fontWeight: "400"}],
+          "label-caps": ["12px", {lineHeight: "16px", letterSpacing: "0.08em", fontWeight: "600"}],
+          "headline-md": ["24px", {lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "600"}],
+          "display-lg": ["34px", {lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "700"}],
+          "security-numeric": ["20px", {lineHeight: "24px", letterSpacing: "0.1em", fontWeight: "500"}],
+          "body-lg": ["16px", {lineHeight: "24px", fontWeight: "400"}]
+        }
+      }
+    }
+  };
+</script>
+<style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    .premium-shadow {
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 51, 102, 0.03), 
+            0 10px 15px -3px rgba(0, 51, 102, 0.05),
+            0 20px 25px -5px rgba(0, 51, 102, 0.07);
+    }
+    .ambient-bg {
+        background: 
+            radial-gradient(circle at 80% 10%, rgba(167, 200, 255, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 10% 90%, rgba(213, 227, 255, 0.15) 0%, transparent 40%),
+            linear-gradient(135deg, #f9f9fe 0%, #f1f0f5 100%);
+    }
+    .button-gradient {
+        background: linear-gradient(135deg, #001e40 0%, #003366 100%);
+        box-shadow: 0 8px 20px rgba(0, 30, 64, 0.15);
+    }
+    .button-gradient:hover {
+        background: linear-gradient(135deg, #003366 0%, #0059bb 100%);
+        box-shadow: 0 10px 24px rgba(0, 89, 187, 0.2);
+    }
+    .icon-glow {
+        filter: drop-shadow(0 0 8px rgba(0, 89, 187, 0.25));
+    }
+    body {
+        min-height: max(884px, 100dvh);
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 4px 6px -1px rgba(0, 51, 102, 0.03), 0 10px 15px -3px rgba(0, 51, 102, 0.05), 0 20px 25px -5px rgba(0, 51, 102, 0.07); }
+        50% { box-shadow: 0 0 40px 10px rgba(0, 89, 187, 0.2), 0 0 20px 5px rgba(0, 89, 187, 0.1); }
+    }
+    .animate-float {
+        animation: float 6s ease-in-out infinite;
+    }
+    .animate-pulse-glow {
+        animation: pulse-glow 4s ease-in-out infinite;
+    }
+
+    @keyframes shimmer-sweep {
+        0% { transform: translateX(-150%) skewX(-25deg); }
+        20%, 100% { transform: translateX(150%) skewX(-25deg); }
+    }
+    @keyframes shimmer-card {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        25%, 100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    }
+    @keyframes float-slow {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+    .luxury-shimmer-card::after {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+        animation: shimmer-card 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        pointer-events: none;
+    }
+    .btn-shimmer-effect {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-shimmer-effect::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 50%; height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
+        animation: shimmer-sweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .input-sapphire-focus:focus {
+        box-shadow: 0 0 0 2px rgba(0, 89, 187, 0.1), inset 0 2px 8px rgba(0, 89, 187, 0.05) !important;
+    }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col ambient-bg">
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-20">
+<div class="flex items-center gap-2">
+<span class="font-display-lg text-[22px] tracking-tight text-primary font-bold"><br/></span>
+</div>
+</header>
+<main class="flex-grow flex items-center justify-center px-margin-mobile pt-16 pb-40">
+<div class="w-full max-w-[440px] flex flex-col items-center">
+<!-- Security Core Icon Section -->
+<div class="mb-10 relative">
+<div class="absolute inset-0 bg-secondary/10 blur-3xl rounded-full scale-150 animate-pulse"></div>
+<div class="relative w-24 h-24 rounded-full glass-card premium-shadow flex items-center justify-center border border-white/90 animate-float animate-[pulse-glow_3s_ease-in-out_infinite]">
+<span class="material-symbols-outlined text-secondary text-[48px] icon-glow" data-icon="lock" data-weight="fill" style='font-variation-settings: "FILL" 1;'>lock</span>
+</div>
+</div>
+<!-- Login Card -->
+<section class="glass-card w-full rounded-lg p-8 premium-shadow flex flex-col gap-8 border border-white/70 relative overflow-hidden animate-[float-slow_8s_ease-in-out_infinite] luxury-shimmer-card"><span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[280px] text-primary opacity-[0.03] pointer-events-none select-none z-0" data-icon="security">security</span>
+<div class="text-center">
+<h1 class="font-headline-md text-[28px] text-primary mb-2 font-bold leading-tight">Secure Authentication</h1>
+<p class="font-body-md text-on-surface-variant/80">Authorize institutional access to your secure vault.</p>
+</div>
+<div class="flex flex-col gap-6">
+<!-- Institutional ID Field -->
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-[11px] tracking-widest text-outline font-semibold px-1 uppercase">Institutional ID</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/60 group-focus-within:text-secondary transition-colors text-[20px]" data-icon="badge">badge</span>
+<input class="w-full h-14 pl-12 pr-4 bg-white/50 border border-outline-variant/50 rounded-DEFAULT focus:ring-2 focus:ring-secondary/10 focus:border-secondary outline-none transition-all font-body-md text-primary placeholder:text-outline/40 input-sapphire-focus !duration-500" placeholder="e.g. AD-992-XXXX" type="text"/>
+</div>
+</div>
+<!-- Encryption Passkey Field -->
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-[11px] tracking-widest text-outline font-semibold px-1 uppercase">Encryption Passkey</label>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/60 group-focus-within:text-secondary transition-colors text-[20px]" data-icon="key">key</span>
+<input class="w-full h-14 pl-12 pr-12 bg-white/50 border border-outline-variant/50 rounded-DEFAULT focus:ring-2 focus:ring-secondary/10 focus:border-secondary outline-none transition-all font-body-md text-primary placeholder:text-outline/40 input-sapphire-focus !duration-500" placeholder="••••••••••••" type="text" value="PASSKEY_2024_SECURE"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-outline/60 hover:text-primary transition-colors ease-in-out">
+<span class="material-symbols-outlined text-[20px]" data-icon="visibility_off">visibility_off</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex flex-col gap-5">
+<button class="w-full h-14 button-gradient text-on-primary rounded-full font-label-caps text-[13px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect !duration-500 ease-in-out">
+                    INITIALIZE SESSION
+                    <span class="material-symbols-outlined text-[18px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<div class="flex justify-between items-center px-2">
+<a class="font-label-caps text-[11px] font-semibold text-secondary hover:text-primary transition-all uppercase tracking-wider ease-in-out" href="#">Forgot Key</a>
+<a class="font-label-caps text-[11px] font-semibold text-outline hover:text-primary transition-all uppercase tracking-wider ease-in-out" href="#">Request Access</a>
+</div>
+</div>
+</section>
+<!-- Institutional Trust Indicator -->
+<div class="mt-10 flex items-center py-3 px-6 rounded-full bg-white/40 backdrop-blur-md border border-white/50 premium-shadow justify-center"><div class="flex -space-x-2 mr-3">
+<div class="w-7 h-7 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeT28r5A22SFw88xA_ZxGMgxITRCPtdHvqk4Vus6LWKZI6sX1yIL32Iy5kvVENBj3aXRe64t7jHBZrLXOXJbfy4ZV2aTlBQdYsZwGWYk9hyh_60nvFnh0-whAF7PQpxef5N8q1XsZ9mNmzS1C9Kt_VVAcjXRPQ3yHmFXtCjv9xjYUJSRQ327_Lra3dabLCQul3CruALu2eXvbee5E4LEnMq_nwJZLCR22nfkgAwn0tWCEha9CL7RXomtcT1aE96lFEuX0EBg7HJNxb"/>
+</div>
+<div class="w-7 h-7 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
+<img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQMJgPhAjSo4N2zgzXdK2sP42gd73Cwjr78yOlLn5E5rXEHvgAxGRB2mT8clthxbN-MAgasJ_nzq5f13go9cP76kQDSnq8UnGzzk-TvM-1u7osSrCMM_4NoK3onEEHOyhhleUq5yiAbAjjenIsHd9V2YXvqoY-B27wR_sIFFTo2zrW4b7oinCFREN04NezZwG6Bl5ZhPtIxftRF1q5SZxGKiXLQQY4g2MWiFa36fwPV_EA13gc7EWH9GxdTRdphmq5KD5OSjbBiSct"/>
+</div>
+</div>
+<p class="font-label-caps text-[10px] tracking-wider text-primary font-bold uppercase">Strategically Directed by Kunal</p></div>
+</div>
+</main>
+<footer class="w-full py-8 border-t border-outline-variant/20 flex flex-col items-center gap-4 text-center px-margin-mobile">
+<p class="font-label-caps text-[10px] tracking-[0.2em] text-tertiary font-bold">© 2024 AURORA DIVINE. SECURED BY JEWELRY-GRADE ENCRYPTION.</p>
+<div class="flex gap-8">
+<a class="font-body-md text-[13px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Security Protocol</a>
+<a class="font-body-md text-[13px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Institutional Terms</a>
+</div>
+</footer>
+</body></html>

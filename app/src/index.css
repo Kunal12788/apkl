@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+    .glass-zenith {
+        background: rgba(255, 255, 255, 0.45);
+        backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+    
+    .sapphire-leak {
+        background: radial-gradient(circle at center, rgba(167, 200, 255, 0.4) 0%, transparent 70%);
+    }
+
+    .glass-card {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+    }
+    .premium-shadow {
+        box-shadow: 
+            0 4px 6px -1px rgba(0, 51, 102, 0.03), 
+            0 10px 15px -3px rgba(0, 51, 102, 0.05),
+            0 20px 25px -5px rgba(0, 51, 102, 0.07);
+    }
+    .ambient-bg {
+        background: 
+            radial-gradient(circle at 80% 10%, rgba(167, 200, 255, 0.15) 0%, transparent 40%),
+            radial-gradient(circle at 10% 90%, rgba(213, 227, 255, 0.15) 0%, transparent 40%),
+            linear-gradient(135deg, #f9f9fe 0%, #f1f0f5 100%);
+    }
+    .button-gradient {
+        background: linear-gradient(135deg, #001e40 0%, #003366 100%);
+        box-shadow: 0 8px 20px rgba(0, 30, 64, 0.15);
+    }
+    .button-gradient:hover {
+        background: linear-gradient(135deg, #003366 0%, #0059bb 100%);
+        box-shadow: 0 10px 24px rgba(0, 89, 187, 0.2);
+    }
+    .icon-glow {
+        filter: drop-shadow(0 0 8px rgba(0, 89, 187, 0.25));
+    }
+    .luxury-shimmer-card::after {
+        content: '';
+        position: absolute;
+        top: -50%; left: -50%; width: 200%; height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+        animation: shimmer-card 12s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        pointer-events: none;
+    }
+    .btn-shimmer-effect {
+        position: relative;
+        overflow: hidden;
+    }
+    .btn-shimmer-effect::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 50%; height: 100%;
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent);
+        animation: shimmer-sweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    .input-sapphire-focus:focus {
+        box-shadow: 0 0 0 2px rgba(0, 89, 187, 0.1), inset 0 2px 8px rgba(0, 89, 187, 0.05) !important;
+    }
+}
+
+@layer components {
+    .gold-divider {
+        @apply h-px w-[140px];
+        background: linear-gradient(90deg, transparent, rgba(202, 167, 71, 0.4), transparent);
+    }
+
+    .label-institutional {
+        @apply text-[10px] tracking-[0.15em] font-semibold;
+    }
+}
+
+@keyframes aurora-brand-sequence {
+    0% { opacity: 0; transform: scale(0.98); }
+    15% { opacity: 1; transform: scale(1); }
+    25% { opacity: 1; transform: scale(1); }
+    35% { opacity: 0; transform: scale(1.02); }
+    100% { opacity: 0; }
+}
+
+@keyframes content-welcome-sequence {
+    0%, 35% { opacity: 0; transform: translateY(10px); }
+    50% { opacity: 1; transform: translateY(0); }
+    65% { opacity: 1; transform: translateY(0); }
+    75% { opacity: 0; transform: translateY(-10px); }
+    100% { opacity: 0; }
+}
+
+@keyframes float-slow {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.15; }
+    50% { transform: translate(15px, -15px) rotate(5deg); opacity: 0.3; }
+}
+
+@keyframes float-medium {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.1; }
+    50% { transform: translate(-12px, 10px) rotate(-8deg); opacity: 0.25; }
+}
+
+@keyframes pulse-soft {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 4px 6px -1px rgba(0, 51, 102, 0.03), 0 10px 15px -3px rgba(0, 51, 102, 0.05), 0 20px 25px -5px rgba(0, 51, 102, 0.07); }
+    50% { box-shadow: 0 0 40px 10px rgba(0, 89, 187, 0.2), 0 0 20px 5px rgba(0, 89, 187, 0.1); }
+}
+
+@keyframes shimmer-sweep {
+    0% { transform: translateX(-150%) skewX(-25deg); }
+    20%, 100% { transform: translateX(150%) skewX(-25deg); }
+}
+
+@keyframes shimmer-card {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    25%, 100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    15%, 45%, 75% { transform: translateX(-6px); }
+    30%, 60%, 90% { transform: translateX(6px); }
+}
+
+@keyframes pulse-glow-error {
+    0%, 100% { box-shadow: 0 4px 6px -1px rgba(186, 26, 26, 0.03), 0 10px 15px -3px rgba(186, 26, 26, 0.05), 0 20px 25px -5px rgba(186, 26, 26, 0.07); }
+    50% { box-shadow: 0 0 40px 10px rgba(186, 26, 26, 0.2), 0 0 20px 5px rgba(186, 26, 26, 0.1); }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-brand {
+    animation: aurora-brand-sequence 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-content {
+    animation: content-welcome-sequence 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-float-1 { animation: float-slow 12s ease-in-out infinite; }
+.animate-float-2 { animation: float-medium 15s ease-in-out infinite; }
+.animate-float-3 { animation: float-slow 10s ease-in-out infinite reverse; }
+.animate-float-4 { animation: float-medium 18s ease-in-out infinite reverse; }
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulse-glow 4s ease-in-out infinite; }
+.animate-shake { animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }

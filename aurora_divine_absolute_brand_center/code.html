@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#001e40",
+                        "primary-container": "#003366",
+                        "tertiary": "#755b00",
+                        "tertiary-fixed": "#ffdf91",
+                        "on-surface": "#1a1c1f",
+                        "on-surface-variant": "#43474f",
+                        "on-primary": "#ffffff",
+                        "background": "#f9f9fe",
+                        "surface-container": "#eeedf2",
+                        "secondary": "#0059bb"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Hanken Grotesk"],
+                        "display": ["Hanken Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        @keyframes aurora-brand-sequence {
+            0% { opacity: 0; transform: scale(0.98); }
+            15% { opacity: 1; transform: scale(1); }
+            25% { opacity: 1; transform: scale(1); }
+            35% { opacity: 0; transform: scale(1.02); }
+            100% { opacity: 0; }
+        }
+
+        @keyframes content-welcome-sequence {
+            0%, 35% { opacity: 0; transform: translateY(10px); }
+            50% { opacity: 1; transform: translateY(0); }
+            65% { opacity: 1; transform: translateY(0); }
+            75% { opacity: 0; transform: translateY(-10px); }
+            100% { opacity: 0; }
+        }
+
+        @keyframes float-slow {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.15; }
+            50% { transform: translate(15px, -15px) rotate(5deg); opacity: 0.3; }
+        }
+
+        @keyframes float-medium {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); opacity: 0.1; }
+            50% { transform: translate(-12px, 10px) rotate(-8deg); opacity: 0.25; }
+        }
+
+        @keyframes pulse-soft {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+
+        .animate-brand {
+            animation: aurora-brand-sequence 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .animate-content {
+            animation: content-welcome-sequence 10s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+
+        .animate-float-1 { animation: float-slow 12s ease-in-out infinite; }
+        .animate-float-2 { animation: float-medium 15s ease-in-out infinite; }
+        .animate-float-3 { animation: float-slow 10s ease-in-out infinite reverse; }
+        .animate-float-4 { animation: float-medium 18s ease-in-out infinite reverse; }
+
+        .glass-zenith {
+            background: rgba(255, 255, 255, 0.45);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .sapphire-leak {
+            background: radial-gradient(circle at center, rgba(167, 200, 255, 0.4) 0%, transparent 70%);
+        }
+
+        .gold-divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(202, 167, 71, 0.4), transparent);
+            width: 140px;
+        }
+
+        .label-institutional {
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            font-weight: 600;
+        }
+
+        body {
+            background-color: #f9f9fe;
+            min-height: 100dvh;
+        }
+    </style>
+</head>
+<body class="font-body text-on-surface antialiased overflow-hidden">
+<!-- Environmental Cinematic Depth -->
+<div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+<div class="absolute -top-[15%] -right-[10%] w-[800px] h-[800px] rounded-full sapphire-leak blur-[140px]"></div>
+<div class="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 blur-[120px]"></div>
+<div class="absolute top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-[500px] rotate-[-8deg] glass-zenith rounded-[5rem] opacity-30"></div>
+</div>
+<!-- Main Cinematic Flow -->
+<main class="relative z-10 flex flex-col items-center justify-center min-h-screen px-8">
+<!-- State 1: Brand Sequence (Refined Reveal) -->
+<div class="absolute inset-0 flex items-center justify-center animate-brand pointer-events-none flex flex-col items-center justify-center">
+<!-- Institutional Background Ornaments -->
+<div class="absolute inset-0 flex items-center justify-center overflow-hidden">
+<!-- Grid Overlay -->
+<svg class="absolute w-full h-full opacity-[0.03] text-primary" preserveaspectratio="none" viewbox="0 0 100 100">
+<defs>
+<pattern height="10" id="grid" patternunits="userSpaceOnUse" width="10">
+<path d="M 10 0 L 0 0 0 10" fill="none" stroke="currentColor" stroke-width="0.1"></path>
+</pattern>
+</defs>
+<rect fill="url(#grid)" height="100%" width="100%"></rect>
+</svg>
+<!-- Floating Institutional Symbols -->
+<div class="absolute top-[20%] left-[15%] animate-float-1">
+<span class="material-symbols-outlined text-primary text-5xl">shield</span>
+</div>
+<div class="absolute bottom-[20%] right-[15%] animate-float-2">
+<span class="material-symbols-outlined text-tertiary text-6xl">lock</span>
+</div>
+<div class="absolute top-[30%] right-[20%] animate-float-3">
+<span class="material-symbols-outlined text-primary text-4xl">account_balance</span>
+</div>
+<div class="absolute bottom-[25%] left-[20%] animate-float-4">
+<span class="material-symbols-outlined text-tertiary text-5xl">door_sliding</span>
+</div>
+<!-- Rings of Trust -->
+<div class="absolute w-[400px] h-[400px] border border-primary/5 rounded-full animate-[spin_60s_linear_infinite]"></div>
+<div class="absolute w-[550px] h-[550px] border border-tertiary/5 rounded-full animate-[spin_90s_linear_infinite_reverse]"></div>
+</div>
+<!-- Central Brand Lockup -->
+<div class="flex flex-col items-center gap-6">
+<!-- Refined Logo Icon -->
+<div class="w-24 h-24 bg-primary rounded-full flex items-center justify-center shadow-2xl relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-tr from-primary-container to-primary"></div>
+<span class="material-symbols-outlined text-tertiary-fixed text-5xl relative z-10" data-weight="fill">diamond</span>
+<!-- Inner Glow -->
+<div class="absolute inset-0 border-[0.5px] border-white/20 rounded-full"></div>
+</div>
+<!-- Wordmark -->
+<h1 class="font-headline font-bold text-primary uppercase relative text-4xl lg:text-6xl tracking-[0.6em]" style="text-shadow: 0 0 30px rgba(213, 227, 255, 0.3);">
+                    AURORA
+                </h1>
+</div>
+</div>
+<!-- State 2 & 3: Welcome Content -->
+<div class="flex flex-col items-center text-center gap-12 animate-content w-full max-w-lg">
+<!-- Brand Identity Minimal -->
+<div class="flex flex-col items-center space-y-4">
+<div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center shadow-xl">
+<span class="material-symbols-outlined text-tertiary-fixed text-3xl" data-weight="fill">diamond</span>
+</div>
+</div>
+<!-- Welcome Text -->
+<div class="space-y-6">
+<h2 class="font-headline font-bold text-primary text-4xl lg:text-5xl leading-tight tracking-tight">
+                    Welcome to<br/>Secure Operations
+                </h2>
+<div class="flex flex-col items-center space-y-6">
+<div class="label-institutional text-on-surface-variant/70 uppercase">Institutional Custody</div>
+<div class="gold-divider"></div>
+<div class="space-y-2">
+<p class="text-on-surface-variant font-medium text-lg opacity-80">
+                            Precision-driven gold operations
+                        </p>
+<p class="text-on-surface-variant font-medium text-lg opacity-80">
+                            Enterprise-grade inventory control
+                        </p>
+</div>
+</div>
+</div>
+<!-- Trust Icons Grid -->
+<div class="grid grid-cols-4 gap-8 pt-4">
+<div class="flex flex-col items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-2xl">shield_person</span>
+<span class="label-institutional text-[8px]">SECURITY</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-2xl">account_balance</span>
+<span class="label-institutional text-[8px]">ASSETS</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-2xl">public</span>
+<span class="label-institutional text-[8px]">GLOBAL</span>
+</div>
+<div class="flex flex-col items-center gap-2">
+<span class="material-symbols-outlined text-primary-container text-2xl">domain</span>
+<span class="label-institutional text-[8px]">INSTITUTIONAL</span>
+</div>
+</div>
+<!-- Contextual Footer -->
+<div class="flex items-center justify-center gap-2 label-institutional text-on-surface-variant/40 pt-4">
+<span class="material-symbols-outlined text-sm" data-weight="fill">verified_user</span>
+                SECURE OPERATIONAL ENVIRONMENT
+            </div>
+</div>
+</main>
+</body></html>

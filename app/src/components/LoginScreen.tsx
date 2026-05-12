@@ -1,0 +1,123 @@
+import { useState } from 'react';
+
+export const LoginScreen: React.FC<{ onForgotKey: () => void }> = ({ onForgotKey }) => {
+  const [showPassword, setShowPassword] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [passkey, setPasskey] = useState("PASSKEY_2024_SECURE");
+
+  const handleInitialize = () => {
+    // Reset error state momentarily to allow re-triggering the animation
+    setHasError(false);
+    setTimeout(() => {
+        // Trigger error for demo purposes
+        setHasError(true);
+    }, 50);
+  };
+
+  return (
+    <div className="bg-background text-on-background font-body-md min-h-[100dvh] flex flex-col ambient-bg relative z-10 w-full overflow-hidden">
+      <header className="absolute top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16">
+        <div className="flex items-center gap-2">
+          <span className="font-display-lg text-[22px] tracking-tight text-primary font-bold"><br /></span>
+        </div>
+      </header>
+      <main className="flex-grow flex items-center justify-center px-margin-mobile w-full relative z-10 mt-12 mb-4">
+        <div className="w-full max-w-[400px] flex flex-col items-center">
+          {/* Security Core Icon Section */}
+          <div className="-mt-2 mb-8 relative">
+            <div className={`absolute inset-0 transition-colors duration-500 blur-3xl rounded-full scale-150 animate-pulse ${hasError ? 'bg-error/20' : 'bg-secondary/10'}`}></div>
+            <div className={`relative w-20 h-20 rounded-full glass-card premium-shadow flex items-center justify-center border transition-all duration-500 animate-float ${hasError ? 'border-error/80 animate-[pulse-glow-error_3s_ease-in-out_infinite]' : 'border-white/90 animate-pulse-glow'}`}>
+              <span className={`material-symbols-outlined text-[40px] icon-glow transition-colors duration-500 ${hasError ? 'text-error' : 'text-secondary'}`} style={{ fontVariationSettings: '"FILL" 1' }}>{hasError ? 'gpp_bad' : 'lock'}</span>
+            </div>
+          </div>
+          
+          {/* Login Card */}
+          <section className={`glass-card w-full rounded-lg p-6 premium-shadow flex flex-col gap-6 border transition-all duration-500 relative overflow-hidden ${hasError ? 'border-error/60 bg-error-container/10 animate-shake' : 'border-white/70'}`}>
+            <span className={`material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[240px] opacity-[0.03] pointer-events-none select-none z-0 transition-colors duration-500 ${hasError ? 'text-error' : 'text-primary'}`}>security</span>
+            <div className="text-center relative z-10">
+              <h1 className={`font-headline-md text-[24px] mb-1 font-bold leading-tight transition-colors duration-500 ${hasError ? 'text-error' : 'text-primary'}`}>
+                {hasError ? 'Security Alert' : 'Secure Authentication'}
+              </h1>
+              <p className={`font-body-md text-[13px] transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-on-surface-variant/80'}`}>
+                {hasError ? 'Invalid encryption passkey detected.' : 'Authorize institutional access to your secure vault.'}
+              </p>
+            </div>
+            
+            <div className="flex flex-col gap-4 relative z-10">
+              {/* Institutional ID Field */}
+              <div className="flex flex-col gap-1.5">
+                <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Institutional ID</label>
+                <div className="relative group">
+                  <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>badge</span>
+                  <input className={`w-full h-12 pl-12 pr-4 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus'}`} placeholder="e.g. AD-992-XXXX" type="text" />
+                </div>
+              </div>
+              
+              {/* Encryption Passkey Field */}
+              <div className="flex flex-col gap-1.5">
+                <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Encryption Passkey</label>
+                <div className="relative group">
+                  <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>key</span>
+                  <input onChange={(e) => setPasskey(e.target.value)} className={`w-full h-12 pl-12 pr-12 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus text-primary'}`} placeholder="••••••••••••" type={showPassword ? 'text' : 'password'} value={passkey} />
+                  <button onClick={() => setShowPassword(!showPassword)} className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ease-in-out ${hasError ? 'text-error/60 hover:text-error' : 'text-outline/60 hover:text-primary'}`}>
+                    <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-4 relative z-10">
+              <button onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out`}>
+                {hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
+                <span className="material-symbols-outlined text-[16px]">{hasError ? 'warning' : 'arrow_forward'}</span>
+              </button>
+              <div className="flex justify-between items-center px-2">
+                <a onClick={(e) => { e.preventDefault(); onForgotKey(); }} className="font-label-caps text-[10px] font-semibold text-secondary hover:text-primary transition-all uppercase tracking-wider ease-in-out cursor-pointer">Forgot Key</a>
+                <a className="font-label-caps text-[10px] font-semibold text-outline hover:text-primary transition-all uppercase tracking-wider ease-in-out" href="#">Request Access</a>
+              </div>
+            </div>
+          </section>
+          
+          {/* Institutional Trust Indicator */}
+          <div className="flex flex-col items-center mt-6">
+            <div className="flex items-center py-2.5 px-5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 premium-shadow justify-center">
+              <div className="flex -space-x-2 mr-3">
+                <div className="w-6 h-6 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
+                  <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeT28r5A22SFw88xA_ZxGMgxITRCPtdHvqk4Vus6LWKZI6sX1yIL32Iy5kvVENBj3aXRe64t7jHBZrLXOXJbfy4ZV2aTlBQdYsZwGWYk9hyh_60nvFnh0-whAF7PQpxef5N8q1XsZ9mNmzS1C9Kt_VVAcjXRPQ3yHmFXtCjv9xjYUJSRQ327_Lra3dabLCQul3CruALu2eXvbee5E4LEnMq_nwJZLCR22nfkgAwn0tWCEha9CL7RXomtcT1aE96lFEuX0EBg7HJNxb" alt="Avatar 1" />
+                </div>
+                <div className="w-6 h-6 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
+                  <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQMJgPhAjSo4N2zgzXdK2sP42gd73Cwjr78yOlLn5E5rXEHvgAxGRB2mT8clthxbN-MAgasJ_nzq5f13go9cP76kQDSnq8UnGzzk-TvM-1u7osSrCMM_4NoK3onEEHOyhhleUq5yiAbAjjenIsHd9V2YXvqoY-B27wR_sIFFTo2zrW4b7oinCFREN04NezZwG6Bl5ZhPtIxftRF1q5SZxGKiXLQQY4g2MWiFa36fwPV_EA13gc7EWH9GxdTRdphmq5KD5OSjbBiSct" alt="Avatar 2" />
+                </div>
+              </div>
+              <p className="font-label-caps text-[10px] tracking-[0.15em] text-primary font-extrabold uppercase">STRATEGICALLY DIRECTED BY KUNAL</p>
+            </div>
+            
+            {/* Trust / Privacy Symbols */}
+            <div className="flex items-center gap-5 mt-4 opacity-70">
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>verified_user</span>
+                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Trust</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>enhanced_encryption</span>
+                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Privacy</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>gpp_good</span>
+                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Secure</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+      
+      <footer className="w-full py-4 border-t border-outline-variant/20 flex flex-col items-center gap-2 text-center px-margin-mobile relative z-10 mt-auto bg-background/50 backdrop-blur-sm">
+        <p className="font-label-caps text-[9px] tracking-[0.2em] text-tertiary font-bold">© 2024 AURORA DIVINE. SECURED BY JEWELRY-GRADE ENCRYPTION.</p>
+        <div className="flex gap-8">
+          <a className="font-body-md text-[11px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Security Protocol</a>
+          <a className="font-body-md text-[11px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Institutional Terms</a>
+        </div>
+      </footer>
+    </div>
+  );
+};
