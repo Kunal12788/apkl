@@ -81,14 +81,6 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void }> = ({ onForgotKey
           {/* Institutional Trust Indicator */}
           <div className="flex flex-col items-center mt-6">
             <div className="flex items-center py-2.5 px-5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 premium-shadow justify-center">
-              <div className="flex -space-x-2 mr-3">
-                <div className="w-6 h-6 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
-                  <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAeT28r5A22SFw88xA_ZxGMgxITRCPtdHvqk4Vus6LWKZI6sX1yIL32Iy5kvVENBj3aXRe64t7jHBZrLXOXJbfy4ZV2aTlBQdYsZwGWYk9hyh_60nvFnh0-whAF7PQpxef5N8q1XsZ9mNmzS1C9Kt_VVAcjXRPQ3yHmFXtCjv9xjYUJSRQ327_Lra3dabLCQul3CruALu2eXvbee5E4LEnMq_nwJZLCR22nfkgAwn0tWCEha9CL7RXomtcT1aE96lFEuX0EBg7HJNxb" alt="Avatar 1" />
-                </div>
-                <div className="w-6 h-6 rounded-full bg-secondary-fixed border-2 border-white flex items-center justify-center overflow-hidden ring-1 ring-black/5">
-                  <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQMJgPhAjSo4N2zgzXdK2sP42gd73Cwjr78yOlLn5E5rXEHvgAxGRB2mT8clthxbN-MAgasJ_nzq5f13go9cP76kQDSnq8UnGzzk-TvM-1u7osSrCMM_4NoK3onEEHOyhhleUq5yiAbAjjenIsHd9V2YXvqoY-B27wR_sIFFTo2zrW4b7oinCFREN04NezZwG6Bl5ZhPtIxftRF1q5SZxGKiXLQQY4g2MWiFa36fwPV_EA13gc7EWH9GxdTRdphmq5KD5OSjbBiSct" alt="Avatar 2" />
-                </div>
-              </div>
               <p className="font-label-caps text-[10px] tracking-[0.15em] text-primary font-extrabold uppercase">STRATEGICALLY DIRECTED BY KUNAL</p>
             </div>
             

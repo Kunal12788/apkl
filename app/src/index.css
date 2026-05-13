@@ -65,6 +65,13 @@
     .input-sapphire-focus:focus {
         box-shadow: 0 0 0 2px rgba(0, 89, 187, 0.1), inset 0 2px 8px rgba(0, 89, 187, 0.05) !important;
     }
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
 }
 
 @layer components {
