@@ -187,7 +187,6 @@ export const StaffBillingScreen: React.FC = () => {
 
             <div className="flex justify-between items-center px-1 mt-2">
               <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Transaction Ledger</h3>
-              <span className="text-[10px] text-secondary font-bold uppercase tracking-wider cursor-pointer">Export</span>
             </div>
             
             <div className="space-y-3">
@@ -341,10 +340,6 @@ export const StaffBillingScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-            
-            <button className="w-full py-4 rounded-2xl bg-surface-container text-primary font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform">
-              Download Receipt PDF
-            </button>
           </div>
         )}
 
@@ -480,7 +475,6 @@ export const StaffBillingScreen: React.FC = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center px-1">
                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Full Ledger History</h3>
-                <span className="text-[10px] text-primary font-bold uppercase tracking-wider cursor-pointer bg-primary-fixed/30 px-3 py-1 rounded-full">Download PDF</span>
               </div>
               
               <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
