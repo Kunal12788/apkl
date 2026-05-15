@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const StaffDashboardScreen: React.FC<{ onNavigate?: (view: 'dashboard' | 'billing') => void }> = ({ onNavigate }) => {
+export const StaffDashboardScreen: React.FC<{ onNavigate?: (view: 'dashboard' | 'billing' | 'tasks') => void }> = ({ onNavigate }) => {
   return (
     <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-4 pb-40 relative">
@@ -379,7 +379,7 @@ export const StaffDashboardScreen: React.FC<{ onNavigate?: (view: 'dashboard' | 
           <span className="material-symbols-outlined text-2xl">payments</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
         </a>
-        <a className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => onNavigate && onNavigate('tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>

@@ -4,11 +4,12 @@ import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
 import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
+import { StaffTasksScreen } from './components/StaffTasksScreen';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const [currentView, setCurrentView] = useState<'login' | 'forgot' | 'staff_dashboard' | 'staff_billing'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'forgot' | 'staff_dashboard' | 'staff_billing' | 'staff_tasks'>('login');
 
   const handleComplete = () => {
     setFadeOut(true);
@@ -18,9 +19,10 @@ function App() {
     }, 1200); 
   };
 
-  const handleNavigate = (view: 'dashboard' | 'billing') => {
+  const handleNavigate = (view: 'dashboard' | 'billing' | 'tasks') => {
     if (view === 'dashboard') setCurrentView('staff_dashboard');
     if (view === 'billing') setCurrentView('staff_billing');
+    if (view === 'tasks') setCurrentView('staff_tasks');
   };
 
   return (
@@ -33,6 +35,8 @@ function App() {
           <ForgotKeyScreen onBack={() => setCurrentView('login')} />
         ) : currentView === 'staff_billing' ? (
           <StaffBillingScreen onNavigate={handleNavigate} />
+        ) : currentView === 'staff_tasks' ? (
+          <StaffTasksScreen onNavigate={handleNavigate} />
         ) : (
           <StaffDashboardScreen onNavigate={handleNavigate} />
         )}
