@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type TabView = 'all' | 'customer';
 
@@ -39,10 +40,13 @@ interface Customer {
   ledger: Transaction[];
 }
 
-export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'billing' | 'tasks') => void }> = ({ onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<TabView>('all');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+export const StaffBillingScreen: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const activeTab = (searchParams.get('tab') as TabView) || 'all';
+  const customerId = searchParams.get('customerId');
+  const transactionId = searchParams.get('transactionId');
 
   const mockTransactions: Transaction[] = [
     { 
@@ -82,6 +86,9 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
     },
   ];
 
+  const selectedCustomer = mockCustomers.find(c => c.id === customerId) || null;
+  const selectedTransaction = mockTransactions.find(t => t.id === transactionId) || null;
+
   const getWorkIcon = (workType: string) => {
     switch(workType) {
       case 'Touch': return 'biotech';
@@ -117,13 +124,13 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
         {!selectedCustomer && !selectedTransaction && (
           <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner">
             <button 
-              onClick={() => setActiveTab('all')}
+              onClick={() => setSearchParams({ tab: 'all' })}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'all' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               All Transactions
             </button>
             <button 
-              onClick={() => setActiveTab('customer')}
+              onClick={() => setSearchParams({ tab: 'customer' })}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'customer' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               By Customer
@@ -167,7 +174,7 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
             
             <div className="space-y-3">
               {mockTransactions.map((txn) => (
-                <div key={txn.id} onClick={() => setSelectedTransaction(txn)} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
+                <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, tab: activeTab, ...(customerId ? { customerId } : {}) })} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex items-center gap-3">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
@@ -223,7 +230,7 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
         {/* View: Detailed Transaction Modal */}
         {selectedTransaction && (
           <div className="animate-fade-in space-y-6">
-            <button onClick={() => setSelectedTransaction(null)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
               <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
             </button>
             
@@ -333,7 +340,7 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
 
             <div className="space-y-3">
               {mockCustomers.map(customer => (
-                <div key={customer.id} onClick={() => setSelectedCustomer(customer)} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
+                <div key={customer.id} onClick={() => setSearchParams({ customerId: customer.id, tab: activeTab })} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
                   <div className="flex items-center gap-4">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
                       {customer.initials}
@@ -355,7 +362,7 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
         {/* View: Particular Customer Detail */}
         {selectedCustomer && (
           <div className="animate-fade-in space-y-6">
-            <button onClick={() => setSelectedCustomer(null)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
               <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
             </button>
             
@@ -392,7 +399,7 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
               
               <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
                 {selectedCustomer.ledger.map(txn => (
-                  <div key={txn.id} onClick={() => setSelectedTransaction(txn)} className="p-4 hover:bg-surface-bright transition-colors cursor-pointer group">
+                  <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className="p-4 hover:bg-surface-bright transition-colors cursor-pointer group">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
@@ -429,16 +436,16 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
-        <a onClick={() => onNavigate('dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
         </a>
-        <a onClick={() => onNavigate('billing')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
+        <a onClick={() => navigate('/billing')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>payments</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
           <div className="absolute -bottom-2 w-1.5 h-1.5 bg-tertiary rounded-full"></div>
         </a>
-        <a onClick={() => onNavigate('tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>

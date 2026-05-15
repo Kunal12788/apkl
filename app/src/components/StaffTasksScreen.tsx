@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'Delivered';
 
@@ -17,8 +18,10 @@ interface Task {
   notes: string;
 }
 
-export const StaffTasksScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'billing' | 'tasks') => void }> = ({ onNavigate }) => {
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+export const StaffTasksScreen: React.FC = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const taskId = searchParams.get('taskId');
 
   const mockTasks: Task[] = [
     { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Touch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', estimatedCompletion: 'Today, 02:00 PM', notes: 'Touch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
@@ -26,6 +29,8 @@ export const StaffTasksScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bill
     { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', estimatedCompletion: 'Today, 10:00 AM', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
     { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Touch', assignedTo: 'Marcus', status: 'Delivered', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', estimatedCompletion: 'Oct 12, 05:00 PM', notes: 'Bulk testing of incoming scrap gold.' }
   ];
+
+  const selectedTask = mockTasks.find(t => t.id === taskId) || null;
 
   const getWorkIcon = (workType: string) => {
     switch(workType) {
@@ -85,7 +90,7 @@ export const StaffTasksScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bill
             {/* Task List */}
             <div className="space-y-4">
               {mockTasks.map((task) => (
-                <div key={task.id} onClick={() => setSelectedTask(task)} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
+                <div key={task.id} onClick={() => setSearchParams({ taskId: task.id })} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
@@ -142,7 +147,7 @@ export const StaffTasksScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bill
         {/* View: Detailed Task Modal */}
         {selectedTask && (
           <div className="animate-fade-in space-y-6">
-            <button onClick={() => setSelectedTask(null)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
               <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Tasks
             </button>
             
@@ -245,15 +250,15 @@ export const StaffTasksScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bill
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
-        <a onClick={() => onNavigate('dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
         </a>
-        <a onClick={() => onNavigate('billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">payments</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
         </a>
-        <a onClick={() => onNavigate('tasks')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
+        <a onClick={() => navigate('/tasks')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
           <div className="absolute -bottom-2 w-1.5 h-1.5 bg-tertiary rounded-full"></div>

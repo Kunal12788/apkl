@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
@@ -6,10 +7,19 @@ import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
 
+const LoginWrapper = () => {
+  const navigate = useNavigate();
+  return <LoginScreen onForgotKey={() => navigate('/forgot')} onLogin={() => navigate('/dashboard')} />;
+};
+
+const ForgotKeyWrapper = () => {
+  const navigate = useNavigate();
+  return <ForgotKeyScreen onBack={() => navigate(-1)} />;
+};
+
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const [currentView, setCurrentView] = useState<'login' | 'forgot' | 'staff_dashboard' | 'staff_billing' | 'staff_tasks'>('login');
 
   const handleComplete = () => {
     setFadeOut(true);
@@ -19,42 +29,30 @@ function App() {
     }, 1200); 
   };
 
-  const handleNavigate = (view: 'dashboard' | 'billing' | 'tasks') => {
-    if (view === 'dashboard') setCurrentView('staff_dashboard');
-    if (view === 'billing') setCurrentView('staff_billing');
-    if (view === 'tasks') setCurrentView('staff_tasks');
-  };
-
   return (
     <div className="w-full min-h-screen relative bg-background overflow-hidden">
-      {/* Underlying Application Screens */}
-      <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
-        {currentView === 'login' ? (
-          <LoginScreen onForgotKey={() => setCurrentView('forgot')} onLogin={() => setCurrentView('staff_dashboard')} />
-        ) : currentView === 'forgot' ? (
-          <ForgotKeyScreen onBack={() => setCurrentView('login')} />
-        ) : currentView === 'staff_billing' ? (
-          <StaffBillingScreen onNavigate={handleNavigate} />
-        ) : currentView === 'staff_tasks' ? (
-          <StaffTasksScreen onNavigate={handleNavigate} />
-        ) : (
-          <StaffDashboardScreen onNavigate={handleNavigate} />
-        )}
-      </div>
-
-      {/* Splash Screen layered on top, fading out */}
+      {/* Splash Screen Overlay */}
       {showSplash && (
-        <div 
-          className={`absolute inset-0 z-50 transition-opacity duration-[1200ms] ease-in-out ${fadeOut ? 'opacity-0' : 'opacity-100'}`}
-          style={{ pointerEvents: fadeOut ? 'none' : 'auto' }}
-        >
+        <div className={`absolute inset-0 z-50 transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
           <SplashScreen onComplete={handleComplete} />
         </div>
       )}
+
+      {/* Underlying Application Screens */}
+      <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
+        <HashRouter>
+          <Routes>
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<LoginWrapper />} />
+            <Route path="/forgot" element={<ForgotKeyWrapper />} />
+            <Route path="/dashboard" element={<StaffDashboardScreen />} />
+            <Route path="/billing" element={<StaffBillingScreen />} />
+            <Route path="/tasks" element={<StaffTasksScreen />} />
+          </Routes>
+        </HashRouter>
+      </div>
     </div>
   );
 }
 
 export default App;
-// Force Vercel rebuild
-

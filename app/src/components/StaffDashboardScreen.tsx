@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
-export const StaffDashboardScreen: React.FC<{ onNavigate?: (view: 'dashboard' | 'billing' | 'tasks') => void }> = ({ onNavigate }) => {
+export const StaffDashboardScreen: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-4 pb-40 relative">
@@ -370,16 +372,16 @@ export const StaffDashboardScreen: React.FC<{ onNavigate?: (view: 'dashboard' | 
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
-        <a onClick={() => onNavigate && onNavigate('dashboard')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
+        <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
           <div className="absolute -bottom-2 w-1.5 h-1.5 bg-tertiary rounded-full"></div>
         </a>
-        <a onClick={() => onNavigate && onNavigate('billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">payments</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
         </a>
-        <a onClick={() => onNavigate && onNavigate('tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>
