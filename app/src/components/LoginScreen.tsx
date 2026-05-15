@@ -1,17 +1,18 @@
 import { useState } from 'react';
 
-export const LoginScreen: React.FC<{ onForgotKey: () => void }> = ({ onForgotKey }) => {
+export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
   const [showPassword, setShowPassword] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [passkey, setPasskey] = useState("PASSKEY_2024_SECURE");
 
   const handleInitialize = () => {
-    // Reset error state momentarily to allow re-triggering the animation
-    setHasError(false);
-    setTimeout(() => {
-        // Trigger error for demo purposes
-        setHasError(true);
-    }, 50);
+    // For demo purposes, valid length routes to dashboard
+    if (passkey.length >= 8) {
+      onLogin();
+    } else {
+      setHasError(false);
+      setTimeout(() => setHasError(true), 50);
+    }
   };
 
   return (
