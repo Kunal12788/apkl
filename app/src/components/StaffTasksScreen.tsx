@@ -84,26 +84,32 @@ const SearchAndFilterSection = ({
     </div>
     
     <div className="flex items-center gap-2">
-      <div className="flex-1 relative mt-1">
-        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">From Date</span>
-        <input 
-          type="date" 
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
-        />
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">From Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
       </div>
-      <div className="flex-1 relative mt-1">
-        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">To Date</span>
-        <input 
-          type="date" 
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
-        />
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">To Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
       </div>
       {(startDate || endDate) && (
-        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error-container/30 text-error flex items-center justify-center shrink-0">
+        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0 border border-error/20 active:scale-95 transition-transform">
           <span className="material-symbols-outlined text-sm">close</span>
         </button>
       )}
@@ -129,16 +135,22 @@ export const StaffTasksScreen: React.FC = () => {
   const [endDate, setEndDate] = useState('');
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
+  const [toastMessage, setToastMessage] = useState('');
 
-  const mockTasks: Task[] = [
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  const [tasks, setTasks] = useState<Task[]>([
     { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Tunch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 02:00 PM', broughtBy: 'Staff (Elena)', notes: 'Tunch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
     { id: 'TSK-1043', customerName: 'Mehta Gold Traders', customerId: 'CUST-002', workType: 'Marking', assignedTo: 'Elena', status: 'Pending', progressPercentage: 10, impureWeight: '45.00g', pureWeight: '45.00g', dateGiven: 'Today, 10:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Tomorrow, 11:00 AM', broughtBy: 'Customer directly', notes: 'Standard hallmarking for 12 necklaces.' },
     { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', isoDate: '2026-05-14', estimatedCompletion: 'Today, 10:00 AM', broughtBy: 'Staff (Marcus)', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
     { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Tunch', assignedTo: 'Marcus', status: 'Completed', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', isoDate: '2025-10-12', estimatedCompletion: 'Oct 12, 05:00 PM', broughtBy: 'Customer directly', notes: 'Bulk testing of incoming scrap gold.' },
     { id: 'TSK-1044', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Shouldering', assignedTo: 'Julian', status: 'In Progress', progressPercentage: 40, dateGiven: 'Today, 11:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 06:00 PM', broughtBy: 'Staff (Elena)', notes: 'Soldering 14 joints on custom bracelet.' }
-  ];
+  ]);
 
-  const selectedTask = mockTasks.find(t => t.id === taskId) || null;
+  const selectedTask = tasks.find(t => t.id === taskId) || null;
 
   const matchesSearch = (task: Task) => {
     let matchesText = true;
@@ -163,7 +175,15 @@ export const StaffTasksScreen: React.FC = () => {
     return matchesText && matchesDate;
   };
 
-  const filteredTasks = mockTasks.filter(t => t.status === activeTab && matchesSearch(t));
+  const filteredTasks = tasks.filter(t => t.status === activeTab && matchesSearch(t));
+
+  const handleDeleteTask = (id: string) => {
+    if(window.confirm('Are you sure you want to permanently delete this task?')) {
+      setTasks(tasks.filter(t => t.id !== id));
+      showToast('Task successfully deleted');
+      navigate(-1);
+    }
+  };
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
@@ -386,6 +406,23 @@ export const StaffTasksScreen: React.FC = () => {
               <button className="py-4 rounded-2xl bg-primary text-white font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
                 Update Status <span className="material-symbols-outlined text-lg">arrow_forward</span>
               </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <button onClick={() => handleDeleteTask(selectedTask.id)} className="col-span-2 py-4 rounded-2xl bg-error/10 border border-error/20 text-error font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2 hover:bg-error/20">
+                <span className="material-symbols-outlined text-lg">delete_forever</span> Delete Task
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Toast Notification System */}
+        {toastMessage && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-11/12 max-w-sm">
+            <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
+              </div>
+              <span className="font-bold text-[13px] tracking-wide flex-1">{toastMessage}</span>
             </div>
           </div>
         )}

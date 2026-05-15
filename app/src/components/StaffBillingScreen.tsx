@@ -98,26 +98,32 @@ const SearchAndFilterSection = ({
     </div>
     
     <div className="flex items-center gap-2">
-      <div className="flex-1 relative mt-1">
-        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">From Date</span>
-        <input 
-          type="date" 
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
-        />
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">From Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
       </div>
-      <div className="flex-1 relative mt-1">
-        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">To Date</span>
-        <input 
-          type="date" 
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
-        />
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">To Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
       </div>
       {(startDate || endDate) && (
-        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error-container/30 text-error flex items-center justify-center shrink-0">
+        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0 border border-error/20 active:scale-95 transition-transform">
           <span className="material-symbols-outlined text-sm">close</span>
         </button>
       )}
