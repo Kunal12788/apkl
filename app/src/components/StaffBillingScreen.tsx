@@ -12,8 +12,20 @@ interface Transaction {
   date: string;
   timestamp: string;
   status: 'Completed' | 'Pending' | 'Processing';
-  impureWeight: string;
-  pureWeight: string;
+  
+  // Specific to Touch
+  impureWeight?: string;
+  pureWeight?: string;
+  purityPercentage?: string;
+  pieceType?: string;
+  
+  // Specific to Shouldering
+  pointsCount?: number;
+  pointsType?: 'Gold' | 'Silver';
+  
+  // Specific to Marking
+  caratMarking?: string;
+  
   details: string;
 }
 
@@ -33,10 +45,26 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
 
   const mockTransactions: Transaction[] = [
-    { id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Touch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', impureWeight: '12.45g', pureWeight: '11.20g', details: 'Touch testing for 5 gold biscuits. Verified purity at 91.6%.' },
-    { id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Completed', impureWeight: '45.00g', pureWeight: '45.00g', details: 'Hallmarking for 12 necklaces and 8 bangles.' },
-    { id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'NEFT', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', timestamp: '04:30 PM', status: 'Processing', impureWeight: '22.30g', pureWeight: '20.10g', details: 'Chain link repairing and shouldering work.' },
-    { id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', timestamp: '02:15 PM', status: 'Completed', impureWeight: '5.00g', pureWeight: '5.00g', details: 'Laser marking on rings.' },
+    { 
+      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Touch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', 
+      impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
+      details: 'Touch testing for 5 gold biscuits. Verified purity successfully.' 
+    },
+    { 
+      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Completed', 
+      caratMarking: '22K916',
+      details: 'Hallmarking for 12 necklaces and 8 bangles.' 
+    },
+    { 
+      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'NEFT', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', timestamp: '04:30 PM', status: 'Processing', 
+      pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
+      details: 'Chain link repairing and precision shouldering work on multiple joints.' 
+    },
+    { 
+      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', timestamp: '02:15 PM', status: 'Completed', 
+      caratMarking: '18K750',
+      details: 'Laser marking on rings.' 
+    },
   ];
 
   const mockCustomers: Customer[] = [
@@ -166,10 +194,25 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
                       <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
                       <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
-                      <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
-                    </div>
+                    
+                    {txn.workType === 'Touch' && txn.impureWeight && (
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
+                      </div>
+                    )}
+                    {txn.workType === 'Marking' && txn.caratMarking && (
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">verified</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.caratMarking}</span>
+                      </div>
+                    )}
+                    {txn.workType === 'Shouldering' && txn.pointsCount && (
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">join_inner</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pointsCount} pts</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -221,14 +264,50 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
                     <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Payment Method</p>
                     <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.type}</p>
                   </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Impure Weight</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.impureWeight}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Pure Weight</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pureWeight}</p>
-                  </div>
+                  
+                  {/* Dynamic Fields Based on Work Type */}
+                  {selectedTransaction.workType === 'Touch' && (
+                    <>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Piece Type</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pieceType}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Purity</p>
+                        <p className="font-headline text-sm font-bold text-[#755b00]">{selectedTransaction.purityPercentage}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Impure Weight</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.impureWeight}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Pure Weight</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pureWeight}</p>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedTransaction.workType === 'Shouldering' && (
+                    <>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Piece Type</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pieceType}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Solder Points</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pointsCount} ({selectedTransaction.pointsType})</p>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedTransaction.workType === 'Marking' && (
+                    <>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Carat Marking</p>
+                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.caratMarking}</p>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div>
@@ -342,6 +421,11 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
           </div>
         )}
       </main>
+
+      {/* FAB - Global Plus Icon */}
+      <button className="fixed bottom-28 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-[0_8px_30px_rgb(0,30,64,0.4)] backdrop-blur-sm flex items-center justify-center active:scale-95 transition-all z-50 border-2 border-white/10">
+        <span className="material-symbols-outlined text-3xl">add</span>
+      </button>
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
