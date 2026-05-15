@@ -268,7 +268,7 @@ export const StaffTasksScreen: React.FC = () => {
           <span className="material-symbols-outlined text-2xl">inventory_2</span>
           <span className="font-label text-[10px] uppercase tracking-widest">LEDGER</span>
         </a>
-        <a className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/profile')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">person</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Profile</span>
         </a>

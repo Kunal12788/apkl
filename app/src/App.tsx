@@ -7,6 +7,7 @@ import { ForgotKeyScreen } from './components/ForgotKeyScreen';
 import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
+import { StaffProfileScreen } from './components/StaffProfileScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ function App() {
             <Route path="/dashboard" element={<StaffDashboardScreen />} />
             <Route path="/billing" element={<StaffBillingScreen />} />
             <Route path="/tasks" element={<StaffTasksScreen />} />
+            <Route path="/profile" element={<StaffProfileScreen />} />
           </Routes>
         </HashRouter>
       </div>
