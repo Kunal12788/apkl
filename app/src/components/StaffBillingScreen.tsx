@@ -11,6 +11,7 @@ interface Transaction {
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   amount: string;
   date: string;
+  isoDate: string;
   timestamp: string;
   status: 'Paid' | 'Unpaid';
   
@@ -42,10 +43,103 @@ interface Customer {
   ledger: Transaction[];
 }
 
+const getWorkIcon = (workType: string) => {
+  switch(workType) {
+    case 'Tunch': return 'science';
+    case 'Marking': return 'verified';
+    case 'Shouldering': return 'precision_manufacturing';
+    default: return 'work';
+  }
+};
+
+const getWorkColor = (workType: string) => {
+  switch(workType) {
+    case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
+    case 'Marking': return 'text-secondary bg-secondary-fixed/30';
+    case 'Shouldering': return 'text-primary bg-primary-fixed/30';
+    default: return 'text-outline bg-surface-container';
+  }
+};
+
+const FilterChip = ({ label, icon, value, searchQuery, setSearchQuery }: { label: string, icon: string, value: string, searchQuery: string, setSearchQuery: (val: string) => void }) => {
+  const isActive = searchQuery.toLowerCase() === value.toLowerCase();
+  return (
+    <div onClick={() => setSearchQuery(isActive ? '' : value)} className={`flex items-center gap-1.5 border rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer transition-colors ${isActive ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant/30 text-primary hover:bg-surface-bright'}`}>
+      <span className="material-symbols-outlined text-[16px]">{icon}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+    </div>
+  );
+};
+
+const SearchAndFilterSection = ({ 
+  placeholder = "Search...", 
+  searchQuery, setSearchQuery,
+  startDate, setStartDate,
+  endDate, setEndDate
+}: { 
+  placeholder?: string,
+  searchQuery: string, setSearchQuery: (v: string) => void,
+  startDate: string, setStartDate: (v: string) => void,
+  endDate: string, setEndDate: (v: string) => void
+}) => (
+  <div className="space-y-4 mb-4">
+    <div className="relative">
+      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+      <input 
+        type="text" 
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
+      />
+      {searchQuery && (
+        <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
+      )}
+    </div>
+    
+    <div className="flex items-center gap-2">
+      <div className="flex-1 relative mt-1">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">From Date</span>
+        <input 
+          type="date" 
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
+        />
+      </div>
+      <div className="flex-1 relative mt-1">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1 text-outline font-bold uppercase tracking-widest z-10">To Date</span>
+        <input 
+          type="date" 
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="w-full bg-white border border-outline-variant/30 rounded-xl py-3 px-3 text-xs font-medium text-primary focus:outline-none focus:border-primary luxury-card" 
+        />
+      </div>
+      {(startDate || endDate) && (
+        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error-container/30 text-error flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      )}
+    </div>
+    
+    <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2">
+      <FilterChip label="Unpaid" icon="warning" value="Unpaid" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Paid" icon="check_circle" value="Paid" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Cash" icon="payments" value="Cash" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="UPI" icon="qr_code_2" value="UPI" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Tunch" icon="science" value="Tunch" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Marking" icon="verified" value="Marking" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+    </div>
+  </div>
+);
+
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -53,32 +147,32 @@ export const StaffBillingScreen: React.FC = () => {
 
   const mockTransactions: Transaction[] = [
     { 
-      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', timestamp: '04:30 PM', status: 'Unpaid', 
+      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
       caratMarking: '22K916',
       details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
     },
     { 
-      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', timestamp: '11:15 AM', status: 'Unpaid', 
+      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', isoDate: '2025-10-10', timestamp: '11:15 AM', status: 'Unpaid', 
       impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
       details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
     },
     { 
-      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Paid', 
+      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', isoDate: '2026-05-15', timestamp: '10:45 AM', status: 'Paid', 
       impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
       details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
     },
     { 
-      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Paid', 
+      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', isoDate: '2026-05-15', timestamp: '09:12 AM', status: 'Paid', 
       caratMarking: '22K916',
       details: 'Hallmarking for 12 necklaces and 8 bangles.' 
     },
     { 
-      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', timestamp: '04:30 PM', status: 'Unpaid', 
+      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
       pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
       details: 'Chain link repairing and precision shouldering work on multiple joints.' 
     },
     { 
-      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', timestamp: '02:15 PM', status: 'Paid', 
+      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '02:15 PM', status: 'Paid', 
       caratMarking: '18K750',
       details: 'Laser marking on rings.' 
     },
@@ -106,81 +200,34 @@ export const StaffBillingScreen: React.FC = () => {
   const selectedTransaction = mockTransactions.find(t => t.id === transactionId) || null;
 
   const matchesSearch = (txn: Transaction) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
-    return (
-      txn.customerName.toLowerCase().includes(q) ||
-      txn.id.toLowerCase().includes(q) ||
-      txn.amount.toLowerCase().includes(q) ||
-      txn.status.toLowerCase().includes(q) ||
-      txn.type.toLowerCase().includes(q) ||
-      txn.workType.toLowerCase().includes(q) ||
-      (txn.impureWeight && txn.impureWeight.toLowerCase().includes(q)) ||
-      (txn.pureWeight && txn.pureWeight.toLowerCase().includes(q)) ||
-      (txn.purityPercentage && txn.purityPercentage.toLowerCase().includes(q)) ||
-      (txn.pieceType && txn.pieceType.toLowerCase().includes(q)) ||
-      (txn.caratMarking && txn.caratMarking.toLowerCase().includes(q))
-    );
+    let matchesText = true;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      matchesText = Boolean(
+        txn.customerName.toLowerCase().includes(q) ||
+        txn.id.toLowerCase().includes(q) ||
+        txn.amount.toLowerCase().includes(q) ||
+        txn.status.toLowerCase().includes(q) ||
+        txn.type.toLowerCase().includes(q) ||
+        txn.workType.toLowerCase().includes(q) ||
+        (txn.impureWeight?.toLowerCase().includes(q)) ||
+        (txn.pureWeight?.toLowerCase().includes(q)) ||
+        (txn.purityPercentage?.toLowerCase().includes(q)) ||
+        (txn.pieceType?.toLowerCase().includes(q)) ||
+        (txn.caratMarking?.toLowerCase().includes(q))
+      );
+    }
+
+    let matchesDate = true;
+    if (startDate && txn.isoDate < startDate) matchesDate = false;
+    if (endDate && txn.isoDate > endDate) matchesDate = false;
+
+    return matchesText && matchesDate;
   };
 
   const filteredTransactions = mockTransactions.filter(matchesSearch);
   const filteredCustomers = mockCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredLedger = selectedCustomer ? selectedCustomer.ledger.filter(matchesSearch) : [];
-
-  const getWorkIcon = (workType: string) => {
-    switch(workType) {
-      case 'Tunch': return 'science';
-      case 'Marking': return 'verified';
-      case 'Shouldering': return 'precision_manufacturing';
-      default: return 'work';
-    }
-  };
-
-  const getWorkColor = (workType: string) => {
-    switch(workType) {
-      case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
-      case 'Marking': return 'text-secondary bg-secondary-fixed/30';
-      case 'Shouldering': return 'text-primary bg-primary-fixed/30';
-      default: return 'text-outline bg-surface-container';
-    }
-  };
-
-  const FilterChip = ({ label, icon, value }: { label: string, icon: string, value: string }) => {
-    const isActive = searchQuery.toLowerCase() === value.toLowerCase();
-    return (
-      <div onClick={() => setSearchQuery(isActive ? '' : value)} className={`flex items-center gap-1.5 border rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer transition-colors ${isActive ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant/30 text-primary hover:bg-surface-bright'}`}>
-        <span className="material-symbols-outlined text-[16px]">{icon}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
-      </div>
-    );
-  };
-
-  const SearchAndFilterSection = ({ placeholder = "Search..." }: { placeholder?: string }) => (
-    <div className="space-y-4 mb-4">
-      <div className="relative">
-        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-        <input 
-          type="text" 
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
-        />
-        {searchQuery && (
-          <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
-        )}
-      </div>
-      
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2">
-        <FilterChip label="Unpaid" icon="warning" value="Unpaid" />
-        <FilterChip label="Paid" icon="check_circle" value="Paid" />
-        <FilterChip label="Cash" icon="payments" value="Cash" />
-        <FilterChip label="UPI" icon="qr_code_2" value="UPI" />
-        <FilterChip label="Tunch" icon="science" value="Tunch" />
-        <FilterChip label="Marking" icon="verified" value="Marking" />
-      </div>
-    </div>
-  );
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
@@ -204,13 +251,13 @@ export const StaffBillingScreen: React.FC = () => {
         {!selectedCustomer && !selectedTransaction && (
           <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner">
             <button 
-              onClick={() => { setSearchQuery(''); setSearchParams({ tab: 'all' }); }}
+              onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'all' }); }}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'all' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               All Transactions
             </button>
             <button 
-              onClick={() => { setSearchQuery(''); setSearchParams({ tab: 'customer' }); }}
+              onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'customer' }); }}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'customer' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               By Customer
@@ -221,7 +268,12 @@ export const StaffBillingScreen: React.FC = () => {
         {/* View: All Transactions */}
         {activeTab === 'all' && !selectedCustomer && !selectedTransaction && (
           <div className="space-y-4 animate-fade-in">
-            <SearchAndFilterSection placeholder="Search by weight, purity, ID..." />
+            <SearchAndFilterSection 
+              placeholder="Search by weight, purity, ID..." 
+              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+              startDate={startDate} setStartDate={setStartDate}
+              endDate={endDate} setEndDate={setEndDate}
+            />
 
             <div className="flex justify-between items-center px-1 mt-2">
               <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Transaction Ledger</h3>
@@ -444,7 +496,7 @@ export const StaffBillingScreen: React.FC = () => {
         {selectedCustomer && !selectedTransaction && (
           <div className="animate-fade-in space-y-6">
             <header className="flex justify-between items-start">
-              <button onClick={() => { setSearchQuery(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+              <button onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
                 <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
               </button>
               <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
@@ -547,8 +599,12 @@ export const StaffBillingScreen: React.FC = () => {
                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Full Ledger History</h3>
               </div>
               
-              {/* Insert the global search functionality directly above the ledger */}
-              <SearchAndFilterSection placeholder="Search ledger by purity, weight, ID..." />
+              <SearchAndFilterSection 
+                placeholder="Search ledger by purity, weight, ID..." 
+                searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+                startDate={startDate} setStartDate={setStartDate}
+                endDate={endDate} setEndDate={setEndDate}
+              />
               
               <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
                 {filteredLedger.map(txn => {
