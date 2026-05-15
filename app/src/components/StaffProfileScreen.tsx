@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export const StaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [biometricsEnabled, setBiometricsEnabled] = useState(true);
 
   const staffData = {
     name: 'Marcus Reynolds',
@@ -62,96 +60,7 @@ export const StaffProfileScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* Performance Stats */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="luxury-card p-4 text-center border-t-2 border-t-secondary relative overflow-hidden group">
-            <div className="absolute inset-0 bg-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className="material-symbols-outlined text-secondary text-xl mb-1 glow-icon">task_alt</span>
-            <p className="font-headline text-2xl font-bold text-primary">{staffData.stats.tasksCompleted}</p>
-            <p className="text-[8px] uppercase tracking-widest text-outline font-bold mt-1">Tasks</p>
-          </div>
-          <div className="luxury-card p-4 text-center border-t-2 border-t-tertiary relative overflow-hidden group">
-            <div className="absolute inset-0 bg-tertiary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className="material-symbols-outlined text-tertiary text-xl mb-1 glow-icon">bolt</span>
-            <p className="font-headline text-2xl font-bold text-primary">{staffData.stats.efficiency}</p>
-            <p className="text-[8px] uppercase tracking-widest text-outline font-bold mt-1">Efficiency</p>
-          </div>
-          <div className="luxury-card p-4 text-center border-t-2 border-t-primary relative overflow-hidden group">
-            <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <span className="material-symbols-outlined text-primary text-xl mb-1 glow-icon">schedule</span>
-            <p className="font-headline text-2xl font-bold text-primary">{staffData.stats.activeHours}</p>
-            <p className="text-[8px] uppercase tracking-widest text-outline font-bold mt-1">Hours</p>
-          </div>
-        </div>
 
-        {/* Settings & Preferences */}
-        <div className="space-y-3">
-          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Preferences & Security</h3>
-          
-          <div className="luxury-card overflow-hidden divide-y divide-outline-variant/20">
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary premium-shadow">
-                  <span className="material-symbols-outlined text-lg">notifications_active</span>
-                </div>
-                <div>
-                  <p className="font-headline font-bold text-sm text-primary">Push Notifications</p>
-                  <p className="text-[10px] text-outline">Receive alerts for new tasks</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                className={`w-12 h-6 rounded-full relative transition-colors ${notificationsEnabled ? 'bg-secondary' : 'bg-outline-variant'}`}
-              >
-                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm ${notificationsEnabled ? 'left-6' : 'left-0.5'}`}></div>
-              </button>
-            </div>
-
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-[#C9A646] premium-shadow">
-                  <span className="material-symbols-outlined text-lg">fingerprint</span>
-                </div>
-                <div>
-                  <p className="font-headline font-bold text-sm text-primary">Biometric Login</p>
-                  <p className="text-[10px] text-outline">Use FaceID / Fingerprint</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => setBiometricsEnabled(!biometricsEnabled)}
-                className={`w-12 h-6 rounded-full relative transition-colors ${biometricsEnabled ? 'bg-secondary' : 'bg-outline-variant'}`}
-              >
-                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all shadow-sm ${biometricsEnabled ? 'left-6' : 'left-0.5'}`}></div>
-              </button>
-            </div>
-
-            <div className="p-4 flex items-center justify-between group cursor-pointer hover:bg-surface-bright transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary premium-shadow group-hover:bg-primary group-hover:text-white transition-colors">
-                  <span className="material-symbols-outlined text-lg">password</span>
-                </div>
-                <div>
-                  <p className="font-headline font-bold text-sm text-primary">Change Passkey</p>
-                  <p className="text-[10px] text-outline">Update your 6-digit security code</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
-            </div>
-            
-            <div className="p-4 flex items-center justify-between group cursor-pointer hover:bg-surface-bright transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary premium-shadow group-hover:bg-primary group-hover:text-white transition-colors">
-                  <span className="material-symbols-outlined text-lg">support_agent</span>
-                </div>
-                <div>
-                  <p className="font-headline font-bold text-sm text-primary">Help & Support</p>
-                  <p className="text-[10px] text-outline">Contact IT administration</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
-            </div>
-          </div>
-        </div>
 
         {/* Logout Button */}
         <button onClick={() => navigate('/login')} className="w-full mt-4 bg-error/10 border border-error/20 hover:bg-error/20 hover:border-error/30 text-error rounded-2xl py-4 font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2">
