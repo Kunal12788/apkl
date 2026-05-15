@@ -484,28 +484,38 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
               
               <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
-                {selectedCustomer.ledger.map(txn => (
-                  <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className="p-4 hover:bg-surface-bright transition-colors cursor-pointer group">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
-                          <span className="material-symbols-outlined text-sm">{getWorkIcon(txn.workType)}</span>
+                {selectedCustomer.ledger.map(txn => {
+                  const isPending = txn.status === 'Pending';
+                  
+                  return (
+                    <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className={`p-4 transition-colors cursor-pointer group ${isPending ? 'bg-error/5 hover:bg-error/10' : 'hover:bg-surface-bright'}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType)}`}>
+                            <span className="material-symbols-outlined text-sm">{getWorkIcon(txn.workType)}</span>
+                          </div>
+                          <div>
+                            <p className={`font-headline font-bold text-xs ${isPending ? 'text-error' : 'text-primary'}`}>{txn.workType} Work</p>
+                            <p className={`text-[9px] font-medium tracking-wide uppercase ${isPending ? 'text-error/70' : 'text-outline'}`}>{txn.date} • {txn.timestamp}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-headline font-bold text-primary text-xs">{txn.workType} Work</p>
-                          <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.date} • {txn.timestamp}</p>
+                        <div className="text-right">
+                          <p className={`font-headline text-sm font-bold ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                            {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
+                            <p className={`text-[8px] font-bold uppercase tracking-widest ${isPending ? 'text-error/70' : 'text-outline'}`}>{txn.id}</p>
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-headline text-sm font-bold text-primary">{txn.amount}</p>
-                        <p className="text-[8px] text-outline font-bold uppercase tracking-widest">{txn.id}</p>
+                      <div className="pl-11 pr-2 flex justify-between items-center mt-1">
+                        <p className={`text-[10px] leading-relaxed truncate ${isPending ? 'text-error/80 font-medium' : 'text-outline/80'}`}>{txn.details}</p>
+                        {isPending && (
+                          <span className="text-[8px] font-bold uppercase tracking-widest bg-error text-white px-2 py-0.5 rounded-full">Unpaid</span>
+                        )}
                       </div>
                     </div>
-                    <div className="pl-11 pr-2">
-                      <p className="text-[10px] text-outline/80 leading-relaxed truncate">{txn.details}</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {selectedCustomer.ledger.length === 0 && (
                   <div className="p-8 text-center text-outline text-sm font-medium">No ledger entries found.</div>
                 )}
