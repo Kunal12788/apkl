@@ -31,7 +31,6 @@ export const StaffBillingScreen: React.FC<{ onNavigate: (view: 'dashboard' | 'bi
   const [activeTab, setActiveTab] = useState<TabView>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const mockTransactions: Transaction[] = [
     { id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Touch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', impureWeight: '12.45g', pureWeight: '11.20g', details: 'Touch testing for 5 gold biscuits. Verified purity at 91.6%.' },
