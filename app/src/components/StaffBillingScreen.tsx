@@ -30,14 +30,6 @@ interface Transaction {
   details: string;
 }
 
-interface DueDetail {
-  id: string;
-  workType: 'Tunch' | 'Marking' | 'Shouldering';
-  amount: string;
-  date: string;
-  timestamp: string;
-}
-
 interface Customer {
   id: string;
   name: string;
@@ -50,7 +42,6 @@ interface Customer {
     marking: number;
     shouldering: number;
   };
-  pendingDuesList: DueDetail[];
   ledger: Transaction[];
 }
 
@@ -63,6 +54,16 @@ export const StaffBillingScreen: React.FC = () => {
   const transactionId = searchParams.get('transactionId');
 
   const mockTransactions: Transaction[] = [
+    { 
+      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', timestamp: '04:30 PM', status: 'Pending', 
+      caratMarking: '22K916',
+      details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
+    },
+    { 
+      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', timestamp: '11:15 AM', status: 'Pending', 
+      impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
+      details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
+    },
     { 
       id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', 
       impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
@@ -89,24 +90,16 @@ export const StaffBillingScreen: React.FC = () => {
     { 
       id: 'CUST-001', name: 'Rajesh Jewelers', initials: 'RJ', activeJobs: 14, outstanding: '₹1,24,500', paid: '₹8,45,000',
       workBreakdown: { tunch: 42, marking: 85, shouldering: 12 },
-      pendingDuesList: [
-        { id: 'DUE-901', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', timestamp: '04:30 PM' },
-        { id: 'DUE-892', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', timestamp: '11:15 AM' }
-      ],
       ledger: mockTransactions.filter(t => t.customerId === 'CUST-001')
     },
     { 
       id: 'CUST-002', name: 'Mehta Gold Traders', initials: 'MG', activeJobs: 3, outstanding: '₹0', paid: '₹4,12,000',
       workBreakdown: { tunch: 12, marking: 40, shouldering: 0 },
-      pendingDuesList: [],
       ledger: mockTransactions.filter(t => t.customerId === 'CUST-002')
     },
     { 
       id: 'CUST-003', name: 'Sunrise Ornaments', initials: 'SO', activeJobs: 8, outstanding: '₹45,200', paid: '₹1,90,000',
       workBreakdown: { tunch: 18, marking: 22, shouldering: 45 },
-      pendingDuesList: [
-        { id: 'DUE-104', workType: 'Shouldering', amount: '₹45,200', date: 'Today', timestamp: '09:00 AM' }
-      ],
       ledger: mockTransactions.filter(t => t.customerId === 'CUST-003')
     },
   ];
@@ -401,50 +394,34 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
             
-            {/* Redesigned Customer Hero Stats */}
-            <div className="luxury-card overflow-hidden bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] text-white p-6 relative shadow-2xl">
-              <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-              
-              <div className="flex justify-between items-start mb-6 relative z-10">
-                <div>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#F6C358] font-extrabold mb-1">Total Revenue Collected</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-headline text-2xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                    <span className="font-headline text-4xl font-extrabold text-white tracking-tight">{selectedCustomer.paid.replace('₹', '')}</span>
-                  </div>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 shadow-xl">
-                  <span className="material-symbols-outlined text-2xl text-[#F6C358]">account_balance_wallet</span>
-                </div>
+            {/* Customer Stats - Reverted to Grid Layout */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="luxury-card p-5 bg-gradient-to-br from-[#003366] to-[#001e40] text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl"></div>
+                <p className="text-[9px] uppercase tracking-[0.15em] text-white/70 font-bold mb-1.5">Total Collected</p>
+                <p className="font-headline text-2xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.3)]">{selectedCustomer.paid}</p>
               </div>
-
-              <div className={`rounded-2xl p-4 border backdrop-blur-sm relative z-10 ${selectedCustomer.outstanding === '₹0' ? 'bg-secondary/10 border-secondary/20' : 'bg-surface-container/20 border-white/10'}`}>
-                <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    {selectedCustomer.outstanding === '₹0' ? (
-                      <span className="material-symbols-outlined text-secondary text-lg glow-icon">check_circle</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-error text-lg glow-icon">warning</span>
-                    )}
-                    <p className="text-[10px] uppercase tracking-[0.15em] text-white/80 font-bold">Outstanding Dues</p>
-                  </div>
-                  <span className={`font-headline text-xl font-bold ${selectedCustomer.outstanding === '₹0' ? 'text-secondary' : 'text-error drop-shadow-[0_0_5px_rgba(186,26,26,0.5)]'}`}>{selectedCustomer.outstanding}</span>
-                </div>
+              <div className="luxury-card p-5 relative overflow-hidden">
+                <p className="text-[9px] uppercase tracking-[0.15em] text-outline font-bold mb-1.5">Outstanding</p>
+                <p className={`font-headline text-2xl font-bold ${selectedCustomer.outstanding === '₹0' ? 'text-secondary' : 'text-error'}`}>{selectedCustomer.outstanding}</p>
+                <span className={`material-symbols-outlined absolute -bottom-4 -right-4 text-7xl rotate-12 ${selectedCustomer.outstanding === '₹0' ? 'text-secondary/[0.03]' : 'text-error/[0.03]'}`}>
+                  {selectedCustomer.outstanding === '₹0' ? 'check_circle' : 'warning'}
+                </span>
               </div>
             </div>
 
             {/* Active Dues Breakdown */}
-            {selectedCustomer.pendingDuesList.length > 0 && (
+            {selectedCustomer.ledger.filter(t => t.status === 'Pending').length > 0 && (
               <div className="space-y-3">
                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
                   Active Dues Details
                 </h3>
                 <div className="luxury-card divide-y divide-error/10 border border-error/20 bg-error-container/5 overflow-hidden">
-                  {selectedCustomer.pendingDuesList.map(due => (
-                    <div key={due.id} className="p-4 flex items-center justify-between">
+                  {selectedCustomer.ledger.filter(t => t.status === 'Pending').map(due => (
+                    <div key={due.id} onClick={() => setSearchParams({ transactionId: due.id, customerId: selectedCustomer.id, tab: activeTab })} className="p-4 flex items-center justify-between cursor-pointer group hover:bg-error/5 transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-error-container/20 text-error`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-error-container/20 text-error group-hover:bg-error-container/40 transition-colors`}>
                           <span className="material-symbols-outlined text-sm">{getWorkIcon(due.workType)}</span>
                         </div>
                         <div>
