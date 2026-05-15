@@ -394,19 +394,34 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
             
-            {/* Customer Stats - Reverted to Grid Layout */}
+            {/* Customer Stats - Premium Side-by-Side Design */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="luxury-card p-5 bg-gradient-to-br from-[#003366] to-[#001e40] text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-8 -mt-8 blur-xl"></div>
-                <p className="text-[9px] uppercase tracking-[0.15em] text-white/70 font-bold mb-1.5">Total Collected</p>
-                <p className="font-headline text-2xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.3)]">{selectedCustomer.paid}</p>
+              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-[0_4px_20px_rgba(0,30,64,0.03)] relative overflow-hidden luxury-card group hover:-translate-y-0.5 transition-transform">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Total Paid</p>
+                  <div className="w-8 h-8 rounded-full bg-secondary-fixed/30 flex items-center justify-center text-secondary">
+                    <span className="material-symbols-outlined text-[16px] glow-icon">payments</span>
+                  </div>
+                </div>
+                <div className="flex items-baseline">
+                  <span className="font-headline text-2xl font-bold text-primary tracking-tight">{selectedCustomer.paid}</span>
+                </div>
               </div>
-              <div className="luxury-card p-5 relative overflow-hidden">
-                <p className="text-[9px] uppercase tracking-[0.15em] text-outline font-bold mb-1.5">Outstanding</p>
-                <p className={`font-headline text-2xl font-bold ${selectedCustomer.outstanding === '₹0' ? 'text-secondary' : 'text-error'}`}>{selectedCustomer.outstanding}</p>
-                <span className={`material-symbols-outlined absolute -bottom-4 -right-4 text-7xl rotate-12 ${selectedCustomer.outstanding === '₹0' ? 'text-secondary/[0.03]' : 'text-error/[0.03]'}`}>
-                  {selectedCustomer.outstanding === '₹0' ? 'check_circle' : 'warning'}
-                </span>
+              
+              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-[0_4px_20px_rgba(0,30,64,0.03)] relative overflow-hidden luxury-card group hover:-translate-y-0.5 transition-transform">
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${selectedCustomer.outstanding === '₹0' ? 'bg-outline-variant' : 'bg-error'}`}></div>
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Total Dues</p>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedCustomer.outstanding === '₹0' ? 'bg-surface-container text-outline' : 'bg-error-container/30 text-error'}`}>
+                    <span className="material-symbols-outlined text-[16px] glow-icon">
+                      {selectedCustomer.outstanding === '₹0' ? 'check_circle' : 'warning'}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-baseline">
+                  <span className={`font-headline text-2xl font-bold tracking-tight ${selectedCustomer.outstanding === '₹0' ? 'text-primary' : 'text-error'}`}>{selectedCustomer.outstanding}</span>
+                </div>
               </div>
             </div>
 
