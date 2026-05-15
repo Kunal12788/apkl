@@ -34,9 +34,9 @@ export const StaffTasksScreen: React.FC = () => {
 
   const getWorkIcon = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'biotech';
+      case 'Touch': return 'science';
       case 'Marking': return 'verified';
-      case 'Shouldering': return 'manufacturing';
+      case 'Shouldering': return 'precision_manufacturing';
       default: return 'work';
     }
   };

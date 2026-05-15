@@ -91,9 +91,9 @@ export const StaffBillingScreen: React.FC = () => {
 
   const getWorkIcon = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'biotech';
+      case 'Touch': return 'science';
       case 'Marking': return 'verified';
-      case 'Shouldering': return 'manufacturing';
+      case 'Shouldering': return 'precision_manufacturing';
       default: return 'work';
     }
   };
@@ -360,7 +360,7 @@ export const StaffBillingScreen: React.FC = () => {
         )}
 
         {/* View: Particular Customer Detail */}
-        {selectedCustomer && (
+        {selectedCustomer && !selectedTransaction && (
           <div className="animate-fade-in space-y-6">
             <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
               <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
