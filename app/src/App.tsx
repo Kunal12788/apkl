@@ -3,11 +3,12 @@ import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
 import { StaffDashboardScreen } from './components/StaffDashboardScreen';
+import { StaffBillingScreen } from './components/StaffBillingScreen';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
-  const [currentView, setCurrentView] = useState<'login' | 'forgot' | 'staff_dashboard'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'forgot' | 'staff_dashboard' | 'staff_billing'>('login');
 
   const handleComplete = () => {
     setFadeOut(true);
@@ -15,6 +16,11 @@ function App() {
     setTimeout(() => {
       setShowSplash(false);
     }, 1200); 
+  };
+
+  const handleNavigate = (view: 'dashboard' | 'billing') => {
+    if (view === 'dashboard') setCurrentView('staff_dashboard');
+    if (view === 'billing') setCurrentView('staff_billing');
   };
 
   return (
@@ -25,8 +31,10 @@ function App() {
           <LoginScreen onForgotKey={() => setCurrentView('forgot')} onLogin={() => setCurrentView('staff_dashboard')} />
         ) : currentView === 'forgot' ? (
           <ForgotKeyScreen onBack={() => setCurrentView('login')} />
+        ) : currentView === 'staff_billing' ? (
+          <StaffBillingScreen onNavigate={handleNavigate} />
         ) : (
-          <StaffDashboardScreen />
+          <StaffDashboardScreen onNavigate={handleNavigate} />
         )}
       </div>
 
