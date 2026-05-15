@@ -8,6 +8,7 @@ import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
 import { StaffProfileScreen } from './components/StaffProfileScreen';
+import { StaffLedgerScreen } from './components/StaffLedgerScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ function App() {
             <Route path="/billing" element={<StaffBillingScreen />} />
             <Route path="/tasks" element={<StaffTasksScreen />} />
             <Route path="/profile" element={<StaffProfileScreen />} />
+            <Route path="/ledger" element={<StaffLedgerScreen />} />
           </Routes>
         </HashRouter>
       </div>

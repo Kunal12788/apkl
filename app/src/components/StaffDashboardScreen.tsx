@@ -385,7 +385,7 @@ export const StaffDashboardScreen: React.FC = () => {
           <span className="material-symbols-outlined text-2xl">assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>
-        <a className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+        <a onClick={() => navigate('/ledger')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">inventory_2</span>
           <span className="font-label text-[10px] uppercase tracking-widest">LEDGER</span>
         </a>
