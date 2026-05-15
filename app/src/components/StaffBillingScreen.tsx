@@ -190,23 +190,34 @@ export const StaffBillingScreen: React.FC = () => {
             </div>
             
             <div className="space-y-3">
-              {mockTransactions.map((txn) => (
-                <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, tab: activeTab, ...(customerId ? { customerId } : {}) })} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
-                        <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType)}</span>
+              {mockTransactions.map((txn) => {
+                const isPending = txn.status === 'Pending';
+                
+                return (
+                  <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, tab: activeTab, ...(customerId ? { customerId } : {}) })} className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-0.5 border ${isPending ? 'border-error/20 bg-error/5' : 'border-[#003366]/5 bg-white'}`}>
+                    {/* Accent Line */}
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5 ${isPending ? 'bg-error' : 'bg-secondary'}`}></div>
+                    
+                    <div className="flex justify-between items-start mb-3 pl-1">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPending ? 'bg-error-container/30 text-error' : getWorkColor(txn.workType)}`}>
+                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType)}</span>
+                        </div>
+                        <div>
+                          <p className={`font-headline font-bold text-sm ${isPending ? 'text-error' : 'text-primary'}`}>{txn.customerName}</p>
+                          <p className="text-[9px] text-outline font-medium tracking-wide uppercase mt-0.5">{txn.id} • {txn.date}, {txn.timestamp}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-headline font-bold text-primary text-sm">{txn.customerName}</p>
-                        <p className="text-[9px] text-outline font-medium tracking-wide uppercase mt-0.5">{txn.id} • {txn.date}, {txn.timestamp}</p>
+                      <div className="text-right">
+                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
+                          <p className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${isPending ? 'bg-error/10 text-error' : txn.status === 'Completed' ? 'bg-secondary/10 text-secondary' : 'bg-surface-container text-outline'}`}>
+                            {isPending ? 'UNPAID' : txn.status === 'Completed' ? 'PAID' : txn.status}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-headline text-base font-bold text-primary">{txn.amount}</p>
-                      <p className={`text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-1 ${txn.status === 'Completed' ? 'bg-secondary-container/10 text-secondary-container' : 'bg-surface-container text-outline'}`}>{txn.status}</p>
-                    </div>
-                  </div>
                   
                   {/* Transaction Metadata Footer */}
                   <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
@@ -239,7 +250,8 @@ export const StaffBillingScreen: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ))}
+              );
+            })}
             </div>
           </div>
         )}
