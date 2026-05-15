@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-d
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
+// Force Vercel rebuild 2
 import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
