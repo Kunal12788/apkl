@@ -106,9 +106,9 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-tertiary-fixed/30 to-tertiary-fixed/10 flex items-center justify-center text-tertiary border border-tertiary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl glow-icon">biotech</span>
+                  <span className="material-symbols-outlined text-xl glow-icon">science</span>
                 </div>
-                <span className="font-headline font-bold text-primary text-sm tracking-wide">TOUCH</span>
+                <span className="font-headline font-bold text-primary text-sm tracking-wide">TUNCH</span>
               </div>
               <div className="text-right z-10">
                 <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
@@ -134,7 +134,7 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-fixed/30 to-primary-fixed/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl glow-icon">handyman</span>
+                  <span className="material-symbols-outlined text-xl glow-icon">precision_manufacturing</span>
                 </div>
                 <span className="font-headline font-bold text-primary text-sm tracking-wide">SHOULDERING</span>
               </div>
@@ -221,10 +221,10 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 flex items-center justify-between group">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-surface-container group-hover:bg-tertiary-fixed/20 transition-colors">
-                  <span className="material-symbols-outlined text-lg text-tertiary">content_paste_search</span>
+                  <span className="material-symbols-outlined text-lg text-tertiary">science</span>
                 </div>
                 <div>
-                  <p className="font-headline font-bold text-primary text-sm">TOUCH</p>
+                  <p className="font-headline font-bold text-primary text-sm">TUNCH</p>
                   <p className="text-[9px] text-on-surface-variant">Verification Jobs</p>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 flex items-center justify-between group">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-surface-container group-hover:bg-secondary-fixed/20 transition-colors">
-                  <span className="material-symbols-outlined text-lg text-secondary">approval_delegation</span>
+                  <span className="material-symbols-outlined text-lg text-secondary">verified</span>
                 </div>
                 <div>
                   <p className="font-headline font-bold text-primary text-sm">MARKING</p>
@@ -263,7 +263,7 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 flex items-center justify-between group">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-surface-container group-hover:bg-primary-fixed/20 transition-colors">
-                  <span className="material-symbols-outlined text-lg text-primary">manufacturing</span>
+                  <span className="material-symbols-outlined text-lg text-primary">precision_manufacturing</span>
                 </div>
                 <div>
                   <p className="font-headline font-bold text-primary text-sm">SHOULDERING</p>
@@ -319,11 +319,11 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-[10px] font-bold text-primary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">microscope</span>
+                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">science</span>
                   MA
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold text-primary">Touch Verification #892</p>
+                  <p className="text-[11px] font-bold text-primary">Tunch Verification #892</p>
                   <p className="text-[10px] text-outline">Assigned to: Marcus</p>
                 </div>
               </div>
@@ -334,7 +334,7 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-[10px] font-bold text-tertiary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">token</span>
+                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">verified</span>
                   EL
                 </div>
                 <div>
@@ -349,7 +349,7 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-primary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">settings_wrench</span>
+                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">precision_manufacturing</span>
                   JU
                 </div>
                 <div>

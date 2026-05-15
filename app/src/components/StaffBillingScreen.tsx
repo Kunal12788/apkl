@@ -8,13 +8,13 @@ interface Transaction {
   customerId: string;
   customerName: string;
   type: 'UPI' | 'Cash' | 'NEFT';
-  workType: 'Touch' | 'Marking' | 'Shouldering';
+  workType: 'Tunch' | 'Marking' | 'Shouldering';
   amount: string;
   date: string;
   timestamp: string;
   status: 'Completed' | 'Pending' | 'Processing';
   
-  // Specific to Touch
+  // Specific to Tunch
   impureWeight?: string;
   pureWeight?: string;
   purityPercentage?: string;
@@ -50,9 +50,9 @@ export const StaffBillingScreen: React.FC = () => {
 
   const mockTransactions: Transaction[] = [
     { 
-      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Touch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', 
+      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', 
       impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
-      details: 'Touch testing for 5 gold biscuits. Verified purity successfully.' 
+      details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
     },
     { 
       id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Completed', 
@@ -91,7 +91,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const getWorkIcon = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'science';
+      case 'Tunch': return 'science';
       case 'Marking': return 'verified';
       case 'Shouldering': return 'precision_manufacturing';
       default: return 'work';
@@ -100,7 +100,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const getWorkColor = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'text-tertiary bg-tertiary-fixed/30';
+      case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
       case 'Marking': return 'text-secondary bg-secondary-fixed/30';
       case 'Shouldering': return 'text-primary bg-primary-fixed/30';
       default: return 'text-outline bg-surface-container';
@@ -202,7 +202,7 @@ export const StaffBillingScreen: React.FC = () => {
                       <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
                     </div>
                     
-                    {txn.workType === 'Touch' && txn.impureWeight && (
+                    {txn.workType === 'Tunch' && txn.impureWeight && (
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
                         <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
@@ -273,7 +273,7 @@ export const StaffBillingScreen: React.FC = () => {
                   </div>
                   
                   {/* Dynamic Fields Based on Work Type */}
-                  {selectedTransaction.workType === 'Touch' && (
+                  {selectedTransaction.workType === 'Tunch' && (
                     <>
                       <div>
                         <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Piece Type</p>

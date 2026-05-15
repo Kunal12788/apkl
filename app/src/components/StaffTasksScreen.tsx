@@ -7,7 +7,7 @@ interface Task {
   id: string;
   customerName: string;
   customerId: string;
-  workType: 'Touch' | 'Marking' | 'Shouldering';
+  workType: 'Tunch' | 'Marking' | 'Shouldering';
   assignedTo: string;
   status: TaskStatus;
   progressPercentage: number;
@@ -24,17 +24,17 @@ export const StaffTasksScreen: React.FC = () => {
   const taskId = searchParams.get('taskId');
 
   const mockTasks: Task[] = [
-    { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Touch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', estimatedCompletion: 'Today, 02:00 PM', notes: 'Touch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
+    { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Tunch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', estimatedCompletion: 'Today, 02:00 PM', notes: 'Tunch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
     { id: 'TSK-1043', customerName: 'Mehta Gold Traders', customerId: 'CUST-002', workType: 'Marking', assignedTo: 'Elena', status: 'Pending', progressPercentage: 10, impureWeight: '45.00g', pureWeight: '45.00g', dateGiven: 'Today, 10:30 AM', estimatedCompletion: 'Tomorrow, 11:00 AM', notes: 'Standard hallmarking for 12 necklaces.' },
     { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', estimatedCompletion: 'Today, 10:00 AM', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
-    { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Touch', assignedTo: 'Marcus', status: 'Delivered', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', estimatedCompletion: 'Oct 12, 05:00 PM', notes: 'Bulk testing of incoming scrap gold.' }
+    { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Tunch', assignedTo: 'Marcus', status: 'Delivered', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', estimatedCompletion: 'Oct 12, 05:00 PM', notes: 'Bulk testing of incoming scrap gold.' }
   ];
 
   const selectedTask = mockTasks.find(t => t.id === taskId) || null;
 
   const getWorkIcon = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'science';
+      case 'Tunch': return 'science';
       case 'Marking': return 'verified';
       case 'Shouldering': return 'precision_manufacturing';
       default: return 'work';
@@ -43,7 +43,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   const getWorkColor = (workType: string) => {
     switch(workType) {
-      case 'Touch': return 'text-tertiary bg-tertiary-fixed/30';
+      case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
       case 'Marking': return 'text-secondary bg-secondary-fixed/30';
       case 'Shouldering': return 'text-primary bg-primary-fixed/30';
       default: return 'text-outline bg-surface-container';
