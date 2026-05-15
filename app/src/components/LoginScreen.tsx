@@ -1,13 +1,25 @@
 import { useState } from 'react';
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
-  const [showPassword, setShowPassword] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [passkey, setPasskey] = useState("PASSKEY_2024_SECURE");
+  const [passkey, setPasskey] = useState("");
+  const [instId, setInstId] = useState("");
 
   const handleInitialize = () => {
-    // For demo purposes, valid length routes to dashboard
-    if (passkey.length >= 8) {
+    // Valid Credentials
+    const validUsers = [
+      { id: 'STAFF-001', key: 'staff123' },
+      { id: 'COLL-001', key: 'coll123' },
+      { id: 'ADMIN-001', key: 'admin123' },
+      { id: 'SUPER-001', key: 'super123' }
+    ];
+
+    const isValid = validUsers.some(u => u.id === instId && u.key === passkey);
+
+    if (isValid) {
+      // Save role for later use if needed
+      localStorage.setItem('user_id', instId);
       onLogin();
     } else {
       setHasError(false);
@@ -37,10 +49,10 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             <span className={`material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[240px] opacity-[0.03] pointer-events-none select-none z-0 transition-colors duration-500 ${hasError ? 'text-error' : 'text-primary'}`}>security</span>
             <div className="text-center relative z-10">
               <h1 className={`font-headline-md text-[24px] mb-1 font-bold leading-tight transition-colors duration-500 ${hasError ? 'text-error' : 'text-primary'}`}>
-                {hasError ? 'Security Alert' : 'Secure Authentication'}
+                {hasError ? 'Security Alert' : 'Institutional Login'}
               </h1>
               <p className={`font-body-md text-[13px] transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-on-surface-variant/80'}`}>
-                {hasError ? 'Invalid encryption passkey detected.' : 'Authorize institutional access to your secure vault.'}
+                {hasError ? 'Invalid institutional ID or encryption passkey.' : 'Please provide your credentials to access the vault.'}
               </p>
             </div>
             
@@ -50,7 +62,13 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
                 <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Institutional ID</label>
                 <div className="relative group">
                   <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>badge</span>
-                  <input className={`w-full h-12 pl-12 pr-4 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus'}`} placeholder="e.g. AD-992-XXXX" type="text" />
+                  <input 
+                    className={`w-full h-12 pl-12 pr-4 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus'}`} 
+                    placeholder="e.g. STAFF-XXX" 
+                    type="text" 
+                    value={instId}
+                    onChange={(e) => setInstId(e.target.value.toUpperCase())}
+                  />
                 </div>
               </div>
               
@@ -59,7 +77,13 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
                 <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Encryption Passkey</label>
                 <div className="relative group">
                   <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>key</span>
-                  <input onChange={(e) => setPasskey(e.target.value)} className={`w-full h-12 pl-12 pr-12 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus text-primary'}`} placeholder="••••••••••••" type={showPassword ? 'text' : 'password'} value={passkey} />
+                  <input 
+                    onChange={(e) => setPasskey(e.target.value)} 
+                    className={`w-full h-12 pl-12 pr-12 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus text-primary'}`} 
+                    placeholder="••••••••••••" 
+                    type={showPassword ? 'text' : 'password'} 
+                    value={passkey} 
+                  />
                   <button onClick={() => setShowPassword(!showPassword)} className={`absolute right-4 top-1/2 -translate-y-1/2 transition-colors ease-in-out ${hasError ? 'text-error/60 hover:text-error' : 'text-outline/60 hover:text-primary'}`}>
                     <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                   </button>
@@ -84,32 +108,12 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             <div className="flex items-center py-2.5 px-5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 premium-shadow justify-center">
               <p className="font-label-caps text-[10px] tracking-[0.15em] text-primary font-extrabold uppercase">STRATEGICALLY DIRECTED BY KUNAL</p>
             </div>
-            
-            {/* Trust / Privacy Symbols */}
-            <div className="flex items-center gap-5 mt-4 opacity-70">
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>verified_user</span>
-                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Trust</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>enhanced_encryption</span>
-                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Privacy</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-primary">
-                <span className="material-symbols-outlined text-[15px]" style={{ fontVariationSettings: '"FILL" 1' }}>gpp_good</span>
-                <span className="font-label-caps text-[9px] font-bold tracking-widest uppercase">Secure</span>
-              </div>
-            </div>
           </div>
         </div>
       </main>
       
       <footer className="w-full py-4 border-t border-outline-variant/20 flex flex-col items-center gap-2 text-center px-margin-mobile relative z-10 mt-auto bg-background/50 backdrop-blur-sm">
         <p className="font-label-caps text-[9px] tracking-[0.2em] text-tertiary font-bold">© 2024 AURORA DIVINE. SECURED BY JEWELRY-GRADE ENCRYPTION.</p>
-        <div className="flex gap-8">
-          <a className="font-body-md text-[11px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Security Protocol</a>
-          <a className="font-body-md text-[11px] text-outline/80 hover:text-primary transition-colors font-medium ease-in-out" href="#">Institutional Terms</a>
-        </div>
       </footer>
     </div>
   );
