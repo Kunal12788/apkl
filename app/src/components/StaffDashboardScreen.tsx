@@ -369,7 +369,7 @@ export const StaffDashboardScreen: React.FC = () => {
       </button>
 
       {/* Bottom Nav Bar */}
-      <nav className="fixed bottom-0 w-full rounded-t-[2.5rem] z-50 glass-effect border-t border-white/60 flex justify-around items-center px-4 pt-3 pb-8">
+      <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
         <a className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
