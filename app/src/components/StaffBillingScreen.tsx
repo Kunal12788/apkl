@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type TabView = 'all' | 'customer';
@@ -7,24 +7,21 @@ interface Transaction {
   id: string;
   customerId: string;
   customerName: string;
-  type: 'UPI' | 'Cash' | 'NEFT';
+  type: 'UPI' | 'Cash';
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   amount: string;
   date: string;
   timestamp: string;
-  status: 'Completed' | 'Pending' | 'Processing';
+  status: 'Paid' | 'Unpaid';
   
-  // Specific to Tunch
   impureWeight?: string;
   pureWeight?: string;
   purityPercentage?: string;
   pieceType?: string;
   
-  // Specific to Shouldering
   pointsCount?: number;
   pointsType?: 'Gold' | 'Silver';
   
-  // Specific to Marking
   caratMarking?: string;
   
   details: string;
@@ -48,6 +45,7 @@ interface Customer {
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState('');
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -55,32 +53,32 @@ export const StaffBillingScreen: React.FC = () => {
 
   const mockTransactions: Transaction[] = [
     { 
-      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', timestamp: '04:30 PM', status: 'Pending', 
+      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', timestamp: '04:30 PM', status: 'Unpaid', 
       caratMarking: '22K916',
       details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
     },
     { 
-      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', timestamp: '11:15 AM', status: 'Pending', 
+      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', timestamp: '11:15 AM', status: 'Unpaid', 
       impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
       details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
     },
     { 
-      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Completed', 
+      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', timestamp: '10:45 AM', status: 'Paid', 
       impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
       details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
     },
     { 
-      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Completed', 
+      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', timestamp: '09:12 AM', status: 'Paid', 
       caratMarking: '22K916',
       details: 'Hallmarking for 12 necklaces and 8 bangles.' 
     },
     { 
-      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'NEFT', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', timestamp: '04:30 PM', status: 'Processing', 
+      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', timestamp: '04:30 PM', status: 'Unpaid', 
       pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
       details: 'Chain link repairing and precision shouldering work on multiple joints.' 
     },
     { 
-      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', timestamp: '02:15 PM', status: 'Completed', 
+      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', timestamp: '02:15 PM', status: 'Paid', 
       caratMarking: '18K750',
       details: 'Laser marking on rings.' 
     },
@@ -107,6 +105,28 @@ export const StaffBillingScreen: React.FC = () => {
   const selectedCustomer = mockCustomers.find(c => c.id === customerId) || null;
   const selectedTransaction = mockTransactions.find(t => t.id === transactionId) || null;
 
+  const matchesSearch = (txn: Transaction) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      txn.customerName.toLowerCase().includes(q) ||
+      txn.id.toLowerCase().includes(q) ||
+      txn.amount.toLowerCase().includes(q) ||
+      txn.status.toLowerCase().includes(q) ||
+      txn.type.toLowerCase().includes(q) ||
+      txn.workType.toLowerCase().includes(q) ||
+      (txn.impureWeight && txn.impureWeight.toLowerCase().includes(q)) ||
+      (txn.pureWeight && txn.pureWeight.toLowerCase().includes(q)) ||
+      (txn.purityPercentage && txn.purityPercentage.toLowerCase().includes(q)) ||
+      (txn.pieceType && txn.pieceType.toLowerCase().includes(q)) ||
+      (txn.caratMarking && txn.caratMarking.toLowerCase().includes(q))
+    );
+  };
+
+  const filteredTransactions = mockTransactions.filter(matchesSearch);
+  const filteredCustomers = mockCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredLedger = selectedCustomer ? selectedCustomer.ledger.filter(matchesSearch) : [];
+
   const getWorkIcon = (workType: string) => {
     switch(workType) {
       case 'Tunch': return 'science';
@@ -125,16 +145,58 @@ export const StaffBillingScreen: React.FC = () => {
     }
   };
 
+  const FilterChip = ({ label, icon, value }: { label: string, icon: string, value: string }) => {
+    const isActive = searchQuery.toLowerCase() === value.toLowerCase();
+    return (
+      <div onClick={() => setSearchQuery(isActive ? '' : value)} className={`flex items-center gap-1.5 border rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer transition-colors ${isActive ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant/30 text-primary hover:bg-surface-bright'}`}>
+        <span className="material-symbols-outlined text-[16px]">{icon}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+      </div>
+    );
+  };
+
+  const SearchAndFilterSection = ({ placeholder = "Search..." }: { placeholder?: string }) => (
+    <div className="space-y-4 mb-4">
+      <div className="relative">
+        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+        <input 
+          type="text" 
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={placeholder}
+          className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
+        />
+        {searchQuery && (
+          <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
+        )}
+      </div>
+      
+      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2">
+        <FilterChip label="Unpaid" icon="warning" value="Unpaid" />
+        <FilterChip label="Paid" icon="check_circle" value="Paid" />
+        <FilterChip label="Cash" icon="payments" value="Cash" />
+        <FilterChip label="UPI" icon="qr_code_2" value="UPI" />
+        <FilterChip label="Tunch" icon="science" value="Tunch" />
+        <FilterChip label="Marking" icon="verified" value="Marking" />
+      </div>
+    </div>
+  );
+
   return (
     <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-8 pb-40 relative">
-        {/* Header */}
+        
+        {/* Main Header with Notification Bell */}
         {!selectedTransaction && !selectedCustomer && (
-          <header className="flex justify-between items-end mb-4">
+          <header className="flex justify-between items-start mb-4">
             <div>
               <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Billing & Records</h1>
               <p className="text-xs text-outline font-medium">Manage ledgers and transactions</p>
             </div>
+            <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
+              <span className="material-symbols-outlined text-xl">notifications</span>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
+            </button>
           </header>
         )}
 
@@ -142,13 +204,13 @@ export const StaffBillingScreen: React.FC = () => {
         {!selectedCustomer && !selectedTransaction && (
           <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner">
             <button 
-              onClick={() => setSearchParams({ tab: 'all' })}
+              onClick={() => { setSearchQuery(''); setSearchParams({ tab: 'all' }); }}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'all' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               All Transactions
             </button>
             <button 
-              onClick={() => setSearchParams({ tab: 'customer' })}
+              onClick={() => { setSearchQuery(''); setSearchParams({ tab: 'customer' }); }}
               className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'customer' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
             >
               By Customer
@@ -159,43 +221,18 @@ export const StaffBillingScreen: React.FC = () => {
         {/* View: All Transactions */}
         {activeTab === 'all' && !selectedCustomer && !selectedTransaction && (
           <div className="space-y-4 animate-fade-in">
-            {/* Unified Search */}
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" placeholder="Search by name, ID, or weight..." className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" />
-            </div>
-            
-            {/* Advanced Filters Row */}
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2">
-              <div className="flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer">
-                <span className="material-symbols-outlined text-sm text-primary">calendar_month</span>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Date</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer">
-                <span className="material-symbols-outlined text-sm text-primary">category</span>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Work Type</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer">
-                <span className="material-symbols-outlined text-sm text-primary">payments</span>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Payment</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer">
-                <span className="material-symbols-outlined text-sm text-primary">scale</span>
-                <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Pure Wt.</span>
-              </div>
-            </div>
+            <SearchAndFilterSection placeholder="Search by weight, purity, ID..." />
 
             <div className="flex justify-between items-center px-1 mt-2">
               <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Transaction Ledger</h3>
             </div>
             
             <div className="space-y-3">
-              {mockTransactions.map((txn) => {
-                const isPending = txn.status === 'Pending';
+              {filteredTransactions.map((txn) => {
+                const isPending = txn.status === 'Unpaid';
                 
                 return (
                   <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, tab: activeTab, ...(customerId ? { customerId } : {}) })} className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-0.5 border ${isPending ? 'border-error/20 bg-error/5' : 'border-[#003366]/5 bg-white'}`}>
-                    {/* Accent Line */}
                     <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5 ${isPending ? 'bg-error' : 'bg-secondary'}`}></div>
                     
                     <div className="flex justify-between items-start mb-3 pl-1">
@@ -212,46 +249,48 @@ export const StaffBillingScreen: React.FC = () => {
                         <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
-                          <p className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${isPending ? 'bg-error/10 text-error' : txn.status === 'Completed' ? 'bg-secondary/10 text-secondary' : 'bg-surface-container text-outline'}`}>
-                            {isPending ? 'UNPAID' : txn.status === 'Completed' ? 'PAID' : txn.status}
+                          <p className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${isPending ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'}`}>
+                            {txn.status}
                           </p>
                         </div>
                       </div>
                     </div>
                   
-                  {/* Transaction Metadata Footer */}
-                  <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px] text-outline">build</span>
-                      <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType}</span>
+                    <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">build</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
+                      </div>
+                      
+                      {txn.workType === 'Tunch' && txn.impureWeight && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
+                        </div>
+                      )}
+                      {txn.workType === 'Marking' && txn.caratMarking && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">verified</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.caratMarking}</span>
+                        </div>
+                      )}
+                      {txn.workType === 'Shouldering' && txn.pointsCount && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">join_inner</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pointsCount} pts</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
-                      <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
-                    </div>
-                    
-                    {txn.workType === 'Tunch' && txn.impureWeight && (
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
-                      </div>
-                    )}
-                    {txn.workType === 'Marking' && txn.caratMarking && (
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-outline">verified</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.caratMarking}</span>
-                      </div>
-                    )}
-                    {txn.workType === 'Shouldering' && txn.pointsCount && (
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-outline">join_inner</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pointsCount} pts</span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+              {filteredTransactions.length === 0 && (
+                <div className="p-8 text-center text-outline text-sm font-medium">No transactions found.</div>
+              )}
             </div>
           </div>
         )}
@@ -259,9 +298,11 @@ export const StaffBillingScreen: React.FC = () => {
         {/* View: Detailed Transaction Modal */}
         {selectedTransaction && (
           <div className="animate-fade-in space-y-6">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
-              <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
-            </button>
+            <header className="flex justify-between items-center">
+              <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
+              </button>
+            </header>
             
             <div className="luxury-card overflow-hidden">
               <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-6 text-white relative">
@@ -300,8 +341,11 @@ export const StaffBillingScreen: React.FC = () => {
                     <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Payment Method</p>
                     <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.type}</p>
                   </div>
+                  <div>
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Status</p>
+                    <p className={`font-headline text-sm font-bold ${selectedTransaction.status === 'Unpaid' ? 'text-error' : 'text-secondary'}`}>{selectedTransaction.status}</p>
+                  </div>
                   
-                  {/* Dynamic Fields Based on Work Type */}
                   {selectedTransaction.workType === 'Tunch' && (
                     <>
                       <div>
@@ -360,12 +404,21 @@ export const StaffBillingScreen: React.FC = () => {
           <div className="space-y-5 animate-fade-in">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" placeholder="Search customer name or ID..." className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" />
+              <input 
+                type="text" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search customer name or ID..." 
+                className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
+              />
+              {searchQuery && (
+                <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
+              )}
             </div>
 
             <div className="space-y-3">
-              {mockCustomers.map(customer => (
-                <div key={customer.id} onClick={() => setSearchParams({ customerId: customer.id, tab: activeTab })} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
+              {filteredCustomers.map(customer => (
+                <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
                   <div className="flex items-center gap-4">
                     <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
                       {customer.initials}
@@ -380,6 +433,9 @@ export const StaffBillingScreen: React.FC = () => {
                   </div>
                 </div>
               ))}
+              {filteredCustomers.length === 0 && (
+                <div className="p-8 text-center text-outline text-sm font-medium">No customers found.</div>
+              )}
             </div>
           </div>
         )}
@@ -387,9 +443,15 @@ export const StaffBillingScreen: React.FC = () => {
         {/* View: Particular Customer Detail */}
         {selectedCustomer && !selectedTransaction && (
           <div className="animate-fade-in space-y-6">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
-              <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
-            </button>
+            <header className="flex justify-between items-start">
+              <button onClick={() => { setSearchQuery(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
+                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
+              </button>
+              <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
+              </button>
+            </header>
             
             <div className="flex items-center gap-4 mb-2">
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-xl shadow-lg border-2 border-white">
@@ -401,7 +463,6 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
             
-            {/* Customer Stats - Premium Side-by-Side Design */}
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-[0_4px_20px_rgba(0,30,64,0.03)] relative overflow-hidden luxury-card group hover:-translate-y-0.5 transition-transform">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
@@ -432,15 +493,14 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Active Dues Breakdown */}
-            {selectedCustomer.ledger.filter(t => t.status === 'Pending').length > 0 && (
+            {selectedCustomer.ledger.filter(t => t.status === 'Unpaid').length > 0 && (
               <div className="space-y-3">
                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
                   Active Dues Details
                 </h3>
                 <div className="luxury-card divide-y divide-error/10 border border-error/20 bg-error-container/5 overflow-hidden">
-                  {selectedCustomer.ledger.filter(t => t.status === 'Pending').map(due => (
+                  {selectedCustomer.ledger.filter(t => t.status === 'Unpaid').map(due => (
                     <div key={due.id} onClick={() => setSearchParams({ transactionId: due.id, customerId: selectedCustomer.id, tab: activeTab })} className="p-4 flex items-center justify-between cursor-pointer group hover:bg-error/5 transition-colors">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-error-container/20 text-error group-hover:bg-error-container/40 transition-colors`}>
@@ -461,7 +521,6 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             )}
 
-            {/* Total Work Profile */}
             <div className="space-y-3">
               <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Total Work Profile</h3>
               <div className="grid grid-cols-3 gap-2">
@@ -483,15 +542,17 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Customer Ledger */}
-            <div className="space-y-4">
+            <div className="space-y-4 pt-2">
               <div className="flex justify-between items-center px-1">
                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Full Ledger History</h3>
               </div>
               
+              {/* Insert the global search functionality directly above the ledger */}
+              <SearchAndFilterSection placeholder="Search ledger by purity, weight, ID..." />
+              
               <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
-                {selectedCustomer.ledger.map(txn => {
-                  const isPending = txn.status === 'Pending';
+                {filteredLedger.map(txn => {
+                  const isPending = txn.status === 'Unpaid';
                   
                   return (
                     <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className={`p-4 transition-colors cursor-pointer group ${isPending ? 'bg-error/5 hover:bg-error/10' : 'hover:bg-surface-bright'}`}>
@@ -522,7 +583,7 @@ export const StaffBillingScreen: React.FC = () => {
                     </div>
                   );
                 })}
-                {selectedCustomer.ledger.length === 0 && (
+                {filteredLedger.length === 0 && (
                   <div className="p-8 text-center text-outline text-sm font-medium">No ledger entries found.</div>
                 )}
               </div>

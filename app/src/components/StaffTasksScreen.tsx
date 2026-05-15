@@ -71,8 +71,9 @@ export const StaffTasksScreen: React.FC = () => {
               <p className="text-xs text-outline font-medium">Track workflows and assignments</p>
             </div>
             <div className="flex gap-2">
-              <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-primary hover:bg-surface-container transition-colors border border-outline-variant/30 premium-shadow">
-                <span className="material-symbols-outlined text-xl">filter_list</span>
+              <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
+                <span className="material-symbols-outlined text-xl">notifications</span>
+                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
               </button>
             </div>
           </header>
