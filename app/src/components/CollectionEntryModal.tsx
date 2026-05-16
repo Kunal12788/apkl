@@ -23,14 +23,11 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     phone: '',
     address: '',
     logoName: '',
-    purity: '22K',
     category: 'TUNCH',
     pieces: '',
-    details: '',
     weight: '',
-    productType: 'Jewellery',
     specifications: '',
-    paymentMode: 'Tunch', // Tunch, Cash Front, Cash Back
+    paymentMode: 'Tunch', // Settlement Condition: Tunch, Cash Front, Cash Back
     pointSuggestion: 'Gold' // Gold, Silver
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,7 +69,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
      localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify([newEntry, ...existing]));
 
      onSuccess(newEntry);
-     setFormData({ customerName: '', phone: '', address: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '', productType: 'Jewellery', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
+     setFormData({ customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
      setStep(1);
   };
 
@@ -153,19 +150,15 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                   {formData.category === 'TUNCH' && (
                     <div className="space-y-4">
                       <div>
-                        <label className={lbl}>Product Type</label>
-                        <select className={inp()} value={formData.productType} onChange={e => up('productType', e.target.value)}>
-                           <option value="Jewellery">Jewellery</option>
-                           <option value="Sample">Sample</option>
-                           <option value="Bullion">Bullion</option>
-                        </select>
+                        <label className={lbl}>Product Specification</label>
+                        <textarea className={`${inp()} h-20 py-3 resize-none`} placeholder="e.g. Chains, Rings, Gold Biscuits" value={formData.specifications} onChange={e => up('specifications', e.target.value)} />
                       </div>
                       <div>
                          <label className={lbl}>Impure Gold Weight (g) *</label>
                          <input type="number" step="0.001" className={inp()} placeholder="0.000" value={formData.weight} onChange={e => up('weight', e.target.value)} />
                       </div>
                       <div>
-                        <label className={lbl}>Payment / Settlement Mode</label>
+                        <label className={lbl}>Settlement Condition</label>
                         <div className="grid grid-cols-3 gap-2">
                            {['Tunch', 'Cash Front', 'Cash Back'].map(mode => (
                              <button key={mode} onClick={() => up('paymentMode', mode)}

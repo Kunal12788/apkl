@@ -48,7 +48,7 @@ export const CollectionHistoryScreen: React.FC = () => {
                       <p className="text-[10px] font-medium text-outline">{item.id}</p>
                    </div>
                 </div>
-                <span className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase tracking-tight ${
+                <span className={`text-[9px] px-2.5 py-1 rounded-full font-bold uppercase tracking-tight ${
                   item.status === 'Verified' ? 'bg-tertiary/10 text-tertiary' : 
                   item.status === 'Delivered' ? 'bg-primary/10 text-primary' :
                   item.status === 'In Transit' ? 'bg-secondary/10 text-secondary' : 
@@ -58,29 +58,14 @@ export const CollectionHistoryScreen: React.FC = () => {
                 </span>
              </div>
 
-             <div className="grid grid-cols-3 gap-2">
+             <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/5">
                    <p className="text-[8px] font-bold text-outline uppercase tracking-wider mb-1">Category</p>
                    <p className="text-[10px] font-bold text-primary">{item.category}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/5">
-                   <p className="text-[8px] font-bold text-outline uppercase tracking-wider mb-1">Purity</p>
-                   <p className="text-[10px] font-bold text-secondary">{item.purity}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/5">
                    <p className="text-[8px] font-bold text-outline uppercase tracking-wider mb-1">Qty / Wt</p>
                    <p className="text-[10px] font-bold text-tertiary">{item.pieces}P / {item.weight}</p>
-                </div>
-             </div>
-
-             <div className="flex items-center gap-4 px-1">
-                <div className="flex items-center gap-1.5">
-                   <span className="material-symbols-outlined text-xs text-outline">category</span>
-                   <span className="text-[10px] font-bold text-primary">{item.type}</span>
-                </div>
-                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${item.fee === 'Paid' ? 'border-tertiary/20 bg-tertiary/5 text-tertiary' : 'border-error/20 bg-error/5 text-error'}`}>
-                   <span className="material-symbols-outlined text-[10px]">{item.fee === 'Paid' ? 'check_circle' : 'pending'}</span>
-                   <span className="text-[9px] font-black uppercase tracking-tighter">Fee {item.fee}</span>
                 </div>
              </div>
 
