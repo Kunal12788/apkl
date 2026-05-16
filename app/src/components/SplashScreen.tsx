@@ -12,9 +12,8 @@ export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete 
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background text-on-surface overflow-hidden">
       {/* Environmental Cinematic Depth */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[15%] -right-[10%] w-[800px] h-[800px] rounded-full sapphire-leak blur-[140px]"></div>
-        <div className="absolute -bottom-[20%] -left-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 blur-[120px]"></div>
-        <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-[140%] h-[500px] rotate-[-8deg] glass-zenith rounded-[5rem] opacity-30"></div>
+        <div className="absolute -top-[15%] -right-[10%] w-[600px] h-[600px] rounded-full sapphire-leak blur-[80px]"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[500px] h-[500px] rounded-full bg-secondary/10 blur-[60px]"></div>
       </div>
 
       {/* Main Cinematic Flow */}
@@ -32,22 +31,13 @@ export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete 
               </defs>
               <rect fill="url(#grid)" height="100%" width="100%"></rect>
             </svg>
-            {/* Floating Institutional Symbols */}
-            <div className="absolute top-[20%] left-[15%] animate-float-1">
+            {/* Floating Institutional Symbols - GPU accelerated */}
+            <div className="absolute top-[20%] left-[15%] animate-float-1" style={{ willChange: 'transform' }}>
               <span className="material-symbols-outlined text-primary text-5xl">shield</span>
             </div>
-            <div className="absolute bottom-[20%] right-[15%] animate-float-2">
+            <div className="absolute bottom-[20%] right-[15%] animate-float-2" style={{ willChange: 'transform' }}>
               <span className="material-symbols-outlined text-tertiary text-6xl">lock</span>
             </div>
-            <div className="absolute top-[30%] right-[20%] animate-float-3">
-              <span className="material-symbols-outlined text-primary text-4xl">account_balance</span>
-            </div>
-            <div className="absolute bottom-[25%] left-[20%] animate-float-4">
-              <span className="material-symbols-outlined text-tertiary text-5xl">door_sliding</span>
-            </div>
-            {/* Rings of Trust */}
-            <div className="absolute w-[400px] h-[400px] border border-primary/5 rounded-full animate-[spin_60s_linear_infinite]"></div>
-            <div className="absolute w-[550px] h-[550px] border border-tertiary/5 rounded-full animate-[spin_90s_linear_infinite_reverse]"></div>
           </div>
           {/* Central Brand Lockup */}
           <div className="flex flex-col items-center gap-6">

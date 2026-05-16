@@ -8,7 +8,7 @@ const ToggleBtn = ({ options, value, onChange }: { options: string[]; value: str
   <div className="flex gap-2 bg-surface-container p-1 rounded-full">
     {options.map(opt => (
       <button key={opt} onClick={() => onChange(opt)}
-        className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-all ${value === opt ? 'button-gradient text-white shadow-sm' : 'text-on-surface-variant'}`}>
+        className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-colors ${value === opt ? 'button-gradient text-white shadow-sm' : 'text-on-surface-variant'}`}>
         {opt}
       </button>
     ))}
@@ -89,7 +89,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   };
 
 
-  const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary input-sapphire-focus transition-all`;
+  const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary transition-colors`;
   const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
   const errMsg = (k: string) => errors[k] ? <p className="text-[10px] text-error mt-1 font-medium">{errors[k]}</p> : null;
 
@@ -97,7 +97,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[#001e40]/50 backdrop-blur-md" onClick={onClose} />
+      <div className="absolute inset-0 bg-[#001e40]/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md flex flex-col rounded-[2rem] overflow-hidden border border-white/30 shadow-[0_-20px_80px_rgba(0,30,64,0.4)]"
         style={{ minHeight: step === 1 ? '72dvh' : '88dvh', maxHeight: '92dvh', animation: 'modalUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
 

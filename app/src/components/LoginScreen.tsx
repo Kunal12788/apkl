@@ -38,9 +38,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         <div className="w-full max-w-[400px] flex flex-col items-center">
           {/* Security Core Icon Section */}
           <div className="-mt-2 mb-8 relative">
-            <div className={`absolute inset-0 transition-colors duration-500 blur-3xl rounded-full scale-150 animate-pulse ${hasError ? 'bg-error/20' : 'bg-secondary/10'}`}></div>
-            <div className={`relative w-20 h-20 rounded-full glass-card premium-shadow flex items-center justify-center border transition-all duration-500 animate-float ${hasError ? 'border-error/80 animate-[pulse-glow-error_3s_ease-in-out_infinite]' : 'border-white/90 animate-pulse-glow'}`}>
-              <span className={`material-symbols-outlined text-[40px] icon-glow transition-colors duration-500 ${hasError ? 'text-error' : 'text-secondary'}`} style={{ fontVariationSettings: '"FILL" 1' }}>{hasError ? 'gpp_bad' : 'lock'}</span>
+            <div className={`relative w-20 h-20 rounded-full glass-card premium-shadow flex items-center justify-center border transition-colors duration-300 ${hasError ? 'border-error/80' : 'border-white/90'}`} style={{ willChange: 'transform' }}>
+              <span className={`material-symbols-outlined text-[40px] transition-colors duration-300 ${hasError ? 'text-error' : 'text-secondary'}`} style={{ fontVariationSettings: '"FILL" 1' }}>{hasError ? 'gpp_bad' : 'lock'}</span>
             </div>
           </div>
           
