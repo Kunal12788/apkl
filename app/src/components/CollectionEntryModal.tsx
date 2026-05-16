@@ -20,6 +20,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     customerName: '',
+    phone: '',
+    address: '',
     logoName: '',
     purity: '22K',
     category: 'TUNCH',
@@ -27,7 +29,9 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     details: '',
     weight: '',
     productType: 'Jewellery',
-    feeStatus: 'Due'
+    specifications: '',
+    paymentMode: 'Tunch', // Tunch, Cash Front, Cash Back
+    pointSuggestion: 'Gold' // Gold, Silver
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -45,8 +49,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   const validate = () => {
     const err: Record<string, string> = {};
     if (!formData.customerName) err.customerName = 'Required';
-    if (!formData.pieces) err.pieces = 'Required';
-    if (!formData.weight) err.weight = 'Required';
+    if (formData.category === 'TUNCH' && !formData.phone) err.phone = 'Required';
+    if (formData.category === 'MARKING' && !formData.pieces) err.pieces = 'Required';
     setErrors(err);
     return Object.keys(err).length === 0;
   };
@@ -64,12 +68,11 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
        source: 'Collection Staff'
      };
      
-     // Persist to localStorage
      const existing = JSON.parse(localStorage.getItem('AURORA_COLLECTIONS') || '[]');
      localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify([newEntry, ...existing]));
 
      onSuccess(newEntry);
-     setFormData({ customerName: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '', productType: 'Jewellery', feeStatus: 'Due' });
+     setFormData({ customerName: '', phone: '', address: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '', productType: 'Jewellery', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
      setStep(1);
   };
 
@@ -82,7 +85,6 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
       <div className="relative w-full max-w-md flex flex-col rounded-[2.5rem] overflow-hidden border border-white/30 shadow-[0_-20px_80px_rgba(0,30,64,0.4)] bg-background animate-modalUp"
         style={{ minHeight: '85svh', maxHeight: '92svh' }}>
         
-        {/* HEADER */}
         <div className="shrink-0 bg-gradient-to-br from-primary to-primary-container px-6 pt-8 pb-6 relative overflow-hidden">
            <div className="relative z-10 flex justify-between items-center">
               <div>
@@ -96,7 +98,6 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
         </div>
 
-        {/* STEPPER */}
         <div className="px-6 py-4 bg-white border-b border-outline-variant/10 flex items-center justify-center gap-2">
             {[1, 2].map(s => (
               <div key={s} className="flex items-center gap-2">
@@ -106,105 +107,121 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
             ))}
         </div>
 
-        {/* CONTENT */}
         <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4">
            {step === 1 ? (
              <>
-               <SectionCard title="Customer Information" icon="person" color="bg-primary/5 text-primary">
-                  <div>
-                    <label className={lbl}>Customer Name *</label>
-                    <input className={inp(errors.customerName)} placeholder="Enter full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Logo / Brand Name</label>
-                    <input className={inp()} placeholder="e.g. RCJ, AJ" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
+               <SectionCard title="Job Selection" icon="category" color="bg-primary/5 text-primary">
+                  <div className="grid grid-cols-3 gap-2">
+                     {['TUNCH', 'MARKING', 'SHOULDERING'].map(cat => (
+                        <button key={cat} onClick={() => up('category', cat)}
+                          className={`py-3 rounded-xl border flex flex-col items-center gap-1.5 transition-all ${formData.category === cat ? 'bg-primary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}>
+                          <span className="material-symbols-outlined text-lg">{cat === 'TUNCH' ? 'science' : cat === 'MARKING' ? 'verified' : 'precision_manufacturing'}</span>
+                          <span className="text-[8px] font-bold uppercase tracking-widest">{cat}</span>
+                        </button>
+                     ))}
                   </div>
                </SectionCard>
 
-               <SectionCard title="Product Details" icon="inventory_2" color="bg-secondary/5 text-secondary">
-                  <div className="grid grid-cols-2 gap-3">
-                     <div>
-                        <label className={lbl}>No. of Pieces *</label>
-                        <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
-                     </div>
-                     <div>
-                        <label className={lbl}>Total Weight (g) *</label>
-                        <input className={inp(errors.weight)} placeholder="0.00" value={formData.weight} onChange={e => up('weight', e.target.value)} />
-                     </div>
-                  </div>
+               <SectionCard title="Entity Profile" icon="person" color="bg-secondary/5 text-secondary">
                   <div>
-                     <label className={lbl}>Item Description</label>
-                     <input className={inp()} placeholder="e.g. Chains, Rings, Mix" value={formData.details} onChange={e => up('details', e.target.value)} />
+                    <label className={lbl}>Entity Name *</label>
+                    <input className={inp(errors.customerName)} placeholder="Name of customer" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
                   </div>
+                  {formData.category === 'TUNCH' && (
+                    <>
+                      <div>
+                        <label className={lbl}>Phone Number *</label>
+                        <input className={inp(errors.phone)} placeholder="+91" value={formData.phone} onChange={e => up('phone', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={lbl}>Address</label>
+                        <input className={inp()} placeholder="Location details" value={formData.address} onChange={e => up('address', e.target.value)} />
+                      </div>
+                    </>
+                  )}
+                  {formData.category === 'MARKING' && (
+                    <div>
+                      <label className={lbl}>Entity Logo</label>
+                      <input className={inp()} placeholder="Brand logo mark" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
+                    </div>
+                  )}
                </SectionCard>
              </>
            ) : (
              <>
-               <SectionCard title="Technical Specs" icon="settings" color="bg-tertiary/5 text-tertiary">
-                  <div className="grid grid-cols-2 gap-3">
-                     <div>
+               <SectionCard title="Work Specifications" icon="settings" color="bg-tertiary/5 text-tertiary">
+                  {formData.category === 'TUNCH' && (
+                    <div className="space-y-4">
+                      <div>
                         <label className={lbl}>Product Type</label>
                         <select className={inp()} value={formData.productType} onChange={e => up('productType', e.target.value)}>
                            <option value="Jewellery">Jewellery</option>
                            <option value="Sample">Sample</option>
                            <option value="Bullion">Bullion</option>
                         </select>
-                     </div>
-                     <div>
-                        <label className={lbl}>Service Fee</label>
-                        <div className="flex gap-1 bg-surface-container p-1 rounded-lg">
-                           {['Paid', 'Due'].map(status => (
-                             <button key={status} onClick={() => up('feeStatus', status)}
-                               className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${formData.feeStatus === status ? 'bg-primary text-white shadow-sm' : 'text-outline'}`}>
-                               {status}
+                      </div>
+                      <div>
+                         <label className={lbl}>Impure Gold Weight (g) *</label>
+                         <input type="number" step="0.001" className={inp()} placeholder="0.000" value={formData.weight} onChange={e => up('weight', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className={lbl}>Payment / Settlement Mode</label>
+                        <div className="grid grid-cols-3 gap-2">
+                           {['Tunch', 'Cash Front', 'Cash Back'].map(mode => (
+                             <button key={mode} onClick={() => up('paymentMode', mode)}
+                               className={`py-2 rounded-lg text-[9px] font-bold uppercase border transition-all ${formData.paymentMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}>
+                               {mode}
                              </button>
                            ))}
                         </div>
-                     </div>
-                  </div>
-                  <div>
-                    <label className={lbl}>Purity Standard</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['24K', '22K', '18K', '14K', '9K', 'Other'].map(k => (
-                        <button 
-                          key={k} 
-                          onClick={() => up('purity', k)}
-                          className={`py-2.5 rounded-xl text-[11px] font-bold border transition-all ${formData.purity === k ? 'bg-primary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-primary/40'}`}
-                        >
-                          {k}
-                        </button>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className={lbl}>Job Category</label>
-                    <div className="space-y-2">
-                       {['TUNCH', 'MARKING', 'SHOULDERING'].map(cat => (
-                         <button 
-                           key={cat} 
-                           onClick={() => up('category', cat)}
-                           className={`w-full py-3 px-4 rounded-xl text-left flex items-center justify-between border transition-all ${formData.category === cat ? 'bg-primary/5 border-primary text-primary' : 'bg-white border-outline-variant/20 text-outline'}`}
-                         >
-                            <span className="text-xs font-bold uppercase tracking-wider">{cat}</span>
-                            {formData.category === cat && <span className="material-symbols-outlined text-sm">check_circle</span>}
-                         </button>
-                       ))}
-                    </div>
-                  </div>
-               </SectionCard>
+                  )}
 
-               <div className="p-4 rounded-2xl bg-secondary/5 border border-secondary/10 space-y-2">
-                  <div className="flex items-center gap-2 text-secondary">
-                     <span className="material-symbols-outlined text-[18px]">verified_user</span>
-                     <p className="text-[10px] font-bold uppercase tracking-wider">Operational Audit</p>
-                  </div>
-                  <p className="text-[11px] text-outline leading-relaxed">By initiating this task, you confirm receipt of the mentioned items under secure custody protocol.</p>
-               </div>
+                  {formData.category === 'MARKING' && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                         <div>
+                            <label className={lbl}>No. of Pieces *</label>
+                            <input type="number" className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                         </div>
+                         <div>
+                            <label className={lbl}>Total Weight (g)</label>
+                            <input type="number" step="0.01" className={inp()} placeholder="0.00" value={formData.weight} onChange={e => up('weight', e.target.value)} />
+                         </div>
+                      </div>
+                      <div>
+                        <label className={lbl}>Marking Specifications</label>
+                        <textarea className={`${inp()} h-20 py-3 resize-none`} placeholder="HALLMARK details..." value={formData.specifications} onChange={e => up('specifications', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.category === 'SHOULDERING' && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className={lbl}>Point Suggestion</label>
+                        <div className="flex gap-3">
+                           {['Gold', 'Silver'].map(pt => (
+                             <button key={pt} onClick={() => up('pointSuggestion', pt)}
+                               className={`flex-1 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${formData.pointSuggestion === pt ? 'bg-primary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}>
+                               <span className="material-symbols-outlined text-sm">{pt === 'Gold' ? 'stars' : 'toll'}</span>
+                               <span className="text-[10px] font-bold uppercase tracking-widest">{pt} Points</span>
+                             </button>
+                           ))}
+                        </div>
+                      </div>
+                      <div>
+                         <label className={lbl}>Total Pieces</label>
+                         <input type="number" className={inp()} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+               </SectionCard>
              </>
            )}
         </div>
 
-        {/* FOOTER */}
         <div className="shrink-0 p-6 bg-white border-t border-outline-variant/10 flex gap-3">
            {step === 2 && (
              <button onClick={() => setStep(1)} className="flex-1 h-14 rounded-2xl border border-outline-variant/40 text-outline font-bold flex items-center justify-center gap-2">

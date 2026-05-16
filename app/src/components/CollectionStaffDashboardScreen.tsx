@@ -30,17 +30,18 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
-      <main className="px-6 space-y-6 max-w-5xl mx-auto pt-4 pb-40 relative">
-        <div className="absolute bottom-[10%] left-[15%] -rotate-12 pointer-events-none select-none z-0 text-[10px] font-headline uppercase tracking-[0.2em] text-primary/5 opacity-80" style={{ opacity: 0.04 }}>COLLECTION UNIT</div>
-        
+      <main className="px-6 space-y-8 max-w-5xl mx-auto pt-4 pb-40 relative">
+        <div className="absolute top-[20%] left-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-[20%] right-[-10%] w-64 h-64 bg-tertiary/5 rounded-full blur-[100px] pointer-events-none"></div>
+
         <header className="flex items-center justify-between py-4 mb-2 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full ring-2 ring-white shadow-lg overflow-hidden flex-shrink-0 bg-primary-fixed-dim flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl ring-2 ring-white shadow-lg overflow-hidden flex-shrink-0 bg-primary-fixed-dim flex items-center justify-center">
                <span className="material-symbols-outlined text-white text-2xl">local_shipping</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="font-headline text-lg font-bold text-primary leading-tight">Collection Desk</h1>
-              <p className="text-xs text-outline font-medium">Field Operations Portal</p>
+              <h1 className="font-headline text-lg font-bold text-primary leading-tight tracking-tight">Collection Unit</h1>
+              <p className="text-[10px] text-outline font-black uppercase tracking-[0.2em]">Field Operations Hub</p>
             </div>
           </div>
           <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-colors border border-outline-variant/30">
@@ -48,47 +49,40 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           </button>
         </header>
 
-        {/* INTAKE ACTION */}
-        <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-primary to-primary-container shadow-2xl border border-white/5 glow-primary z-10">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
-          <div className="flex flex-col gap-6 relative z-10">
-            <div>
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-tertiary-fixed font-extrabold mb-2">Operational Intake</h3>
-              <p className="text-white/80 text-xs font-medium leading-relaxed max-w-[240px]">Record new items and initiate verification tasks for the main vault.</p>
-            </div>
-            <button 
-              onClick={() => setEntryModalOpen(true)}
-              className="w-full h-14 bg-white text-primary rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
-            >
-              <span className="material-symbols-outlined">add_circle</span>
-              NEW COLLECTION ENTRY
-            </button>
-          </div>
-        </section>
-
         {/* CATEGORY PIECES */}
-        <section className="grid grid-cols-2 gap-4 relative z-10">
-          {collectionStats.map((stat, idx) => (
-            <div key={idx} className="luxury-card p-5 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform">
-              <div className="flex justify-between items-center">
-                <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center`}>
-                  <span className="material-symbols-outlined text-lg">{stat.icon}</span>
-                </div>
-                <span className="font-headline text-xl font-bold text-primary">{stat.value}</span>
-              </div>
-              <p className="text-[10px] font-bold text-outline uppercase tracking-wider">{stat.label}</p>
-            </div>
-          ))}
+        <section className="space-y-4 relative z-10">
+           <div className="flex justify-between items-center px-1">
+             <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Volume Analysis</h3>
+             <span className="text-[9px] font-bold text-tertiary uppercase tracking-wider">Live Sync</span>
+           </div>
+           <div className="grid grid-cols-2 gap-4">
+             {collectionStats.map((stat, idx) => (
+               <div key={idx} className="luxury-card p-5 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform">
+                 <div className="flex justify-between items-center">
+                   <div className={`w-8 h-8 rounded-lg ${stat.color} flex items-center justify-center`}>
+                     <span className="material-symbols-outlined text-lg">{stat.icon}</span>
+                   </div>
+                   <span className="font-headline text-xl font-bold text-primary">{stat.value}</span>
+                 </div>
+                 <p className="text-[10px] font-bold text-outline uppercase tracking-wider">{stat.label}</p>
+               </div>
+             ))}
+           </div>
         </section>
 
         {/* STATUS SUMMARY */}
-        <section className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 relative z-10">
-          <h3 className="font-label text-[10px] uppercase tracking-[0.2em] text-outline font-bold mb-4 px-1">Job Status Distribution</h3>
-          <div className="flex justify-between items-center">
+        <section className="luxury-card p-6 bg-surface-container-lowest border border-outline-variant/10 relative z-10">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Workflow Lifecycle</h3>
+            <span className="material-symbols-outlined text-outline text-lg">donut_large</span>
+          </div>
+          <div className="flex justify-between items-center px-2">
             {statusStats.map((stat, i) => (
-              <div key={i} className="flex flex-col items-center gap-1 flex-1">
-                <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full ${stat.color}`}>{stat.value}</span>
-                <span className="text-[9px] font-bold text-outline uppercase mt-1">{stat.label}</span>
+              <div key={i} className="flex flex-col items-center gap-2 flex-1">
+                <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center font-black text-xs border border-white shadow-sm`}>
+                   {stat.value}
+                </div>
+                <span className="text-[9px] font-bold text-outline uppercase tracking-tighter">{stat.label}</span>
               </div>
             ))}
           </div>
@@ -97,34 +91,33 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         {/* RECENT TASKS */}
         <section className="space-y-4 relative z-10">
           <div className="flex justify-between items-center px-1">
-            <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Recent Field Assignments</h3>
-            <button onClick={() => navigate('/tasks')} className="text-[10px] font-bold text-secondary uppercase tracking-wider">View All</button>
+            <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Field Assignments</h3>
+            <button onClick={() => navigate('/tasks')} className="text-[10px] font-bold text-secondary uppercase tracking-wider underline underline-offset-4 decoration-secondary/30">History</button>
           </div>
-          <div className="luxury-card overflow-hidden divide-y divide-outline-variant/10">
+          <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10">
             {recentTasks.map((item, idx) => (
-              <div key={idx} className="p-4 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors">
+              <div key={idx} className="p-5 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors border-b last:border-0 border-outline-variant/10">
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold bg-primary`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
                     {item.category[0]}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-primary">{item.customer}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                       <span className="text-[10px] font-bold text-secondary">{item.category}</span>
-                       <span className="w-1 h-1 rounded-full bg-outline/30"></span>
-                       <span className="text-[10px] font-medium text-outline">{item.pieces} Pieces</span>
+                    <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                       <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
+                       <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className={`text-[9px] px-2 py-1 rounded-full font-bold uppercase tracking-tighter ${
-                    item.status === 'Completed' ? 'bg-tertiary/10 text-tertiary' : 
-                    item.status === 'In Progress' ? 'bg-secondary/10 text-secondary' : 
-                    'bg-error/10 text-error'
+                <div className="text-right flex flex-col items-end gap-1.5">
+                  <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
+                    item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
+                    item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
+                    'bg-error/5 text-error border-error/20'
                   }`}>
                     {item.status}
                   </span>
-                  <p className="text-[9px] text-outline/60 mt-1 font-medium">{item.time}</p>
+                  <p className="text-[8px] text-outline/40 font-bold uppercase tracking-[0.1em]">{item.time}</p>
                 </div>
               </div>
             ))}
