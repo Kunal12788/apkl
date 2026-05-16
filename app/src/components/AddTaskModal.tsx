@@ -101,12 +101,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
           </div>
         </div>
 
-        {/* BODY */}
-        <div className="flex-grow overflow-y-auto hide-scrollbar bg-background">
+        {/* BODY — flex col so step 1 can center itself, steps 2-4 scroll independently */}
+        <div className="flex-grow bg-background flex flex-col overflow-hidden">
 
           {/* ── STEP 1: Centered selection ── */}
           {step === 1 && (
-            <div className="flex flex-col justify-center min-h-full px-6 py-8">
+            <div className="flex-grow flex flex-col justify-center px-6 py-8">
               <p className="text-[12px] text-on-surface-variant text-center mb-6">Select the type of work to begin the audit entry.</p>
               <div className="space-y-3">
                 {([
@@ -132,7 +132,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
           {/* ── STEP 2: Form ── */}
           {step === 2 && (
-            <div className="px-6 py-6 space-y-4 animate-fade-in">
+            <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4 animate-fade-in">
               {workType === 'TUNCH' && (<>
                 {/* Client Section */}
                 <div className="luxury-card overflow-hidden">
@@ -328,7 +328,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
           {/* ── STEP 3: Review ── */}
           {step === 3 && (
-            <div className="px-6 py-6 space-y-4 animate-fade-in">
+            <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4 animate-fade-in">
               <div className="luxury-card overflow-hidden">
                 <div className="bg-gradient-to-br from-[#001e40] to-[#003366] p-5 relative">
                   <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-6 -mt-6 blur-xl"></div>
@@ -363,7 +363,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
           {/* ── STEP 4: Final Auth ── */}
           {step === 4 && (
-            <div className="px-6 py-8 space-y-5 animate-fade-in text-center">
+            <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-8 space-y-5 animate-fade-in text-center">
               <div className="relative w-24 h-24 mx-auto">
                 <div className="absolute inset-0 rounded-full border border-[#C9A646]/30 scale-110 animate-ping opacity-20"></div>
                 <div className="w-24 h-24 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center">
