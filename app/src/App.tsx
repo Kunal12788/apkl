@@ -9,6 +9,7 @@ import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
 import { StaffProfileScreen } from './components/StaffProfileScreen';
 import { StaffLedgerScreen } from './components/StaffLedgerScreen';
+import { GlobalFAB } from './components/GlobalFAB';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -54,6 +55,7 @@ function App() {
             <Route path="/profile" element={<StaffProfileScreen />} />
             <Route path="/ledger" element={<StaffLedgerScreen />} />
           </Routes>
+          <GlobalFAB />
         </HashRouter>
       </div>
     </div>

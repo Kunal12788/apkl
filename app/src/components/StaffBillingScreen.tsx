@@ -654,11 +654,6 @@ export const StaffBillingScreen: React.FC = () => {
         )}
       </main>
 
-      {/* FAB - Global Plus Icon */}
-      <button className="fixed bottom-28 right-8 w-16 h-16 bg-primary text-on-primary rounded-full shadow-[0_8px_30px_rgb(0,30,64,0.4)] backdrop-blur-sm flex items-center justify-center active:scale-95 transition-all z-50 border-2 border-white/10">
-        <span className="material-symbols-outlined text-3xl">add</span>
-      </button>
-
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
         <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
