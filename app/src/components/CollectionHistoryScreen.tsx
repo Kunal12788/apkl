@@ -102,10 +102,13 @@ export const CollectionHistoryScreen: React.FC = () => {
           <span className="material-symbols-outlined text-2xl">dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Home</span>
         </a>
-        <a onClick={() => navigate('/collections')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
-          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>inventory_2</span>
-          <span className="font-label text-[10px] uppercase tracking-widest">History</span>
-          <div className="absolute -bottom-2 w-1.5 h-1.5 bg-tertiary rounded-full"></div>
+        <a onClick={() => navigate('/billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">payments</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
+        </a>
+        <a onClick={() => navigate('/tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">assignment</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>
         <a onClick={() => navigate('/profile')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
           <span className="material-symbols-outlined text-2xl">person</span>

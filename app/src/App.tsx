@@ -11,6 +11,8 @@ import { StaffLedgerScreen } from './components/StaffLedgerScreen';
 import { CollectionStaffDashboardScreen } from './components/CollectionStaffDashboardScreen';
 import { CollectionHistoryScreen } from './components/CollectionHistoryScreen';
 import { CollectionStaffProfileScreen } from './components/CollectionStaffProfileScreen';
+import { CollectionStaffBillingScreen } from './components/CollectionStaffBillingScreen';
+import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScreen';
 import { GlobalFAB } from './components/GlobalFAB';
 
 const LoginWrapper = () => {
@@ -24,6 +26,22 @@ const DashboardWrapper = () => {
     return <CollectionStaffDashboardScreen />;
   }
   return <StaffDashboardScreen />;
+};
+
+const BillingWrapper = () => {
+  const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('COLL-')) {
+    return <CollectionStaffBillingScreen />;
+  }
+  return <StaffBillingScreen />;
+};
+
+const TasksWrapper = () => {
+  const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('COLL-')) {
+    return <CollectionStaffTasksScreen />;
+  }
+  return <StaffTasksScreen />;
 };
 
 const ProfileWrapper = () => {
@@ -69,8 +87,8 @@ function App() {
             <Route path="/login" element={<LoginWrapper />} />
             <Route path="/forgot" element={<ForgotKeyWrapper />} />
             <Route path="/dashboard" element={<DashboardWrapper />} />
-            <Route path="/billing" element={<StaffBillingScreen />} />
-            <Route path="/tasks" element={<StaffTasksScreen />} />
+            <Route path="/billing" element={<BillingWrapper />} />
+            <Route path="/tasks" element={<TasksWrapper />} />
             <Route path="/collections" element={<CollectionHistoryScreen />} />
             <Route path="/profile" element={<ProfileWrapper />} />
             <Route path="/ledger" element={<StaffLedgerScreen />} />
