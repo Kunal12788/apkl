@@ -16,6 +16,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     customerName: '', address: '', phone: '',
     impureWeight: '', purity: '', pureWeight: '',
     settlementCondition: 'Only Tunch', fee: '',
+    feeStatus: 'Paid',
+    productType: 'Jewellery',
     logoName: '', carat: '22k', pieces: '',
     broughtBy: 'Customer', pointsUsed: ''
   });
@@ -59,9 +61,30 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const handleFinalSubmit = () => {
     onSuccess({ ...formData, workType, id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, date: 'Just Now', status: 'In Progress', progressPercentage: 10, assignedTo: 'Staff' });
     setStep(1); setWorkType(null); setErrors({});
-    setFormData({ customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '' });
+    setFormData({ customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '' });
     onClose();
   };
+
+  const ToggleBtn = ({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) => (
+    <div className="flex gap-2 bg-surface-container p-1 rounded-full">
+      {options.map(opt => (
+        <button key={opt} onClick={() => onChange(opt)}
+          className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-all ${value === opt ? 'button-gradient text-white shadow-sm' : 'text-on-surface-variant'}`}>
+          {opt}
+        </button>
+      ))}
+    </div>
+  );
+
+  const SectionCard = ({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) => (
+    <div className="luxury-card overflow-hidden">
+      <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-outline-variant/10 ${color}`}>
+        <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
+        <p className="text-[10px] font-black uppercase tracking-[0.15em]">{title}</p>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </div>
+  );
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary input-sapphire-focus transition-all`;
   const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
@@ -141,188 +164,175 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
             <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4 animate-fade-in">
               {workType === 'TUNCH' && (<>
                 {/* Client Section */}
-                <div className="luxury-card overflow-hidden">
-                  <div className="bg-secondary/5 border-b border-outline-variant/10 px-5 py-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-secondary text-[16px]">person</span>
-                    <p className={lbl + " !mb-0"}>Client Details</p>
+                <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">
+                  <div>
+                    <label className={lbl}>Customer Name *</label>
+                    <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
+                    {errMsg('customerName')}
                   </div>
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <label className={lbl}>Customer Name *</label>
-                      <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
-                      {errMsg('customerName')}
-                    </div>
-                    <div>
-                      <label className={lbl}>Address *</label>
-                      <input className={inp(errors.address)} placeholder="Full address" value={formData.address} onChange={e => up('address', e.target.value)} />
-                      {errMsg('address')}
-                    </div>
-                    <div>
-                      <label className={lbl}>Phone *</label>
-                      <input className={inp(errors.phone)} placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => up('phone', e.target.value)} />
-                      {errMsg('phone')}
-                    </div>
+                  <div>
+                    <label className={lbl}>Address *</label>
+                    <input className={inp(errors.address)} placeholder="Full address" value={formData.address} onChange={e => up('address', e.target.value)} />
+                    {errMsg('address')}
                   </div>
-                </div>
+                  <div>
+                    <label className={lbl}>Phone *</label>
+                    <input className={inp(errors.phone)} placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => up('phone', e.target.value)} />
+                    {errMsg('phone')}
+                  </div>
+                </SectionCard>
 
-                {/* Gold Audit Section */}
-                <div className="luxury-card overflow-hidden">
-                  <div className="bg-tertiary/5 border-b border-outline-variant/10 px-5 py-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-tertiary text-[16px]">science</span>
-                    <p className={lbl + " !mb-0 !text-tertiary"}>Gold Audit Parameters</p>
+                <SectionCard title="Product Received" icon="category" color="bg-primary/5 text-primary">
+                  <div>
+                    <label className={lbl}>Type of Item *</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Jewellery', 'Sample', 'Coin', 'Bar', 'Scrap', 'Other'].map(pt => (
+                        <button key={pt} onClick={() => up('productType', pt)}
+                          className={`py-2.5 rounded-xl text-[11px] font-bold transition-all border ${formData.productType === pt ? 'button-gradient text-white border-transparent shadow-sm' : 'bg-white border-outline-variant/30 text-on-surface-variant hover:border-secondary/40 hover:text-secondary'}`}>
+                          {pt}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={lbl}>Impure Wt. (g) *</label>
-                        <input className={inp(errors.impureWeight)} placeholder="e.g. 12.45" value={formData.impureWeight} onChange={e => up('impureWeight', e.target.value)} />
-                        {errMsg('impureWeight')}
-                      </div>
-                      <div>
-                        <label className={lbl}>Purity (%) *</label>
-                        <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
-                        {errMsg('purity')}
-                      </div>
+                </SectionCard>
+
+                <SectionCard title="Gold Audit Parameters" icon="science" color="bg-tertiary/5 text-tertiary">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Impure Wt. (g) *</label>
+                      <input className={inp(errors.impureWeight)} placeholder="e.g. 12.45" value={formData.impureWeight} onChange={e => up('impureWeight', e.target.value)} />
+                      {errMsg('impureWeight')}
                     </div>
                     <div>
-                      <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
-                      <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
-                      {errMsg('pureWeight')}
+                      <label className={lbl}>Purity (%) *</label>
+                      <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
+                      {errMsg('purity')}
                     </div>
                   </div>
-                </div>
-
-                {/* Settlement */}
-                <div className="luxury-card overflow-hidden">
-                  <div className="bg-surface-container border-b border-outline-variant/10 px-5 py-3">
-                    <p className={lbl + " !mb-0"}>Settlement Condition</p>
+                  <div>
+                    <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
+                    <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
+                    {errMsg('pureWeight')}
                   </div>
-                  <div className="p-4 space-y-2">
+                </SectionCard>
+
+                <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
+                  <div className="space-y-2">
                     {['Only Tunch', 'Cash (Impure/Pure at Front)', 'Cash (Gold at Back)'].map(cond => (
                       <button key={cond} onClick={() => up('settlementCondition', cond)}
-                        className={`w-full h-11 px-4 rounded-full text-[12px] font-semibold text-left transition-all flex items-center gap-2.5 ${formData.settlementCondition === cond ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/20'}`}>
+                        className={`w-full h-11 px-4 rounded-full text-[12px] font-semibold text-left transition-all flex items-center gap-2.5 ${formData.settlementCondition === cond ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20 hover:bg-surface-container-high'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${formData.settlementCondition === cond ? 'bg-white' : 'bg-outline-variant'}`} />
                         {cond}
                       </button>
                     ))}
                   </div>
-                </div>
+                </SectionCard>
 
-                {/* Fee */}
-                <div className="luxury-card p-5">
-                  <label className={lbl}>Service Fee (₹) *</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                    <input className={`${inp(errors.fee)} pl-8 !text-secondary font-bold`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
-                  </div>
-                  {errMsg('fee')}
-                </div>
-              </>)}
-
-              {workType === 'MARKING' && (<>
-                <div className="luxury-card overflow-hidden">
-                  <div className="bg-tertiary/5 border-b border-outline-variant/10 px-5 py-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-tertiary text-[16px]">verified</span>
-                    <p className={lbl + " !mb-0"}>Marking Details</p>
-                  </div>
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <label className={lbl}>Customer Name *</label>
-                      <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
-                      {errMsg('customerName')}
-                    </div>
-                    <div>
-                      <label className={lbl}>Logo Design *</label>
-                      <input className={inp(errors.logoName)} placeholder="e.g. RCJ, AJ" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
-                      {errMsg('logoName')}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="luxury-card p-5 space-y-3">
-                  <label className={lbl}>Carat</label>
-                  <div className="flex gap-2">
-                    {['22k','18k','14k','9k'].map(k => (
-                      <button key={k} onClick={() => up('carat', k)}
-                        className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.carat === k ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
-                        {k.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="luxury-card p-4">
-                    <label className={lbl}>No. of Pieces *</label>
-                    <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
-                    {errMsg('pieces')}
-                  </div>
-                  <div className="luxury-card p-4">
-                    <label className={lbl}>Fee (₹) *</label>
+                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                  <div>
+                    <label className={lbl}>Amount (₹) *</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-sm">₹</span>
-                      <input className={`${inp(errors.fee)} pl-7`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
                     </div>
                     {errMsg('fee')}
                   </div>
-                </div>
-
-                <div className="luxury-card p-4 space-y-3">
-                  <label className={lbl}>Material Brought By</label>
-                  <div className="flex gap-3">
-                    {['Customer', 'Staff Member'].map(b => (
-                      <button key={b} onClick={() => up('broughtBy', b)}
-                        className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.broughtBy === b ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
-                        {b}
-                      </button>
-                    ))}
+                  <div>
+                    <label className={lbl}>Payment Status</label>
+                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
                   </div>
-                </div>
+                </SectionCard>
+              </>)}
+
+              {workType === 'MARKING' && (<>
+                <SectionCard title="Marking Details" icon="verified" color="bg-tertiary/5 text-tertiary">
+                  <div>
+                    <label className={lbl}>Customer Name *</label>
+                    <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
+                    {errMsg('customerName')}
+                  </div>
+                  <div>
+                    <label className={lbl}>Logo Design *</label>
+                    <input className={inp(errors.logoName)} placeholder="e.g. RCJ, AJ" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
+                    {errMsg('logoName')}
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Specifications" icon="tune" color="bg-primary/5 text-primary">
+                  <div>
+                    <label className={lbl}>Carat</label>
+                    <div className="flex gap-2">
+                      {['22k','18k','14k','9k'].map(k => (
+                        <button key={k} onClick={() => up('carat', k)}
+                          className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.carat === k ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
+                          {k.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>No. of Pieces *</label>
+                      <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                      {errMsg('pieces')}
+                    </div>
+                    <div>
+                      <label className={lbl}>Brought By</label>
+                      <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                  <div>
+                    <label className={lbl}>Amount (₹) *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                    </div>
+                    {errMsg('fee')}
+                  </div>
+                  <div>
+                    <label className={lbl}>Payment Status</label>
+                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
+                  </div>
+                </SectionCard>
               </>)}
 
               {workType === 'SHOULDERING' && (<>
-                <div className="luxury-card overflow-hidden">
-                  <div className="bg-error/5 border-b border-outline-variant/10 px-5 py-3 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-error text-[16px]">precision_manufacturing</span>
-                    <p className={lbl + " !mb-0"}>Shouldering Details</p>
+                <SectionCard title="Shouldering Details" icon="precision_manufacturing" color="bg-error/5 text-error">
+                  <div>
+                    <label className={lbl}>Customer Name *</label>
+                    <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
+                    {errMsg('customerName')}
                   </div>
-                  <div className="p-5 space-y-4">
-                    <div>
-                      <label className={lbl}>Customer Name *</label>
-                      <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
-                      {errMsg('customerName')}
-                    </div>
-                    <div>
-                      <label className={lbl}>Points Used *</label>
-                      <input className={inp(errors.pointsUsed)} placeholder="Total solder points" value={formData.pointsUsed} onChange={e => up('pointsUsed', e.target.value)} />
-                      {errMsg('pointsUsed')}
-                    </div>
+                  <div>
+                    <label className={lbl}>Points Used *</label>
+                    <input className={inp(errors.pointsUsed)} placeholder="Total solder points" value={formData.pointsUsed} onChange={e => up('pointsUsed', e.target.value)} />
+                    {errMsg('pointsUsed')}
                   </div>
-                </div>
+                  <div>
+                    <label className={lbl}>Material Brought By</label>
+                    <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
+                  </div>
+                </SectionCard>
 
-                <div className="luxury-card p-4 space-y-3">
-                  <label className={lbl}>Material Brought By</label>
-                  <div className="flex gap-3">
-                    {['Customer', 'Staff Member'].map(b => (
-                      <button key={b} onClick={() => up('broughtBy', b)}
-                        className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.broughtBy === b ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
-                        {b}
-                      </button>
-                    ))}
+                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                  <div>
+                    <label className={lbl}>Amount (₹) *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                    </div>
+                    {errMsg('fee')}
                   </div>
-                </div>
-
-                <div className="luxury-card p-5">
-                  <label className={lbl}>Service Fee (₹) *</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                    <input className={`${inp(errors.fee)} pl-8 !text-secondary font-bold`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                  <div>
+                    <label className={lbl}>Payment Status</label>
+                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
                   </div>
-                  {errMsg('fee')}
-                </div>
+                </SectionCard>
               </>)}
 
-              {/* Validation hint */}
               {Object.keys(errors).length > 0 && (
                 <div className="glass-effect rounded-2xl border border-error/20 p-4 flex items-center gap-3">
                   <span className="material-symbols-outlined text-error text-[18px] shrink-0" style={{ fontVariationSettings: '"FILL" 1' }}>error</span>
