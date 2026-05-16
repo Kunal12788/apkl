@@ -2,6 +2,29 @@ import React, { useState } from 'react';
 
 type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING';
 
+// Defined OUTSIDE the parent component so React never treats these
+// as new component types on re-render (which would unmount inputs mid-typing).
+const ToggleBtn = ({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) => (
+  <div className="flex gap-2 bg-surface-container p-1 rounded-full">
+    {options.map(opt => (
+      <button key={opt} onClick={() => onChange(opt)}
+        className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-all ${value === opt ? 'button-gradient text-white shadow-sm' : 'text-on-surface-variant'}`}>
+        {opt}
+      </button>
+    ))}
+  </div>
+);
+
+const SectionCard = ({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) => (
+  <div className="luxury-card overflow-hidden">
+    <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-outline-variant/10 ${color}`}>
+      <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
+      <p className="text-[10px] font-black uppercase tracking-[0.15em]">{title}</p>
+    </div>
+    <div className="p-5 space-y-4">{children}</div>
+  </div>
+);
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -65,26 +88,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     onClose();
   };
 
-  const ToggleBtn = ({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) => (
-    <div className="flex gap-2 bg-surface-container p-1 rounded-full">
-      {options.map(opt => (
-        <button key={opt} onClick={() => onChange(opt)}
-          className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-all ${value === opt ? 'button-gradient text-white shadow-sm' : 'text-on-surface-variant'}`}>
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-
-  const SectionCard = ({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) => (
-    <div className="luxury-card overflow-hidden">
-      <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-outline-variant/10 ${color}`}>
-        <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
-        <p className="text-[10px] font-black uppercase tracking-[0.15em]">{title}</p>
-      </div>
-      <div className="p-5 space-y-4">{children}</div>
-    </div>
-  );
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary input-sapphire-focus transition-all`;
   const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
