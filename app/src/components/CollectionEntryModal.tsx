@@ -54,7 +54,19 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   };
 
   const handleSubmit = () => {
-     onSuccess({ ...formData, timestamp: new Date().toISOString(), id: `COL-${Math.floor(Math.random() * 9000) + 1000}` });
+     const newEntry = { 
+       ...formData, 
+       timestamp: new Date().toISOString(), 
+       id: `COL-${Math.floor(Math.random() * 9000) + 1000}`,
+       status: 'Pending Verification',
+       source: 'Collection Staff'
+     };
+     
+     // Persist to localStorage
+     const existing = JSON.parse(localStorage.getItem('AURORA_COLLECTIONS') || '[]');
+     localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify([newEntry, ...existing]));
+
+     onSuccess(newEntry);
      setFormData({ customerName: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '' });
      setStep(1);
   };

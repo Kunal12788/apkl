@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { TaskReconciliationModal } from './TaskReconciliationModal';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed';
 
@@ -9,7 +10,7 @@ interface Task {
   customerId: string;
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   assignedTo: string;
-  status: TaskStatus;
+  status: TaskStatus | 'Pending Verification';
   progressPercentage: number;
   impureWeight?: string;
   pureWeight?: string;
@@ -18,6 +19,11 @@ interface Task {
   estimatedCompletion: string;
   notes: string;
   broughtBy: string;
+  source?: string;
+  pieces?: string;
+  weight?: string;
+  purity?: string;
+  category?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -38,11 +44,12 @@ const getWorkColor = (workType: string) => {
   }
 };
 
-const getStatusColor = (status: TaskStatus) => {
+const getStatusColor = (status: string) => {
   switch(status) {
     case 'Completed': return 'bg-tertiary-container/10 text-tertiary-container border-tertiary-container/20';
     case 'In Progress': return 'bg-secondary-container/10 text-secondary-container border-secondary-container/20';
     case 'Pending': return 'bg-error-container/50 text-error border-error/20';
+    case 'Pending Verification': return 'bg-secondary/10 text-secondary border-secondary/20 animate-pulse';
     default: return 'bg-surface-container text-outline border-outline/20';
   }
 };
@@ -135,6 +142,9 @@ export const StaffTasksScreen: React.FC = () => {
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
   const [toastMessage, setToastMessage] = useState('');
+  
+  const [isVerificationOpen, setVerificationOpen] = useState(false);
+  const [currentVerificationTask, setCurrentVerificationTask] = useState<any>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -149,6 +159,36 @@ export const StaffTasksScreen: React.FC = () => {
     { id: 'TSK-1044', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Shouldering', assignedTo: 'Julian', status: 'In Progress', progressPercentage: 40, dateGiven: 'Today, 11:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 06:00 PM', broughtBy: 'Staff (Elena)', notes: 'Soldering 14 joints on custom bracelet.' }
   ]);
 
+  useEffect(() => {
+    // Load collection tasks from localStorage
+    const collections = JSON.parse(localStorage.getItem('AURORA_COLLECTIONS') || '[]');
+    const collectionTasks: Task[] = collections.map((c: any) => ({
+      id: c.id,
+      customerName: c.customerName,
+      customerId: c.logoName || 'COL-CLIENT',
+      workType: (c.category.charAt(0) + c.category.slice(1).toLowerCase()) as any,
+      assignedTo: 'Pending',
+      status: c.status,
+      progressPercentage: 0,
+      dateGiven: 'Intake: ' + new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      isoDate: c.timestamp.split('T')[0],
+      estimatedCompletion: 'Awaiting Audit',
+      notes: c.details || 'Collection intake from field.',
+      broughtBy: 'Collection Staff',
+      source: 'Collection',
+      pieces: c.pieces,
+      weight: c.weight,
+      purity: c.purity,
+      category: c.category
+    }));
+
+    setTasks(prev => {
+       const existingIds = new Set(prev.map(t => t.id));
+       const newTasks = collectionTasks.filter(t => !existingIds.has(t.id));
+       return [...prev, ...newTasks];
+    });
+  }, []);
+
   const selectedTask = tasks.find(t => t.id === taskId) || null;
 
   const matchesSearch = (task: Task) => {
@@ -161,9 +201,7 @@ export const StaffTasksScreen: React.FC = () => {
         task.workType.toLowerCase().includes(q) ||
         task.assignedTo.toLowerCase().includes(q) ||
         task.broughtBy.toLowerCase().includes(q) ||
-        task.notes.toLowerCase().includes(q) ||
-        (task.impureWeight?.toLowerCase().includes(q)) ||
-        (task.pureWeight?.toLowerCase().includes(q))
+        task.notes.toLowerCase().includes(q)
       );
     }
 
@@ -174,7 +212,12 @@ export const StaffTasksScreen: React.FC = () => {
     return matchesText && matchesDate;
   };
 
-  const filteredTasks = tasks.filter(t => t.status === activeTab && matchesSearch(t));
+  const filteredTasks = tasks.filter(t => {
+     if (activeTab === 'Pending') {
+        return (t.status === 'Pending' || t.status === 'Pending Verification') && matchesSearch(t);
+     }
+     return t.status === activeTab && matchesSearch(t);
+  });
 
   const handleDeleteTask = (id: string) => {
     if(window.confirm('Are you sure you want to permanently delete this task?')) {
@@ -182,6 +225,12 @@ export const StaffTasksScreen: React.FC = () => {
       showToast('Task successfully deleted');
       navigate(-1);
     }
+  };
+
+  const handleVerifySuccess = (verifiedTask: any) => {
+     setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+     setVerificationOpen(false);
+     showToast('Audit matched! Task verified and completed.');
   };
 
   return (
@@ -277,6 +326,16 @@ export const StaffTasksScreen: React.FC = () => {
                       <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
                     </div>
 
+                    {task.status === 'Pending Verification' && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setCurrentVerificationTask(task); setVerificationOpen(true); }}
+                        className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
+                      >
+                         <span className="material-symbols-outlined text-sm">rule</span>
+                         VERIFY INTAKE DATA
+                      </button>
+                    )}
+
                     <div className="px-1 pt-1">
                       <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5">
                         <span>Progress</span>
@@ -298,6 +357,13 @@ export const StaffTasksScreen: React.FC = () => {
             </div>
           </div>
         )}
+
+        <TaskReconciliationModal 
+           isOpen={isVerificationOpen}
+           onClose={() => setVerificationOpen(false)}
+           collectionTask={currentVerificationTask}
+           onVerified={handleVerifySuccess}
+        />
 
         {/* View: Detailed Task Modal */}
         {selectedTask && (
