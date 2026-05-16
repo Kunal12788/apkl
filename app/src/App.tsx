@@ -1,19 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
-// Force Vercel rebuild 2
 import { StaffDashboardScreen } from './components/StaffDashboardScreen';
 import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
 import { StaffProfileScreen } from './components/StaffProfileScreen';
 import { StaffLedgerScreen } from './components/StaffLedgerScreen';
+import { CollectionStaffDashboardScreen } from './components/CollectionStaffDashboardScreen';
+import { CollectionHistoryScreen } from './components/CollectionHistoryScreen';
+import { CollectionStaffProfileScreen } from './components/CollectionStaffProfileScreen';
 import { GlobalFAB } from './components/GlobalFAB';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
   return <LoginScreen onForgotKey={() => navigate('/forgot')} onLogin={() => navigate('/dashboard')} />;
+};
+
+const DashboardWrapper = () => {
+  const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('COLL-')) {
+    return <CollectionStaffDashboardScreen />;
+  }
+  return <StaffDashboardScreen />;
+};
+
+const ProfileWrapper = () => {
+  const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('COLL-')) {
+    return <CollectionStaffProfileScreen />;
+  }
+  return <StaffProfileScreen />;
 };
 
 const ForgotKeyWrapper = () => {
@@ -25,9 +43,12 @@ function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
 
+  useEffect(() => {
+    // Optional: Add logic to check if user is already logged in
+  }, []);
+
   const handleComplete = () => {
     setFadeOut(true);
-    // Wait for the fade transition to finish before unmounting
     setTimeout(() => {
       setShowSplash(false);
     }, 1200); 
@@ -35,24 +56,23 @@ function App() {
 
   return (
     <div className="w-full min-h-screen relative bg-background overflow-hidden">
-      {/* Splash Screen Overlay */}
       {showSplash && (
         <div className={`absolute inset-0 z-50 transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
           <SplashScreen onComplete={handleComplete} />
         </div>
       )}
 
-      {/* Underlying Application Screens */}
       <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
         <HashRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginWrapper />} />
             <Route path="/forgot" element={<ForgotKeyWrapper />} />
-            <Route path="/dashboard" element={<StaffDashboardScreen />} />
+            <Route path="/dashboard" element={<DashboardWrapper />} />
             <Route path="/billing" element={<StaffBillingScreen />} />
             <Route path="/tasks" element={<StaffTasksScreen />} />
-            <Route path="/profile" element={<StaffProfileScreen />} />
+            <Route path="/collections" element={<CollectionHistoryScreen />} />
+            <Route path="/profile" element={<ProfileWrapper />} />
             <Route path="/ledger" element={<StaffLedgerScreen />} />
           </Routes>
           <GlobalFAB />
