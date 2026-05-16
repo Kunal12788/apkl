@@ -99,7 +99,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#001e40]/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md flex flex-col rounded-[2rem] overflow-hidden border border-white/30 shadow-[0_-20px_80px_rgba(0,30,64,0.4)]"
-        style={{ minHeight: step === 1 ? '72dvh' : '88dvh', maxHeight: '92dvh', animation: 'modalUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
+        style={{ minHeight: step === 1 ? '72svh' : '88svh', maxHeight: '92svh', animation: 'modalUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
 
         {/* NAVY HEADER */}
         <div className="shrink-0 bg-gradient-to-br from-[#001e40] to-[#003366] px-6 pt-7 pb-5 relative overflow-hidden">

@@ -28,7 +28,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
   };
 
   return (
-    <div className="bg-background text-on-background font-body-md min-h-[100dvh] flex flex-col ambient-bg relative z-10 w-full overflow-hidden">
+    <div className="bg-background text-on-background font-body-md min-h-[100svh] flex flex-col ambient-bg relative z-10 w-full overflow-hidden">
       <header className="absolute top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16">
         <div className="flex items-center gap-2">
           <span className="font-display-lg text-[22px] tracking-tight text-primary font-bold"><br /></span>

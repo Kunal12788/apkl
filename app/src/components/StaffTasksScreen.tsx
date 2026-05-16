@@ -185,7 +185,7 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   return (
-    <div className="bg-background text-on-background font-body w-full h-[100dvh] relative overflow-y-auto hide-scrollbar">
+    <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-8 pb-32 relative">
         {/* Header */}
         {!selectedTask && (

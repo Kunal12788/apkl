@@ -43,7 +43,7 @@ export const ForgotKeyScreen: React.FC<{ onBack: () => void }> = ({ onBack }) =>
   };
 
   return (
-    <div className="bg-background text-on-background font-body-md h-[100dvh] flex flex-col ambient-bg relative w-full overflow-hidden animate-fade-in">
+    <div className="bg-background text-on-background font-body-md h-[100svh] flex flex-col ambient-bg relative w-full overflow-hidden animate-fade-in">
       
       {/* Massive Background Security Watermark */}
       <span className="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[500px] opacity-[0.015] pointer-events-none select-none z-0 text-primary" style={{ fontVariationSettings: '"FILL" 1' }}>
