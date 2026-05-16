@@ -5,11 +5,11 @@ export const CollectionHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
 
   const history = [
-    { id: 'COL-8921', customer: 'Ramesh Jewelers', category: 'TUNCH', purity: '22K', status: 'In Transit', time: '2024-05-16 10:30:15 AM', pieces: '12', weight: '145.50g', logo: 'RJ' },
-    { id: 'COL-8922', customer: 'Sita Ram & Sons', category: 'MARKING', purity: '18K', status: 'Pending', time: '2024-05-16 11:15:22 AM', pieces: '45', weight: '89.20g', logo: 'SRS' },
-    { id: 'COL-8923', customer: 'Modern Goldsmith', category: 'SHOULDERING', purity: '22K', status: 'Verified', time: '2024-05-16 12:05:45 PM', pieces: '8', weight: '210.15g', logo: 'MG' },
-    { id: 'COL-8924', customer: 'Om Shakti Jewelers', category: 'TUNCH', purity: '24K', status: 'Delivered', time: '2024-05-15 04:20:10 PM', pieces: '1', weight: '10.00g', logo: 'OM' },
-    { id: 'COL-8925', customer: 'Laxmi Gold', category: 'MARKING', purity: '22K', status: 'In Transit', time: '2024-05-15 05:45:30 PM', pieces: '120', weight: '340.50g', logo: 'LG' },
+    { id: 'COL-8921', customer: 'Ramesh Jewelers', category: 'TUNCH', purity: '22K', status: 'In Transit', time: '2024-05-16 10:30:15 AM', pieces: '12', weight: '145.50g', logo: 'RJ', type: 'Sample', fee: 'Paid' },
+    { id: 'COL-8922', customer: 'Sita Ram & Sons', category: 'MARKING', purity: '18K', status: 'Pending', time: '2024-05-16 11:15:22 AM', pieces: '45', weight: '89.20g', logo: 'SRS', type: 'Jewellery', fee: 'Due' },
+    { id: 'COL-8923', customer: 'Modern Goldsmith', category: 'SHOULDERING', purity: '22K', status: 'Verified', time: '2024-05-16 12:05:45 PM', pieces: '8', weight: '210.15g', logo: 'MG', type: 'Jewellery', fee: 'Paid' },
+    { id: 'COL-8924', customer: 'Om Shakti Jewelers', category: 'TUNCH', purity: '24K', status: 'Delivered', time: '2024-05-15 04:20:10 PM', pieces: '1', weight: '10.00g', logo: 'OM', type: 'Bullion', fee: 'Paid' },
+    { id: 'COL-8925', customer: 'Laxmi Gold', category: 'MARKING', purity: '22K', status: 'In Transit', time: '2024-05-15 05:45:30 PM', pieces: '120', weight: '340.50g', logo: 'LG', type: 'Jewellery', fee: 'Due' },
   ];
 
   return (
@@ -70,6 +70,17 @@ export const CollectionHistoryScreen: React.FC = () => {
                 <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/5">
                    <p className="text-[8px] font-bold text-outline uppercase tracking-wider mb-1">Qty / Wt</p>
                    <p className="text-[10px] font-bold text-tertiary">{item.pieces}P / {item.weight}</p>
+                </div>
+             </div>
+
+             <div className="flex items-center gap-4 px-1">
+                <div className="flex items-center gap-1.5">
+                   <span className="material-symbols-outlined text-xs text-outline">category</span>
+                   <span className="text-[10px] font-bold text-primary">{item.type}</span>
+                </div>
+                <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border ${item.fee === 'Paid' ? 'border-tertiary/20 bg-tertiary/5 text-tertiary' : 'border-error/20 bg-error/5 text-error'}`}>
+                   <span className="material-symbols-outlined text-[10px]">{item.fee === 'Paid' ? 'check_circle' : 'pending'}</span>
+                   <span className="text-[9px] font-black uppercase tracking-tighter">Fee {item.fee}</span>
                 </div>
              </div>
 

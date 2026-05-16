@@ -26,6 +26,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     pieces: '',
     details: '',
     weight: '',
+    productType: 'Jewellery',
+    feeStatus: 'Due'
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -67,7 +69,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
      localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify([newEntry, ...existing]));
 
      onSuccess(newEntry);
-     setFormData({ customerName: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '' });
+     setFormData({ customerName: '', logoName: '', purity: '22K', category: 'TUNCH', pieces: '', details: '', weight: '', productType: 'Jewellery', feeStatus: 'Due' });
      setStep(1);
   };
 
@@ -139,6 +141,27 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
            ) : (
              <>
                <SectionCard title="Technical Specs" icon="settings" color="bg-tertiary/5 text-tertiary">
+                  <div className="grid grid-cols-2 gap-3">
+                     <div>
+                        <label className={lbl}>Product Type</label>
+                        <select className={inp()} value={formData.productType} onChange={e => up('productType', e.target.value)}>
+                           <option value="Jewellery">Jewellery</option>
+                           <option value="Sample">Sample</option>
+                           <option value="Bullion">Bullion</option>
+                        </select>
+                     </div>
+                     <div>
+                        <label className={lbl}>Service Fee</label>
+                        <div className="flex gap-1 bg-surface-container p-1 rounded-lg">
+                           {['Paid', 'Due'].map(status => (
+                             <button key={status} onClick={() => up('feeStatus', status)}
+                               className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${formData.feeStatus === status ? 'bg-primary text-white shadow-sm' : 'text-outline'}`}>
+                               {status}
+                             </button>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
                   <div>
                     <label className={lbl}>Purity Standard</label>
                     <div className="grid grid-cols-3 gap-2">
