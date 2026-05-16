@@ -70,10 +70,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const stepTitles = ['Select Operation', 'Enter Details', 'Review & Confirm', 'Authorize Entry'];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-[#001e40]/40 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-md flex flex-col max-h-[92dvh] rounded-t-[2rem] sm:rounded-[2rem] overflow-hidden border-t border-white/60 shadow-[0_-20px_80px_rgba(0,30,64,0.3)]"
-        style={{ animation: 'modalUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-[#001e40]/50 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-md flex flex-col rounded-[2rem] overflow-hidden border border-white/30 shadow-[0_-20px_80px_rgba(0,30,64,0.4)]"
+        style={{ minHeight: step === 1 ? '72dvh' : '88dvh', maxHeight: '92dvh', animation: 'modalUp 0.35s cubic-bezier(0.22,1,0.36,1)' }}>
 
         {/* NAVY HEADER */}
         <div className="shrink-0 bg-gradient-to-br from-[#001e40] to-[#003366] px-6 pt-7 pb-5 relative overflow-hidden">
@@ -106,8 +106,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
           {/* ── STEP 1: Centered selection ── */}
           {step === 1 && (
-            <div className="flex-grow flex flex-col justify-center px-6 py-8">
-              <p className="text-[12px] text-on-surface-variant text-center mb-6">Select the type of work to begin the audit entry.</p>
+            <div className="flex-grow flex flex-col justify-center px-6 py-8 gap-3">
+              <div className="text-center mb-2">
+                <div className="w-14 h-14 rounded-2xl bg-white/80 border border-outline-variant/20 premium-shadow flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-2xl text-primary" style={{ fontVariationSettings: '"FILL" 1' }}>add_task</span>
+                </div>
+                <h3 className="font-headline text-[18px] font-bold text-primary">New Work Order</h3>
+                <p className="text-[12px] text-on-surface-variant mt-1">Select the operation to begin.</p>
+              </div>
               <div className="space-y-3">
                 {([
                   { type: 'TUNCH' as WorkType, icon: 'science', title: 'Tunch', desc: 'Purity testing & gold exchange', accent: 'border-l-secondary', iconBg: 'bg-secondary/10 text-secondary' },
