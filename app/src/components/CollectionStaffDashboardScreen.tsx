@@ -34,20 +34,45 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         <div className="absolute top-[20%] left-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[20%] right-[-10%] w-64 h-64 bg-tertiary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
-        <header className="flex items-center justify-between py-4 mb-2 relative z-10">
+        <header className="flex items-center justify-between py-5 mb-2 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl ring-2 ring-white shadow-lg overflow-hidden flex-shrink-0 bg-primary-fixed-dim flex items-center justify-center">
-               <span className="material-symbols-outlined text-white text-2xl">local_shipping</span>
+            <div className="w-12 h-12 rounded-2xl ring-2 ring-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden flex-shrink-0 bg-gradient-to-br from-[#001e40] to-[#003366] flex items-center justify-center border border-white/20">
+               <span className="material-symbols-outlined text-white text-xl animate-pulse">local_shipping</span>
             </div>
             <div className="flex flex-col">
-              <h1 className="font-headline text-lg font-bold text-primary leading-tight tracking-tight">Collection Unit</h1>
-              <p className="text-[10px] text-outline font-black uppercase tracking-[0.2em]">Field Operations Hub</p>
+              <h1 className="font-headline text-lg font-extrabold text-primary leading-tight tracking-tight">Collection Unit</h1>
+              <p className="text-[9px] text-[#C9A646] font-bold uppercase tracking-[0.25em]">Field Operations Hub</p>
             </div>
           </div>
-          <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-colors border border-outline-variant/30">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>notifications</span>
+          <button className="w-11 h-11 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-all premium-shadow relative group active:scale-95">
+            <span className="material-symbols-outlined text-xl text-[#003366] transition-transform group-hover:rotate-12">notifications</span>
+            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#C9A646] rounded-full animate-pulse shadow-[0_0_8px_#C9A646]"></span>
           </button>
         </header>
+
+        {/* TOTAL DUES BANNER */}
+        <section className="relative z-10 animate-fade-in">
+          <div className="bg-gradient-to-br from-[#001e40] to-[#003366] text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group border border-white/10">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 blur-2xl"></div>
+            <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-[#C9A646]/10 rounded-full blur-3xl"></div>
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50">Total Outstanding Dues</p>
+                <h2 className="font-headline text-3xl font-black mt-2 text-white drop-shadow-md">₹ 84,500</h2>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                <span className="material-symbols-outlined text-white text-xl">payments</span>
+              </div>
+            </div>
+            <div className="mt-5 pt-4 border-t border-white/10 flex justify-between items-center text-[9px] font-bold">
+              <span className="text-white/40 uppercase tracking-wider">Active Customers: 14</span>
+              <span className="text-[#C9A646] uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#C9A646] animate-ping"></span>
+                Collection Due
+              </span>
+            </div>
+          </div>
+        </section>
 
         {/* CATEGORY PIECES */}
         <section className="space-y-4 relative z-10">
@@ -95,7 +120,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
             <button onClick={() => navigate('/tasks')} className="text-[10px] font-bold text-secondary uppercase tracking-wider underline underline-offset-4 decoration-secondary/30">History</button>
           </div>
           <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10">
-            {recentTasks.map((item, idx) => (
+            {recentTasks.slice(0, 5).map((item, idx) => (
               <div key={idx} className="p-5 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors border-b last:border-0 border-outline-variant/10">
                 <div className="flex items-center gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
@@ -122,30 +147,6 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
               </div>
             ))}
           </div>
-        </section>
-
-        {/* LOGISTICS TRACKER */}
-        <section className="luxury-card p-6 bg-gradient-to-br from-tertiary to-tertiary-container relative overflow-hidden z-10">
-           <div className="absolute -right-4 -bottom-4 opacity-10">
-              <span className="material-symbols-outlined text-[120px] text-white">location_on</span>
-           </div>
-           <div className="relative z-10">
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-white font-extrabold mb-4">Logistics Protocol</h3>
-              <div className="space-y-4">
-                 <div className="flex items-center gap-4">
-                    <div className="w-1 h-12 bg-white/30 rounded-full flex flex-col items-center justify-between py-1">
-                       <div className="w-2 h-2 bg-white rounded-full"></div>
-                       <div className="w-2 h-2 bg-white/40 rounded-full"></div>
-                    </div>
-                    <div className="space-y-3">
-                       <div className="flex flex-col">
-                          <span className="text-[10px] text-white/60 font-bold uppercase tracking-wider">Next Handover</span>
-                          <span className="text-sm font-bold text-white">Main Vault @ 04:00 PM</span>
-                       </div>
-                    </div>
-                 </div>
-              </div>
-           </div>
         </section>
       </main>
 
