@@ -35,6 +35,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const [step, setStep] = useState(1);
   const [workType, setWorkType] = useState<WorkType | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const isCollection = localStorage.getItem('user_id')?.startsWith('COLL-') || false;
+
   const [formData, setFormData] = useState({
     customerName: '', address: '', phone: '',
     impureWeight: '', purity: '', pureWeight: '',
@@ -42,7 +44,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     feeStatus: 'Paid',
     productType: 'Jewellery',
     logoName: '', carat: '22k', pieces: '',
-    broughtBy: 'Customer', pointsUsed: ''
+    broughtBy: 'Customer', pointsUsed: '',
+    pointSuggestion: 'Gold'
   });
 
   if (!isOpen) return null;
@@ -59,18 +62,24 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       if (!formData.address.trim()) e.address = 'Required';
       if (!formData.phone.trim()) e.phone = 'Required';
       if (!formData.impureWeight.trim()) e.impureWeight = 'Required';
-      if (!formData.purity.trim()) e.purity = 'Required';
-      if (!formData.pureWeight.trim()) e.pureWeight = 'Required';
-      if (!formData.fee.trim()) e.fee = 'Required';
+      if (!isCollection) {
+        if (!formData.purity.trim()) e.purity = 'Required';
+        if (!formData.pureWeight.trim()) e.pureWeight = 'Required';
+        if (!formData.fee.trim()) e.fee = 'Required';
+      }
     }
     if (workType === 'MARKING') {
       if (!formData.logoName.trim()) e.logoName = 'Required';
       if (!formData.pieces.trim()) e.pieces = 'Required';
-      if (!formData.fee.trim()) e.fee = 'Required';
+      if (!isCollection) {
+        if (!formData.fee.trim()) e.fee = 'Required';
+      }
     }
     if (workType === 'SHOULDERING') {
-      if (!formData.pointsUsed.trim()) e.pointsUsed = 'Required';
-      if (!formData.fee.trim()) e.fee = 'Required';
+      if (!isCollection) {
+        if (!formData.pointsUsed.trim()) e.pointsUsed = 'Required';
+        if (!formData.fee.trim()) e.fee = 'Required';
+      }
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -84,9 +93,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const handleFinalSubmit = () => {
     onSuccess({ ...formData, workType, id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, date: 'Just Now', status: 'In Progress', progressPercentage: 10, assignedTo: 'Staff' });
     setStep(1); setWorkType(null); setErrors({});
-    setFormData({ customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '' });
+    setFormData({ customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold' });
     onClose();
   };
+
 
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary transition-colors`;
@@ -200,23 +210,27 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
 
                 <SectionCard title="Gold Audit Parameters" icon="science" color="bg-tertiary/5 text-tertiary">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={isCollection ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
                     <div>
                       <label className={lbl}>Impure Wt. (g) *</label>
                       <input className={inp(errors.impureWeight)} placeholder="e.g. 12.45" value={formData.impureWeight} onChange={e => up('impureWeight', e.target.value)} />
                       {errMsg('impureWeight')}
                     </div>
+                    {!isCollection && (
+                      <div>
+                        <label className={lbl}>Purity (%) *</label>
+                        <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
+                        {errMsg('purity')}
+                      </div>
+                    )}
+                  </div>
+                  {!isCollection && (
                     <div>
-                      <label className={lbl}>Purity (%) *</label>
-                      <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
-                      {errMsg('purity')}
+                      <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
+                      <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
+                      {errMsg('pureWeight')}
                     </div>
-                  </div>
-                  <div>
-                    <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
-                    <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
-                    {errMsg('pureWeight')}
-                  </div>
+                  )}
                 </SectionCard>
 
                 <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
@@ -231,20 +245,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
-                  <div>
-                    <label className={lbl}>Amount (₹) *</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                {!isCollection && (
+                  <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                    <div>
+                      <label className={lbl}>Amount (₹) *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                        <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                      </div>
+                      {errMsg('fee')}
                     </div>
-                    {errMsg('fee')}
-                  </div>
-                  <div>
-                    <label className={lbl}>Payment Status</label>
-                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
-                  </div>
-                </SectionCard>
+                    <div>
+                      <label className={lbl}>Payment Status</label>
+                      <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
+                    </div>
+                  </SectionCard>
+                )}
               </>)}
 
               {workType === 'MARKING' && (<>
@@ -273,33 +289,37 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       ))}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className={isCollection ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
                     <div>
                       <label className={lbl}>No. of Pieces *</label>
                       <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
                       {errMsg('pieces')}
                     </div>
-                    <div>
-                      <label className={lbl}>Brought By</label>
-                      <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
-                    </div>
+                    {!isCollection && (
+                      <div>
+                        <label className={lbl}>Brought By</label>
+                        <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
+                      </div>
+                    )}
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
-                  <div>
-                    <label className={lbl}>Amount (₹) *</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                {!isCollection && (
+                  <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                    <div>
+                      <label className={lbl}>Amount (₹) *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                        <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                      </div>
+                      {errMsg('fee')}
                     </div>
-                    {errMsg('fee')}
-                  </div>
-                  <div>
-                    <label className={lbl}>Payment Status</label>
-                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
-                  </div>
-                </SectionCard>
+                    <div>
+                      <label className={lbl}>Payment Status</label>
+                      <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
+                    </div>
+                  </SectionCard>
+                )}
               </>)}
 
               {workType === 'SHOULDERING' && (<>
@@ -309,31 +329,50 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <input className={inp(errors.customerName)} placeholder="Full name" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
                     {errMsg('customerName')}
                   </div>
-                  <div>
-                    <label className={lbl}>Points Used *</label>
-                    <input className={inp(errors.pointsUsed)} placeholder="Total solder points" value={formData.pointsUsed} onChange={e => up('pointsUsed', e.target.value)} />
-                    {errMsg('pointsUsed')}
-                  </div>
-                  <div>
-                    <label className={lbl}>Material Brought By</label>
-                    <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
-                  </div>
+                  {!isCollection ? (
+                    <>
+                      <div>
+                        <label className={lbl}>Points Used *</label>
+                        <input className={inp(errors.pointsUsed)} placeholder="Total solder points" value={formData.pointsUsed} onChange={e => up('pointsUsed', e.target.value)} />
+                        {errMsg('pointsUsed')}
+                      </div>
+                      <div>
+                        <label className={lbl}>Material Brought By</label>
+                        <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className={lbl}>Point Suggestion</label>
+                      <div className="flex gap-3">
+                         {['Gold', 'Silver'].map(pt => (
+                           <button key={pt} onClick={() => up('pointSuggestion', pt)}
+                             className={`flex-1 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all ${formData.pointSuggestion === pt ? 'bg-primary text-white border-transparent shadow-sm' : 'bg-white text-outline border-outline-variant/30 text-on-surface-variant hover:border-primary/40 hover:text-primary'}`}>
+                             <span className="material-symbols-outlined text-sm">{pt === 'Gold' ? 'stars' : 'toll'}</span>
+                             <span className="text-[10px] font-bold uppercase tracking-widest">{pt} Points</span>
+                           </button>
+                         ))}
+                      </div>
+                    </div>
+                  )}
                 </SectionCard>
 
-                <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
-                  <div>
-                    <label className={lbl}>Amount (₹) *</label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                      <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                {!isCollection && (
+                  <SectionCard title="Service Fee" icon="payments" color="bg-secondary/5 text-secondary">
+                    <div>
+                      <label className={lbl}>Amount (₹) *</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                        <input className={`${inp(errors.fee)} pl-8 font-bold text-secondary`} placeholder="0.00" value={formData.fee} onChange={e => up('fee', e.target.value)} />
+                      </div>
+                      {errMsg('fee')}
                     </div>
-                    {errMsg('fee')}
-                  </div>
-                  <div>
-                    <label className={lbl}>Payment Status</label>
-                    <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
-                  </div>
-                </SectionCard>
+                    <div>
+                      <label className={lbl}>Payment Status</label>
+                      <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
+                    </div>
+                  </SectionCard>
+                )}
               </>)}
 
               {Object.keys(errors).length > 0 && (
@@ -358,19 +397,41 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 <div className="bg-white p-5 space-y-3">
                   {[
                     ['Client', formData.customerName],
-                    ...(workType === 'TUNCH' ? [['Phone', formData.phone], ['Impure Wt.', `${formData.impureWeight}g`], ['Purity', `${formData.purity}%`], ['Pure Wt.', `${formData.pureWeight}g`], ['Settlement', formData.settlementCondition]] : []),
-                    ...(workType === 'MARKING' ? [['Logo', formData.logoName], ['Carat', formData.carat.toUpperCase()], ['Pieces', formData.pieces], ['Brought By', formData.broughtBy]] : []),
-                    ...(workType === 'SHOULDERING' ? [['Points', formData.pointsUsed], ['Brought By', formData.broughtBy]] : []),
+                    ...(workType === 'TUNCH' ? [
+                      ['Phone', formData.phone],
+                      ['Impure Wt.', `${formData.impureWeight}g`],
+                      ...(!isCollection ? [
+                        ['Purity', `${formData.purity}%`],
+                        ['Pure Wt.', `${formData.pureWeight}g`]
+                      ] : []),
+                      ['Settlement', formData.settlementCondition]
+                    ] : []),
+                    ...(workType === 'MARKING' ? [
+                      ['Logo', formData.logoName],
+                      ['Carat', formData.carat.toUpperCase()],
+                      ['Pieces', formData.pieces],
+                      ...(!isCollection ? [['Brought By', formData.broughtBy]] : [])
+                    ] : []),
+                    ...(workType === 'SHOULDERING' ? [
+                      ...(!isCollection ? [
+                        ['Points', formData.pointsUsed],
+                        ['Brought By', formData.broughtBy]
+                      ] : [
+                        ['Suggestion', `${formData.pointSuggestion} Points`]
+                      ])
+                    ] : []),
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between items-center py-1 border-b border-outline-variant/10 last:border-0">
                       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">{label}</span>
                       <span className="text-[13px] font-semibold text-primary">{value}</span>
                     </div>
                   ))}
-                  <div className="pt-2 flex justify-between items-center">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee</p>
-                    <p className="font-headline text-2xl font-bold text-tertiary">₹ {formData.fee}</p>
-                  </div>
+                  {!isCollection && (
+                    <div className="pt-2 flex justify-between items-center">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee</p>
+                      <p className="font-headline text-2xl font-bold text-tertiary">₹ {formData.fee}</p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="glass-effect rounded-2xl border border-outline-variant/20 p-4 flex items-start gap-3 premium-shadow">
@@ -400,10 +461,12 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </div>
                 <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Operation</span><span className="text-[13px] font-semibold text-primary">{workType}</span></div>
                 <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Client</span><span className="text-[13px] font-semibold text-primary">{formData.customerName}</span></div>
-                <div className="pt-3 border-t border-[#C9A646]/20 flex justify-between items-center mt-2">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Authorized Fee</p>
-                  <p className="font-headline text-[22px] font-bold text-tertiary">₹ {formData.fee}</p>
-                </div>
+                {!isCollection && (
+                  <div className="pt-3 border-t border-[#C9A646]/20 flex justify-between items-center mt-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Authorized Fee</p>
+                    <p className="font-headline text-[22px] font-bold text-tertiary">₹ {formData.fee}</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
