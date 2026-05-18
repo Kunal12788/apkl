@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
@@ -25,6 +25,7 @@ interface Task {
   logoName?: string;
   carat?: string;
   pointSuggestion?: 'Gold' | 'Silver';
+  createdBy?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -200,62 +201,51 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
 
-  const [tasks] = useState<Task[]>([
-    { 
-      id: 'COL-8921', 
-      customerName: 'Ramesh Jewelers', 
-      customerId: 'CUST-001', 
-      customerPhone: '+91 98765 43210',
-      customerAddress: '12, Gold Souk, Delhi',
-      workType: 'Tunch', 
-      assignedTo: 'Vault-A', 
-      status: 'Completed', 
-      progressPercentage: 100, 
-      dateGiven: 'Today, 09:00 AM', 
-      isoDate: '2026-05-15', 
-      estimatedCompletion: 'Today, 02:00 PM', 
-      notes: 'Field collection of 12 sample pieces.', 
-      pieces: '12',
-      productType: 'Jewellery',
-      impureWeight: '45.8',
-      settlementCondition: 'Only Tunch'
-    },
-    { 
-      id: 'COL-8922', 
-      customerName: 'Mehta Gold Traders', 
-      customerId: 'CUST-002', 
-      customerPhone: '+91 91234 56789',
-      customerAddress: 'Block C, Sector 4, Noida',
-      workType: 'Marking', 
-      assignedTo: 'Vault-B', 
-      status: 'Pending', 
-      progressPercentage: 10, 
-      dateGiven: 'Today, 10:30 AM', 
-      isoDate: '2026-05-15', 
-      estimatedCompletion: 'Tomorrow, 11:00 AM', 
-      notes: '45 necklaces for hallmarking.', 
-      pieces: '45',
-      logoName: 'MGT',
-      carat: '22k'
-    },
-    { 
-      id: 'COL-8923', 
-      customerName: 'Sunrise Ornaments', 
-      customerId: 'CUST-003', 
-      customerPhone: '+91 90000 12345',
-      customerAddress: 'Gali 4, Chandni Chowk, Delhi',
-      workType: 'Shouldering', 
-      assignedTo: 'Vault-C', 
-      status: 'In Progress', 
-      progressPercentage: 45, 
-      dateGiven: 'Yesterday', 
-      isoDate: '2026-05-14', 
-      estimatedCompletion: 'Today, 06:00 PM', 
-      notes: '8 broken chains for repair.', 
-      pieces: '8',
-      pointSuggestion: 'Gold'
-    }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    const loadTasks = () => {
+      const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+      let sharedTasks: Task[] = [];
+      if (sharedRaw) {
+        try {
+          const parsed = JSON.parse(sharedRaw);
+          sharedTasks = parsed.map((t: any) => ({
+            id: t.id,
+            customerName: t.customerName,
+            customerId: t.logoName || 'CUST-COL',
+            customerPhone: t.customerPhone,
+            customerAddress: t.customerAddress,
+            workType: (t.category ? t.category.charAt(0) + t.category.slice(1).toLowerCase() : 'Tunch') as any,
+            assignedTo: t.assignedTo || 'Pending',
+            status: t.status || 'Pending',
+            progressPercentage: t.progressPercentage || 0,
+            dateGiven: t.dateGiven || 'Just Now',
+            isoDate: t.isoDate || new Date().toISOString().split('T')[0],
+            estimatedCompletion: t.estimatedCompletion || 'Awaiting Audit',
+            notes: t.notes || '',
+            pieces: t.pieces || '1',
+            productType: t.productType || 'Jewellery',
+            impureWeight: t.impureWeight || '',
+            settlementCondition: t.settlementCondition || '',
+            createdBy: t.createdBy,
+            pointSuggestion: t.pointSuggestion,
+            logoName: t.logoName,
+            carat: t.carat
+          }));
+        } catch (e) {}
+      }
+
+      // Filter only tasks created by this logged-in Collection user
+      const currentUser = localStorage.getItem('user_id') || 'COLL-001';
+      const filtered = sharedTasks.filter(t => t.createdBy === currentUser);
+      setTasks(filtered);
+    };
+
+    loadTasks();
+    const interval = setInterval(loadTasks, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredTasks = tasks.filter(t => (activeTab === t.status) && (t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())));
 

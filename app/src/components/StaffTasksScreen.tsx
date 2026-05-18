@@ -24,6 +24,14 @@ interface Task {
   weight?: string;
   purity?: string;
   category?: string;
+  customerPhone?: string;
+  customerAddress?: string;
+  settlementCondition?: string;
+  productType?: string;
+  logoName?: string;
+  carat?: string;
+  pointSuggestion?: string;
+  createdBy?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -151,42 +159,64 @@ export const StaffTasksScreen: React.FC = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Tunch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 02:00 PM', broughtBy: 'Staff (Elena)', notes: 'Tunch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
-    { id: 'TSK-1043', customerName: 'Mehta Gold Traders', customerId: 'CUST-002', workType: 'Marking', assignedTo: 'Elena', status: 'Pending', progressPercentage: 10, impureWeight: '45.00g', pureWeight: '45.00g', dateGiven: 'Today, 10:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Tomorrow, 11:00 AM', broughtBy: 'Customer directly', notes: 'Standard hallmarking for 12 necklaces.' },
-    { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', isoDate: '2026-05-14', estimatedCompletion: 'Today, 10:00 AM', broughtBy: 'Staff (Marcus)', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
-    { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Tunch', assignedTo: 'Marcus', status: 'Completed', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', isoDate: '2025-10-12', estimatedCompletion: 'Oct 12, 05:00 PM', broughtBy: 'Customer directly', notes: 'Bulk testing of incoming scrap gold.' },
-    { id: 'TSK-1044', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Shouldering', assignedTo: 'Julian', status: 'In Progress', progressPercentage: 40, dateGiven: 'Today, 11:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 06:00 PM', broughtBy: 'Staff (Elena)', notes: 'Soldering 14 joints on custom bracelet.' }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    // Load collection tasks from localStorage
-    const collections = JSON.parse(localStorage.getItem('AURORA_COLLECTIONS') || '[]');
-    const collectionTasks: Task[] = collections.map((c: any) => ({
-      id: c.id,
-      customerName: c.customerName,
-      customerId: c.logoName || 'COL-CLIENT',
-      workType: (c.category.charAt(0) + c.category.slice(1).toLowerCase()) as any,
-      assignedTo: 'Pending',
-      status: c.status,
-      progressPercentage: 0,
-      dateGiven: 'Intake: ' + new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      isoDate: c.timestamp.split('T')[0],
-      estimatedCompletion: 'Awaiting Audit',
-      notes: c.details || 'Collection intake from field.',
-      broughtBy: 'Collection Staff',
-      source: 'Collection',
-      pieces: c.pieces,
-      weight: c.weight,
-      purity: c.purity,
-      category: c.category
-    }));
+    const loadTasks = () => {
+      const defaultTasks: Task[] = [
+        { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Tunch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 02:00 PM', broughtBy: 'Staff (Elena)', notes: 'Tunch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
+        { id: 'TSK-1043', customerName: 'Mehta Gold Traders', customerId: 'CUST-002', workType: 'Marking', assignedTo: 'Elena', status: 'Pending', progressPercentage: 10, impureWeight: '45.00g', pureWeight: '45.00g', dateGiven: 'Today, 10:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Tomorrow, 11:00 AM', broughtBy: 'Customer directly', notes: 'Standard hallmarking for 12 necklaces.' },
+        { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', isoDate: '2026-05-14', estimatedCompletion: 'Today, 10:00 AM', broughtBy: 'Staff (Marcus)', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
+        { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Tunch', assignedTo: 'Marcus', status: 'Completed', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', isoDate: '2025-10-12', estimatedCompletion: 'Oct 12, 05:00 PM', broughtBy: 'Customer directly', notes: 'Bulk testing of incoming scrap gold.' },
+        { id: 'TSK-1044', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Shouldering', assignedTo: 'Julian', status: 'In Progress', progressPercentage: 40, dateGiven: 'Today, 11:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 06:00 PM', broughtBy: 'Staff (Elena)', notes: 'Soldering 14 joints on custom bracelet.' }
+      ];
 
-    setTasks(prev => {
-       const existingIds = new Set(prev.map(t => t.id));
-       const newTasks = collectionTasks.filter(t => !existingIds.has(t.id));
-       return [...prev, ...newTasks];
-    });
+      const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+      let sharedTasks: Task[] = [];
+      if (sharedRaw) {
+        try {
+          const parsed = JSON.parse(sharedRaw);
+          sharedTasks = parsed.map((t: any) => ({
+            id: t.id,
+            customerName: t.customerName,
+            customerId: t.logoName || 'CUST-COL',
+            workType: (t.category ? t.category.charAt(0) + t.category.slice(1).toLowerCase() : 'Tunch') as any,
+            assignedTo: t.assignedTo || 'Pending',
+            status: t.status || 'Pending',
+            progressPercentage: t.progressPercentage || 0,
+            dateGiven: t.dateGiven || 'Just Now',
+            isoDate: t.isoDate || new Date().toISOString().split('T')[0],
+            estimatedCompletion: t.estimatedCompletion || 'Awaiting Audit',
+            notes: t.notes || '',
+            pieces: t.pieces || '1',
+            productType: t.productType || 'Jewellery',
+            impureWeight: t.impureWeight || '',
+            settlementCondition: t.settlementCondition || '',
+            createdBy: t.createdBy,
+            pointSuggestion: t.pointSuggestion,
+            logoName: t.logoName,
+            carat: t.carat,
+            customerPhone: t.customerPhone,
+            customerAddress: t.customerAddress,
+            broughtBy: t.broughtBy || 'Collection Staff'
+          }));
+        } catch (e) {}
+      }
+
+      // Merge: priority to shared tasks over default tasks if IDs overlap
+      const merged = [...sharedTasks];
+      defaultTasks.forEach(dt => {
+        if (!merged.some(mt => mt.id === dt.id)) {
+          merged.push(dt);
+        }
+      });
+
+      setTasks(merged);
+    };
+
+    loadTasks();
+    const interval = setInterval(loadTasks, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const selectedTask = tasks.find(t => t.id === taskId) || null;
@@ -221,7 +251,20 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleDeleteTask = (id: string) => {
     if(window.confirm('Are you sure you want to permanently delete this task?')) {
+      // Delete from local tasks
       setTasks(tasks.filter(t => t.id !== id));
+      
+      // Delete from shared tasks
+      const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+      if (sharedRaw) {
+        try {
+          const parsed = JSON.parse(sharedRaw);
+          const filtered = parsed.filter((t: any) => t.id !== id);
+          localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(filtered));
+          localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(filtered));
+        } catch (e) {}
+      }
+
       showToast('Task successfully deleted');
       navigate(-1);
     }
@@ -230,7 +273,119 @@ export const StaffTasksScreen: React.FC = () => {
   const handleVerifySuccess = (verifiedTask: any) => {
      setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
      setVerificationOpen(false);
-     showToast('Audit matched! Task verified and completed.');
+
+     // Update status in shared tasks database
+     const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+     if (sharedRaw) {
+       try {
+         const parsed = JSON.parse(sharedRaw);
+         const updated = parsed.map((t: any) => {
+           if (t.id === verifiedTask.id) {
+             return { ...t, status: 'Completed', progressPercentage: 100 };
+           }
+           return t;
+         });
+         localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
+         localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
+       } catch (e) {}
+     }
+
+     const rawTxns = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
+     let txns: any[] = [];
+     if (rawTxns) {
+       try {
+         txns = JSON.parse(rawTxns);
+       } catch (e) {}
+     }
+
+     const newTxn = {
+       id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+       customerId: verifiedTask.customerId || 'CUST-COL',
+       customerName: verifiedTask.customerName,
+       customerPhone: verifiedTask.customerPhone || '',
+       customerAddress: verifiedTask.customerAddress || '',
+       type: verifiedTask.settlementCondition || 'Cash',
+       workType: verifiedTask.workType || 'Tunch',
+       amount: verifiedTask.workType === 'Tunch' ? '45,000' : verifiedTask.workType === 'Marking' ? '12,000' : '85,500',
+       date: 'Today',
+       isoDate: new Date().toISOString().split('T')[0],
+       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+       status: 'Unpaid',
+       details: verifiedTask.notes || 'Collection intake verified and completed.',
+       pieces: verifiedTask.pieces || '1',
+       productType: verifiedTask.productType,
+       impureWeight: verifiedTask.impureWeight,
+       settlementCondition: verifiedTask.settlementCondition,
+       logoName: verifiedTask.logoName,
+       carat: verifiedTask.carat,
+       pointSuggestion: verifiedTask.pointSuggestion,
+       createdBy: verifiedTask.createdBy || 'COLL-001'
+     };
+
+     localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
+
+     showToast('Audit matched! Task verified, completed and billed.');
+  };
+
+  const handleUpdateStatus = (task: Task) => {
+     if (task.status === 'Pending' || task.status === 'Pending Verification') {
+        setCurrentVerificationTask(task);
+        setVerificationOpen(true);
+     } else if (task.status === 'In Progress') {
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+        
+        const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+        if (sharedRaw) {
+          try {
+            const parsed = JSON.parse(sharedRaw);
+            const updated = parsed.map((t: any) => {
+              if (t.id === task.id) {
+                return { ...t, status: 'Completed', progressPercentage: 100 };
+              }
+              return t;
+            });
+            localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
+            localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
+          } catch (e) {}
+        }
+
+        const rawTxns = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
+        let txns: any[] = [];
+        if (rawTxns) {
+          try {
+            txns = JSON.parse(rawTxns);
+          } catch (e) {}
+        }
+
+        const newTxn = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          customerId: task.customerId || 'CUST-COL',
+          customerName: task.customerName,
+          customerPhone: task.customerPhone || '',
+          customerAddress: task.customerAddress || '',
+          type: task.settlementCondition || 'Cash',
+          workType: task.workType || 'Tunch',
+          amount: task.workType === 'Tunch' ? '45,000' : task.workType === 'Marking' ? '12,000' : '85,500',
+          date: 'Today',
+          isoDate: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Unpaid',
+          details: task.notes || 'Collection intake verified and completed.',
+          pieces: task.pieces || '1',
+          productType: task.productType,
+          impureWeight: task.impureWeight,
+          settlementCondition: task.settlementCondition,
+          logoName: task.logoName,
+          carat: task.carat,
+          pointSuggestion: task.pointSuggestion,
+          createdBy: task.createdBy || 'COLL-001'
+        };
+
+        localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
+
+        showToast('Task marked as Completed! Billing ledger updated.');
+        navigate(-1);
+     }
   };
 
   return (
@@ -326,7 +481,7 @@ export const StaffTasksScreen: React.FC = () => {
                       <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
                     </div>
 
-                    {task.status === 'Pending Verification' && (
+                    {(task.status === 'Pending' || task.status === 'Pending Verification') && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); setCurrentVerificationTask(task); setVerificationOpen(true); }}
                         className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
@@ -468,9 +623,18 @@ export const StaffTasksScreen: React.FC = () => {
               <button className="py-4 rounded-2xl bg-white border border-outline-variant/30 text-primary font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
                 <span className="material-symbols-outlined text-lg">edit</span> Edit Task
               </button>
-              <button className="py-4 rounded-2xl bg-primary text-white font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-                Update Status <span className="material-symbols-outlined text-lg">arrow_forward</span>
-              </button>
+              {selectedTask.status === 'Completed' ? (
+                <button disabled className="py-4 rounded-2xl bg-outline/25 text-outline/50 font-bold text-sm tracking-wide flex items-center justify-center gap-2 cursor-not-allowed">
+                  Completed <span className="material-symbols-outlined text-lg">check_circle</span>
+                </button>
+              ) : (
+                <button 
+                  onClick={() => handleUpdateStatus(selectedTask)}
+                  className="py-4 rounded-2xl bg-primary text-white font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+                >
+                  {selectedTask.status === 'In Progress' ? 'Complete Task' : 'Verify Intake'} <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                </button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3 mt-4">
               <button onClick={() => handleDeleteTask(selectedTask.id)} className="col-span-2 py-4 rounded-2xl bg-error/10 border border-error/20 text-error font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2 hover:bg-error/20">

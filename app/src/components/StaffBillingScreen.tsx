@@ -151,59 +151,126 @@ export const StaffBillingScreen: React.FC = () => {
   const customerId = searchParams.get('customerId');
   const transactionId = searchParams.get('transactionId');
 
-  const mockTransactions: Transaction[] = [
-    { 
-      id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
-      caratMarking: '22K916',
-      details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
-    },
-    { 
-      id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', isoDate: '2025-10-10', timestamp: '11:15 AM', status: 'Unpaid', 
-      impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
-      details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
-    },
-    { 
-      id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '+₹45,000', date: 'Today', isoDate: '2026-05-15', timestamp: '10:45 AM', status: 'Paid', 
-      impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
-      details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
-    },
-    { 
-      id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '+₹1,12,000', date: 'Today', isoDate: '2026-05-15', timestamp: '09:12 AM', status: 'Paid', 
-      caratMarking: '22K916',
-      details: 'Hallmarking for 12 necklaces and 8 bangles.' 
-    },
-    { 
-      id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '+₹85,500', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
-      pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
-      details: 'Chain link repairing and precision shouldering work on multiple joints.' 
-    },
-    { 
-      id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '+₹12,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '02:15 PM', status: 'Paid', 
-      caratMarking: '18K750',
-      details: 'Laser marking on rings.' 
-    },
-  ];
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  const mockCustomers: Customer[] = [
-    { 
-      id: 'CUST-001', name: 'Rajesh Jewelers', initials: 'RJ', activeJobs: 14, outstanding: '₹1,24,500', paid: '₹8,45,000',
-      workBreakdown: { tunch: 42, marking: 85, shouldering: 12 },
-      ledger: mockTransactions.filter(t => t.customerId === 'CUST-001')
-    },
-    { 
-      id: 'CUST-002', name: 'Mehta Gold Traders', initials: 'MG', activeJobs: 3, outstanding: '₹0', paid: '₹4,12,000',
-      workBreakdown: { tunch: 12, marking: 40, shouldering: 0 },
-      ledger: mockTransactions.filter(t => t.customerId === 'CUST-002')
-    },
-    { 
-      id: 'CUST-003', name: 'Sunrise Ornaments', initials: 'SO', activeJobs: 8, outstanding: '₹45,200', paid: '₹1,90,000',
-      workBreakdown: { tunch: 18, marking: 22, shouldering: 45 },
-      ledger: mockTransactions.filter(t => t.customerId === 'CUST-003')
-    },
-  ];
+  React.useEffect(() => {
+    const loadTransactions = () => {
+      const defaultTxns: Transaction[] = [
+        { 
+          id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
+          caratMarking: '22K916',
+          details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
+        },
+        { 
+          id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', isoDate: '2025-10-10', timestamp: '11:15 AM', status: 'Unpaid', 
+          impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
+          details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
+        },
+        { 
+          id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹45,000', date: 'Today', isoDate: '2026-05-15', timestamp: '10:45 AM', status: 'Paid', 
+          impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
+          details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
+        },
+        { 
+          id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '₹1,12,000', date: 'Today', isoDate: '2026-05-15', timestamp: '09:12 AM', status: 'Paid', 
+          caratMarking: '22K916',
+          details: 'Hallmarking for 12 necklaces and 8 bangles.' 
+        },
+        { 
+          id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '₹85,500', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
+          pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
+          details: 'Chain link repairing and precision shouldering work on multiple joints.' 
+        },
+        { 
+          id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '₹12,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '02:15 PM', status: 'Paid', 
+          caratMarking: '18K750',
+          details: 'Laser marking on rings.' 
+        },
+      ];
 
-  const selectedCustomer = mockCustomers.find(c => c.id === customerId) || null;
-  const selectedTransaction = mockTransactions.find(t => t.id === transactionId) || null;
+      const raw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
+      let sharedTxns: Transaction[] = [];
+      if (raw) {
+        try {
+          sharedTxns = JSON.parse(raw).map((t: any) => ({
+            id: t.id,
+            customerId: t.customerId || 'CUST-COL',
+            customerName: t.customerName,
+            type: t.type || 'Cash',
+            workType: t.workType || 'Tunch',
+            amount: t.amount.startsWith('₹') ? t.amount : `₹${t.amount}`,
+            date: t.date || 'Just Now',
+            isoDate: t.isoDate || new Date().toISOString().split('T')[0],
+            timestamp: t.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: t.status || 'Unpaid',
+            details: t.details || 'Collection intake completed.',
+            impureWeight: t.impureWeight,
+            pureWeight: t.pureWeight,
+            purityPercentage: t.purityPercentage,
+            pieceType: t.productType,
+            pointsCount: t.pointsCount,
+            pointsType: t.pointSuggestion,
+            caratMarking: t.carat
+          }));
+        } catch (e) {}
+      }
+
+      // Merge
+      const merged = [...sharedTxns];
+      defaultTxns.forEach(dt => {
+        if (!merged.some(mt => mt.id === dt.id)) {
+          merged.push(dt);
+        }
+      });
+      setTransactions(merged);
+    };
+
+    loadTransactions();
+    const interval = setInterval(loadTransactions, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Group by customer dynamically
+  const dynamicCustomers: Customer[] = [];
+  transactions.forEach(t => {
+    let cust = dynamicCustomers.find(c => c.name === t.customerName);
+    if (!cust) {
+      const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+      cust = {
+        id: t.customerId || 'CUST-COL',
+        name: t.customerName,
+        initials: initials || 'C',
+        activeJobs: 0,
+        outstanding: '₹0',
+        paid: '₹0',
+        workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+        ledger: []
+      };
+      dynamicCustomers.push(cust);
+    }
+    
+    cust.ledger.push(t);
+    const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+    if (t.status === 'Unpaid') {
+      cust.activeJobs += 1;
+      const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+      cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
+    } else {
+      const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+      cust.paid = `₹${(paidNum + amtNum).toLocaleString()}`;
+    }
+    
+    if (t.workType === 'Tunch') {
+      cust.workBreakdown.tunch += 1;
+    } else if (t.workType === 'Marking') {
+      cust.workBreakdown.marking += 1;
+    } else if (t.workType === 'Shouldering') {
+      cust.workBreakdown.shouldering += 1;
+    }
+  });
+
+  const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
+  const selectedTransaction = transactions.find(t => t.id === transactionId) || null;
 
   const matchesSearch = (txn: Transaction) => {
     let matchesText = true;
@@ -231,8 +298,8 @@ export const StaffBillingScreen: React.FC = () => {
     return matchesText && matchesDate;
   };
 
-  const filteredTransactions = mockTransactions.filter(matchesSearch);
-  const filteredCustomers = mockCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredTransactions = transactions.filter(matchesSearch);
+  const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredLedger = selectedCustomer ? selectedCustomer.ledger.filter(matchesSearch) : [];
 
   return (

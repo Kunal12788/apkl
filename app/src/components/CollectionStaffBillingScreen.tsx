@@ -69,119 +69,133 @@ interface BillingDetailsModalProps {
 export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
   if (!isOpen || !txn) return null;
 
-  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
-  const val = "text-sm font-bold text-primary";
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
+  const val = "text-xs font-bold text-primary truncate";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#001e40]/30 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] p-6 shadow-[0_-12px_40px_rgba(0,30,64,0.15)] relative z-10 max-h-[90vh] overflow-y-auto hide-scrollbar border-t border-outline-variant/10 animate-modal-up">
-        {/* Drag handle */}
-        <div className="w-12 h-1.5 bg-surface-container rounded-full mx-auto mb-6" onClick={onClose} />
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden">
 
-        <div className="flex justify-between items-start mb-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <span className={`text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full border ${
-              txn.status === 'Paid' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 'bg-error/5 text-error border-error/20'
-            }`}>
-              {txn.status} Status
-            </span>
-            <h3 className="font-headline text-xl font-bold text-primary mt-3">{txn.id} Receipt</h3>
-            <p className="text-xs text-outline font-medium mt-0.5">{txn.date} • {txn.timestamp}</p>
+            <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-lg text-secondary">receipt_long</span>
+              {txn.id} Receipt
+            </h3>
+            <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
+          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+            txn.status === 'Paid' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 'bg-error/10 text-error border-error/20'
+          }`}>
+            {txn.status}
+          </span>
         </div>
 
-        <div className="space-y-4">
-          {/* Client profile info */}
-          <div className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C9A646]">Entity Profile</p>
-            <div>
-              <label className={lbl}>Customer</label>
-              <p className={val}>{txn.customerName}</p>
-            </div>
-            <div>
-              <label className={lbl}>Phone</label>
-              <p className={val}>{txn.customerPhone}</p>
-            </div>
-            <div>
-              <label className={lbl}>Address</label>
-              <p className={val}>{txn.customerAddress}</p>
+        {/* Unified Clean Details Container */}
+        <div className="space-y-3">
+          
+          {/* Section 1: Customer Profile */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Customer Profile</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className={lbl}>Name</span>
+                <p className={val}>{txn.customerName}</p>
+              </div>
+              <div>
+                <span className={lbl}>Phone</span>
+                <p className={val}>{txn.customerPhone || 'N/A'}</p>
+              </div>
+              <div className="col-span-2">
+                <span className={lbl}>Address</span>
+                <p className={val}>{txn.customerAddress || 'N/A'}</p>
+              </div>
             </div>
           </div>
 
-          {/* Operation specifications */}
-          <div className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#003366]">Work Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
+          {/* Section 2: Work Specifications */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Details</p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               <div>
-                <label className={lbl}>Operation</label>
+                <span className={lbl}>Work Type</span>
                 <p className={`${val} uppercase text-secondary`}>{txn.workType}</p>
               </div>
               {txn.productType && (
                 <div>
-                  <label className={lbl}>Product Category</label>
+                  <span className={lbl}>Category</span>
                   <p className={val}>{txn.productType}</p>
                 </div>
               )}
               {txn.impureWeight && (
                 <div>
-                  <label className={lbl}>Impure Weight</label>
+                  <span className={lbl}>Weight</span>
                   <p className={val}>{txn.impureWeight}g</p>
+                </div>
+              )}
+              {txn.pieces && (
+                <div>
+                  <span className={lbl}>Pieces</span>
+                  <p className={val}>{txn.pieces}</p>
                 </div>
               )}
               {txn.settlementCondition && (
                 <div>
-                  <label className={lbl}>Settlement Mode</label>
+                  <span className={lbl}>Settlement Mode</span>
                   <p className={val}>{txn.settlementCondition}</p>
                 </div>
               )}
               {txn.logoName && (
                 <div>
-                  <label className={lbl}>Logo Design</label>
+                  <span className={lbl}>Logo Design</span>
                   <p className={val}>{txn.logoName}</p>
                 </div>
               )}
               {txn.carat && (
                 <div>
-                  <label className={lbl}>Carat</label>
-                  <p className={val}>{txn.carat.toUpperCase()}</p>
-                </div>
-              )}
-              {txn.pieces && (
-                <div>
-                  <label className={lbl}>No. of Pieces</label>
-                  <p className={val}>{txn.pieces}</p>
+                  <span className={lbl}>Carat</span>
+                  <p className={val}>{txn.carat}</p>
                 </div>
               )}
               {txn.pointSuggestion && (
-                <div>
-                  <label className={lbl}>Solder Points</label>
-                  <p className={val}>{txn.pointSuggestion} Points Suggested</p>
+                <div className="col-span-2">
+                  <span className={lbl}>Solder Points</span>
+                  <p className={val}>{txn.pointSuggestion} Gold/Silver suggested</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Outstanding/Dues metric */}
-          <div className="luxury-card p-5 bg-gradient-to-br from-[#001e40] to-[#003366] text-white relative overflow-hidden">
-            <div className="absolute right-0 bottom-0 w-24 h-24 bg-white/5 rounded-full blur-xl -mr-6 -mb-6"></div>
-            <div className="flex justify-between items-center">
+          {/* Section 3: Settlement Summary Card */}
+          <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
+            <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
+            <div className="flex justify-between items-center relative z-10">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Operation Fee / Dues</p>
-                <p className="font-headline text-2xl font-bold mt-1">₹ {txn.amount}</p>
+                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
+                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>₹ {txn.amount}</p>
               </div>
               <div className="text-right">
-                <p className="text-[9px] font-bold uppercase tracking-widest text-[#C9A646]">{txn.type} Settlement</p>
-                <p className="text-[11px] text-white/50 mt-1 font-medium">{txn.status === 'Paid' ? 'Paid and Cleared' : 'Outstanding Balance'}</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                  {txn.status === 'Paid' ? 'Paid & Cleared' : 'Payment Due'}
+                </p>
               </div>
             </div>
           </div>
+
         </div>
+
+        {/* Close Button */}
+        <button 
+          onClick={onClose}
+          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+        >
+          Dismiss Receipt
+        </button>
+
       </div>
-      <style>{`@keyframes modalUp { from { transform: translateY(100%); } to { transform: translateY(0); } } .animate-modal-up { animation: modalUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }`}</style>
     </div>
   );
 };
@@ -195,92 +209,97 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
 
-  const mockTransactions: Transaction[] = [
-    { 
-      id: 'TXN-9826', 
-      customerId: 'CUST-001', 
-      customerName: 'Rajesh Jewelers', 
-      customerPhone: '+91 98765 43210',
-      customerAddress: '12, Gold Souk, Delhi',
-      type: 'Cash', 
-      workType: 'Marking', 
-      amount: '84,000', 
-      date: 'Yesterday', 
-      isoDate: '2026-05-14', 
-      timestamp: '04:30 PM', 
-      status: 'Unpaid', 
-      details: 'Collection fee for 12 necklaces.',
-      productType: 'Jewellery',
-      logoName: 'RJ-Gold',
-      carat: '22k',
-      pieces: '12'
-    },
-    { 
-      id: 'TXN-9824', 
-      customerId: 'CUST-001', 
-      customerName: 'Rajesh Jewelers', 
-      customerPhone: '+91 98765 43210',
-      customerAddress: '12, Gold Souk, Delhi',
-      type: 'UPI', 
-      workType: 'Tunch', 
-      amount: '4,500', 
-      date: 'Today', 
-      isoDate: '2026-05-15', 
-      timestamp: '10:45 AM', 
-      status: 'Paid', 
-      details: 'Collection intake for gold biscuits.',
-      productType: 'Bar',
-      impureWeight: '150.25',
-      settlementCondition: 'Only Cash (At Front)'
-    },
-    { 
-      id: 'TXN-9823', 
-      customerId: 'CUST-002', 
-      customerName: 'Mehta Gold Traders', 
-      customerPhone: '+91 91234 56789',
-      customerAddress: 'Block C, Sector 4, Noida',
-      type: 'Cash', 
-      workType: 'Shouldering', 
-      amount: '12,000', 
-      date: 'Today', 
-      isoDate: '2026-05-15', 
-      timestamp: '09:12 AM', 
-      status: 'Paid', 
-      details: 'Field intake fee.',
-      pieces: '5',
-      pointSuggestion: 'Gold'
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  React.useEffect(() => {
+    const loadTransactions = () => {
+      const raw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
+      let txns: any[] = [];
+      if (raw) {
+        try {
+          txns = JSON.parse(raw);
+        } catch (e) {}
+      }
+
+      // Filter only transactions created by this logged-in Collection user
+      const currentUser = localStorage.getItem('user_id') || 'COLL-001';
+      const filtered = txns.filter(t => t.createdBy === currentUser).map((t: any) => ({
+        id: t.id,
+        customerId: t.customerId || 'CUST-COL',
+        customerName: t.customerName,
+        customerPhone: t.customerPhone || '',
+        customerAddress: t.customerAddress || '',
+        type: t.type || 'Cash',
+        workType: t.workType || 'Tunch',
+        amount: t.amount || '0',
+        date: t.date || 'Just Now',
+        isoDate: t.isoDate || new Date().toISOString().split('T')[0],
+        timestamp: t.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: t.status || 'Unpaid',
+        details: t.details || '',
+        productType: t.productType,
+        impureWeight: t.impureWeight,
+        settlementCondition: t.settlementCondition,
+        logoName: t.logoName,
+        carat: t.carat,
+        pieces: t.pieces,
+        pointSuggestion: t.pointSuggestion,
+        createdBy: t.createdBy
+      }));
+      setTransactions(filtered);
+    };
+
+    loadTransactions();
+    const interval = setInterval(loadTransactions, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Dynamically group transactions by customer
+  const dynamicCustomers: Customer[] = [];
+  transactions.forEach(t => {
+    let cust = dynamicCustomers.find(c => c.name === t.customerName);
+    if (!cust) {
+      const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+      cust = {
+        id: t.customerId || 'CUST-COL',
+        name: t.customerName,
+        initials: initials || 'C',
+        activeJobs: 0,
+        outstanding: '₹ 0',
+        paid: '₹ 0',
+        piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+        ledger: []
+      };
+      dynamicCustomers.push(cust);
     }
-  ];
+    
+    cust.ledger.push(t);
+    const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+    if (t.status === 'Unpaid') {
+      cust.activeJobs += 1;
+      const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+      cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString()}`;
+    } else {
+      const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+      cust.paid = `₹ ${(paidNum + amtNum).toLocaleString()}`;
+    }
+    
+    const pcs = parseInt(t.pieces || '1') || 1;
+    if (t.workType === 'Tunch') {
+      cust.piecesBreakdown.tunch += pcs;
+    } else if (t.workType === 'Marking') {
+      cust.piecesBreakdown.marking += pcs;
+    } else if (t.workType === 'Shouldering') {
+      cust.piecesBreakdown.shouldering += pcs;
+    }
+  });
 
-  const mockCustomers: Customer[] = [
-    { 
-      id: 'CUST-001', 
-      name: 'Rajesh Jewelers', 
-      initials: 'RJ', 
-      activeJobs: 14, 
-      outstanding: '₹ 84,000', 
-      paid: '₹ 4,500', 
-      piecesBreakdown: { tunch: 5, marking: 12, shouldering: 0 },
-      ledger: mockTransactions.filter(t => t.customerId === 'CUST-001') 
-    },
-    { 
-      id: 'CUST-002', 
-      name: 'Mehta Gold Traders', 
-      initials: 'MG', 
-      activeJobs: 3, 
-      outstanding: '₹ 0', 
-      paid: '₹ 12,000', 
-      piecesBreakdown: { tunch: 0, marking: 0, shouldering: 5 },
-      ledger: mockTransactions.filter(t => t.customerId === 'CUST-002') 
-    },
-  ];
-
-  const selectedCustomer = mockCustomers.find(c => c.id === customerId) || null;
-  const filteredCustomers = mockCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredTransactions = mockTransactions.filter(t => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
+  const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredTransactions = transactions.filter(t => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
+    <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-8 pb-40 relative">
         <header className="flex justify-between items-start mb-4">
           <div>
@@ -308,7 +327,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
              {/* Customer Header card */}
              <div className="luxury-card p-5 bg-white border border-outline-variant/10 flex items-center justify-between">
                <div className="flex items-center gap-4">
-                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#001e40] to-[#003366] text-white flex items-center justify-center font-bold text-xl shadow-md border border-white/10">{selectedCustomer.initials}</div>
+                  <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-md border border-white/10" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>{selectedCustomer.initials}</div>
                  <div>
                    <h2 className="text-lg font-extrabold text-primary">{selectedCustomer.name}</h2>
                    <p className="text-[10px] text-outline font-bold uppercase tracking-widest mt-0.5">Active Jobs: {selectedCustomer.activeJobs}</p>

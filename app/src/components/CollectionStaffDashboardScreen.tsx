@@ -6,30 +6,99 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
-  // Mock data for collection summary
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadData = () => {
+      const currentUser = localStorage.getItem('user_id') || 'COLL-001';
+
+      // Load tasks
+      const sharedTasksRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+      let tList: any[] = [];
+      if (sharedTasksRaw) {
+        try {
+          tList = JSON.parse(sharedTasksRaw)
+            .filter((t: any) => t.createdBy === currentUser);
+        } catch (e) {}
+      }
+      setTasks(tList);
+
+      // Load transactions
+      const sharedTxnsRaw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
+      let txList: any[] = [];
+      if (sharedTxnsRaw) {
+        try {
+          txList = JSON.parse(sharedTxnsRaw)
+            .filter((t: any) => t.createdBy === currentUser);
+        } catch (e) {}
+      }
+      setTransactions(txList);
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 1. Calculate stats dynamically
+  let tunchPcs = 0;
+  let markingPcs = 0;
+  let shoulderPcs = 0;
+  let todaysPcs = 0;
+
+  tasks.forEach(t => {
+    const pcs = parseInt(t.pieces || '1') || 1;
+    if (t.category === 'TUNCH') tunchPcs += pcs;
+    else if (t.category === 'MARKING') markingPcs += pcs;
+    else if (t.category === 'SHOULDERING') shoulderPcs += pcs;
+    
+    const dateStr = t.isoDate || '';
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) todaysPcs += pcs;
+  });
+
   const collectionStats = [
-    { label: 'Tunch Pieces', value: '1,240', icon: 'science', color: 'bg-tertiary/10 text-tertiary' },
-    { label: 'Marking Pieces', value: '850', icon: 'verified', color: 'bg-secondary/10 text-secondary' },
-    { label: 'Shoulder Pieces', value: '420', icon: 'precision_manufacturing', color: 'bg-primary/10 text-primary' },
-    { label: 'Today\'s Pieces', value: '145', icon: 'today', color: 'bg-primary-container/10 text-primary-container' },
+    { label: 'Tunch Pieces', value: tunchPcs.toLocaleString(), icon: 'science', color: 'bg-tertiary/10 text-tertiary' },
+    { label: 'Marking Pieces', value: markingPcs.toLocaleString(), icon: 'verified', color: 'bg-secondary/10 text-secondary' },
+    { label: 'Shoulder Pieces', value: shoulderPcs.toLocaleString(), icon: 'precision_manufacturing', color: 'bg-primary/10 text-primary' },
+    { label: 'Today\'s Pieces', value: todaysPcs.toLocaleString(), icon: 'today', color: 'bg-primary-container/10 text-primary-container' },
   ];
+
+  // 2. Calculate status stats dynamically
+  let pendingCount = tasks.filter(t => t.status === 'Pending').length;
+  let progressCount = tasks.filter(t => t.status === 'In Progress').length;
+  let completedCount = tasks.filter(t => t.status === 'Completed').length;
 
   const statusStats = [
-    { label: 'Pending', value: '12', color: 'bg-error/10 text-error' },
-    { label: 'In Progress', value: '18', color: 'bg-secondary/10 text-secondary' },
-    { label: 'Completed', value: '124', color: 'bg-tertiary/10 text-tertiary' },
+    { label: 'Pending', value: pendingCount.toString(), color: 'bg-error/10 text-error' },
+    { label: 'In Progress', value: progressCount.toString(), color: 'bg-secondary/10 text-secondary' },
+    { label: 'Completed', value: completedCount.toString(), color: 'bg-tertiary/10 text-tertiary' },
   ];
 
-  const recentTasks = [
-    { id: 'COL-8921', customer: 'Ramesh Jewelers', category: 'TUNCH', pieces: '12', status: 'Completed', time: '10:30 AM' },
-    { id: 'COL-8922', customer: 'Sita Ram & Sons', category: 'MARKING', pieces: '45', status: 'In Progress', time: '11:15 AM' },
-    { id: 'COL-8923', customer: 'Modern Goldsmith', category: 'SHOULDERING', pieces: '8', status: 'Pending', time: '12:05 PM' },
-    { id: 'COL-8924', customer: 'Om Shakti J.', category: 'TUNCH', pieces: '5', status: 'Completed', time: 'Yesterday' },
-    { id: 'COL-8925', customer: 'Laxmi Gold', category: 'MARKING', pieces: '120', status: 'Completed', time: 'Yesterday' },
-  ];
+  // 3. Dynamic recent tasks
+  const dynamicRecentTasks = tasks.map(t => ({
+    id: t.id,
+    customer: t.customerName,
+    category: t.category || 'TUNCH',
+    pieces: t.pieces || '1',
+    status: t.status || 'Pending',
+    time: t.dateGiven || 'Just Now'
+  }));
+
+  // 4. Calculate dues
+  let totalDues = 0;
+  transactions.forEach(t => {
+    if (t.status === 'Unpaid') {
+      const amt = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      totalDues += amt;
+    }
+  });
+
+  const uniqueCustomersCount = new Set(transactions.filter(t => t.status === 'Unpaid').map(t => t.customerName)).size;
 
   return (
-    <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
+    <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
       <main className="px-6 space-y-8 max-w-5xl mx-auto pt-4 pb-40 relative">
         <div className="absolute top-[20%] left-[-10%] w-64 h-64 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute bottom-[20%] right-[-10%] w-64 h-64 bg-tertiary/5 rounded-full blur-[100px] pointer-events-none"></div>
@@ -52,20 +121,20 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
         {/* TOTAL DUES BANNER */}
         <section className="relative z-10 animate-fade-in">
-          <div className="bg-gradient-to-br from-[#001e40] to-[#003366] text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group border border-white/10">
+          <div className="text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group border border-white/10" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 blur-2xl"></div>
             <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-[#C9A646]/10 rounded-full blur-3xl"></div>
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50">Total Outstanding Dues</p>
-                <h2 className="font-headline text-3xl font-black mt-2 text-white drop-shadow-md">₹ 84,500</h2>
+                <h2 className="font-headline text-3xl font-black mt-2 text-white drop-shadow-md">₹ {totalDues.toLocaleString()}</h2>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
                 <span className="material-symbols-outlined text-white text-xl">payments</span>
               </div>
             </div>
             <div className="mt-5 pt-4 border-t border-white/10 flex justify-between items-center text-[9px] font-bold">
-              <span className="text-white/40 uppercase tracking-wider">Active Customers: 14</span>
+              <span className="text-white/40 uppercase tracking-wider">Active Customers: {uniqueCustomersCount}</span>
               <span className="text-[#C9A646] uppercase tracking-widest flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-[#C9A646] animate-ping"></span>
                 Collection Due
@@ -103,12 +172,12 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           </div>
           <div className="flex justify-between items-center px-2">
             {statusStats.map((stat, i) => (
-              <div key={i} className="flex flex-col items-center gap-2 flex-1">
-                <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center font-black text-xs border border-white shadow-sm`}>
-                   {stat.value}
-                </div>
-                <span className="text-[9px] font-bold text-outline uppercase tracking-tighter">{stat.label}</span>
-              </div>
+               <div key={i} className="flex flex-col items-center gap-2 flex-1">
+                 <div className={`w-12 h-12 rounded-full ${stat.color} flex items-center justify-center font-black text-xs border border-white shadow-sm`}>
+                    {stat.value}
+                 </div>
+                 <span className="text-[9px] font-bold text-outline uppercase tracking-tighter">{stat.label}</span>
+               </div>
             ))}
           </div>
         </section>
@@ -120,32 +189,36 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
             <button onClick={() => navigate('/tasks')} className="text-[10px] font-bold text-secondary uppercase tracking-wider underline underline-offset-4 decoration-secondary/30">History</button>
           </div>
           <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10">
-            {recentTasks.slice(0, 5).map((item, idx) => (
-              <div key={idx} className="p-5 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors border-b last:border-0 border-outline-variant/10">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
-                    {item.category[0]}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                       <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
-                       <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
+            {dynamicRecentTasks.length > 0 ? (
+              dynamicRecentTasks.slice(0, 5).map((item, idx) => (
+                <div key={idx} className="p-5 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors border-b last:border-0 border-outline-variant/10">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
+                      {item.category[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                         <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
+                         <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right flex flex-col items-end gap-1.5">
+                    <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
+                      item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
+                      item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
+                      'bg-error/5 text-error border-error/20'
+                    }`}>
+                      {item.status}
+                    </span>
+                    <p className="text-[8px] text-outline/40 font-bold uppercase tracking-[0.1em]">{item.time}</p>
+                  </div>
                 </div>
-                <div className="text-right flex flex-col items-end gap-1.5">
-                  <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
-                    item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
-                    item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
-                    'bg-error/5 text-error border-error/20'
-                  }`}>
-                    {item.status}
-                  </span>
-                  <p className="text-[8px] text-outline/40 font-bold uppercase tracking-[0.1em]">{item.time}</p>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <div className="p-8 text-center text-outline text-xs font-medium bg-white">No recent collection assignments.</div>
+            )}
           </div>
         </section>
       </main>

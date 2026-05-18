@@ -57,16 +57,39 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   };
 
   const handleSubmit = () => {
-     const newEntry = { 
-       ...formData, 
-       timestamp: new Date().toISOString(), 
-       id: `COL-${Math.floor(Math.random() * 9000) + 1000}`,
-       status: 'Pending Verification',
-       source: 'Collection Staff'
-     };
-     
-     const existing = JSON.parse(localStorage.getItem('AURORA_COLLECTIONS') || '[]');
-     localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify([newEntry, ...existing]));
+      const newEntry = { 
+        ...formData, 
+        timestamp: new Date().toISOString(), 
+        id: `COL-${Math.floor(Math.random() * 9000) + 1000}`,
+        status: 'Pending',
+        progressPercentage: 0,
+        source: 'Collection Staff',
+        createdBy: localStorage.getItem('user_id') || 'COLL-001',
+        dateGiven: 'Just Now',
+        isoDate: new Date().toISOString().split('T')[0],
+        estimatedCompletion: 'Awaiting Audit',
+        notes: formData.specifications || 'Collection intake from field.',
+        broughtBy: 'Collection Staff',
+        assignedTo: 'Pending',
+        customerPhone: formData.phone,
+        customerAddress: formData.address,
+        productType: formData.category === 'TUNCH' ? 'Jewellery' : formData.category === 'MARKING' ? 'Coin Bar' : 'Sample',
+        impureWeight: formData.weight,
+        settlementCondition: formData.paymentMode
+      };
+      
+      // Load active tasks from shared store
+      const existingRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+      let existing: any[] = [];
+      if (existingRaw) {
+        try {
+          existing = JSON.parse(existingRaw);
+        } catch (e) {}
+      }
+      
+      const updated = [newEntry, ...existing];
+     localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
+     localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
 
      onSuccess(newEntry);
      setFormData({ customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
