@@ -4,18 +4,37 @@ import { useNavigate } from 'react-router-dom';
 export const StaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const staffData = {
-    name: 'Marcus Reynolds',
-    role: 'Senior Appraiser & Lead Technician',
-    id: 'EMP-0842',
-    phone: '+91 98765 43210',
-    email: 'marcus@auroradivine.com',
-    stats: {
-      tasksCompleted: 482,
-      efficiency: '98.5%',
-      activeHours: '1,240'
+  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  
+  const getProfileData = () => {
+    if (userId.startsWith('ADMIN-')) {
+      return {
+        name: 'Chief Administrator',
+        role: 'Strategic Vault Manager & General Admin',
+        id: 'ADMIN-001',
+        phone: '+91 98888 77777',
+        email: 'admin@auroradivine.com'
+      };
     }
+    if (userId.startsWith('SUPER-')) {
+      return {
+        name: 'Director General',
+        role: 'Managing Partner & Super Administrator',
+        id: 'SUPER-001',
+        phone: '+91 99999 88888',
+        email: 'director@auroradivine.com'
+      };
+    }
+    return {
+      name: 'Marcus Reynolds',
+      role: 'Senior Appraiser & Lead Technician',
+      id: 'EMP-0842',
+      phone: '+91 98765 43210',
+      email: 'marcus@auroradivine.com'
+    };
   };
+
+  const staffData = getProfileData();
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">

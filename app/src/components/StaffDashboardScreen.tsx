@@ -3,6 +3,15 @@ import { useNavigate } from 'react-router-dom';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
+  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
+  
+  const getGreetingName = () => {
+    if (userId.startsWith('ADMIN-')) return 'Chief Admin';
+    if (userId.startsWith('SUPER-')) return 'Director';
+    return 'Alexander';
+  };
+
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-4 pb-40 relative">
@@ -16,7 +25,7 @@ export const StaffDashboardScreen: React.FC = () => {
               <img alt="Alexander" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpdrf99bDdfFpnDvy5kTrQVQd1kj_gCs6s77-dXisJ3110rcMyGR4miPVoNL98OJeSZfvzSFzxV6bTGHqe8Wm6-DK5_ybI9CJ809JcKDSLcI8oMY60PfWZyqH1r9UC04GBPzUWhfGJh1zq16PPTCX8oRDOM0NlRA0L3zeIBIvYKx0xisgWjy6YP60CTxYqKDoaVx1yCIYcUAzsDSXtR58WxPaBzADrcCb1Kvcdt_AiXCXkqpj-CIzgAEVMuykcCyl68gArkDBckrG7" />
             </div>
             <div className="flex flex-col">
-              <h1 className="font-headline text-lg font-bold text-primary leading-tight">Good Morning, Alexander</h1>
+              <h1 className="font-headline text-lg font-bold text-primary leading-tight">Good Morning, {getGreetingName()}</h1>
               <p className="text-xs text-outline font-medium">Your summary for Zurich Main today.</p>
             </div>
           </div>
@@ -199,18 +208,20 @@ export const StaffDashboardScreen: React.FC = () => {
                 <div className="h-full bg-outline w-[5%] rounded-full"></div>
               </div>
             </div>
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-xs text-secondary-container">local_shipping</span>
-                  <span className="text-primary">Collection Staff</span>
+            {!isAdminOrSuper && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-xs text-secondary-container">local_shipping</span>
+                    <span className="text-primary">Collection Staff</span>
+                  </div>
+                  <span className="text-primary">56 Tasks</span>
                 </div>
-                <span className="text-primary">56 Tasks</span>
+                <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                  <div className="h-full bg-secondary-container w-[22%] rounded-full"></div>
+                </div>
               </div>
-              <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-secondary-container w-[22%] rounded-full"></div>
-              </div>
-            </div>
+            )}
           </div>
         </section>
 

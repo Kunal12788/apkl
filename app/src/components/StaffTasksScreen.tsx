@@ -146,9 +146,10 @@ interface TaskDetailsModalProps {
   task: Task | null;
   onUpdateStatus: (task: Task) => void;
   onDeleteTask: (id: string) => void;
+  isAdminOrSuper?: boolean;
 }
 
-export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task, onUpdateStatus, onDeleteTask }) => {
+export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task, onUpdateStatus, onDeleteTask, isAdminOrSuper = false }) => {
   if (!isOpen || !task) return null;
 
   const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
@@ -282,7 +283,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
               className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
               <span className="material-symbols-outlined text-sm">check_circle</span>
-              {task.status === 'In Progress' ? 'Complete' : 'Verify'}
+              {task.status === 'In Progress' ? 'Complete' : (isAdminOrSuper ? 'Start' : 'Verify')}
             </button>
           )}
           <button 
@@ -312,6 +313,9 @@ export const StaffTasksScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const currentUser = localStorage.getItem('user_id') || 'STAFF-001';
+  const isAdminOrSuper = currentUser.startsWith('ADMIN-') || currentUser.startsWith('SUPER-');
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
   const [toastMessage, setToastMessage] = useState('');
@@ -376,7 +380,12 @@ export const StaffTasksScreen: React.FC = () => {
         }
       });
 
-      setTasks(merged);
+      let filteredMerged = merged;
+      if (isAdminOrSuper) {
+        filteredMerged = merged.filter(t => !t.createdBy?.startsWith('COLL-') && t.status !== 'Pending Verification');
+      }
+
+      setTasks(filteredMerged);
     };
 
     loadTasks();
@@ -501,8 +510,29 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleUpdateStatus = (task: Task) => {
      if (task.status === 'Pending' || task.status === 'Pending Verification') {
-        setCurrentVerificationTask(task);
-        setVerificationOpen(true);
+        if (isAdminOrSuper) {
+          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
+          
+          const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
+          if (sharedRaw) {
+            try {
+              const parsed = JSON.parse(sharedRaw);
+              const updated = parsed.map((t: any) => {
+                if (t.id === task.id) {
+                  return { ...t, status: 'In Progress', progressPercentage: 40 };
+                }
+                return t;
+              });
+              localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
+              localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
+            } catch (e) {}
+          }
+          showToast('Task started successfully.');
+          handleCloseModal();
+        } else {
+          setCurrentVerificationTask(task);
+          setVerificationOpen(true);
+        }
      } else if (task.status === 'In Progress') {
         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
         
@@ -650,11 +680,19 @@ export const StaffTasksScreen: React.FC = () => {
 
                     {(task.status === 'Pending' || task.status === 'Pending Verification') && (
                       <button 
-                        onClick={(e) => { e.stopPropagation(); setCurrentVerificationTask(task); setVerificationOpen(true); }}
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          if (isAdminOrSuper) {
+                            handleUpdateStatus(task);
+                          } else {
+                            setCurrentVerificationTask(task); 
+                            setVerificationOpen(true); 
+                          }
+                        }}
                         className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
                       >
-                         <span className="material-symbols-outlined text-sm">rule</span>
-                         VERIFY INTAKE DATA
+                         <span className="material-symbols-outlined text-sm">{isAdminOrSuper ? 'play_arrow' : 'rule'}</span>
+                         {isAdminOrSuper ? 'START TASK WORK' : 'VERIFY INTAKE DATA'}
                       </button>
                     )}
 
@@ -693,6 +731,7 @@ export const StaffTasksScreen: React.FC = () => {
         task={selectedTask}
         onUpdateStatus={handleUpdateStatus}
         onDeleteTask={handleDeleteTask}
+        isAdminOrSuper={isAdminOrSuper}
       />
         
         {/* Toast Notification System */}
