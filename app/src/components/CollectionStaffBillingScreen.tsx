@@ -435,12 +435,20 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                {selectedCustomer.ledger.map(txn => (
                  <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${txn.status === 'Unpaid' ? 'bg-error' : 'bg-tertiary'}`}></div>
-                   <div className="flex justify-between items-center pl-2">
-                     <div>
-                       <p className="font-bold text-primary text-sm">{txn.workType} Assignment</p>
-                       <p className="text-[9px] text-outline uppercase font-semibold mt-0.5">{txn.id} • {txn.date}</p>
+                   <div className="flex justify-between items-start pl-2">
+                     <div className="flex items-center gap-3">
+                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
+                         <span className="material-symbols-outlined text-xl">{getWorkIcon(txn.workType)}</span>
+                       </div>
+                       <div>
+                         <p className="font-headline font-bold text-sm text-primary">{txn.workType} Assignment</p>
+                         <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.id} • {txn.date}</p>
+                       </div>
                      </div>
-                     <p className="font-bold text-primary">₹ {txn.amount}</p>
+                     <div className="text-right">
+                       <p className="font-headline text-base font-bold text-primary">₹ {txn.amount}</p>
+                       <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${txn.status === 'Unpaid' ? 'bg-error/10 text-error' : 'bg-tertiary/10 text-tertiary'}`}>{txn.status}</span>
+                     </div>
                    </div>
                  </div>
                ))}
