@@ -219,6 +219,68 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         try {
           txns = JSON.parse(raw);
         } catch (e) {}
+      } else {
+        const defaultMockTxns = [
+          { 
+            id: 'TXN-9826', 
+            customerId: 'CUST-001', 
+            customerName: 'Rajesh Jewelers', 
+            customerPhone: '+91 98765 43210',
+            customerAddress: '12, Gold Souk, Delhi',
+            type: 'Cash', 
+            workType: 'Marking', 
+            amount: '84,000', 
+            date: 'Yesterday', 
+            isoDate: '2026-05-14', 
+            timestamp: '04:30 PM', 
+            status: 'Unpaid', 
+            details: 'Collection fee for 12 necklaces.',
+            productType: 'Jewellery',
+            logoName: 'RJ-Gold',
+            carat: '22k',
+            pieces: '12',
+            createdBy: 'COLL-001'
+          },
+          { 
+            id: 'TXN-9824', 
+            customerId: 'CUST-001', 
+            customerName: 'Rajesh Jewelers', 
+            customerPhone: '+91 98765 43210',
+            customerAddress: '12, Gold Souk, Delhi',
+            type: 'UPI', 
+            workType: 'Tunch', 
+            amount: '4,500', 
+            date: 'Today', 
+            isoDate: '2026-05-15', 
+            timestamp: '10:45 AM', 
+            status: 'Paid', 
+            details: 'Collection intake for gold biscuits.',
+            productType: 'Bar',
+            impureWeight: '150.25',
+            settlementCondition: 'Only Cash (At Front)',
+            createdBy: 'COLL-001'
+          },
+          { 
+            id: 'TXN-9823', 
+            customerId: 'CUST-002', 
+            customerName: 'Mehta Gold Traders', 
+            customerPhone: '+91 91234 56789',
+            customerAddress: 'Block C, Sector 4, Noida',
+            type: 'Cash', 
+            workType: 'Shouldering', 
+            amount: '12,000', 
+            date: 'Today', 
+            isoDate: '2026-05-15', 
+            timestamp: '09:12 AM', 
+            status: 'Paid', 
+            details: 'Field intake fee.',
+            pieces: '5',
+            pointSuggestion: 'Gold',
+            createdBy: 'COLL-001'
+          }
+        ];
+        localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify(defaultMockTxns));
+        txns = defaultMockTxns;
       }
 
       // Filter only transactions created by this logged-in Collection user
