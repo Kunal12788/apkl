@@ -140,6 +140,138 @@ const SearchAndFilterSection = ({
   </div>
 );
 
+// Sleek centered modal receipt overlay (consistent with COLL-001)
+interface BillingDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  txn: Transaction | null;
+}
+
+export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
+  if (!isOpen || !txn) return null;
+
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
+  const val = "text-xs font-bold text-primary truncate";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden">
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-lg text-secondary">receipt_long</span>
+              {txn.id} Receipt
+            </h3>
+            <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
+          </div>
+          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+            txn.status === 'Paid' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 'bg-error/10 text-error border-error/20'
+          }`}>
+            {txn.status}
+          </span>
+        </div>
+
+        {/* Unified Clean Details Container */}
+        <div className="space-y-3">
+          
+          {/* Section 1: Customer Profile */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Customer Profile</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className={lbl}>Name</span>
+                <p className={val}>{txn.customerName}</p>
+              </div>
+              <div>
+                <span className={lbl}>ID</span>
+                <p className={val}>{txn.customerId || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Work Specifications */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Details</p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              <div>
+                <span className={lbl}>Work Type</span>
+                <p className={`${val} uppercase text-secondary`}>{txn.workType}</p>
+              </div>
+              
+              {txn.pieceType && (
+                <div>
+                  <span className={lbl}>Piece Type</span>
+                  <p className={val}>{txn.pieceType}</p>
+                </div>
+              )}
+              {txn.purityPercentage && (
+                <div>
+                  <span className={lbl}>Purity</span>
+                  <p className={val}>{txn.purityPercentage}</p>
+                </div>
+              )}
+              {txn.impureWeight && (
+                <div>
+                  <span className={lbl}>Impure Weight</span>
+                  <p className={val}>{txn.impureWeight}</p>
+                </div>
+              )}
+              {txn.pureWeight && (
+                <div>
+                  <span className={lbl}>Pure Weight</span>
+                  <p className={val}>{txn.pureWeight}</p>
+                </div>
+              )}
+              {txn.pointsCount !== undefined && txn.pointsCount !== null && (
+                <div>
+                  <span className={lbl}>Solder Points</span>
+                  <p className={val}>{txn.pointsCount} ({txn.pointsType || 'Gold'})</p>
+                </div>
+              )}
+              {txn.caratMarking && (
+                <div>
+                  <span className={lbl}>Carat Marking</span>
+                  <p className={val}>{txn.caratMarking}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 3: Settlement Summary Card */}
+          <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
+            <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
+            <div className="flex justify-between items-center relative z-10">
+              <div>
+                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
+                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>{txn.amount}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                  {txn.status === 'Paid' ? 'Paid & Cleared' : 'Payment Due'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Close Button */}
+        <button 
+          onClick={onClose}
+          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+        >
+          Dismiss Receipt
+        </button>
+
+      </div>
+    </div>
+  );
+};
+
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -272,6 +404,12 @@ export const StaffBillingScreen: React.FC = () => {
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
   const selectedTransaction = transactions.find(t => t.id === transactionId) || null;
 
+  const handleCloseModal = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('transactionId');
+    setSearchParams(newParams);
+  };
+
   const matchesSearch = (txn: Transaction) => {
     let matchesText = true;
     if (searchQuery) {
@@ -307,7 +445,7 @@ export const StaffBillingScreen: React.FC = () => {
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-8 pb-40 relative">
         
         {/* Main Header with Notification Bell */}
-        {!selectedTransaction && !selectedCustomer && (
+        {!selectedCustomer && (
           <header className="flex justify-between items-start mb-4">
             <div>
               <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Billing & Records</h1>
@@ -321,7 +459,7 @@ export const StaffBillingScreen: React.FC = () => {
         )}
 
         {/* Tab Navigation */}
-        {!selectedCustomer && !selectedTransaction && (
+        {!selectedCustomer && (
           <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner">
             <button 
               onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'all' }); }}
@@ -339,7 +477,7 @@ export const StaffBillingScreen: React.FC = () => {
         )}
 
         {/* View: All Transactions */}
-        {activeTab === 'all' && !selectedCustomer && !selectedTransaction && (
+        {activeTab === 'all' && !selectedCustomer && (
           <div className="space-y-4 animate-fade-in">
             <SearchAndFilterSection 
               placeholder="Search by weight, purity, ID..." 
@@ -420,109 +558,7 @@ export const StaffBillingScreen: React.FC = () => {
           </div>
         )}
 
-        {/* View: Detailed Transaction Modal */}
-        {selectedTransaction && (
-          <div className="animate-fade-in space-y-6">
-            <header className="flex justify-between items-center">
-              <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
-              </button>
-            </header>
-            
-            <div className="luxury-card overflow-hidden">
-              <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-6 text-white relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold mb-1">Receipt / Details</p>
-                    <h2 className="font-headline text-3xl font-extrabold text-[#F6C358]">{selectedTransaction.amount}</h2>
-                  </div>
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20`}>
-                    <span className="material-symbols-outlined text-2xl drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">{getWorkIcon(selectedTransaction.workType)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-5">
-                <div className="flex justify-between items-center border-b border-outline-variant/20 pb-4">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Customer</p>
-                    <p className="font-headline text-base font-bold text-primary">{selectedTransaction.customerName}</p>
-                    <p className="text-[10px] text-outline">{selectedTransaction.customerId}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Date & Time</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.date}</p>
-                    <p className="text-[10px] text-outline">{selectedTransaction.timestamp}</p>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-y-4 gap-x-2 border-b border-outline-variant/20 pb-4">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Work Type</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.workType}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Payment Method</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.type}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Status</p>
-                    <p className={`font-headline text-sm font-bold ${selectedTransaction.status === 'Unpaid' ? 'text-error' : 'text-secondary'}`}>{selectedTransaction.status}</p>
-                  </div>
-                  
-                  {selectedTransaction.workType === 'Tunch' && (
-                    <>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Piece Type</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pieceType}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Purity</p>
-                        <p className="font-headline text-sm font-bold text-[#755b00]">{selectedTransaction.purityPercentage}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Impure Weight</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.impureWeight}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Pure Weight</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pureWeight}</p>
-                      </div>
-                    </>
-                  )}
-
-                  {selectedTransaction.workType === 'Shouldering' && (
-                    <>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Piece Type</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pieceType}</p>
-                      </div>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Solder Points</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.pointsCount} ({selectedTransaction.pointsType})</p>
-                      </div>
-                    </>
-                  )}
-
-                  {selectedTransaction.workType === 'Marking' && (
-                    <>
-                      <div>
-                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Carat Marking</p>
-                        <p className="font-headline text-sm font-bold text-primary">{selectedTransaction.caratMarking}</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Work Details</p>
-                  <p className="text-xs text-primary leading-relaxed">{selectedTransaction.details}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* View: By Customer (Customer List) */}
         {activeTab === 'customer' && !selectedCustomer && (
@@ -566,7 +602,7 @@ export const StaffBillingScreen: React.FC = () => {
         )}
 
         {/* View: Particular Customer Detail */}
-        {selectedCustomer && !selectedTransaction && (
+        {selectedCustomer && (
           <div className="animate-fade-in space-y-6">
             <header className="flex justify-between items-start">
               <button onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
@@ -720,6 +756,12 @@ export const StaffBillingScreen: React.FC = () => {
           </div>
         )}
       </main>
+
+      <BillingDetailsModal 
+        isOpen={!!selectedTransaction}
+        onClose={handleCloseModal}
+        txn={selectedTransaction}
+      />
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
