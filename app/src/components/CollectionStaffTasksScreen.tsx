@@ -64,131 +64,138 @@ interface TaskDetailsModalProps {
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task }) => {
   if (!isOpen || !task) return null;
 
-  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
-  const val = "text-sm font-bold text-primary";
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
+  const val = "text-xs font-bold text-primary truncate";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-[#001e40]/30 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] p-6 shadow-[0_-12px_40px_rgba(0,30,64,0.15)] relative z-10 max-h-[90vh] overflow-y-auto hide-scrollbar border-t border-outline-variant/10 animate-modal-up">
-        {/* Handle */}
-        <div className="w-12 h-1.5 bg-surface-container rounded-full mx-auto mb-6" onClick={onClose} />
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden">
 
-        <div className="flex justify-between items-start mb-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
           <div>
-            <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
-              task.status === 'Completed' ? 'bg-tertiary-container/10 text-tertiary-container border-tertiary-container/20' :
-              task.status === 'In Progress' ? 'bg-secondary-container/10 text-secondary-container border-secondary-container/20' :
-              'bg-error-container/50 text-error border-error/20'
-            }`}>
-              {task.status}
-            </span>
-            <h3 className="font-headline text-xl font-bold text-primary mt-3">{task.id} Details</h3>
-            <p className="text-xs text-outline font-medium mt-0.5">Assigned Facility: {task.assignedTo}</p>
+            <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-lg text-secondary">assignment_turned_in</span>
+              {task.id} Details
+            </h3>
+            <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">Assigned Facility: {task.assignedTo}</p>
           </div>
-          <button onClick={onClose} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline hover:text-primary transition-colors">
-            <span className="material-symbols-outlined text-lg">close</span>
-          </button>
+          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+            task.status === 'Completed' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 
+            task.status === 'In Progress' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
+            'bg-error/10 text-error border-error/20'
+          }`}>
+            {task.status}
+          </span>
         </div>
 
-        <div className="space-y-4">
-          {/* Customer profile */}
-          <div className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C9A646]">Entity Profile</p>
-            <div>
-              <label className={lbl}>Customer Name</label>
-              <p className={val}>{task.customerName}</p>
+        {/* Unified Clean Details Container */}
+        <div className="space-y-3">
+          
+          {/* Section 1: Customer Profile */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Entity Profile</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className={lbl}>Name</span>
+                <p className={val}>{task.customerName}</p>
+              </div>
+              {task.customerPhone && (
+                <div>
+                  <span className={lbl}>Phone</span>
+                  <p className={val}>{task.customerPhone}</p>
+                </div>
+              )}
+              {task.customerAddress && (
+                <div className="col-span-2">
+                  <span className={lbl}>Address</span>
+                  <p className={val}>{task.customerAddress}</p>
+                </div>
+              )}
             </div>
-            {task.customerPhone && (
-              <div>
-                <label className={lbl}>Phone Number</label>
-                <p className={val}>{task.customerPhone}</p>
-              </div>
-            )}
-            {task.customerAddress && (
-              <div>
-                <label className={lbl}>Registered Address</label>
-                <p className={val}>{task.customerAddress}</p>
-              </div>
-            )}
           </div>
 
-          {/* Technical specifications */}
-          <div className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#003366]">Work Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
+          {/* Section 2: Work Specifications */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Specifications</p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               <div>
-                <label className={lbl}>Operation</label>
-                <p className="text-sm font-bold text-secondary uppercase">{task.workType}</p>
+                <span className={lbl}>Operation</span>
+                <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
               </div>
+              
               {task.productType && (
                 <div>
-                  <label className={lbl}>Product Category</label>
+                  <span className={lbl}>Category</span>
                   <p className={val}>{task.productType}</p>
                 </div>
               )}
               {task.impureWeight && (
                 <div>
-                  <label className={lbl}>Impure Weight</label>
+                  <span className={lbl}>Weight</span>
                   <p className={val}>{task.impureWeight}g</p>
+                </div>
+              )}
+              {task.pieces && (
+                <div>
+                  <span className={lbl}>Pieces</span>
+                  <p className={val}>{task.pieces}</p>
                 </div>
               )}
               {task.settlementCondition && (
                 <div>
-                  <label className={lbl}>Settlement Mode</label>
+                  <span className={lbl}>Settlement Mode</span>
                   <p className={val}>{task.settlementCondition}</p>
                 </div>
               )}
               {task.logoName && (
                 <div>
-                  <label className={lbl}>Logo Markings</label>
+                  <span className={lbl}>Logo Markings</span>
                   <p className={val}>{task.logoName}</p>
                 </div>
               )}
               {task.carat && (
                 <div>
-                  <label className={lbl}>Carat</label>
+                  <span className={lbl}>Carat</span>
                   <p className={val}>{task.carat.toUpperCase()}</p>
                 </div>
               )}
-              {task.pieces && (
-                <div>
-                  <label className={lbl}>No. of Pieces</label>
-                  <p className={val}>{task.pieces}</p>
-                </div>
-              )}
               {task.pointSuggestion && (
-                <div>
-                  <label className={lbl}>Solder Points</label>
-                  <p className={val}>{task.pointSuggestion} Points Suggested</p>
+                <div className="col-span-2">
+                  <span className={lbl}>Solder Points</span>
+                  <p className={val}>{task.pointSuggestion} Gold/Silver suggested</p>
                 </div>
               )}
             </div>
-            {task.notes && (
-              <div className="pt-2 border-t border-outline-variant/10 mt-2">
-                <label className={lbl}>Special Instructions</label>
-                <p className="text-xs text-on-surface-variant font-medium leading-relaxed">{task.notes}</p>
-              </div>
-            )}
           </div>
 
-          {/* Schedule */}
-          <div className="luxury-card p-5 bg-surface-container-lowest border border-outline-variant/10 space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#C9A646]">Logistics & Schedule</p>
-            <div className="grid grid-cols-2 gap-4">
+          {/* Section 3: Schedule Card */}
+          <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
+            <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
+            <div className="flex justify-between items-center relative z-10">
               <div>
-                <label className={lbl}>Intake Date</label>
-                <p className={val}>{task.dateGiven}</p>
+                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Intake Date</p>
+                <p className="font-headline text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>{task.dateGiven}</p>
               </div>
-              <div>
-                <label className={lbl}>Est. Completion</label>
-                <p className={val}>{task.estimatedCompletion}</p>
+              <div className="text-right">
+                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>Est. Completion</p>
+                <p className="text-xs mt-0.5 font-bold" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{task.estimatedCompletion}</p>
               </div>
             </div>
           </div>
+
         </div>
+
+        {/* Close Button */}
+        <button 
+          onClick={onClose}
+          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+        >
+          Dismiss Details
+        </button>
+
       </div>
-      <style>{`@keyframes modalUp { from { transform: translateY(100%); } to { transform: translateY(0); } } .animate-modal-up { animation: modalUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }`}</style>
     </div>
   );
 };

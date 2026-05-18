@@ -140,6 +140,171 @@ const SearchAndFilterSection = ({
   </div>
 );
 
+interface TaskDetailsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  task: Task | null;
+  onUpdateStatus: (task: Task) => void;
+  onDeleteTask: (id: string) => void;
+}
+
+export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task, onUpdateStatus, onDeleteTask }) => {
+  if (!isOpen || !task) return null;
+
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
+  const val = "text-xs font-bold text-primary truncate";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden">
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-lg text-secondary">assignment_turned_in</span>
+              {task.id} Details
+            </h3>
+            <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">Assigned Facility: {task.assignedTo}</p>
+          </div>
+          <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
+            task.status === 'Completed' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 
+            task.status === 'In Progress' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
+            'bg-error/10 text-error border-error/20'
+          }`}>
+            {task.status}
+          </span>
+        </div>
+
+        {/* Unified Clean Details Container */}
+        <div className="space-y-3">
+          
+          {/* Section 1: Customer Profile */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Entity Profile</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <span className={lbl}>Name</span>
+                <p className={val}>{task.customerName}</p>
+              </div>
+              {task.customerPhone && (
+                <div>
+                  <span className={lbl}>Phone</span>
+                  <p className={val}>{task.customerPhone}</p>
+                </div>
+              )}
+              {task.customerAddress && (
+                <div className="col-span-2">
+                  <span className={lbl}>Address</span>
+                  <p className={val}>{task.customerAddress}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 2: Work Specifications */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Specifications</p>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+              <div>
+                <span className={lbl}>Operation</span>
+                <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
+              </div>
+              
+              {task.productType && (
+                <div>
+                  <span className={lbl}>Category</span>
+                  <p className={val}>{task.productType}</p>
+                </div>
+              )}
+              {task.impureWeight && (
+                <div>
+                  <span className={lbl}>Weight</span>
+                  <p className={val}>{task.impureWeight}</p>
+                </div>
+              )}
+              {task.pieces && (
+                <div>
+                  <span className={lbl}>Pieces</span>
+                  <p className={val}>{task.pieces}</p>
+                </div>
+              )}
+              {task.settlementCondition && (
+                <div>
+                  <span className={lbl}>Settlement Mode</span>
+                  <p className={val}>{task.settlementCondition}</p>
+                </div>
+              )}
+              {task.logoName && (
+                <div>
+                  <span className={lbl}>Logo Markings</span>
+                  <p className={val}>{task.logoName}</p>
+                </div>
+              )}
+              {task.carat && (
+                <div>
+                  <span className={lbl}>Carat</span>
+                  <p className={val}>{task.carat.toUpperCase()}</p>
+                </div>
+              )}
+              {task.pointSuggestion && (
+                <div className="col-span-2">
+                  <span className={lbl}>Solder Points</span>
+                  <p className={val}>{task.pointSuggestion} Gold/Silver suggested</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 3: Schedule Card */}
+          <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
+            <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
+            <div className="flex justify-between items-center relative z-10">
+              <div>
+                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Intake Date</p>
+                <p className="font-headline text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>{task.dateGiven}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>Est. Completion</p>
+                <p className="text-xs mt-0.5 font-bold" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{task.estimatedCompletion}</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-4 shrink-0">
+          {task.status !== 'Completed' && (
+            <button 
+              onClick={() => onUpdateStatus(task)}
+              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              {task.status === 'In Progress' ? 'Complete' : 'Verify'}
+            </button>
+          )}
+          <button 
+            onClick={() => onDeleteTask(task.id)}
+            className="px-3 py-2.5 bg-error/10 hover:bg-error/25 text-error font-bold text-xs rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center"
+            title="Delete Task"
+          >
+            <span className="material-symbols-outlined text-sm">delete</span>
+          </button>
+          <button 
+            onClick={onClose}
+            className="flex-1 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+          >
+            Dismiss
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
 export const StaffTasksScreen: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -221,6 +386,12 @@ export const StaffTasksScreen: React.FC = () => {
 
   const selectedTask = tasks.find(t => t.id === taskId) || null;
 
+  const handleCloseModal = () => {
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('taskId');
+    setSearchParams(newParams);
+  };
+
   const matchesSearch = (task: Task) => {
     let matchesText = true;
     if (searchQuery) {
@@ -266,7 +437,7 @@ export const StaffTasksScreen: React.FC = () => {
       }
 
       showToast('Task successfully deleted');
-      navigate(-1);
+      handleCloseModal();
     }
   };
 
@@ -325,6 +496,7 @@ export const StaffTasksScreen: React.FC = () => {
      localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
 
      showToast('Audit matched! Task verified, completed and billed.');
+     handleCloseModal();
   };
 
   const handleUpdateStatus = (task: Task) => {
@@ -384,7 +556,7 @@ export const StaffTasksScreen: React.FC = () => {
         localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
 
         showToast('Task marked as Completed! Billing ledger updated.');
-        navigate(-1);
+        handleCloseModal();
      }
   };
 
@@ -392,46 +564,41 @@ export const StaffTasksScreen: React.FC = () => {
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-8 pb-32 relative">
         {/* Header */}
-        {!selectedTask && (
-          <header className="flex justify-between items-end mb-4">
-            <div>
-              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Operational Tasks</h1>
-              <p className="text-xs text-outline font-medium">Track workflows and assignments</p>
-            </div>
-            <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-              <span className="material-symbols-outlined text-xl">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
-            </button>
-          </header>
-        )}
+        <header className="flex justify-between items-end mb-4">
+          <div>
+            <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Operational Tasks</h1>
+            <p className="text-xs text-outline font-medium">Track workflows and assignments</p>
+          </div>
+          <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
+            <span className="material-symbols-outlined text-xl">notifications</span>
+            <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
+          </button>
+        </header>
 
         {/* Tab Navigation */}
-        {!selectedTask && (
-          <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-2">
-            <button 
-              onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'In Progress' }); }}
-              className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'In Progress' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-            >
-              In Progress
-            </button>
-            <button 
-              onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Pending' }); }}
-              className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Pending' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-            >
-              Pending
-            </button>
-            <button 
-              onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Completed' }); }}
-              className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Completed' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-            >
-              Completed
-            </button>
-          </div>
-        )}
+        <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-2">
+          <button 
+            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'In Progress' }); }}
+            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'In Progress' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          >
+            In Progress
+          </button>
+          <button 
+            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Pending' }); }}
+            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Pending' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          >
+            Pending
+          </button>
+          <button 
+            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Completed' }); }}
+            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Completed' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          >
+            Completed
+          </button>
+        </div>
 
         {/* View: All Tasks */}
-        {!selectedTask && (
-          <div className="space-y-4 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
             <SearchAndFilterSection 
               placeholder="Search tasks, staff, customer..." 
               searchQuery={searchQuery} setSearchQuery={setSearchQuery}
@@ -511,7 +678,6 @@ export const StaffTasksScreen: React.FC = () => {
               )}
             </div>
           </div>
-        )}
 
         <TaskReconciliationModal 
            isOpen={isVerificationOpen}
@@ -520,129 +686,14 @@ export const StaffTasksScreen: React.FC = () => {
            onVerified={handleVerifySuccess}
         />
 
-        {/* View: Detailed Task Modal */}
-        {selectedTask && (
-          <div className="animate-fade-in space-y-6">
-            <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
-              <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Tasks
-            </button>
-            
-            <div className="luxury-card overflow-hidden">
-              <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-6 text-white relative">
-                <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`px-2 py-0.5 rounded-full border text-[8px] font-bold uppercase tracking-widest ${getStatusColor(selectedTask.status)}`}>
-                        {selectedTask.status}
-                      </span>
-                    </div>
-                    <h2 className="font-headline text-3xl font-extrabold text-white">{selectedTask.workType} Work</h2>
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold mt-1">ID: {selectedTask.id}</p>
-                  </div>
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20`}>
-                    <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]">{getWorkIcon(selectedTask.workType)}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-6">
-                {/* Progress Bar */}
-                <div>
-                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-outline mb-2">
-                    <span>Task Progress</span>
-                    <span className="text-primary">{selectedTask.progressPercentage}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-secondary rounded-full shadow-[0_0_10px_rgba(0,89,187,0.4)]" 
-                      style={{ width: `${selectedTask.progressPercentage}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-t border-b border-outline-variant/20 py-5">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Source Client</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTask.customerName}</p>
-                    <p className="text-[10px] text-outline mt-0.5">{selectedTask.customerId}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Assigned Staff</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="w-5 h-5 rounded-full bg-primary-fixed flex items-center justify-center text-[9px] font-bold text-primary">
-                        {selectedTask.assignedTo.charAt(0)}
-                      </div>
-                      <p className="font-headline text-sm font-bold text-primary">{selectedTask.assignedTo}</p>
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Brought By</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="material-symbols-outlined text-[16px] text-primary">directions_walk</span>
-                      <p className="font-headline text-sm font-bold text-primary">{selectedTask.broughtBy}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Given At</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTask.dateGiven}</p>
-                  </div>
-                  <div>
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Est. Completion</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedTask.estimatedCompletion}</p>
-                  </div>
-                  
-                  {selectedTask.impureWeight && (
-                    <div>
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Impure Gold In</p>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className="font-headline text-lg font-bold text-[#755b00]">{selectedTask.impureWeight}</span>
-                      </div>
-                    </div>
-                  )}
-                  {selectedTask.pureWeight && (
-                    <div>
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-1">Pure Gold Out</p>
-                      <div className="flex items-baseline gap-1 mt-0.5">
-                        <span className="font-headline text-lg font-bold text-primary">{selectedTask.pureWeight}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-[9px] uppercase tracking-widest text-outline font-bold mb-2">Task Notes / Instructions</p>
-                  <div className="bg-surface-container/30 rounded-xl p-4 border border-outline-variant/20">
-                    <p className="text-xs text-primary leading-relaxed font-medium">{selectedTask.notes}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <button className="py-4 rounded-2xl bg-white border border-outline-variant/30 text-primary font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
-                <span className="material-symbols-outlined text-lg">edit</span> Edit Task
-              </button>
-              {selectedTask.status === 'Completed' ? (
-                <button disabled className="py-4 rounded-2xl bg-outline/25 text-outline/50 font-bold text-sm tracking-wide flex items-center justify-center gap-2 cursor-not-allowed">
-                  Completed <span className="material-symbols-outlined text-lg">check_circle</span>
-                </button>
-              ) : (
-                <button 
-                  onClick={() => handleUpdateStatus(selectedTask)}
-                  className="py-4 rounded-2xl bg-primary text-white font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
-                >
-                  {selectedTask.status === 'In Progress' ? 'Complete Task' : 'Verify Intake'} <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <button onClick={() => handleDeleteTask(selectedTask.id)} className="col-span-2 py-4 rounded-2xl bg-error/10 border border-error/20 text-error font-bold text-sm tracking-wide premium-shadow active:scale-[0.98] transition-transform flex items-center justify-center gap-2 hover:bg-error/20">
-                <span className="material-symbols-outlined text-lg">delete_forever</span> Delete Task
-              </button>
-            </div>
-          </div>
-        )}
+      {/* View: Detailed Task Modal */}
+      <TaskDetailsModal 
+        isOpen={selectedTask !== null} 
+        onClose={handleCloseModal} 
+        task={selectedTask}
+        onUpdateStatus={handleUpdateStatus}
+        onDeleteTask={handleDeleteTask}
+      />
         
         {/* Toast Notification System */}
         {toastMessage && (
