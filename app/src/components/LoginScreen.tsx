@@ -26,10 +26,10 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         // Derive user role from email (or metadata if available)
         const emailLower = data.user.email?.toLowerCase() || '';
         let role = 'STAFF-001';
-        if (emailLower.startsWith('admin')) role = 'ADMIN-001';
-        else if (emailLower.startsWith('super')) role = 'SUPER-001';
+        if (emailLower === 'k9836282432@gmail.com' || emailLower.startsWith('admin')) role = 'ADMIN-001';
+        else if (emailLower === 'ssrcreations41@gmail.com' || emailLower.startsWith('super')) role = 'SUPER-001';
         else if (emailLower.startsWith('coll')) role = 'COLL-001';
-        
+        else if (emailLower === 'k7474740@gmail.com') role = 'STAFF-001';
         localStorage.setItem('user_id', role);
         onLogin();
       }
