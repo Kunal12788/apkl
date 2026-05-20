@@ -14,29 +14,34 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     setHasError(false);
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: passkey
-      });
+      // Hardcoded credentials logic
+      const emailLower = email.toLowerCase().trim();
+      let role = '';
       
-      if (error) {
+      if (emailLower === 'k7474740@gmail.com' && passkey === '1234') {
+        role = 'STAFF-001';
+      } else if (emailLower === 'k9836282432@gmail.com' && passkey === '123') {
+        role = 'ADMIN-001';
+      } else if (emailLower === 'ssrcreations41@gmail.com' && passkey === '123') {
+        role = 'SUPER-001';
+      } else {
+        // Fallback: If not matching exact credentials, simulate error
         setHasError(true);
-        setErrorMessage(error.message);
-      } else if (data.user) {
-        // Derive user role from email (or metadata if available)
-        const emailLower = data.user.email?.toLowerCase() || '';
-        let role = 'STAFF-001';
-        if (emailLower === 'k9836282432@gmail.com' || emailLower.startsWith('admin')) role = 'ADMIN-001';
-        else if (emailLower === 'ssrcreations41@gmail.com' || emailLower.startsWith('super')) role = 'SUPER-001';
-        else if (emailLower.startsWith('coll')) role = 'COLL-001';
-        else if (emailLower === 'k7474740@gmail.com') role = 'STAFF-001';
-        localStorage.setItem('user_id', role);
-        onLogin();
+        setErrorMessage("Invalid email address or encryption passkey.");
+        setIsLoading(false);
+        return;
       }
+      
+      localStorage.setItem('user_id', role);
+      
+      // Artificial delay to simulate network request
+      setTimeout(() => {
+        onLogin();
+      }, 600);
+      
     } catch (e) {
       setHasError(true);
       setErrorMessage("An unexpected error occurred.");
-    } finally {
       setIsLoading(false);
     }
   };
