@@ -27,18 +27,6 @@ const initialEntries: LedgerEntry[] = [
 const openingPureStock = 100.000;
 const openingImpureStock = 0.000;
 
-const FilterChip = ({ label, icon, value, activeFilter, setActiveFilter }: { label: string, icon: string, value: string, activeFilter: string, setActiveFilter: (val: string) => void }) => {
-  const isActive = activeFilter === value;
-  return (
-    <div 
-      onClick={() => setActiveFilter(isActive ? '' : value)} 
-      className={`flex items-center gap-1.5 border rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer transition-all duration-300 ${isActive ? 'bg-[#003366] border-[#003366] text-white' : 'bg-white border-outline-variant/30 text-primary hover:bg-surface-bright'}`}
-    >
-      <span className="material-symbols-outlined text-[16px]">{icon}</span>
-      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
-    </div>
-  );
-};
 
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -46,30 +34,18 @@ export const StaffLedgerScreen: React.FC = () => {
   const isSuperAdmin = userId.startsWith('SUPER-');
   const isAdmin = userId.startsWith('ADMIN-');
 
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [activeFilter, setActiveFilter] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
 
   const [entries, setEntries] = useState(initialEntries);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   const filtered = entries.filter(e => {
-    const matchFrom = !startDate || e.isoDate >= startDate;
-    const matchTo = !endDate || e.isoDate <= endDate;
-    
     // User requirement: ONLY those who have taken pure gold, taken pure gold in exchange, taken cash, or refining dispatch.
     const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
     const isTakenCash = e.cashPaid > 0;
     const isRefining = e.transactionType === 'Refining Dispatch';
     
-    const meetsCriteria = isTakenPureGold || isTakenCash || isRefining;
-
-    let matchFilter = true;
-    if (activeFilter === 'Exchange') matchFilter = e.transactionType === 'Exchange';
-    if (activeFilter === 'Refining') matchFilter = e.transactionType === 'Refining Dispatch';
-
-    return matchFrom && matchTo && meetsCriteria && matchFilter;
+    return isTakenPureGold || isTakenCash || isRefining;
   });
 
   const totalPureGiven = entries.reduce((s, e) => s + e.pureGoldOut, 0);
@@ -238,24 +214,22 @@ export const StaffLedgerScreen: React.FC = () => {
             </div>
 
             {currentImpureStock > 0 && (
-              <div className="luxury-card overflow-hidden bg-white border border-outline-variant/20 p-5 shadow-sm animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#755b00]/10 text-[#755b00] flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-xl">local_fire_department</span>
-                    </div>
-                    <div>
-                      <p className="font-headline text-sm font-bold text-primary">Dispatch to Refinery</p>
-                      <p className="text-[9px] text-outline uppercase tracking-widest font-bold mt-0.5">Transfer Impure Stock</p>
-                    </div>
+              <div 
+                onClick={() => setShowRefiningConfirm(true)}
+                className="luxury-card overflow-hidden bg-white border border-[#755b00]/30 hover:border-[#755b00]/60 p-5 shadow-sm animate-fade-in cursor-pointer active:scale-[0.98] hover:shadow-md transition-all duration-300 group flex items-center justify-between"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#755b00]/10 text-[#755b00] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
+                    <span className="material-symbols-outlined text-xl">local_fire_department</span>
                   </div>
-                  <button 
-                    onClick={() => setShowRefiningConfirm(true)}
-                    className="flex items-center gap-2 bg-[#755b00] hover:bg-[#5a4600] text-white px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors shadow-md active:scale-95"
-                  >
-                    <span>Dispatch</span>
-                    <span className="font-black border-l border-white/20 pl-2">{fmtG(currentImpureStock)}</span>
-                  </button>
+                  <div>
+                    <p className="font-headline text-sm font-bold text-primary group-hover:text-[#755b00] transition-colors">Refining Melt Dispatch</p>
+                    <p className="text-[9px] text-outline uppercase tracking-widest font-bold mt-0.5">Send all impure gold for refining</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-[#755b00]/10 text-[#755b00] group-hover:bg-[#755b00] group-hover:text-white px-4 py-2.5 rounded-xl border border-[#755b00]/20 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest shadow-sm">
+                  <span>Dispatch</span>
+                  <span className="font-black border-l border-current pl-2">{fmtG(currentImpureStock)}</span>
                 </div>
               </div>
             )}
@@ -274,30 +248,7 @@ export const StaffLedgerScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Audit Filters */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="relative group">
-                  <span className="text-[8px] absolute -top-2 left-4 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10">Period Start</span>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/50 text-base pointer-events-none group-focus-within:text-primary">calendar_month</span>
-                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-primary focus:outline-none focus:border-primary transition-all" />
-                  </div>
-                </div>
-                <div className="relative group">
-                  <span className="text-[8px] absolute -top-2 left-4 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10">Period End</span>
-                  <div className="relative">
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/50 text-base pointer-events-none group-focus-within:text-primary">calendar_month</span>
-                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 pl-11 pr-4 text-[11px] font-bold text-primary focus:outline-none focus:border-primary transition-all" />
-                  </div>
-                </div>
-              </div>
 
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                <FilterChip label="Exchange" icon="swap_horiz" value="Exchange" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-                <FilterChip label="Refining" icon="local_fire_department" value="Refining" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-              </div>
-            </div>
 
             {/* Audit Log Entries */}
             <div className="space-y-3">
