@@ -58,12 +58,18 @@ export const StaffLedgerScreen: React.FC = () => {
     const matchFrom = !startDate || e.isoDate >= startDate;
     const matchTo = !endDate || e.isoDate <= endDate;
     
-    let matchFilter = true;
-    if (activeFilter === 'Tunch Only') matchFilter = e.transactionType === 'Tunch Only';
-    if (activeFilter === 'Exchange') matchFilter = e.transactionType === 'Exchange';
-    if (activeFilter === 'Pending') matchFilter = e.status.includes('Pending');
+    // User requirement: ONLY those who have taken pure gold, taken pure gold in exchange, taken cash, or refining dispatch.
+    const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
+    const isTakenCash = e.cashPaid > 0;
+    const isRefining = e.transactionType === 'Refining Dispatch';
+    
+    const meetsCriteria = isTakenPureGold || isTakenCash || isRefining;
 
-    return matchFrom && matchTo && matchFilter;
+    let matchFilter = true;
+    if (activeFilter === 'Exchange') matchFilter = e.transactionType === 'Exchange';
+    if (activeFilter === 'Refining') matchFilter = e.transactionType === 'Refining Dispatch';
+
+    return matchFrom && matchTo && meetsCriteria && matchFilter;
   });
 
   const totalPureGiven = entries.reduce((s, e) => s + e.pureGoldOut, 0);
@@ -288,9 +294,8 @@ export const StaffLedgerScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                <FilterChip label="Tunch Only" icon="science" value="Tunch Only" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
                 <FilterChip label="Exchange" icon="swap_horiz" value="Exchange" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-                <FilterChip label="Pending" icon="pending_actions" value="Pending" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
+                <FilterChip label="Refining" icon="local_fire_department" value="Refining" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
               </div>
             </div>
 
