@@ -31,7 +31,6 @@ const openingImpureStock = 0.000;
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
-  const isSuperAdmin = userId.startsWith('SUPER-');
   const isAdmin = userId.startsWith('ADMIN-');
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
@@ -151,18 +150,12 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {(isSuperAdmin || isAdmin) && selectedEntry.status.includes('Pending') && (
+                {isAdmin && selectedEntry.status.includes('Pending') && (
                   <div className="pt-2 flex gap-3">
                     <button className="flex-1 py-3 bg-[#003366] hover:bg-[#001e40] text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors shadow-md flex justify-center items-center gap-1.5">
                       <span className="material-symbols-outlined text-sm">check_circle</span>
                       Approve Settlement
                     </button>
-                    {isSuperAdmin && (
-                      <button className="px-4 py-3 bg-error/10 hover:bg-error/20 text-error font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors flex justify-center items-center gap-1.5">
-                        <span className="material-symbols-outlined text-sm">cancel</span>
-                        Cancel
-                      </button>
-                    )}
                   </div>
                 )}
               </div>
@@ -183,12 +176,6 @@ export const StaffLedgerScreen: React.FC = () => {
                   <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock)}</p>
-                    {isSuperAdmin && (
-                      <button className="text-[8px] uppercase font-bold text-secondary hover:text-primary transition-colors flex items-center gap-0.5">
-                        <span className="material-symbols-outlined text-[10px]">edit</span>
-                        Adjust
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -202,12 +189,6 @@ export const StaffLedgerScreen: React.FC = () => {
                   <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock)}</p>
-                    {isSuperAdmin && (
-                      <button className="text-[8px] uppercase font-bold text-[#755b00] hover:text-primary transition-colors flex items-center gap-0.5">
-                        <span className="material-symbols-outlined text-[10px]">edit</span>
-                        Adjust
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>

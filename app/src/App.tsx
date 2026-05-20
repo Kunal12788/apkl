@@ -8,6 +8,7 @@ import { StaffBillingScreen } from './components/StaffBillingScreen';
 import { StaffTasksScreen } from './components/StaffTasksScreen';
 import { StaffProfileScreen } from './components/StaffProfileScreen';
 import { StaffLedgerScreen } from './components/StaffLedgerScreen';
+import { SuperAdminLedgerScreen } from './components/SuperAdminLedgerScreen';
 import { CollectionStaffDashboardScreen } from './components/CollectionStaffDashboardScreen';
 import { CollectionHistoryScreen } from './components/CollectionHistoryScreen';
 import { CollectionStaffProfileScreen } from './components/CollectionStaffProfileScreen';
@@ -52,6 +53,14 @@ const ProfileWrapper = () => {
   return <StaffProfileScreen />;
 };
 
+const LedgerWrapper = () => {
+  const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('SUPER-')) {
+    return <SuperAdminLedgerScreen />;
+  }
+  return <StaffLedgerScreen />;
+};
+
 const ForgotKeyWrapper = () => {
   const navigate = useNavigate();
   return <ForgotKeyScreen onBack={() => navigate(-1)} />;
@@ -91,7 +100,7 @@ function App() {
             <Route path="/tasks" element={<TasksWrapper />} />
             <Route path="/collections" element={<CollectionHistoryScreen />} />
             <Route path="/profile" element={<ProfileWrapper />} />
-            <Route path="/ledger" element={<StaffLedgerScreen />} />
+            <Route path="/ledger" element={<LedgerWrapper />} />
           </Routes>
           <GlobalFAB />
         </HashRouter>
