@@ -6,17 +6,18 @@ interface LedgerEntry {
   date: string;
   isoDate: string;
   customerName: string;
-  transactionType: 'Tunch Only' | 'Exchange' | 'Pending Settlement' | 'Pure Gold Sale';
+  transactionType: 'Tunch Only' | 'Exchange' | 'Pending Settlement' | 'Pure Gold Sale' | 'Refining Dispatch';
   pureGoldOut: number;
   pureGoldDue: number;
   impureGoldIn: number;
+  impureGoldOut?: number;
   purity?: string;
   cashReceived: number;
   cashPaid: number;
   status: 'Completed' | 'Pending Pure' | 'Pending Cash' | 'No Settlement';
 }
 
-const mockEntries: LedgerEntry[] = [
+const initialEntries: LedgerEntry[] = [
   { id: 'TXN-9824', date: 'Today', isoDate: '2026-05-15', customerName: 'QWE Customer', transactionType: 'Tunch Only', pureGoldOut: 0, pureGoldDue: 0, impureGoldIn: 0, purity: '91.6%', cashReceived: 0, cashPaid: 0, status: 'No Settlement' },
   { id: 'TXN-9825', date: 'Today', isoDate: '2026-05-15', customerName: 'ASD Customer', transactionType: 'Exchange', pureGoldOut: 50, pureGoldDue: 0, impureGoldIn: 60, purity: '83.33%', cashReceived: 0, cashPaid: 0, status: 'Completed' },
   { id: 'TXN-9826', date: 'Today', isoDate: '2026-05-15', customerName: 'ZXC Customer', transactionType: 'Pending Settlement', pureGoldOut: 0, pureGoldDue: 30, impureGoldIn: 60, purity: '50.0%', cashReceived: 0, cashPaid: 0, status: 'Pending Pure' },
@@ -51,7 +52,10 @@ export const StaffLedgerScreen: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
 
-  const filtered = mockEntries.filter(e => {
+  const [entries, setEntries] = useState(initialEntries);
+  const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
+
+  const filtered = entries.filter(e => {
     const q = searchQuery.toLowerCase();
     const matchText = !q || e.customerName.toLowerCase().includes(q) || e.id.toLowerCase().includes(q);
     const matchFrom = !startDate || e.isoDate >= startDate;
@@ -65,13 +69,33 @@ export const StaffLedgerScreen: React.FC = () => {
     return matchText && matchFrom && matchTo && matchFilter;
   });
 
-  const totalPureGiven = mockEntries.reduce((s, e) => s + e.pureGoldOut, 0);
-  const totalImpureReceived = mockEntries.reduce((s, e) => s + e.impureGoldIn, 0);
+  const totalPureGiven = entries.reduce((s, e) => s + e.pureGoldOut, 0);
+  const totalImpureReceived = entries.reduce((s, e) => s + e.impureGoldIn, 0);
+  const totalImpureRefined = entries.reduce((s, e) => s + (e.impureGoldOut || 0), 0);
   
   const currentPureStock = openingPureStock - totalPureGiven;
-  const currentImpureStock = openingImpureStock + totalImpureReceived;
+  const currentImpureStock = openingImpureStock + totalImpureReceived - totalImpureRefined;
   
-  const pendingPureLiability = mockEntries.reduce((s, e) => s + e.pureGoldDue, 0);
+  const pendingPureLiability = entries.reduce((s, e) => s + e.pureGoldDue, 0);
+
+  const handleRefineConfirm = () => {
+    const newEntry: LedgerEntry = {
+      id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: 'Just Now',
+      isoDate: new Date().toISOString().split('T')[0],
+      customerName: 'Refinery Dispatch',
+      transactionType: 'Refining Dispatch',
+      pureGoldOut: 0,
+      pureGoldDue: 0,
+      impureGoldIn: 0,
+      impureGoldOut: currentImpureStock,
+      cashReceived: 0,
+      cashPaid: 0,
+      status: 'Completed'
+    };
+    setEntries([newEntry, ...entries]);
+    setShowRefiningConfirm(false);
+  };
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
@@ -206,6 +230,15 @@ export const StaffLedgerScreen: React.FC = () => {
                       </button>
                     )}
                   </div>
+                  {currentImpureStock > 0 && (
+                    <button 
+                      onClick={() => setShowRefiningConfirm(true)}
+                      className="mt-4 w-full py-2 bg-[#755b00]/10 hover:bg-[#755b00]/20 text-[#755b00] border border-[#755b00]/20 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-xs">local_fire_department</span>
+                      Given to Refining
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -309,6 +342,36 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Refining Confirmation Modal */}
+        {showRefiningConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up">
+              <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto mb-4">
+                <span className="material-symbols-outlined text-3xl text-[#755b00]">local_fire_department</span>
+              </div>
+              <h3 className="font-headline text-xl font-bold text-center text-primary mb-2">Send to Refining?</h3>
+              <p className="text-sm text-center text-outline mb-6">
+                You are about to dispatch <strong className="text-primary">{fmtG(currentImpureStock)}</strong> of Impure Gold to the refinery. This will clear your current impure stock balance and record the dispatch in the ledger for Admin review.
+              </p>
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setShowRefiningConfirm(false)}
+                  className="flex-1 py-3 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleRefineConfirm}
+                  className="flex-1 py-3 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] shadow-lg shadow-[#755b00]/20"
+                >
+                  Confirm Dispatch
+                </button>
               </div>
             </div>
           </div>
