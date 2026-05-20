@@ -214,37 +214,49 @@ export const StaffLedgerScreen: React.FC = () => {
             </div>
 
             {currentImpureStock > 0 && (
-              <div 
+              <button 
                 onClick={() => setShowRefiningConfirm(true)}
-                className="luxury-card overflow-hidden bg-white border border-[#755b00]/30 hover:border-[#755b00]/60 p-5 shadow-sm animate-fade-in cursor-pointer active:scale-[0.98] hover:shadow-md transition-all duration-300 group flex items-center justify-between"
+                className="w-full py-4 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 shadow-md hover:shadow-lg active:scale-[0.99] flex justify-center items-center gap-2 animate-fade-in"
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#755b00]/10 text-[#755b00] flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-300">
-                    <span className="material-symbols-outlined text-xl">local_fire_department</span>
-                  </div>
-                  <div>
-                    <p className="font-headline text-sm font-bold text-primary group-hover:text-[#755b00] transition-colors">Refining Melt Dispatch</p>
-                    <p className="text-[9px] text-outline uppercase tracking-widest font-bold mt-0.5">Send all impure gold for refining</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-[#755b00]/10 text-[#755b00] group-hover:bg-[#755b00] group-hover:text-white px-4 py-2.5 rounded-xl border border-[#755b00]/20 transition-all duration-300 font-bold text-[10px] uppercase tracking-widest shadow-sm">
-                  <span>Dispatch</span>
-                  <span className="font-black border-l border-current pl-2">{fmtG(currentImpureStock)}</span>
-                </div>
-              </div>
+                <span className="material-symbols-outlined text-sm">local_fire_department</span>
+                TRANSFER TO REFINERY
+              </button>
             )}
 
             {/* Pending Liability Engine */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="luxury-card p-5 bg-orange-50 border border-orange-100 relative overflow-hidden">
-                <p className="text-[9px] font-bold text-orange-800 uppercase tracking-widest mb-2">Pending Pure Liability</p>
-                <p className="text-xl font-bold text-orange-600 tracking-tight">{fmtG(pendingPureLiability)}</p>
-                <span className="material-symbols-outlined absolute right-2 -bottom-2 text-5xl text-orange-200 opacity-50">warning</span>
+              {/* Pending Pure Liability Card */}
+              <div className="luxury-card p-5 bg-gradient-to-br from-amber-50/60 to-orange-50/30 border border-amber-200/60 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[9px] font-bold text-amber-800 uppercase tracking-[0.15em] mb-1">Pending Pure Liability</p>
+                    <p className="font-headline text-2xl font-black text-amber-700 tracking-tight">{fmtG(pendingPureLiability)}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-700">
+                    <span className="material-symbols-outlined text-base">hourglass_empty</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  <span className="text-[8px] text-amber-800/80 font-bold uppercase tracking-wider">Awaiting Settlement</span>
+                </div>
               </div>
-              <div className="luxury-card p-5 bg-white border border-outline-variant/20 relative overflow-hidden">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-widest mb-2">Total Pure Disbursed</p>
-                <p className="text-xl font-bold text-primary tracking-tight">{fmtG(totalPureGiven)}</p>
-                <span className="material-symbols-outlined absolute right-2 -bottom-2 text-5xl text-outline-variant opacity-20">arrow_outward</span>
+
+              {/* Total Pure Disbursed Card */}
+              <div className="luxury-card p-5 bg-gradient-to-br from-slate-50/60 to-white/30 border border-outline-variant/30 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Pure Disbursed</p>
+                    <p className="font-headline text-2xl font-black text-primary tracking-tight">{fmtG(totalPureGiven)}</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined text-base">outbound</span>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  <span className="text-[8px] text-outline font-bold uppercase tracking-wider">All-Time Disbursed</span>
+                </div>
               </div>
             </div>
 
@@ -310,9 +322,9 @@ export const StaffLedgerScreen: React.FC = () => {
               <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto mb-4">
                 <span className="material-symbols-outlined text-3xl text-[#755b00]">local_fire_department</span>
               </div>
-              <h3 className="font-headline text-xl font-bold text-center text-primary mb-2">Send to Refining?</h3>
+              <h3 className="font-headline text-xl font-bold text-center text-primary mb-2">Transfer to Refinery</h3>
               <p className="text-sm text-center text-outline mb-6">
-                You are about to dispatch <strong className="text-primary">{fmtG(currentImpureStock)}</strong> of Impure Gold to the refinery. This will clear your current impure stock balance and record the dispatch in the ledger for Admin review.
+                You are about to transfer <strong className="text-[#755b00] text-base">{fmtG(currentImpureStock)}</strong> of impure gold to the refinery. This action will clear your local impure gold stock balance.
               </p>
               
               <div className="flex gap-3">
@@ -326,7 +338,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   onClick={handleRefineConfirm}
                   className="flex-1 py-3 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] shadow-lg shadow-[#755b00]/20"
                 >
-                  Confirm Dispatch
+                  Confirm Transfer
                 </button>
               </div>
             </div>
