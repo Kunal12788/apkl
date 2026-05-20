@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 interface RefiningTransfer {
   id: string;
@@ -17,51 +18,44 @@ interface SuperAdminLedgerEntry {
   isoDate: string;
   type: 'Allocation' | 'Refining Yield' | 'Stock Correction';
   branchName?: string;
-  pureGoldChange: number; // Positive or negative
-  cashChange: number; // Positive or negative
+  pureGoldChange: number;
+  cashChange: number;
   details: string;
 }
+
+// DB Mapper helper functions
+const mapDbToTransfer = (db: any): RefiningTransfer => ({
+  id: db.id,
+  branchId: db.branch_id,
+  branchName: db.branch_name,
+  impureGoldSent: Number(db.impure_gold_sent || 0),
+  dateSent: db.date_sent,
+  status: db.status,
+  refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined
+});
+
+const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
+  id: db.id,
+  date: db.date,
+  isoDate: db.iso_date,
+  type: db.type,
+  branchName: db.branch_name,
+  pureGoldChange: Number(db.pure_gold_change || 0),
+  cashChange: Number(db.cash_change || 0),
+  details: db.details
+});
 
 export const SuperAdminLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  // Load opening states from localStorage for persistence
-  const [openingPureStock, setOpeningPureStock] = useState<number>(() => {
-    const saved = localStorage.getItem('sa_opening_pure');
-    return saved ? parseFloat(saved) : 1000.000; // 1kg gold default
-  });
-  const [openingCash, setOpeningCash] = useState<number>(() => {
-    const saved = localStorage.getItem('sa_opening_cash');
-    return saved ? parseFloat(saved) : 5000000; // 50 Lakhs default
-  });
-
-  // Track initial upload details to satisfy "upload the details of the total pure gold and total cash for the first time"
-  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(() => {
-    return !localStorage.getItem('sa_setup_completed');
-  });
+  const [loading, setLoading] = useState(true);
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(true);
 
   const [setupPureInput, setSetupPureInput] = useState('');
   const [setupCashInput, setSetupCashInput] = useState('');
 
-  // Admin transfers to be refined (impure gold)
-  const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(() => {
-    const saved = localStorage.getItem('sa_pending_transfers');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 'TRF-101', branchId: 'BR-DELHI', branchName: 'Delhi Branch', impureGoldSent: 150.000, dateSent: '2026-05-18', status: 'Pending' },
-      { id: 'TRF-102', branchId: 'BR-MUMBAI', branchName: 'Mumbai Branch', impureGoldSent: 280.000, dateSent: '2026-05-19', status: 'Pending' },
-    ];
-  });
-
-  // Super Admin Ledger History
-  const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(() => {
-    const saved = localStorage.getItem('sa_ledger_entries');
-    if (saved) return JSON.parse(saved);
-    return [
-      { id: 'SAL-001', date: '2026-05-15', isoDate: '2026-05-15', type: 'Allocation', branchName: 'Delhi Branch', pureGoldChange: -200.000, cashChange: -1000000, details: 'Initial allocation to Delhi Branch' },
-      { id: 'SAL-002', date: '2026-05-16', isoDate: '2026-05-16', type: 'Allocation', branchName: 'Mumbai Branch', pureGoldChange: -300.000, cashChange: -1500000, details: 'Initial allocation to Mumbai Branch' },
-    ];
-  });
+  const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>([]);
+  const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>([]);
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustPure, setAdjustPure] = useState('');
@@ -71,105 +65,162 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<RefiningTransfer | null>(null);
   const [netPureAchieved, setNetPureAchieved] = useState('');
 
-  // Save utility
-  const saveSetup = (pure: number, cash: number) => {
-    localStorage.setItem('sa_opening_pure', pure.toString());
-    localStorage.setItem('sa_opening_cash', cash.toString());
-    localStorage.setItem('sa_setup_completed', 'true');
-    setOpeningPureStock(pure);
-    setOpeningCash(cash);
-    setIsFirstTimeSetup(false);
+  // Fetch all corporate data from Supabase
+  const fetchData = async () => {
+    try {
+      // 1. Fetch Super Admin Ledger
+      const { data: ledgerData, error: ledgerError } = await supabase
+        .from('super_admin_ledger')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (ledgerError) throw ledgerError;
+
+      const mappedLedger = (ledgerData || []).map(mapDbToSaEntry);
+      setSaLedger(mappedLedger);
+
+      // Check if there are any stock entries to decide if setup is needed
+      if (mappedLedger.length > 0) {
+        setIsFirstTimeSetup(false);
+      } else {
+        setIsFirstTimeSetup(true);
+      }
+
+      // 2. Fetch pending refining transfers
+      const { data: transfersData, error: transfersError } = await supabase
+        .from('refining_transfers')
+        .select('*')
+        .eq('status', 'Pending')
+        .order('created_at', { ascending: false });
+
+      if (transfersError) throw transfersError;
+
+      setPendingTransfers((transfersData || []).map(mapDbToTransfer));
+
+    } catch (err) {
+      console.error('Error fetching Super Admin data:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFirstTimeSetup = (e: React.FormEvent) => {
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleFirstTimeSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     const pureVal = parseFloat(setupPureInput);
     const cashVal = parseFloat(setupCashInput);
-    if (!isNaN(pureVal) && !isNaN(cashVal)) {
-      saveSetup(pureVal, cashVal);
+    if (isNaN(pureVal) || isNaN(cashVal)) return;
+
+    try {
+      const newEntry = {
+        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        type: 'Stock Correction',
+        pure_gold_change: pureVal,
+        cash_change: cashVal,
+        details: 'Initial corporate stock upload setup.'
+      };
+
+      const { error } = await supabase
+        .from('super_admin_ledger')
+        .insert([newEntry]);
+
+      if (error) throw error;
+
+      setIsFirstTimeSetup(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error uploading initial setup:', err);
     }
   };
 
   // Adjust stock via modal
-  const handleAdjustSubmit = (e: React.FormEvent) => {
+  const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const pureVal = parseFloat(adjustPure);
     const cashVal = parseFloat(adjustCash);
-    if (!isNaN(pureVal) && !isNaN(cashVal)) {
-      setOpeningPureStock(pureVal);
-      setOpeningCash(cashVal);
-      localStorage.setItem('sa_opening_pure', pureVal.toString());
-      localStorage.setItem('sa_opening_cash', cashVal.toString());
-      
-      const correctionEntry: SuperAdminLedgerEntry = {
+    if (isNaN(pureVal) || isNaN(cashVal)) return;
+
+    try {
+      // Stock Correction is an adjustment: we calculate difference and insert
+      const currentPure = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
+      const currentCash = saLedger.reduce((s, e) => s + e.cashChange, 0);
+
+      const pureDiff = pureVal - currentPure;
+      const cashDiff = cashVal - currentCash;
+
+      const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
         date: 'Today',
-        isoDate: new Date().toISOString().split('T')[0],
+        iso_date: new Date().toISOString().split('T')[0],
         type: 'Stock Correction',
-        pureGoldChange: 0,
-        cashChange: 0,
-        details: `Manual Stock Correction to Opening Stock values.`
+        pure_gold_change: pureDiff,
+        cash_change: cashDiff,
+        details: `Manual Stock Correction adjustment.`
       };
-      const updatedLedger = [correctionEntry, ...saLedger];
-      setSaLedger(updatedLedger);
-      localStorage.setItem('sa_ledger_entries', JSON.stringify(updatedLedger));
+
+      const { error } = await supabase
+        .from('super_admin_ledger')
+        .insert([newEntry]);
+
+      if (error) throw error;
+
       setShowAdjustModal(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error adjusting stock balances:', err);
     }
   };
 
   // Process Refinery Melt
-  const handleProcessRefining = (e: React.FormEvent) => {
+  const handleProcessRefining = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTransfer) return;
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
 
-    // Update pending transfers list
-    const updatedTransfers = pendingTransfers.map(t => {
-      if (t.id === selectedTransfer.id) {
-        return { ...t, status: 'Processed' as const, refinedPureAchieved: achieved };
-      }
-      return t;
-    }).filter(t => t.status === 'Pending'); // remove from pending
+    try {
+      // 1. Update refining transfer status to Processed
+      const { error: transferError } = await supabase
+        .from('refining_transfers')
+        .update({ status: 'Processed', refined_pure_achieved: achieved })
+        .eq('id', selectedTransfer.id);
 
-    setPendingTransfers(updatedTransfers);
-    localStorage.setItem('sa_pending_transfers', JSON.stringify(updatedTransfers));
+      if (transferError) throw transferError;
 
-    // Create ledger entry
-    const newEntry: SuperAdminLedgerEntry = {
-      id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
-      date: 'Today',
-      isoDate: new Date().toISOString().split('T')[0],
-      type: 'Refining Yield',
-      branchName: selectedTransfer.branchName,
-      pureGoldChange: achieved,
-      cashChange: 0,
-      details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
-    };
+      // 2. Insert Refining Yield into Super Admin Ledger
+      const newEntry = {
+        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        type: 'Refining Yield',
+        branch_name: selectedTransfer.branchName,
+        pure_gold_change: achieved,
+        cash_change: 0,
+        details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
+      };
 
-    const updatedLedger = [newEntry, ...saLedger];
-    setSaLedger(updatedLedger);
-    localStorage.setItem('sa_ledger_entries', JSON.stringify(updatedLedger));
+      const { error: ledgerError } = await supabase
+        .from('super_admin_ledger')
+        .insert([newEntry]);
 
-    // Reset selection states
-    setSelectedTransfer(null);
-    setNetPureAchieved('');
+      if (ledgerError) throw ledgerError;
+
+      setSelectedTransfer(null);
+      setNetPureAchieved('');
+      fetchData();
+    } catch (err) {
+      console.error('Error processing refinery yield:', err);
+    }
   };
 
-  // Calculations
-  const allocationPureGiven = saLedger
-    .filter(e => e.type === 'Allocation')
-    .reduce((s, e) => s + e.pureGoldChange, 0); // Negative values represent disbursed/outward
-  const allocationCashPaid = saLedger
-    .filter(e => e.type === 'Allocation')
-    .reduce((s, e) => s + e.cashChange, 0); // Negative values represent disbursed/outward
-
-  const refinedPureAchievedTotal = saLedger
-    .filter(e => e.type === 'Refining Yield')
-    .reduce((s, e) => s + e.pureGoldChange, 0);
-
-  const currentPureStock = openingPureStock + allocationPureGiven + refinedPureAchievedTotal;
-  const currentCashStock = openingCash + allocationCashPaid;
+  // Calculations based on running sum of DB ledger records
+  const currentPureStock = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
+  const currentCashStock = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
@@ -186,9 +237,17 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => {
-                localStorage.removeItem('sa_setup_completed');
-                setIsFirstTimeSetup(true);
+              onClick={async () => {
+                // Clear DB super admin ledger for testing setup
+                if (window.confirm("Are you sure you want to reset all corporate records for testing setup?")) {
+                  try {
+                    await supabase.from('super_admin_ledger').delete().neq('id', '');
+                    await supabase.from('refining_transfers').delete().neq('id', '');
+                    fetchData();
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }
               }}
               className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform"
               title="Reset Initial Details"
@@ -198,8 +257,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
         </header>
 
-        {/* First Time Upload / Setup Screen */}
-        {isFirstTimeSetup ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="w-8 h-8 border-4 border-[#003366] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <p className="text-xs text-outline">Loading Corporate Ledger...</p>
+          </div>
+        ) : isFirstTimeSetup ? (
           <div className="luxury-card bg-white p-6 border border-outline-variant/20 rounded-[2rem] shadow-xl animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-[#003366]/10 flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-3xl text-[#003366]">upload_file</span>
@@ -242,7 +305,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Live Stock Engine Summary */}
+            {/* Live Stock Summary */}
             <div className="grid grid-cols-2 gap-4">
               <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
                 <div className="p-5">
@@ -252,11 +315,11 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   </div>
                   <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
                   <div className="flex justify-between items-center mt-1">
-                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock)}</p>
+                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
                     <button 
                       onClick={() => {
-                        setAdjustPure(openingPureStock.toString());
-                        setAdjustCash(openingCash.toString());
+                        setAdjustPure(currentPureStock.toString());
+                        setAdjustCash(currentCashStock.toString());
                         setShowAdjustModal(true);
                       }}
                       className="text-[8px] uppercase font-bold text-secondary hover:text-primary transition-colors flex items-center gap-0.5"
@@ -276,7 +339,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   </div>
                   <p className="font-headline text-2xl font-bold text-primary">{fmt(currentCashStock)}</p>
                   <div className="flex justify-between items-center mt-1">
-                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmt(openingCash)}</p>
+                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Cash</p>
                   </div>
                 </div>
               </div>
