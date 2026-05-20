@@ -6,28 +6,25 @@ interface LedgerEntry {
   date: string;
   isoDate: string;
   customerName: string;
-  workType: 'Tunch' | 'Marking' | 'Shouldering';
-  transactionType: 'settled' | 'test-only' | 'cash-out'; 
-  settlementLocation: 'Front' | 'Back';
-  goldIn: number;       
-  goldOut: number;      
-  retained: number;     
-  amount: number;       
-  paymentStatus: 'Paid' | 'Unpaid';
-  paymentMethod: 'Cash' | 'UPI';
+  transactionType: 'Tunch Only' | 'Exchange' | 'Pending Settlement' | 'Pure Gold Sale';
+  pureGoldOut: number;
+  pureGoldDue: number;
+  impureGoldIn: number;
   purity?: string;
+  cashReceived: number;
+  cashPaid: number;
+  status: 'Completed' | 'Pending Pure' | 'Pending Cash' | 'No Settlement';
 }
 
 const mockEntries: LedgerEntry[] = [
-  { id: 'TXN-9824', date: 'Today', isoDate: '2026-05-15', customerName: 'Rajesh Jewelers', workType: 'Tunch', transactionType: 'settled', settlementLocation: 'Front', goldIn: 12.450, goldOut: 11.200, retained: 1.250, amount: 45000, paymentStatus: 'Paid', paymentMethod: 'UPI', purity: '91.6%' },
-  { id: 'TXN-9823', date: 'Today', isoDate: '2026-05-15', customerName: 'Mehta Gold Traders', workType: 'Marking', transactionType: 'settled', settlementLocation: 'Front', goldIn: 80.000, goldOut: 80.000, retained: 0, amount: 112000, paymentStatus: 'Paid', paymentMethod: 'Cash' },
-  { id: 'TXN-9826', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'Gopal & Sons', workType: 'Tunch', transactionType: 'test-only', settlementLocation: 'Front', goldIn: 25.000, goldOut: 0, retained: 0, amount: 500, paymentStatus: 'Paid', paymentMethod: 'Cash' },
-  { id: 'TXN-9830', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'Kalyan Jewelers', workType: 'Tunch', transactionType: 'cash-out', settlementLocation: 'Front', goldIn: 45.000, goldOut: 0, retained: 0, amount: 285000, paymentStatus: 'Paid', paymentMethod: 'Cash', purity: '90.0%' }, 
-  { id: 'TXN-9831', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'Apex Bullion', workType: 'Tunch', transactionType: 'cash-out', settlementLocation: 'Back', goldIn: 120.000, goldOut: 0, retained: 0, amount: 742000, paymentStatus: 'Paid', paymentMethod: 'Cash', purity: '92.0%' }, 
-  { id: 'TXN-9820', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'Sunrise Ornaments', workType: 'Shouldering', transactionType: 'settled', settlementLocation: 'Front', goldIn: 22.300, goldOut: 20.100, retained: 2.200, amount: 85500, paymentStatus: 'Unpaid', paymentMethod: 'UPI' },
+  { id: 'TXN-9824', date: 'Today', isoDate: '2026-05-15', customerName: 'QWE Customer', transactionType: 'Tunch Only', pureGoldOut: 0, pureGoldDue: 0, impureGoldIn: 0, purity: '91.6%', cashReceived: 0, cashPaid: 0, status: 'No Settlement' },
+  { id: 'TXN-9825', date: 'Today', isoDate: '2026-05-15', customerName: 'ASD Customer', transactionType: 'Exchange', pureGoldOut: 50, pureGoldDue: 0, impureGoldIn: 60, purity: '83.33%', cashReceived: 0, cashPaid: 0, status: 'Completed' },
+  { id: 'TXN-9826', date: 'Today', isoDate: '2026-05-15', customerName: 'ZXC Customer', transactionType: 'Pending Settlement', pureGoldOut: 0, pureGoldDue: 30, impureGoldIn: 60, purity: '50.0%', cashReceived: 0, cashPaid: 0, status: 'Pending Pure' },
+  { id: 'TXN-9827', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'QSX Customer', transactionType: 'Pure Gold Sale', pureGoldOut: 20, pureGoldDue: 0, impureGoldIn: 0, purity: '', cashReceived: 140000, cashPaid: 0, status: 'Completed' },
 ];
 
-const openingPureStock = 2500.000;
+const openingPureStock = 100.000;
+const openingImpureStock = 0.000;
 
 const FilterChip = ({ label, icon, value, activeFilter, setActiveFilter }: { label: string, icon: string, value: string, activeFilter: string, setActiveFilter: (val: string) => void }) => {
   const isActive = activeFilter === value;
@@ -44,6 +41,10 @@ const FilterChip = ({ label, icon, value, activeFilter, setActiveFilter }: { lab
 
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
+  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  const isSuperAdmin = userId.startsWith('SUPER-');
+  const isAdmin = userId.startsWith('ADMIN-');
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,22 +58,22 @@ export const StaffLedgerScreen: React.FC = () => {
     const matchTo = !endDate || e.isoDate <= endDate;
     
     let matchFilter = true;
-    if (activeFilter === 'Settled') matchFilter = e.transactionType === 'settled';
-    if (activeFilter === 'Cash Out') matchFilter = e.transactionType === 'cash-out';
-    if (activeFilter === 'Test Only') matchFilter = e.transactionType === 'test-only';
+    if (activeFilter === 'Tunch Only') matchFilter = e.transactionType === 'Tunch Only';
+    if (activeFilter === 'Exchange') matchFilter = e.transactionType === 'Exchange';
+    if (activeFilter === 'Pending') matchFilter = e.status.includes('Pending');
 
     return matchText && matchFrom && matchTo && matchFilter;
   });
 
-  const totalImpure    = filtered.filter(e => e.transactionType !== 'test-only').reduce((s, e) => s + e.goldIn, 0);
-  const totalPureGiven = filtered.reduce((s, e) => s + e.goldOut, 0);
-  const closingPureStock = openingPureStock - totalPureGiven;
+  const totalPureGiven = mockEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+  const totalImpureReceived = mockEntries.reduce((s, e) => s + e.impureGoldIn, 0);
   
-  const totalRevenue   = filtered.filter(e => e.paymentStatus === 'Paid' && e.transactionType !== 'cash-out').reduce((s, e) => s + e.amount, 0);
-  const totalDues      = filtered.filter(e => e.paymentStatus === 'Unpaid').reduce((s, e) => s + e.amount, 0);
+  const currentPureStock = openingPureStock - totalPureGiven;
+  const currentImpureStock = openingImpureStock + totalImpureReceived;
+  
+  const pendingPureLiability = mockEntries.reduce((s, e) => s + e.pureGoldDue, 0);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
-  const fmtHidden = () => `₹ ••••`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
 
   return (
@@ -83,12 +84,11 @@ export const StaffLedgerScreen: React.FC = () => {
         {!selectedEntry && (
           <header className="flex justify-between items-end mb-4 animate-fade-in">
             <div>
-              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Audit Ledger</h1>
-              <p className="text-xs text-outline font-medium">Internal Inventory & Cash Settlement</p>
+              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Gold Ledger Panel</h1>
+              <p className="text-xs text-outline font-medium">Real-time Stock & Settlement Engine</p>
             </div>
             <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform">
               <span className="material-symbols-outlined text-xl">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
             </button>
           </header>
         )}
@@ -100,20 +100,22 @@ export const StaffLedgerScreen: React.FC = () => {
             </button>
 
             <div className="luxury-card overflow-hidden">
-              <div className={`p-6 text-white relative ${selectedEntry.transactionType === 'cash-out' ? 'bg-gradient-to-br from-emerald-700 to-emerald-900' : selectedEntry.transactionType === 'test-only' ? 'bg-gradient-to-br from-slate-600 to-slate-800' : 'bg-gradient-to-br from-[#003366] to-[#001e40]'}`}>
+              <div className={`p-6 text-white relative ${selectedEntry.status.includes('Pending') ? 'bg-gradient-to-br from-orange-600 to-orange-800' : 'bg-gradient-to-br from-[#003366] to-[#001e40]'}`}>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold mb-1">
-                      {selectedEntry.transactionType === 'cash-out' ? `Cash Settlement (${selectedEntry.settlementLocation})` : selectedEntry.transactionType === 'test-only' ? 'Audit Holding' : 'Gold Exchange'}
+                      {selectedEntry.transactionType}
                     </p>
-                    <h2 className="font-headline text-3xl font-extrabold text-white">
-                      {selectedEntry.transactionType === 'cash-out' ? fmtHidden() : fmt(selectedEntry.amount)}
+                    <h2 className="font-headline text-2xl font-extrabold text-white flex items-baseline gap-1">
+                      <span className="material-symbols-outlined text-lg">account_circle</span> {selectedEntry.customerName}
                     </h2>
-                    <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mt-1">{selectedEntry.id}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mt-1">{selectedEntry.id} • {selectedEntry.date}</p>
                   </div>
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                    <span className="material-symbols-outlined text-2xl">{selectedEntry.transactionType === 'cash-out' ? 'currency_rupee' : 'swap_horiz'}</span>
+                    <span className="material-symbols-outlined text-2xl">
+                      {selectedEntry.transactionType === 'Tunch Only' ? 'science' : selectedEntry.transactionType === 'Exchange' ? 'swap_horiz' : 'pending_actions'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -121,29 +123,43 @@ export const StaffLedgerScreen: React.FC = () => {
               <div className="p-6 space-y-6 bg-white">
                 <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-b border-outline-variant/20 pb-5">
                   <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Client</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.customerName}</p>
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Impure Gold In</p>
+                    <p className="font-headline text-sm font-bold text-primary">{fmtG(selectedEntry.impureGoldIn)}</p>
                   </div>
                   <div className="space-y-1 text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Audit Loc.</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.settlementLocation} Side</p>
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Gold Out</p>
+                    <p className="font-headline text-sm font-bold text-secondary">{fmtG(selectedEntry.pureGoldOut)}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Weight In</p>
-                    <p className="font-headline text-sm font-bold text-primary">{fmtG(selectedEntry.goldIn)}</p>
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Gold Due</p>
+                    <p className={`font-headline text-sm font-bold ${selectedEntry.pureGoldDue > 0 ? 'text-error' : 'text-primary'}`}>{fmtG(selectedEntry.pureGoldDue)}</p>
                   </div>
                   <div className="space-y-1 text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Weight Out</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.goldOut > 0 ? fmtG(selectedEntry.goldOut) : 'No Pure Taken'}</p>
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Purity Evaluated</p>
+                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.purity || 'N/A'}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Received</p>
+                    <p className="font-headline text-sm font-bold text-emerald-600">{fmt(selectedEntry.cashReceived)}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Status</p>
+                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.status}</p>
                   </div>
                 </div>
-                
-                {selectedEntry.transactionType === 'cash-out' && (
-                  <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center gap-3">
-                    <span className="material-symbols-outlined text-emerald-600">verified</span>
-                    <p className="text-[11px] text-emerald-800 font-bold uppercase tracking-wide">
-                      This transaction was settled via Cash from the Back Side. Financial details are restricted.
-                    </p>
+
+                {(isSuperAdmin || isAdmin) && selectedEntry.status.includes('Pending') && (
+                  <div className="pt-2 flex gap-3">
+                    <button className="flex-1 py-3 bg-[#003366] hover:bg-[#001e40] text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors shadow-md flex justify-center items-center gap-1.5">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Approve Settlement
+                    </button>
+                    {isSuperAdmin && (
+                      <button className="px-4 py-3 bg-error/10 hover:bg-error/20 text-error font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors flex justify-center items-center gap-1.5">
+                        <span className="material-symbols-outlined text-sm">cancel</span>
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -153,50 +169,58 @@ export const StaffLedgerScreen: React.FC = () => {
 
         {!selectedEntry && (
           <div className="space-y-6 animate-fade-in">
-            {/* Pure Gold Vault Summary */}
-            <div className="luxury-card overflow-hidden bg-white border-none shadow-xl glow-primary">
-              <div className="bg-[#003366] p-6 text-white relative">
-                <div className="absolute inset-0 sapphire-leak opacity-30"></div>
-                <div className="relative z-10 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/50">Pure Gold Audit</p>
-                    <span className="material-symbols-outlined text-[#F6C358] glow-icon">account_balance</span>
+            {/* Live Stock Engine Summary */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
+                <div className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Pure Stock</p>
+                    <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                   </div>
-                  <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Vault Start</p>
-                      <p className="font-headline text-2xl font-bold text-[#F6C358]">{fmtG(openingPureStock)}</p>
-                    </div>
-                    <div className="space-y-1 text-right">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">Vault End</p>
-                      <p className="font-headline text-2xl font-bold text-white">{fmtG(closingPureStock)}</p>
-                    </div>
+                  <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock)}</p>
+                    {isSuperAdmin && (
+                      <button className="text-[8px] uppercase font-bold text-secondary hover:text-primary transition-colors flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[10px]">edit</span>
+                        Adjust
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 divide-x divide-outline-variant/15 bg-white">
-                <div className="p-4 text-center">
-                  <p className="text-[14px] font-bold text-primary">{fmtG(totalImpure)}</p>
-                  <p className="text-[8px] uppercase font-bold text-outline tracking-widest mt-0.5">Total Impure</p>
-                </div>
-                <div className="p-4 text-center">
-                  <p className="text-[14px] font-bold text-secondary">{fmtG(totalPureGiven)}</p>
-                  <p className="text-[8px] uppercase font-bold text-outline tracking-widest mt-0.5">Pure Disbursed</p>
+              
+              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
+                <div className="p-5">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Impure Stock</p>
+                    <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">blur_on</span>
+                  </div>
+                  <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock)}</p>
+                    {isSuperAdmin && (
+                      <button className="text-[8px] uppercase font-bold text-[#755b00] hover:text-primary transition-colors flex items-center gap-0.5">
+                        <span className="material-symbols-outlined text-[10px]">edit</span>
+                        Adjust
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Financial Status Section (Restricted amounts handled here) */}
+            {/* Pending Liability Engine */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="luxury-card p-5 bg-white">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-widest mb-3">Revenue (Front)</p>
-                <p className="text-xl font-bold text-primary tracking-tight">{fmt(totalRevenue)}</p>
-                <p className="text-[8px] font-bold text-secondary uppercase tracking-widest mt-2">Exchanges Only</p>
+              <div className="luxury-card p-5 bg-orange-50 border border-orange-100 relative overflow-hidden">
+                <p className="text-[9px] font-bold text-orange-800 uppercase tracking-widest mb-2">Pending Pure Liability</p>
+                <p className="text-xl font-bold text-orange-600 tracking-tight">{fmtG(pendingPureLiability)}</p>
+                <span className="material-symbols-outlined absolute right-2 -bottom-2 text-5xl text-orange-200 opacity-50">warning</span>
               </div>
-              <div className="luxury-card p-5 bg-white">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-widest mb-3">Dues</p>
-                <p className={`text-xl font-bold tracking-tight ${totalDues > 0 ? 'text-error' : 'text-primary'}`}>{fmt(totalDues)}</p>
-                <p className={`text-[8px] font-bold uppercase tracking-widest mt-2 ${totalDues > 0 ? 'text-error' : 'text-outline'}`}>{totalDues > 0 ? 'Pending' : 'Clear'}</p>
+              <div className="luxury-card p-5 bg-white border border-outline-variant/20 relative overflow-hidden">
+                <p className="text-[9px] font-bold text-outline uppercase tracking-widest mb-2">Total Pure Disbursed</p>
+                <p className="text-xl font-bold text-primary tracking-tight">{fmtG(totalPureGiven)}</p>
+                <span className="material-symbols-outlined absolute right-2 -bottom-2 text-5xl text-outline-variant opacity-20">arrow_outward</span>
               </div>
             </div>
 
@@ -208,7 +232,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Audit customer, staff or transaction ID..."
+                  placeholder="Search customer or transaction ID..."
                   className="w-full bg-white border border-outline-variant/30 rounded-full py-4 pl-14 pr-12 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus shadow-sm transition-all"
                 />
               </div>
@@ -231,60 +255,55 @@ export const StaffLedgerScreen: React.FC = () => {
               </div>
 
               <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                <FilterChip label="Exchanged" icon="swap_horiz" value="Settled" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-                <FilterChip label="Cash Out" icon="currency_rupee" value="Cash Out" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
-                <FilterChip label="Test Only" icon="science" value="Test Only" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
+                <FilterChip label="Tunch Only" icon="science" value="Tunch Only" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
+                <FilterChip label="Exchange" icon="swap_horiz" value="Exchange" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
+                <FilterChip label="Pending" icon="pending_actions" value="Pending" activeFilter={activeFilter} setActiveFilter={setActiveFilter} />
               </div>
             </div>
 
             {/* Audit Log Entries */}
             <div className="space-y-3">
-              <p className="label-institutional text-outline uppercase px-1">Internal Audit Log</p>
+              <p className="label-institutional text-outline uppercase px-1">Ledger History</p>
               
               <div className="space-y-3">
                 {filtered.map(entry => {
-                  const isCashOut = entry.transactionType === 'cash-out';
-                  const isTest = entry.transactionType === 'test-only';
                   return (
                     <div 
                       key={entry.id} 
                       onClick={() => setSelectedEntry(entry)} 
                       className="luxury-card p-5 bg-white active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden"
                     >
-                      {isCashOut && <div className="absolute top-0 right-0 bg-emerald-50 text-emerald-600 text-[7px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl border-l border-b border-emerald-100">Cashed Out ({entry.settlementLocation})</div>}
-                      
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${isCashOut ? 'bg-emerald-50 text-emerald-600' : isTest ? 'bg-slate-100 text-slate-500' : 'bg-secondary/10 text-secondary'}`}>
-                            <span className="material-symbols-outlined text-xl">{isCashOut ? 'currency_rupee' : isTest ? 'science' : 'swap_horiz'}</span>
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${entry.status.includes('Pending') ? 'bg-orange-50 text-orange-500' : entry.transactionType === 'Tunch Only' ? 'bg-slate-100 text-slate-500' : 'bg-secondary/10 text-secondary'}`}>
+                            <span className="material-symbols-outlined text-xl">{entry.transactionType === 'Tunch Only' ? 'science' : entry.transactionType === 'Exchange' ? 'swap_horiz' : 'pending_actions'}</span>
                           </div>
                           <div>
                             <p className="font-bold text-sm text-primary">{entry.customerName}</p>
-                            <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{entry.id} • {entry.date}</p>
+                            <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{entry.transactionType} • {entry.id}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-bold text-primary">{isCashOut ? fmtHidden() : fmt(entry.amount)}</p>
-                          <p className={`text-[8px] font-black uppercase tracking-widest mt-1 ${isCashOut ? 'text-emerald-600' : isTest ? 'text-slate-400' : 'text-secondary'}`}>
-                            {isCashOut ? 'CLOSED' : isTest ? 'HOLDING' : 'SETTLED'}
+                          <p className={`text-[9px] font-black uppercase tracking-widest mt-1 ${entry.status === 'Completed' ? 'text-secondary' : entry.status === 'No Settlement' ? 'text-outline' : 'text-orange-500'}`}>
+                            {entry.status}
                           </p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10">
                         <div className="flex-1 flex flex-col items-center gap-0.5">
-                          <p className="text-[11px] font-black text-primary">{fmtG(entry.goldIn)}</p>
-                          <p className="text-[7px] uppercase font-black text-outline tracking-widest">Inflow</p>
+                          <p className="text-[11px] font-black text-primary">{fmtG(entry.impureGoldIn)}</p>
+                          <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure In</p>
                         </div>
                         <div className="w-px h-4 bg-outline-variant/20"></div>
                         <div className="flex-1 flex flex-col items-center gap-0.5">
-                          <p className="text-[11px] font-black text-secondary">{entry.goldOut > 0 ? fmtG(entry.goldOut) : 'None'}</p>
+                          <p className="text-[11px] font-black text-secondary">{fmtG(entry.pureGoldOut)}</p>
                           <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure Out</p>
                         </div>
                         <div className="w-px h-4 bg-outline-variant/20"></div>
                         <div className="flex-1 flex flex-col items-center gap-0.5">
-                          <p className={`text-[11px] font-black ${entry.purity ? 'text-[#755b00]' : 'text-slate-400'}`}>{entry.purity || 'N/A'}</p>
-                          <p className="text-[7px] uppercase font-black text-outline tracking-widest">Purity</p>
+                          <p className={`text-[11px] font-black ${entry.pureGoldDue > 0 ? 'text-error' : 'text-primary'}`}>{fmtG(entry.pureGoldDue)}</p>
+                          <p className="text-[7px] uppercase font-black text-outline tracking-widest">Due</p>
                         </div>
                       </div>
                     </div>
@@ -296,7 +315,6 @@ export const StaffLedgerScreen: React.FC = () => {
         )}
       </main>
 
-      {/* FAB - Global Plus Icon */}
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white/90 backdrop-blur-xl border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-10px_40px_rgba(0,30,64,0.05)]">
         <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer transition-all">
