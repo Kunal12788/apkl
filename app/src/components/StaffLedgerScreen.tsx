@@ -48,7 +48,6 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
 
@@ -56,8 +55,6 @@ export const StaffLedgerScreen: React.FC = () => {
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   const filtered = entries.filter(e => {
-    const q = searchQuery.toLowerCase();
-    const matchText = !q || e.customerName.toLowerCase().includes(q) || e.id.toLowerCase().includes(q);
     const matchFrom = !startDate || e.isoDate >= startDate;
     const matchTo = !endDate || e.isoDate <= endDate;
     
@@ -66,7 +63,7 @@ export const StaffLedgerScreen: React.FC = () => {
     if (activeFilter === 'Exchange') matchFilter = e.transactionType === 'Exchange';
     if (activeFilter === 'Pending') matchFilter = e.status.includes('Pending');
 
-    return matchText && matchFrom && matchTo && matchFilter;
+    return matchFrom && matchTo && matchFilter;
   });
 
   const totalPureGiven = entries.reduce((s, e) => s + e.pureGoldOut, 0);
@@ -242,7 +239,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       <span className="material-symbols-outlined text-xl">local_fire_department</span>
                     </div>
                     <div>
-                      <p className="font-headline text-sm font-bold text-primary">Given to Refining</p>
+                      <p className="font-headline text-sm font-bold text-primary">Dispatch to Refinery</p>
                       <p className="text-[9px] text-outline uppercase tracking-widest font-bold mt-0.5">Transfer Impure Stock</p>
                     </div>
                   </div>
@@ -273,17 +270,6 @@ export const StaffLedgerScreen: React.FC = () => {
 
             {/* Audit Filters */}
             <div className="space-y-4">
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-5 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search customer or transaction ID..."
-                  className="w-full bg-white border border-outline-variant/30 rounded-full py-4 pl-14 pr-12 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus shadow-sm transition-all"
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative group">
                   <span className="text-[8px] absolute -top-2 left-4 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10">Period Start</span>
