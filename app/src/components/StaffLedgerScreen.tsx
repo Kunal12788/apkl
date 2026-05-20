@@ -235,22 +235,24 @@ export const StaffLedgerScreen: React.FC = () => {
             </div>
 
             {currentImpureStock > 0 && (
-              <div 
-                onClick={() => setShowRefiningConfirm(true)}
-                className="luxury-card p-4 bg-gradient-to-r from-[#755b00] to-[#5a4600] text-white cursor-pointer active:scale-[0.98] transition-all flex items-center justify-between premium-shadow"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                    <span className="material-symbols-outlined text-xl">local_fire_department</span>
+              <div className="luxury-card overflow-hidden bg-white border border-outline-variant/20 p-5 shadow-sm animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#755b00]/10 text-[#755b00] flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xl">local_fire_department</span>
+                    </div>
+                    <div>
+                      <p className="font-headline text-sm font-bold text-primary">Given to Refining</p>
+                      <p className="text-[9px] text-outline uppercase tracking-widest font-bold mt-0.5">Transfer Impure Stock</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-headline text-sm font-bold">Given to Refining</p>
-                    <p className="text-[9px] uppercase tracking-widest text-white/70 font-medium mt-0.5">Push Stock to Head Office</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/10">
-                  <span className="text-[11px] font-bold tracking-wider">{fmtG(currentImpureStock)}</span>
-                  <span className="material-symbols-outlined text-sm text-white/70">arrow_forward</span>
+                  <button 
+                    onClick={() => setShowRefiningConfirm(true)}
+                    className="flex items-center gap-2 bg-[#755b00] hover:bg-[#5a4600] text-white px-4 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors shadow-md active:scale-95"
+                  >
+                    <span>Dispatch</span>
+                    <span className="font-black border-l border-white/20 pl-2">{fmtG(currentImpureStock)}</span>
+                  </button>
                 </div>
               </div>
             )}
