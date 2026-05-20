@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 interface CollectionEntryModalProps {
   isOpen: boolean;
@@ -56,40 +57,36 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     if (step === 1 && validate()) setStep(2);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
       const newEntry = { 
-        ...formData, 
-        timestamp: new Date().toISOString(), 
         id: `COL-${Math.floor(Math.random() * 9000) + 1000}`,
-        status: 'Pending',
-        progressPercentage: 0,
-        source: 'Collection Staff',
-        createdBy: localStorage.getItem('user_id') || 'COLL-001',
-        dateGiven: 'Just Now',
-        isoDate: new Date().toISOString().split('T')[0],
-        estimatedCompletion: 'Awaiting Audit',
+        customer_name: formData.customerName,
+        customer_phone: formData.phone,
+        customer_address: formData.address,
+        logo_name: formData.logoName,
+        work_type: formData.category === 'TUNCH' ? 'Tunch' : formData.category === 'MARKING' ? 'Marking' : 'Shouldering',
+        pieces: formData.pieces,
+        impure_weight: formData.weight,
         notes: formData.specifications || 'Collection intake from field.',
-        broughtBy: 'Collection Staff',
-        assignedTo: 'Pending',
-        customerPhone: formData.phone,
-        customerAddress: formData.address,
-        productType: formData.category === 'TUNCH' ? 'Jewellery' : formData.category === 'MARKING' ? 'Coin Bar' : 'Sample',
-        impureWeight: formData.weight,
-        settlementCondition: formData.paymentMode
+        settlement_condition: formData.paymentMode,
+        point_suggestion: formData.pointSuggestion,
+        status: 'Pending',
+        progress_percentage: 0,
+        source: 'Collection Staff',
+        created_by: localStorage.getItem('user_id') || 'COLL-001',
+        date_given: 'Just Now',
+        iso_date: new Date().toISOString().split('T')[0],
+        estimated_completion: 'Awaiting Audit',
+        brought_by: 'Collection Staff',
+        assigned_to: 'Pending',
+        product_type: formData.category === 'TUNCH' ? 'Jewellery' : formData.category === 'MARKING' ? 'Coin Bar' : 'Sample',
       };
       
-      // Load active tasks from shared store
-      const existingRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-      let existing: any[] = [];
-      if (existingRaw) {
-        try {
-          existing = JSON.parse(existingRaw);
-        } catch (e) {}
+      try {
+        await supabase.from('tasks').insert([newEntry]);
+      } catch(e) {
+        console.error('Failed to insert task', e);
       }
-      
-      const updated = [newEntry, ...existing];
-     localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
-     localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
 
      onSuccess(newEntry);
      setFormData({ customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });

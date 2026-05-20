@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 import { AddTaskModal } from './AddTaskModal';
 
 export const GlobalFAB: React.FC = () => {
@@ -28,10 +29,58 @@ export const GlobalFAB: React.FC = () => {
       <AddTaskModal 
         isOpen={isOpen} 
         onClose={() => setIsOpen(false)} 
-        onSuccess={(data) => {
+        onSuccess={async (data) => {
           console.log('Global Task Created:', data);
-          // In a real app, this would dispatch to a global state or API
-          // For now, it logs the data. The design improvement is the key.
+          try {
+            const newTask = {
+              id: data.id,
+              customer_name: data.customerName,
+              customer_address: data.address,
+              customer_phone: data.phone,
+              impure_weight: data.impureWeight,
+              purity: data.purity,
+              pure_weight: data.pureWeight,
+              settlement_condition: data.settlementCondition,
+              product_type: data.productType,
+              logo_name: data.logoName,
+              carat: data.carat,
+              pieces: data.pieces,
+              brought_by: data.broughtBy,
+              point_suggestion: data.pointSuggestion,
+              work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
+              date_given: data.date,
+              status: data.status,
+              progress_percentage: data.progressPercentage,
+              assigned_to: data.assignedTo,
+              created_by: localStorage.getItem('user_id') || 'STAFF-001',
+              iso_date: new Date().toISOString().split('T')[0],
+              estimated_completion: 'Today, 06:00 PM',
+              notes: 'Created from Global FAB'
+            };
+            await supabase.from('tasks').insert([newTask]);
+            
+            // If there's a fee, we can also insert a transaction
+            if (data.fee) {
+              const newTxn = {
+                id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                customer_name: data.customerName,
+                customer_address: data.address,
+                customer_phone: data.phone,
+                type: 'Cash',
+                work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
+                amount: data.fee,
+                date: 'Today',
+                iso_date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: data.feeStatus || 'Paid',
+                details: 'Service Fee',
+                created_by: localStorage.getItem('user_id') || 'STAFF-001'
+              };
+              await supabase.from('transactions').insert([newTxn]);
+            }
+          } catch(e) {
+            console.error('Failed to create global task', e);
+          }
         }}
       />
     </>

@@ -18,12 +18,6 @@ interface LedgerEntry {
   status: 'Completed' | 'Pending Pure' | 'Pending Cash' | 'No Settlement';
 }
 
-const initialEntries: LedgerEntry[] = [
-  { id: 'TXN-9824', date: 'Today', isoDate: '2026-05-15', customerName: 'QWE Customer', transactionType: 'Tunch Only', pureGoldOut: 0, pureGoldDue: 0, impureGoldIn: 0, purity: '91.6%', cashReceived: 0, cashPaid: 0, status: 'No Settlement' },
-  { id: 'TXN-9825', date: 'Today', isoDate: '2026-05-15', customerName: 'ASD Customer', transactionType: 'Exchange', pureGoldOut: 50, pureGoldDue: 0, impureGoldIn: 60, purity: '83.33%', cashReceived: 0, cashPaid: 0, status: 'Completed' },
-  { id: 'TXN-9826', date: 'Today', isoDate: '2026-05-15', customerName: 'ZXC Customer', transactionType: 'Pending Settlement', pureGoldOut: 0, pureGoldDue: 30, impureGoldIn: 60, purity: '50.0%', cashReceived: 0, cashPaid: 0, status: 'Pending Pure' },
-  { id: 'TXN-9827', date: 'Yesterday', isoDate: '2026-05-14', customerName: 'QSX Customer', transactionType: 'Pure Gold Sale', pureGoldOut: 20, pureGoldDue: 0, impureGoldIn: 0, purity: '', cashReceived: 140000, cashPaid: 0, status: 'Completed' },
-];
 
 const openingPureStock = 100.000;
 const openingImpureStock = 0.000;
@@ -82,23 +76,10 @@ export const StaffLedgerScreen: React.FC = () => {
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        // Seed initial entries if DB is clean
-        const initialDb = initialEntries.map(e => mapEntryToDb(e, userId));
-        const { error: seedError } = await supabase
-          .from('ledger_entries')
-          .insert(initialDb);
-        if (seedError) throw seedError;
-        
-        // Fetch again
-        const { data: refetched, error: refetchError } = await supabase
-          .from('ledger_entries')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (refetchError) throw refetchError;
-        setEntries((refetched || []).map(mapDbToEntry));
-      } else {
+      if (data && data.length > 0) {
         setEntries(data.map(mapDbToEntry));
+      } else {
+        setEntries([]);
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);

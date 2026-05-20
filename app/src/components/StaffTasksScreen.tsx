@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TaskReconciliationModal } from './TaskReconciliationModal';
+import { supabase } from '../supabaseClient';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed';
 
@@ -331,67 +332,32 @@ export const StaffTasksScreen: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    const loadTasks = () => {
-      const defaultTasks: Task[] = [
-        { id: 'TSK-1042', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Tunch', assignedTo: 'Marcus', status: 'In Progress', progressPercentage: 65, impureWeight: '12.45g', pureWeight: '11.20g', dateGiven: 'Today, 09:00 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 02:00 PM', broughtBy: 'Staff (Elena)', notes: 'Tunch testing for 5 gold biscuits. Customer requires digital report and physical hallmark.' },
-        { id: 'TSK-1043', customerName: 'Mehta Gold Traders', customerId: 'CUST-002', workType: 'Marking', assignedTo: 'Elena', status: 'Pending', progressPercentage: 10, impureWeight: '45.00g', pureWeight: '45.00g', dateGiven: 'Today, 10:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Tomorrow, 11:00 AM', broughtBy: 'Customer directly', notes: 'Standard hallmarking for 12 necklaces.' },
-        { id: 'TSK-1039', customerName: 'Sunrise Ornaments', customerId: 'CUST-003', workType: 'Shouldering', assignedTo: 'Julian', status: 'Completed', progressPercentage: 100, impureWeight: '22.30g', pureWeight: '20.10g', dateGiven: 'Yesterday, 02:00 PM', isoDate: '2026-05-14', estimatedCompletion: 'Today, 10:00 AM', broughtBy: 'Staff (Marcus)', notes: 'Chain link repairing. Precision shoulder required on 4 areas.' },
-        { id: 'TSK-1038', customerName: 'Kalyan Traders', customerId: 'CUST-004', workType: 'Tunch', assignedTo: 'Marcus', status: 'Completed', progressPercentage: 100, impureWeight: '500.00g', pureWeight: '462.50g', dateGiven: 'Oct 12, 09:00 AM', isoDate: '2025-10-12', estimatedCompletion: 'Oct 12, 05:00 PM', broughtBy: 'Customer directly', notes: 'Bulk testing of incoming scrap gold.' },
-        { id: 'TSK-1044', customerName: 'Rajesh Jewelers', customerId: 'CUST-001', workType: 'Shouldering', assignedTo: 'Julian', status: 'In Progress', progressPercentage: 40, dateGiven: 'Today, 11:30 AM', isoDate: '2026-05-15', estimatedCompletion: 'Today, 06:00 PM', broughtBy: 'Staff (Elena)', notes: 'Soldering 14 joints on custom bracelet.' }
-      ];
-
-      const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-      let sharedTasks: Task[] = [];
-      if (sharedRaw) {
-        try {
-          const parsed = JSON.parse(sharedRaw);
-          sharedTasks = parsed.map((t: any) => ({
-            id: t.id,
-            customerName: t.customerName,
-            customerId: t.logoName || 'CUST-COL',
-            workType: (t.category ? t.category.charAt(0) + t.category.slice(1).toLowerCase() : 'Tunch') as any,
-            assignedTo: t.assignedTo || 'Pending',
-            status: t.status || 'Pending',
-            progressPercentage: t.progressPercentage || 0,
-            dateGiven: t.dateGiven || 'Just Now',
-            isoDate: t.isoDate || new Date().toISOString().split('T')[0],
-            estimatedCompletion: t.estimatedCompletion || 'Awaiting Audit',
-            notes: t.notes || '',
-            pieces: t.pieces || '1',
-            productType: t.productType || 'Jewellery',
-            impureWeight: t.impureWeight || '',
-            settlementCondition: t.settlementCondition || '',
-            createdBy: t.createdBy,
-            pointSuggestion: t.pointSuggestion,
-            logoName: t.logoName,
-            carat: t.carat,
-            customerPhone: t.customerPhone,
-            customerAddress: t.customerAddress,
-            broughtBy: t.broughtBy || 'Collection Staff'
-          }));
-        } catch (e) {}
-      }
-
-      // Merge: priority to shared tasks over default tasks if IDs overlap
-      const merged = [...sharedTasks];
-      defaultTasks.forEach(dt => {
-        if (!merged.some(mt => mt.id === dt.id)) {
-          merged.push(dt);
+    const loadTasks = async () => {
+      try {
+        const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          let filtered = data;
+          if (isAdminOrSuper) {
+            filtered = data.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification');
+          }
+          setTasks(filtered.map((t: any) => ({
+            id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+            impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
+            broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+            settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+          })));
+        } else {
+          setTasks([]);
         }
-      });
-
-      let filteredMerged = merged;
-      if (isAdminOrSuper) {
-        filteredMerged = merged.filter(t => !t.createdBy?.startsWith('COLL-') && t.status !== 'Pending Verification');
+      } catch (err) {
+        console.error('Error fetching tasks:', err);
       }
-
-      setTasks(filteredMerged);
     };
 
     loadTasks();
-    const interval = setInterval(loadTasks, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  }, [isAdminOrSuper]);
 
   const selectedTask = tasks.find(t => t.id === taskId) || null;
 
@@ -429,164 +395,108 @@ export const StaffTasksScreen: React.FC = () => {
      return t.status === activeTab && matchesSearch(t);
   });
 
-  const handleDeleteTask = (id: string) => {
+  const handleDeleteTask = async (id: string) => {
     if(window.confirm('Are you sure you want to permanently delete this task?')) {
-      // Delete from local tasks
-      setTasks(tasks.filter(t => t.id !== id));
-      
-      // Delete from shared tasks
-      const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-      if (sharedRaw) {
-        try {
-          const parsed = JSON.parse(sharedRaw);
-          const filtered = parsed.filter((t: any) => t.id !== id);
-          localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(filtered));
-          localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(filtered));
-        } catch (e) {}
+      try {
+        await supabase.from('tasks').delete().eq('id', id);
+        setTasks(tasks.filter(t => t.id !== id));
+        showToast('Task successfully deleted');
+        handleCloseModal();
+      } catch(e) {
+        console.error(e);
+        showToast('Error deleting task');
       }
-
-      showToast('Task successfully deleted');
-      handleCloseModal();
     }
   };
 
-  const handleVerifySuccess = (verifiedTask: any) => {
-     setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
-     setVerificationOpen(false);
+  const handleVerifySuccess = async (verifiedTask: any) => {
+     try {
+       await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', verifiedTask.id);
+       setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+       setVerificationOpen(false);
 
-     // Update status in shared tasks database
-     const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-     if (sharedRaw) {
-       try {
-         const parsed = JSON.parse(sharedRaw);
-         const updated = parsed.map((t: any) => {
-           if (t.id === verifiedTask.id) {
-             return { ...t, status: 'Completed', progressPercentage: 100 };
-           }
-           return t;
-         });
-         localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
-         localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
-       } catch (e) {}
+       const newTxn = {
+         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+         customer_id: verifiedTask.customerId || 'CUST-COL',
+         customer_name: verifiedTask.customerName,
+         customer_phone: verifiedTask.customerPhone || '',
+         customer_address: verifiedTask.customerAddress || '',
+         type: verifiedTask.settlementCondition || 'Cash',
+         work_type: verifiedTask.workType || 'Tunch',
+         amount: verifiedTask.workType === 'Tunch' ? '45000' : verifiedTask.workType === 'Marking' ? '12000' : '85500',
+         date: 'Today',
+         iso_date: new Date().toISOString().split('T')[0],
+         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+         status: 'Unpaid',
+         details: verifiedTask.notes || 'Collection intake verified and completed.',
+         pieces: verifiedTask.pieces || '1',
+         product_type: verifiedTask.productType,
+         impure_weight: verifiedTask.impureWeight,
+         settlement_condition: verifiedTask.settlementCondition,
+         logo_name: verifiedTask.logoName,
+         carat: verifiedTask.carat,
+         point_suggestion: verifiedTask.pointSuggestion,
+         created_by: verifiedTask.createdBy || 'COLL-001'
+       };
+
+       await supabase.from('transactions').insert([newTxn]);
+
+       showToast('Audit matched! Task verified, completed and billed.');
+       handleCloseModal();
+     } catch(e) {
+       console.error(e);
+       showToast('Error verifying task');
      }
-
-     const rawTxns = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
-     let txns: any[] = [];
-     if (rawTxns) {
-       try {
-         txns = JSON.parse(rawTxns);
-       } catch (e) {}
-     }
-
-     const newTxn = {
-       id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-       customerId: verifiedTask.customerId || 'CUST-COL',
-       customerName: verifiedTask.customerName,
-       customerPhone: verifiedTask.customerPhone || '',
-       customerAddress: verifiedTask.customerAddress || '',
-       type: verifiedTask.settlementCondition || 'Cash',
-       workType: verifiedTask.workType || 'Tunch',
-       amount: verifiedTask.workType === 'Tunch' ? '45,000' : verifiedTask.workType === 'Marking' ? '12,000' : '85,500',
-       date: 'Today',
-       isoDate: new Date().toISOString().split('T')[0],
-       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-       status: 'Unpaid',
-       details: verifiedTask.notes || 'Collection intake verified and completed.',
-       pieces: verifiedTask.pieces || '1',
-       productType: verifiedTask.productType,
-       impureWeight: verifiedTask.impureWeight,
-       settlementCondition: verifiedTask.settlementCondition,
-       logoName: verifiedTask.logoName,
-       carat: verifiedTask.carat,
-       pointSuggestion: verifiedTask.pointSuggestion,
-       createdBy: verifiedTask.createdBy || 'COLL-001'
-     };
-
-     localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
-
-     showToast('Audit matched! Task verified, completed and billed.');
-     handleCloseModal();
   };
 
-  const handleUpdateStatus = (task: Task) => {
-     if (task.status === 'Pending' || task.status === 'Pending Verification') {
-        if (isAdminOrSuper) {
-          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
-          
-          const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-          if (sharedRaw) {
-            try {
-              const parsed = JSON.parse(sharedRaw);
-              const updated = parsed.map((t: any) => {
-                if (t.id === task.id) {
-                  return { ...t, status: 'In Progress', progressPercentage: 40 };
-                }
-                return t;
-              });
-              localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
-              localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
-            } catch (e) {}
+  const handleUpdateStatus = async (task: Task) => {
+     try {
+       if (task.status === 'Pending' || task.status === 'Pending Verification') {
+          if (isAdminOrSuper) {
+            await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', task.id);
+            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
+            showToast('Task started successfully.');
+            handleCloseModal();
+          } else {
+            setCurrentVerificationTask(task);
+            setVerificationOpen(true);
           }
-          showToast('Task started successfully.');
+       } else if (task.status === 'In Progress') {
+          await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', task.id);
+          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+
+          const newTxn = {
+            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+            customer_id: task.customerId || 'CUST-COL',
+            customer_name: task.customerName,
+            customer_phone: task.customerPhone || '',
+            customer_address: task.customerAddress || '',
+            type: task.settlementCondition || 'Cash',
+            work_type: task.workType || 'Tunch',
+            amount: task.workType === 'Tunch' ? '45000' : task.workType === 'Marking' ? '12000' : '85500',
+            date: 'Today',
+            iso_date: new Date().toISOString().split('T')[0],
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Unpaid',
+            details: task.notes || 'Collection intake verified and completed.',
+            pieces: task.pieces || '1',
+            product_type: task.productType,
+            impure_weight: task.impureWeight,
+            settlement_condition: task.settlementCondition,
+            logo_name: task.logoName,
+            carat: task.carat,
+            point_suggestion: task.pointSuggestion,
+            created_by: task.createdBy || 'COLL-001'
+          };
+
+          await supabase.from('transactions').insert([newTxn]);
+
+          showToast('Task marked as Completed! Billing ledger updated.');
           handleCloseModal();
-        } else {
-          setCurrentVerificationTask(task);
-          setVerificationOpen(true);
-        }
-     } else if (task.status === 'In Progress') {
-        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
-        
-        const sharedRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-        if (sharedRaw) {
-          try {
-            const parsed = JSON.parse(sharedRaw);
-            const updated = parsed.map((t: any) => {
-              if (t.id === task.id) {
-                return { ...t, status: 'Completed', progressPercentage: 100 };
-              }
-              return t;
-            });
-            localStorage.setItem('AURORA_SHARED_TASKS', JSON.stringify(updated));
-            localStorage.setItem('AURORA_COLLECTIONS', JSON.stringify(updated));
-          } catch (e) {}
-        }
-
-        const rawTxns = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
-        let txns: any[] = [];
-        if (rawTxns) {
-          try {
-            txns = JSON.parse(rawTxns);
-          } catch (e) {}
-        }
-
-        const newTxn = {
-          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-          customerId: task.customerId || 'CUST-COL',
-          customerName: task.customerName,
-          customerPhone: task.customerPhone || '',
-          customerAddress: task.customerAddress || '',
-          type: task.settlementCondition || 'Cash',
-          workType: task.workType || 'Tunch',
-          amount: task.workType === 'Tunch' ? '45,000' : task.workType === 'Marking' ? '12,000' : '85,500',
-          date: 'Today',
-          isoDate: new Date().toISOString().split('T')[0],
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'Unpaid',
-          details: task.notes || 'Collection intake verified and completed.',
-          pieces: task.pieces || '1',
-          productType: task.productType,
-          impureWeight: task.impureWeight,
-          settlementCondition: task.settlementCondition,
-          logoName: task.logoName,
-          carat: task.carat,
-          pointSuggestion: task.pointSuggestion,
-          createdBy: task.createdBy || 'COLL-001'
-        };
-
-        localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify([newTxn, ...txns]));
-
-        showToast('Task marked as Completed! Billing ledger updated.');
-        handleCloseModal();
+       }
+     } catch(e) {
+       console.error(e);
+       showToast('Error updating task');
      }
   };
 

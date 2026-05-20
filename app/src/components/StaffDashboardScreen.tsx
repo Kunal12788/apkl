@@ -1,16 +1,114 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
+  const [loading, setLoading] = useState(true);
+  
+  // States for Metrics
+  const [pureGoldWeight, setPureGoldWeight] = useState(0);
+  const [impureGoldWeight, setImpureGoldWeight] = useState(0);
+  const [totalCollected, setTotalCollected] = useState(0);
+  const [cashCollection, setCashCollection] = useState(0);
+  const [upiCollection, setUpiCollection] = useState(0);
+  
+  const [revenue, setRevenue] = useState({ tunch: 0, marking: 0, shouldering: 0 });
+  const [tasksStats, setTasksStats] = useState({
+    tunch: { processed: 0, pending: 0 },
+    marking: { processed: 0, pending: 0 },
+    shouldering: { processed: 0, pending: 0 },
+  });
+  
+  const [taskSource, setTaskSource] = useState({
+    customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0
+  });
+
   const getGreetingName = () => {
     if (userId.startsWith('ADMIN-')) return 'Chief Admin';
     if (userId.startsWith('SUPER-')) return 'Director';
     return 'Alexander';
   };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch Ledger for Gold Weights
+        const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
+        if (ledgerData) {
+          const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
+          const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
+          const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
+          setPureGoldWeight(100 - totalPureGiven); // Assuming 100 opening
+          setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
+        }
+
+        // Fetch Transactions for Billing/Revenue
+        const { data: txData } = await supabase.from('transactions').select('*');
+        if (txData) {
+          let total = 0, cash = 0, upi = 0;
+          let revTunch = 0, revMarking = 0, revShouldering = 0;
+          
+          txData.forEach(tx => {
+            if (tx.status === 'Paid') {
+              const amt = Number(tx.amount) || 0;
+              total += amt;
+              if (tx.type === 'Cash') cash += amt;
+              if (tx.type === 'UPI') upi += amt;
+              
+              if (tx.work_type === 'Tunch') revTunch += amt;
+              if (tx.work_type === 'Marking') revMarking += amt;
+              if (tx.work_type === 'Shouldering') revShouldering += amt;
+            }
+          });
+          
+          setTotalCollected(total);
+          setCashCollection(cash);
+          setUpiCollection(upi);
+          setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
+        }
+
+        // Fetch Tasks for stats
+        const { data: tasksData } = await supabase.from('tasks').select('*');
+        if (tasksData) {
+          let tunch = { processed: 0, pending: 0 };
+          let marking = { processed: 0, pending: 0 };
+          let shouldering = { processed: 0, pending: 0 };
+          let source = { customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0 };
+          
+          tasksData.forEach(task => {
+            const isDone = task.status === 'Completed';
+            if (task.work_type === 'Tunch') { isDone ? tunch.processed++ : tunch.pending++; }
+            if (task.work_type === 'Marking') { isDone ? marking.processed++ : marking.pending++; }
+            if (task.work_type === 'Shouldering') { isDone ? shouldering.processed++ : shouldering.pending++; }
+            
+            if (task.source === 'Customer') source.customers++;
+            else if (task.source === 'Admin') source.admin++;
+            else if (task.source === 'Staff') source.staff++;
+            else if (task.source === 'Super Admin') source.superAdmin++;
+            else if (task.source === 'Collection Staff') source.collectionStaff++;
+          });
+          
+          setTasksStats({ tunch, marking, shouldering });
+          setTaskSource(source);
+        }
+
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [userId]);
+
+  if (loading) {
+    return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
@@ -45,7 +143,7 @@ export const StaffDashboardScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-secondary glow-icon text-lg">payments</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-headline text-3xl font-extrabold text-primary">12.45</span>
+                <span className="font-headline text-3xl font-extrabold text-primary">{pureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-secondary">gram</span>
               </div>
             </div>
@@ -56,7 +154,7 @@ export const StaffDashboardScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-tertiary-container glow-icon text-lg">rebase</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-headline text-3xl font-extrabold text-primary">8.32</span>
+                <span className="font-headline text-3xl font-extrabold text-primary">{impureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-tertiary-container">gram</span>
               </div>
             </div>
@@ -72,7 +170,7 @@ export const StaffDashboardScreen: React.FC = () => {
               <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Amount Collected</h3>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline text-5xl font-extrabold text-white tracking-tight">8,42,500</span>
+                <span className="font-headline text-5xl font-extrabold text-white tracking-tight">{totalCollected.toLocaleString('en-IN')}</span>
               </div>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
@@ -92,7 +190,7 @@ export const StaffDashboardScreen: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-bold text-[#F6C358]">₹</span>
-              <span className="font-headline text-xl font-bold text-primary">3,12,000</span>
+              <span className="font-headline text-xl font-bold text-primary">{cashCollection.toLocaleString('en-IN')}</span>
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
@@ -103,7 +201,7 @@ export const StaffDashboardScreen: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-bold text-secondary">₹</span>
-              <span className="font-headline text-xl font-bold text-primary">5,30,500</span>
+              <span className="font-headline text-xl font-bold text-primary">{upiCollection.toLocaleString('en-IN')}</span>
             </div>
           </div>
         </section>
@@ -121,7 +219,7 @@ export const StaffDashboardScreen: React.FC = () => {
               </div>
               <div className="text-right z-10">
                 <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹1,24,000</p>
+                <p className="font-headline text-lg font-bold text-primary">₹{revenue.tunch.toLocaleString('en-IN')}</p>
               </div>
               <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">science</span>
             </div>
@@ -135,7 +233,7 @@ export const StaffDashboardScreen: React.FC = () => {
               </div>
               <div className="text-right z-10">
                 <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹4,82,500</p>
+                <p className="font-headline text-lg font-bold text-primary">₹{revenue.marking.toLocaleString('en-IN')}</p>
               </div>
               <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">new_releases</span>
             </div>
@@ -149,7 +247,7 @@ export const StaffDashboardScreen: React.FC = () => {
               </div>
               <div className="text-right z-10">
                 <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹2,36,000</p>
+                <p className="font-headline text-lg font-bold text-primary">₹{revenue.shouldering.toLocaleString('en-IN')}</p>
               </div>
               <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">precision_manufacturing</span>
             </div>
@@ -166,10 +264,10 @@ export const StaffDashboardScreen: React.FC = () => {
                   <span className="material-symbols-outlined text-xs text-secondary">groups</span>
                   <span className="text-primary">Customers</span>
                 </div>
-                <span className="text-primary">124 Tasks</span>
+                <span className="text-primary">{taskSource.customers} Tasks</span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-secondary w-[45%] rounded-full shadow-[0_0_8px_rgba(0,89,187,0.3)]"></div>
+                <div className="h-full bg-secondary rounded-full shadow-[0_0_8px_rgba(0,89,187,0.3)]" style={{ width: `${Math.min(100, taskSource.customers * 5)}%` }}></div>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -178,10 +276,10 @@ export const StaffDashboardScreen: React.FC = () => {
                   <span className="material-symbols-outlined text-xs text-primary">admin_panel_settings</span>
                   <span className="text-primary">Admin</span>
                 </div>
-                <span className="text-primary">82 Tasks</span>
+                <span className="text-primary">{taskSource.admin} Tasks</span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-primary w-[30%] rounded-full shadow-[0_0_8px_rgba(0,30,64,0.3)]"></div>
+                <div className="h-full bg-primary rounded-full shadow-[0_0_8px_rgba(0,30,64,0.3)]" style={{ width: `${Math.min(100, taskSource.admin * 5)}%` }}></div>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -190,10 +288,10 @@ export const StaffDashboardScreen: React.FC = () => {
                   <span className="material-symbols-outlined text-xs text-tertiary-container">badge</span>
                   <span className="text-primary">Staff</span>
                 </div>
-                <span className="text-primary">45 Tasks</span>
+                <span className="text-primary">{taskSource.staff} Tasks</span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-tertiary-container w-[18%] rounded-full"></div>
+                <div className="h-full bg-tertiary-container rounded-full" style={{ width: `${Math.min(100, taskSource.staff * 5)}%` }}></div>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -202,10 +300,10 @@ export const StaffDashboardScreen: React.FC = () => {
                   <span className="material-symbols-outlined text-xs text-outline">policy</span>
                   <span className="text-primary">Super Admin</span>
                 </div>
-                <span className="text-primary">12 Tasks</span>
+                <span className="text-primary">{taskSource.superAdmin} Tasks</span>
               </div>
               <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-outline w-[5%] rounded-full"></div>
+                <div className="h-full bg-outline rounded-full" style={{ width: `${Math.min(100, taskSource.superAdmin * 5)}%` }}></div>
               </div>
             </div>
             {!isAdminOrSuper && (
@@ -215,10 +313,10 @@ export const StaffDashboardScreen: React.FC = () => {
                     <span className="material-symbols-outlined text-xs text-secondary-container">local_shipping</span>
                     <span className="text-primary">Collection Staff</span>
                   </div>
-                  <span className="text-primary">56 Tasks</span>
+                  <span className="text-primary">{taskSource.collectionStaff} Tasks</span>
                 </div>
                 <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary-container w-[22%] rounded-full"></div>
+                  <div className="h-full bg-secondary-container rounded-full" style={{ width: `${Math.min(100, taskSource.collectionStaff * 5)}%` }}></div>
                 </div>
               </div>
             )}
@@ -242,11 +340,11 @@ export const StaffDashboardScreen: React.FC = () => {
               <div className="flex gap-6 text-right">
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Processed</p>
-                  <p className="font-headline text-base font-bold text-primary">64</p>
+                  <p className="font-headline text-base font-bold text-primary">{String(tasksStats.tunch.processed).padStart(2, '0')}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Pending</p>
-                  <p className="font-headline text-base font-bold text-secondary">08</p>
+                  <p className="font-headline text-base font-bold text-secondary">{String(tasksStats.tunch.pending).padStart(2, '0')}</p>
                 </div>
               </div>
             </div>
@@ -263,11 +361,11 @@ export const StaffDashboardScreen: React.FC = () => {
               <div className="flex gap-6 text-right">
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Processed</p>
-                  <p className="font-headline text-base font-bold text-primary">158</p>
+                  <p className="font-headline text-base font-bold text-primary">{String(tasksStats.marking.processed).padStart(2, '0')}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Pending</p>
-                  <p className="font-headline text-base font-bold text-secondary">14</p>
+                  <p className="font-headline text-base font-bold text-secondary">{String(tasksStats.marking.pending).padStart(2, '0')}</p>
                 </div>
               </div>
             </div>
@@ -284,11 +382,11 @@ export const StaffDashboardScreen: React.FC = () => {
               <div className="flex gap-6 text-right">
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Processed</p>
-                  <p className="font-headline text-base font-bold text-primary">42</p>
+                  <p className="font-headline text-base font-bold text-primary">{String(tasksStats.shouldering.processed).padStart(2, '0')}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Pending</p>
-                  <p className="font-headline text-base font-bold text-secondary">12</p>
+                  <p className="font-headline text-base font-bold text-secondary">{String(tasksStats.shouldering.pending).padStart(2, '0')}</p>
                 </div>
               </div>
             </div>

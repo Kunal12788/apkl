@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 type TabView = 'all' | 'customer';
 
@@ -211,109 +212,30 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
-  React.useEffect(() => {
-    const loadTransactions = () => {
-      const raw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
-      let txns: any[] = [];
-      if (raw) {
-        try {
-          txns = JSON.parse(raw);
-        } catch (e) {}
-      } else {
-        const defaultMockTxns = [
-          { 
-            id: 'TXN-9826', 
-            customerId: 'CUST-001', 
-            customerName: 'Rajesh Jewelers', 
-            customerPhone: '+91 98765 43210',
-            customerAddress: '12, Gold Souk, Delhi',
-            type: 'Cash', 
-            workType: 'Marking', 
-            amount: '84,000', 
-            date: 'Yesterday', 
-            isoDate: '2026-05-14', 
-            timestamp: '04:30 PM', 
-            status: 'Unpaid', 
-            details: 'Collection fee for 12 necklaces.',
-            productType: 'Jewellery',
-            logoName: 'RJ-Gold',
-            carat: '22k',
-            pieces: '12',
-            createdBy: 'COLL-001'
-          },
-          { 
-            id: 'TXN-9824', 
-            customerId: 'CUST-001', 
-            customerName: 'Rajesh Jewelers', 
-            customerPhone: '+91 98765 43210',
-            customerAddress: '12, Gold Souk, Delhi',
-            type: 'UPI', 
-            workType: 'Tunch', 
-            amount: '4,500', 
-            date: 'Today', 
-            isoDate: '2026-05-15', 
-            timestamp: '10:45 AM', 
-            status: 'Paid', 
-            details: 'Collection intake for gold biscuits.',
-            productType: 'Bar',
-            impureWeight: '150.25',
-            settlementCondition: 'Only Cash (At Front)',
-            createdBy: 'COLL-001'
-          },
-          { 
-            id: 'TXN-9823', 
-            customerId: 'CUST-002', 
-            customerName: 'Mehta Gold Traders', 
-            customerPhone: '+91 91234 56789',
-            customerAddress: 'Block C, Sector 4, Noida',
-            type: 'Cash', 
-            workType: 'Shouldering', 
-            amount: '12,000', 
-            date: 'Today', 
-            isoDate: '2026-05-15', 
-            timestamp: '09:12 AM', 
-            status: 'Paid', 
-            details: 'Field intake fee.',
-            pieces: '5',
-            pointSuggestion: 'Gold',
-            createdBy: 'COLL-001'
-          }
-        ];
-        localStorage.setItem('AURORA_SHARED_TRANSACTIONS', JSON.stringify(defaultMockTxns));
-        txns = defaultMockTxns;
-      }
-
-      // Filter only transactions created by this logged-in Collection user
+  useEffect(() => {
+    const loadTransactions = async () => {
       const currentUser = localStorage.getItem('user_id') || 'COLL-001';
-      const filtered = txns.filter(t => t.createdBy === currentUser).map((t: any) => ({
-        id: t.id,
-        customerId: t.customerId || 'CUST-COL',
-        customerName: t.customerName,
-        customerPhone: t.customerPhone || '',
-        customerAddress: t.customerAddress || '',
-        type: t.type || 'Cash',
-        workType: t.workType || 'Tunch',
-        amount: t.amount || '0',
-        date: t.date || 'Just Now',
-        isoDate: t.isoDate || new Date().toISOString().split('T')[0],
-        timestamp: t.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: t.status || 'Unpaid',
-        details: t.details || '',
-        productType: t.productType,
-        impureWeight: t.impureWeight,
-        settlementCondition: t.settlementCondition,
-        logoName: t.logoName,
-        carat: t.carat,
-        pieces: t.pieces,
-        pointSuggestion: t.pointSuggestion,
-        createdBy: t.createdBy
-      }));
-      setTransactions(filtered);
+      try {
+        const { data, error } = await supabase.from('transactions').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          setTransactions(data.map(t => ({
+              id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+              type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
+              status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+              logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+          })));
+        } else {
+          setTransactions([]);
+        }
+
+      } catch (err) {
+        console.error('Error fetching collection transactions:', err);
+      }
     };
 
     loadTransactions();
-    const interval = setInterval(loadTransactions, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // Dynamically group transactions by customer

@@ -1,29 +1,43 @@
 import { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [passkey, setPasskey] = useState("");
-  const [instId, setInstId] = useState("");
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleInitialize = () => {
-    // Valid Credentials
-    const validUsers = [
-      { id: 'STAFF-001', key: 'staff123' },
-      { id: 'COLL-001', key: 'coll123' },
-      { id: 'ADMIN-001', key: 'admin123' },
-      { id: 'SUPER-001', key: 'super123' }
-    ];
-
-    const isValid = validUsers.some(u => u.id === instId && u.key === passkey);
-
-    if (isValid) {
-      // Save role for later use if needed
-      localStorage.setItem('user_id', instId);
-      onLogin();
-    } else {
-      setHasError(false);
-      setTimeout(() => setHasError(true), 50);
+  const handleInitialize = async () => {
+    setIsLoading(true);
+    setHasError(false);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: passkey
+      });
+      
+      if (error) {
+        setHasError(true);
+        setErrorMessage(error.message);
+      } else if (data.user) {
+        // Derive user role from email (or metadata if available)
+        const emailLower = data.user.email?.toLowerCase() || '';
+        let role = 'STAFF-001';
+        if (emailLower.startsWith('admin')) role = 'ADMIN-001';
+        else if (emailLower.startsWith('super')) role = 'SUPER-001';
+        else if (emailLower.startsWith('coll')) role = 'COLL-001';
+        
+        localStorage.setItem('user_id', role);
+        onLogin();
+      }
+    } catch (e) {
+      setHasError(true);
+      setErrorMessage("An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -51,22 +65,22 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
                 {hasError ? 'Security Alert' : 'Institutional Login'}
               </h1>
               <p className={`font-body-md text-[13px] transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-on-surface-variant/80'}`}>
-                {hasError ? 'Invalid institutional ID or encryption passkey.' : 'Please provide your credentials to access the vault.'}
+                {hasError ? errorMessage || 'Invalid email address or encryption passkey.' : 'Please provide your credentials to access the vault.'}
               </p>
             </div>
             
             <div className="flex flex-col gap-4 relative z-10">
               {/* Institutional ID Field */}
               <div className="flex flex-col gap-1.5">
-                <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Institutional ID</label>
+                <label className={`font-label-caps text-[10px] tracking-widest font-semibold px-1 uppercase transition-colors duration-500 ${hasError ? 'text-error/80' : 'text-outline'}`}>Email Address</label>
                 <div className="relative group">
-                  <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>badge</span>
+                  <span className={`material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 transition-colors text-[20px] ${hasError ? 'text-error' : 'text-outline/60 group-focus-within:text-secondary'}`}>mail</span>
                   <input 
                     className={`w-full h-12 pl-12 pr-4 bg-white/50 border rounded-DEFAULT outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500 ${hasError ? 'border-error/50 focus:ring-2 focus:ring-error/10 focus:border-error text-error bg-error-container/5' : 'border-outline-variant/50 focus:ring-2 focus:ring-secondary/10 focus:border-secondary input-sapphire-focus'}`} 
-                    placeholder="e.g. STAFF-XXX" 
-                    type="text" 
-                    value={instId}
-                    onChange={(e) => setInstId(e.target.value.toUpperCase())}
+                    placeholder="name@domain.com" 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                   />
                 </div>
               </div>
@@ -91,8 +105,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             </div>
             
             <div className="flex flex-col gap-4 relative z-10">
-              <button onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out`}>
-                {hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
+              <button disabled={isLoading} onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out disabled:opacity-50`}>
+                {isLoading ? 'AUTHENTICATING...' : hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
                 <span className="material-symbols-outlined text-[16px]">{hasError ? 'warning' : 'arrow_forward'}</span>
               </button>
               <div className="flex justify-between items-center px-2">

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CollectionEntryModal } from './CollectionEntryModal';
+import { supabase } from '../supabaseClient';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -9,36 +10,40 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
 
-  React.useEffect(() => {
-    const loadData = () => {
+  useEffect(() => {
+    const loadData = async () => {
       const currentUser = localStorage.getItem('user_id') || 'COLL-001';
 
-      // Load tasks
-      const sharedTasksRaw = localStorage.getItem('AURORA_SHARED_TASKS');
-      let tList: any[] = [];
-      if (sharedTasksRaw) {
-        try {
-          tList = JSON.parse(sharedTasksRaw)
-            .filter((t: any) => t.createdBy === currentUser);
-        } catch (e) {}
-      }
-      setTasks(tList);
+      try {
+        const { data: tasksData, error: taskError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('created_by', currentUser)
+          .order('created_at', { ascending: false });
+          
+        if (!taskError && tasksData) {
+          setTasks(tasksData.map((t: any) => ({
+            id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
+          })));
+        }
 
-      // Load transactions
-      const sharedTxnsRaw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
-      let txList: any[] = [];
-      if (sharedTxnsRaw) {
-        try {
-          txList = JSON.parse(sharedTxnsRaw)
-            .filter((t: any) => t.createdBy === currentUser);
-        } catch (e) {}
+        const { data: txData, error: txError } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('created_by', currentUser)
+          .order('created_at', { ascending: false });
+          
+        if (!txError && txData) {
+          setTransactions(txData.map((t: any) => ({
+             status: t.status, amount: t.amount, customerName: t.customer_name
+          })));
+        }
+      } catch (err) {
+        console.error('Error fetching collection staff data:', err);
       }
-      setTransactions(txList);
     };
 
     loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // 1. Calculate stats dynamically

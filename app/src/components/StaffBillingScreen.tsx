@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 type TabView = 'all' | 'customer';
 
@@ -286,80 +287,26 @@ export const StaffBillingScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   React.useEffect(() => {
-    const loadTransactions = () => {
-      const defaultTxns: Transaction[] = [
-        { 
-          id: 'TXN-9826', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'Cash', workType: 'Marking', amount: '₹84,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
-          caratMarking: '22K916',
-          details: 'Standard hallmarking for 12 necklaces. Payment pending.' 
-        },
-        { 
-          id: 'TXN-9825', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹40,500', date: 'Oct 10', isoDate: '2025-10-10', timestamp: '11:15 AM', status: 'Unpaid', 
-          impureWeight: '25.00g', pureWeight: '22.50g', purityPercentage: '90.0%', pieceType: 'Gold Rings',
-          details: 'Tunch testing for assorted rings. Awaiting payment clearance.' 
-        },
-        { 
-          id: 'TXN-9824', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Tunch', amount: '₹45,000', date: 'Today', isoDate: '2026-05-15', timestamp: '10:45 AM', status: 'Paid', 
-          impureWeight: '12.45g', pureWeight: '11.20g', purityPercentage: '91.6%', pieceType: 'Gold Biscuits',
-          details: 'Tunch testing for 5 gold biscuits. Verified purity successfully.' 
-        },
-        { 
-          id: 'TXN-9823', customerId: 'CUST-002', customerName: 'Mehta Gold Traders', type: 'Cash', workType: 'Marking', amount: '₹1,12,000', date: 'Today', isoDate: '2026-05-15', timestamp: '09:12 AM', status: 'Paid', 
-          caratMarking: '22K916',
-          details: 'Hallmarking for 12 necklaces and 8 bangles.' 
-        },
-        { 
-          id: 'TXN-9820', customerId: 'CUST-003', customerName: 'Sunrise Ornaments', type: 'UPI', workType: 'Shouldering', amount: '₹85,500', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '04:30 PM', status: 'Unpaid', 
-          pieceType: 'Chain Links', pointsCount: 14, pointsType: 'Gold',
-          details: 'Chain link repairing and precision shouldering work on multiple joints.' 
-        },
-        { 
-          id: 'TXN-9819', customerId: 'CUST-001', customerName: 'Rajesh Jewelers', type: 'UPI', workType: 'Marking', amount: '₹12,000', date: 'Yesterday', isoDate: '2026-05-14', timestamp: '02:15 PM', status: 'Paid', 
-          caratMarking: '18K750',
-          details: 'Laser marking on rings.' 
-        },
-      ];
-
-      const raw = localStorage.getItem('AURORA_SHARED_TRANSACTIONS');
-      let sharedTxns: Transaction[] = [];
-      if (raw) {
-        try {
-          sharedTxns = JSON.parse(raw).map((t: any) => ({
-            id: t.id,
-            customerId: t.customerId || 'CUST-COL',
-            customerName: t.customerName,
-            type: t.type || 'Cash',
-            workType: t.workType || 'Tunch',
-            amount: t.amount.startsWith('₹') ? t.amount : `₹${t.amount}`,
-            date: t.date || 'Just Now',
-            isoDate: t.isoDate || new Date().toISOString().split('T')[0],
-            timestamp: t.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: t.status || 'Unpaid',
-            details: t.details || 'Collection intake completed.',
-            impureWeight: t.impureWeight,
-            pureWeight: t.pureWeight,
-            purityPercentage: t.purityPercentage,
-            pieceType: t.productType,
-            pointsCount: t.pointsCount,
-            pointsType: t.pointSuggestion,
-            caratMarking: t.carat
-          }));
-        } catch (e) {}
-      }
-
-      // Merge
-      const merged = [...sharedTxns];
-      defaultTxns.forEach(dt => {
-        if (!merged.some(mt => mt.id === dt.id)) {
-          merged.push(dt);
+    const loadTransactions = async () => {
+      try {
+        const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data && data.length > 0) {
+          setTransactions(data.map(t => ({
+            id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+            date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
+            impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+            pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
+          })));
+        } else {
+          setTransactions([]);
         }
-      });
-      setTransactions(merged);
+      } catch (err) {
+        console.error('Error fetching transactions:', err);
+      }
     };
 
     loadTransactions();
-    const interval = setInterval(loadTransactions, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   // Group by customer dynamically
