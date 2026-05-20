@@ -230,18 +230,30 @@ export const StaffLedgerScreen: React.FC = () => {
                       </button>
                     )}
                   </div>
-                  {currentImpureStock > 0 && (
-                    <button 
-                      onClick={() => setShowRefiningConfirm(true)}
-                      className="mt-4 w-full py-2 bg-[#755b00]/10 hover:bg-[#755b00]/20 text-[#755b00] border border-[#755b00]/20 rounded-xl font-bold text-[9px] uppercase tracking-widest transition-colors flex items-center justify-center gap-1.5"
-                    >
-                      <span className="material-symbols-outlined text-xs">local_fire_department</span>
-                      Given to Refining
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
+
+            {currentImpureStock > 0 && (
+              <div 
+                onClick={() => setShowRefiningConfirm(true)}
+                className="luxury-card p-4 bg-gradient-to-r from-[#755b00] to-[#5a4600] text-white cursor-pointer active:scale-[0.98] transition-all flex items-center justify-between premium-shadow"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                    <span className="material-symbols-outlined text-xl">local_fire_department</span>
+                  </div>
+                  <div>
+                    <p className="font-headline text-sm font-bold">Given to Refining</p>
+                    <p className="text-[9px] uppercase tracking-widest text-white/70 font-medium mt-0.5">Push Stock to Head Office</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 bg-black/20 px-3 py-1.5 rounded-full border border-white/10">
+                  <span className="text-[11px] font-bold tracking-wider">{fmtG(currentImpureStock)}</span>
+                  <span className="material-symbols-outlined text-sm text-white/70">arrow_forward</span>
+                </div>
+              </div>
+            )}
 
             {/* Pending Liability Engine */}
             <div className="grid grid-cols-2 gap-4">
