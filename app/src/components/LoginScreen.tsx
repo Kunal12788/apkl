@@ -14,30 +14,37 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     setHasError(false);
     
     try {
-      // Hardcoded credentials logic
       const emailLower = email.toLowerCase().trim();
-      let role = '';
       
-      if (emailLower === 'k7474740@gmail.com' && passkey === '1234') {
-        role = 'STAFF-001';
-      } else if (emailLower === 'k9836282432@gmail.com' && passkey === '123') {
-        role = 'ADMIN-001';
-      } else if (emailLower === 'ssrcreations41@gmail.com' && passkey === '123') {
-        role = 'SUPER-001';
-      } else {
-        // Fallback: If not matching exact credentials, simulate error
+      // Dynamic authentication via Supabase database lookup
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', emailLower)
+        .eq('passkey', passkey)
+        .maybeSingle();
+
+      if (error) {
+        setHasError(true);
+        setErrorMessage("Vault connection error: " + error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data) {
         setHasError(true);
         setErrorMessage("Invalid email address or encryption passkey.");
         setIsLoading(false);
         return;
       }
       
-      localStorage.setItem('user_id', role);
+      localStorage.setItem('user_id', data.id);
+      localStorage.setItem('user_name', data.name);
+      localStorage.setItem('user_role', data.role);
       
-      // Artificial delay to simulate network request
       setTimeout(() => {
         onLogin();
-      }, 600);
+      }, 300);
       
     } catch (e) {
       setHasError(true);

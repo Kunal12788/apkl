@@ -1,12 +1,48 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 export const StaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
 
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
   
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error('Error fetching profile from Supabase:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, [userId]);
+
   const getProfileData = () => {
+    if (profile) {
+      return {
+        name: profile.name,
+        role: profile.role,
+        id: profile.id,
+        phone: profile.phone || '+91 98765 43210',
+        email: profile.email || `${profile.id.toLowerCase()}@auroradivine.com`
+      };
+    }
+
     if (userId.startsWith('ADMIN-')) {
       return {
         name: 'Chief Administrator',
@@ -33,6 +69,10 @@ export const StaffProfileScreen: React.FC = () => {
       email: 'marcus@auroradivine.com'
     };
   };
+
+  if (loading) {
+    return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
+  }
 
   const staffData = getProfileData();
 

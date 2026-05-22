@@ -7,21 +7,57 @@ CREATE TABLE IF NOT EXISTS public.users (
     name TEXT NOT NULL,
     role TEXT NOT NULL,
     branch_id TEXT,
+    email TEXT UNIQUE,
+    phone TEXT,
+    passkey TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- Ensure newer columns exist if the table already existed with older schema
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS passkey TEXT;
+
 -- Seed Initial Users
-INSERT INTO public.users (id, name, role, branch_id) VALUES
-('STAFF-001', 'Staff Member One', 'Staff', 'BR-DELHI')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
+('STAFF-001', 'Marcus Reynolds', 'Staff', 'BR-DELHI', 'k7474740@gmail.com', '+91 98765 43210', '1234')
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  role = EXCLUDED.role, 
+  branch_id = EXCLUDED.branch_id, 
+  email = EXCLUDED.email, 
+  phone = EXCLUDED.phone, 
+  passkey = EXCLUDED.passkey;
 
-INSERT INTO public.users (id, name, role, branch_id) VALUES
-('ADMIN-001', 'Delhi Branch Admin', 'Admin', 'BR-DELHI')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
+('ADMIN-001', 'Delhi Branch Admin', 'Admin', 'BR-DELHI', 'k9836282432@gmail.com', '+91 98888 77777', '123')
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  role = EXCLUDED.role, 
+  branch_id = EXCLUDED.branch_id, 
+  email = EXCLUDED.email, 
+  phone = EXCLUDED.phone, 
+  passkey = EXCLUDED.passkey;
 
-INSERT INTO public.users (id, name, role, branch_id) VALUES
-('SUPER-001', 'Chief Super Admin', 'Super Admin', 'HEAD-OFFICE')
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
+('SUPER-001', 'Chief Super Admin', 'Super Admin', 'HEAD-OFFICE', 'ssrcreations41@gmail.com', '+91 99999 88888', '123')
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  role = EXCLUDED.role, 
+  branch_id = EXCLUDED.branch_id, 
+  email = EXCLUDED.email, 
+  phone = EXCLUDED.phone, 
+  passkey = EXCLUDED.passkey;
+
+INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
+('COLL-001', 'Vikram Singh', 'Collection Staff', 'BR-DELHI', 'vikram@auroradivine.com', '+91 91234 56789', '123')
+ON CONFLICT (id) DO UPDATE SET 
+  name = EXCLUDED.name, 
+  role = EXCLUDED.role, 
+  branch_id = EXCLUDED.branch_id, 
+  email = EXCLUDED.email, 
+  phone = EXCLUDED.phone, 
+  passkey = EXCLUDED.passkey;
 
 -- 2. Staff/Admin Gold Ledger Table
 CREATE TABLE IF NOT EXISTS public.ledger_entries (

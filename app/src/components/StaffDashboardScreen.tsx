@@ -8,6 +8,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
   const [loading, setLoading] = useState(true);
+  const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
   // States for Metrics
   const [pureGoldWeight, setPureGoldWeight] = useState(0);
@@ -27,16 +28,66 @@ export const StaffDashboardScreen: React.FC = () => {
     customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0
   });
 
+  const [globalStats, setGlobalStats] = useState({ inProgress: 0, completed: 0, pending: 0 });
+  const [recentTasks, setRecentTasks] = useState<any[]>([]);
+
   const getGreetingName = () => {
+    if (userName) return userName;
     if (userId.startsWith('ADMIN-')) return 'Chief Admin';
     if (userId.startsWith('SUPER-')) return 'Director';
     return 'Alexander';
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return 'AD';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
+
+  const getWorkBadgeColors = (workType: string) => {
+    switch (workType) {
+      case 'Tunch':
+        return { bg: 'bg-secondary-fixed', text: 'text-primary', icon: 'science' };
+      case 'Marking':
+        return { bg: 'bg-tertiary-fixed', text: 'text-tertiary', icon: 'verified' };
+      case 'Shouldering':
+        return { bg: 'bg-primary-fixed', text: 'text-primary', icon: 'precision_manufacturing' };
+      default:
+        return { bg: 'bg-surface-container', text: 'text-outline', icon: 'work' };
+    }
+  };
+
+  const getRecentStatusClass = (status: string) => {
+    switch (status) {
+      case 'Completed':
+        return 'bg-tertiary-container/10 text-tertiary-container';
+      case 'In Progress':
+        return 'bg-secondary-container/10 text-secondary-container';
+      case 'Pending Verification':
+        return 'bg-secondary/10 text-secondary';
+      default:
+        return 'bg-error-container/10 text-error';
+    }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
+        // Fetch User Profile
+        const { data: userData } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', userId)
+          .maybeSingle();
+        if (userData && userData.name) {
+          setUserName(userData.name);
+          localStorage.setItem('user_name', userData.name);
+        }
+
         // Fetch Ledger for Gold Weights
         const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
         if (ledgerData) {
@@ -80,6 +131,10 @@ export const StaffDashboardScreen: React.FC = () => {
           let shouldering = { processed: 0, pending: 0 };
           let source = { customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0 };
           
+          let inProgress = 0;
+          let completed = 0;
+          let pending = 0;
+
           tasksData.forEach(task => {
             const isDone = task.status === 'Completed';
             if (task.work_type === 'Tunch') { isDone ? tunch.processed++ : tunch.pending++; }
@@ -91,10 +146,36 @@ export const StaffDashboardScreen: React.FC = () => {
             else if (task.source === 'Staff') source.staff++;
             else if (task.source === 'Super Admin') source.superAdmin++;
             else if (task.source === 'Collection Staff') source.collectionStaff++;
+
+            if (task.status === 'In Progress') {
+              inProgress++;
+            } else if (task.status === 'Completed') {
+              completed++;
+            } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
+              pending++;
+            }
           });
           
           setTasksStats({ tunch, marking, shouldering });
           setTaskSource(source);
+          setGlobalStats({ inProgress, completed, pending });
+
+          // Sort tasks by created_at DESC
+          const sortedTasks = [...tasksData].sort((a, b) => {
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+          });
+
+          const formattedRecent = sortedTasks.slice(0, 5).map((t: any) => ({
+            id: t.id,
+            customerName: t.customer_name,
+            workType: t.work_type,
+            assignedTo: t.assigned_to,
+            status: t.status
+          }));
+
+          setRecentTasks(formattedRecent);
         }
 
       } catch (err) {
@@ -110,6 +191,8 @@ export const StaffDashboardScreen: React.FC = () => {
     return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
   }
 
+  const totalTasks = globalStats.inProgress + globalStats.completed + globalStats.pending;
+
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 space-y-6 max-w-5xl mx-auto pt-4 pb-40 relative">
@@ -119,8 +202,8 @@ export const StaffDashboardScreen: React.FC = () => {
         
         <header className="flex items-center justify-between py-4 mb-2 relative z-10">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full ring-2 ring-white shadow-lg overflow-hidden flex-shrink-0">
-              <img alt="Alexander" className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpdrf99bDdfFpnDvy5kTrQVQd1kj_gCs6s77-dXisJ3110rcMyGR4miPVoNL98OJeSZfvzSFzxV6bTGHqe8Wm6-DK5_ybI9CJ809JcKDSLcI8oMY60PfWZyqH1r9UC04GBPzUWhfGJh1zq16PPTCX8oRDOM0NlRA0L3zeIBIvYKx0xisgWjy6YP60CTxYqKDoaVx1yCIYcUAzsDSXtR58WxPaBzADrcCb1Kvcdt_AiXCXkqpj-CIzgAEVMuykcCyl68gArkDBckrG7" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#003366] to-[#001e40] border border-white/20 shadow-lg flex-shrink-0 flex items-center justify-center text-white font-headline text-sm font-bold">
+              {getInitials(getGreetingName())}
             </div>
             <div className="flex flex-col">
               <h1 className="font-headline text-lg font-bold text-primary leading-tight">Good Morning, {getGreetingName()}</h1>
@@ -400,76 +483,57 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 text-center relative overflow-hidden">
               <span className="material-symbols-outlined text-sm text-secondary-container mb-1 block glow-icon">rotate_right</span>
               <p className="text-[9px] text-outline uppercase font-bold mb-1.5 tracking-wider">In Progress</p>
-              <p className="font-headline text-2xl font-bold text-primary">34</p>
+              <p className="font-headline text-2xl font-bold text-primary">{globalStats.inProgress}</p>
               <div className="mt-2 h-1 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-secondary-container w-[65%]"></div>
+                <div className="h-full bg-secondary-container" style={{ width: `${totalTasks > 0 ? (globalStats.inProgress / totalTasks) * 100 : 0}%` }}></div>
               </div>
             </div>
             <div className="luxury-card p-4 text-center border-b-4 border-b-tertiary-container relative overflow-hidden">
               <span className="material-symbols-outlined text-sm text-tertiary-container mb-1 block glow-icon">task_alt</span>
               <p className="text-[9px] text-outline uppercase font-bold mb-1.5 tracking-wider">Completed</p>
-              <p className="font-headline text-2xl font-bold text-primary">264</p>
+              <p className="font-headline text-2xl font-bold text-primary">{globalStats.completed}</p>
               <div className="mt-2 h-1 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-tertiary-container w-[90%]"></div>
+                <div className="h-full bg-tertiary-container" style={{ width: `${totalTasks > 0 ? (globalStats.completed / totalTasks) * 100 : 0}%` }}></div>
               </div>
             </div>
             <div className="luxury-card p-4 text-center relative overflow-hidden">
-              <span className="material-symbols-outlined text-sm text-primary mb-1 block glow-icon">package_2</span>
-              <p className="text-[9px] text-outline uppercase font-bold mb-1.5 tracking-wider">Delivered</p>
-              <p className="font-headline text-2xl font-bold text-primary">192</p>
+              <span className="material-symbols-outlined text-sm text-primary mb-1 block glow-icon">pending_actions</span>
+              <p className="text-[9px] text-outline uppercase font-bold mb-1.5 tracking-wider">Pending</p>
+              <p className="font-headline text-2xl font-bold text-primary">{globalStats.pending}</p>
               <div className="mt-2 h-1 w-full bg-surface-container rounded-full overflow-hidden">
-                <div className="h-full bg-primary w-[75%]"></div>
+                <div className="h-full bg-primary" style={{ width: `${totalTasks > 0 ? (globalStats.pending / totalTasks) * 100 : 0}%` }}></div>
               </div>
             </div>
           </div>
           
           <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 mt-6">Recent Assignments</h3>
           <div className="luxury-card divide-y divide-surface-container overflow-hidden">
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-[10px] font-bold text-primary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">science</span>
-                  MA
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-primary">Tunch Verification #892</p>
-                  <p className="text-[10px] text-outline">Assigned to: Marcus</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] px-2 py-0.5 bg-secondary-container/10 text-secondary-container rounded-full font-bold">In Progress</span>
-              </div>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-tertiary-fixed flex items-center justify-center text-[10px] font-bold text-tertiary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">verified</span>
-                  EL
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-primary">Marking Job #341</p>
-                  <p className="text-[10px] text-outline">Assigned to: Elena</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] px-2 py-0.5 bg-tertiary-container/10 text-tertiary-container rounded-full font-bold">New</span>
-              </div>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-primary relative overflow-hidden">
-                  <span className="material-symbols-outlined text-[10px] absolute opacity-20">precision_manufacturing</span>
-                  JU
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-primary">Shouldering Work #219</p>
-                  <p className="text-[10px] text-outline">Assigned to: Julian</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[10px] px-2 py-0.5 bg-secondary-container/10 text-secondary-container rounded-full font-bold">In Progress</span>
-              </div>
-            </div>
+            {recentTasks.length === 0 ? (
+              <div className="p-8 text-center text-outline text-sm font-medium">No recent assignments found.</div>
+            ) : (
+              recentTasks.map((task) => {
+                const badge = getWorkBadgeColors(task.workType);
+                return (
+                  <div key={task.id} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full ${badge.bg} flex items-center justify-center text-[10px] font-bold ${badge.text} relative overflow-hidden`}>
+                        <span className="material-symbols-outlined text-[10px] absolute opacity-20">{badge.icon}</span>
+                        {getInitials(task.assignedTo)}
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-primary">{task.workType} Work #{task.id.replace('TASK-', '')}</p>
+                        <p className="text-[10px] text-outline">Assigned to: {task.assignedTo}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getRecentStatusClass(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
       </main>

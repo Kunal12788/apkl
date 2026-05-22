@@ -1,20 +1,62 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
 
 export const CollectionStaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
+  const userId = localStorage.getItem('user_id') || 'COLL-001';
+
+  const [profile, setProfile] = useState<any>(null);
+  const [stats, setStats] = useState({
+    collections: 124,
+    onTimeDelivery: '100%',
+    verifiedIntakes: 118
+  });
+
+  useEffect(() => {
+    const loadProfileAndStats = async () => {
+      try {
+        // Fetch profile details
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (!userError && userData) {
+          setProfile(userData);
+        }
+
+        // Fetch task counts
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('status')
+          .eq('created_by', userId);
+
+        if (!tasksError && tasksData) {
+          const total = tasksData.length;
+          const completed = tasksData.filter((t: any) => t.status === 'Completed').length;
+          setStats({
+            collections: total,
+            onTimeDelivery: '100%',
+            verifiedIntakes: completed
+          });
+        }
+      } catch (err) {
+        console.error('Error loading collection staff profile or stats:', err);
+      }
+    };
+
+    loadProfileAndStats();
+  }, [userId]);
 
   const staffData = {
-    name: 'Vikram Singh',
-    role: 'Logistics Lead & Field Agent',
-    id: 'COLL-0210',
-    phone: '+91 91234 56789',
-    email: 'vikram@auroradivine.com',
-    stats: {
-      collections: 124,
-      onTimeDelivery: '100%',
-      verifiedIntakes: 118
-    }
+    name: profile?.name || 'Vikram Singh',
+    role: profile?.role || 'Logistics Lead & Field Agent',
+    id: profile?.id || userId,
+    phone: profile?.phone || '+91 91234 56789',
+    email: profile?.email || 'vikram@auroradivine.com',
+    stats
   };
 
   return (
