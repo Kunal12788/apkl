@@ -157,3 +157,31 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     details TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
+
+-- ============================================================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
+-- ============================================================================
+-- Enable RLS on all tables
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ledger_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.refining_transfers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.super_admin_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if any to prevent conflicts when running schema again
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.users;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.ledger_entries;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.refining_transfers;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.super_admin_ledger;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.tasks;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.transactions;
+
+-- Create policy for all tables to allow only authenticated users
+CREATE POLICY "Allow authenticated full access" ON public.users FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.ledger_entries FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.refining_transfers FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.super_admin_ledger FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.tasks FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.transactions FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+
