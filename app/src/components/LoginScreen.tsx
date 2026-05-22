@@ -16,31 +16,36 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     try {
       const emailLower = email.toLowerCase().trim();
       
-      // Dynamic authentication via Supabase database lookup
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', emailLower)
-        .eq('passkey', passkey)
-        .maybeSingle();
+      // 1. Authenticate via Supabase Auth
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: emailLower,
+        password: passkey,
+      });
 
-      if (error) {
-        setHasError(true);
-        setErrorMessage("Vault connection error: " + error.message);
-        setIsLoading(false);
-        return;
-      }
-
-      if (!data) {
+      if (authError) {
         setHasError(true);
         setErrorMessage("Invalid email address or encryption passkey.");
         setIsLoading(false);
         return;
       }
+
+      // 2. Fetch profile from database users table
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', emailLower)
+        .maybeSingle();
+
+      if (userError || !userData) {
+        setHasError(true);
+        setErrorMessage("Vault connection error: user profile not found.");
+        setIsLoading(false);
+        return;
+      }
       
-      localStorage.setItem('user_id', data.id);
-      localStorage.setItem('user_name', data.name);
-      localStorage.setItem('user_role', data.role);
+      localStorage.setItem('user_id', userData.id);
+      localStorage.setItem('user_name', userData.name);
+      localStorage.setItem('user_role', userData.role);
       
       setTimeout(() => {
         onLogin();
