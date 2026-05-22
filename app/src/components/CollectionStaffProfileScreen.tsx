@@ -52,7 +52,7 @@ export const CollectionStaffProfileScreen: React.FC = () => {
 
   const staffData = {
     name: profile?.name || 'Vikram Singh',
-    role: profile?.role || 'Logistics Lead & Field Agent',
+    role: profile?.role || 'Collection Staff',
     id: profile?.id || userId,
     phone: profile?.phone || '+91 91234 56789',
     email: profile?.email || 'vikram@auroradivine.com',

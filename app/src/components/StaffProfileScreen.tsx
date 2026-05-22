@@ -39,34 +39,34 @@ export const StaffProfileScreen: React.FC = () => {
         role: profile.role,
         id: profile.id,
         phone: profile.phone || '+91 98765 43210',
-        email: profile.email || `${profile.id.toLowerCase()}@auroradivine.com`
+        email: profile.email || 'k7474740@gmail.com'
       };
     }
 
     if (userId.startsWith('ADMIN-')) {
       return {
-        name: 'Chief Administrator',
-        role: 'Strategic Vault Manager & General Admin',
+        name: 'Delhi Branch Admin',
+        role: 'Admin',
         id: 'ADMIN-001',
         phone: '+91 98888 77777',
-        email: 'admin@auroradivine.com'
+        email: 'k9836282432@gmail.com'
       };
     }
     if (userId.startsWith('SUPER-')) {
       return {
-        name: 'Director General',
-        role: 'Managing Partner & Super Administrator',
+        name: 'Chief Super Admin',
+        role: 'Super Admin',
         id: 'SUPER-001',
         phone: '+91 99999 88888',
-        email: 'director@auroradivine.com'
+        email: 'ssrcreations41@gmail.com'
       };
     }
     return {
       name: 'Marcus Reynolds',
-      role: 'Senior Appraiser & Lead Technician',
-      id: 'EMP-0842',
+      role: 'Staff',
+      id: 'STAFF-001',
       phone: '+91 98765 43210',
-      email: 'marcus@auroradivine.com'
+      email: 'k7474740@gmail.com'
     };
   };
 

@@ -97,7 +97,7 @@ export const ForgotKeyScreen: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                     </label>
                     <div className="relative group">
                       <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/60 group-focus-within:text-secondary transition-colors text-[20px]">mail</span>
-                      <input className="w-full h-14 pl-12 pr-4 bg-white/50 border border-outline-variant/50 rounded-[14px] focus:ring-2 focus:ring-secondary/10 focus:border-secondary outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500" placeholder="executive@aurora.divine" type="email" />
+                      <input className="w-full h-14 pl-12 pr-4 bg-white/50 border border-outline-variant/50 rounded-[14px] focus:ring-2 focus:ring-secondary/10 focus:border-secondary outline-none transition-all font-body-md text-[14px] text-primary placeholder:text-outline/40 duration-500" placeholder="name@domain.com" type="email" />
                     </div>
                   </div>
                   
