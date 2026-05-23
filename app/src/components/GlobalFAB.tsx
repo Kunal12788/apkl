@@ -32,9 +32,11 @@ export const GlobalFAB: React.FC = () => {
         onSuccess={async (data) => {
           console.log('Global Task Created:', data);
           try {
+            const generatedCustomerId = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
             const newTask = {
               id: data.id,
-              customer_name: data.customerName,
+              customer_name: data.customerName || 'Walk-in Customer',
+              customer_id: generatedCustomerId,
               customer_address: data.address,
               customer_phone: data.phone,
               impure_weight: data.impureWeight,
@@ -51,35 +53,46 @@ export const GlobalFAB: React.FC = () => {
               date_given: data.date,
               status: data.status,
               progress_percentage: data.progressPercentage,
-              assigned_to: data.assignedTo,
+              assigned_to: data.assignedTo || 'Unassigned',
+              source: 'Staff',
               created_by: localStorage.getItem('user_id') || 'STAFF-001',
               iso_date: new Date().toISOString().split('T')[0],
               estimated_completion: 'Today, 06:00 PM',
               notes: 'Created from Global FAB'
             };
-            await supabase.from('tasks').insert([newTask]);
+            
+            const { error: taskError } = await supabase.from('tasks').insert([newTask]);
+            if (taskError) {
+              console.error('Task Insert Error:', taskError);
+              alert('Failed to save task: ' + taskError.message);
+              return;
+            }
             
             // If there's a fee, we can also insert a transaction
             if (data.fee) {
               const newTxn = {
                 id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-                customer_name: data.customerName,
-                customer_address: data.address,
-                customer_phone: data.phone,
+                customer_id: generatedCustomerId,
+                customer_name: data.customerName || 'Walk-in Customer',
                 type: 'Cash',
                 work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
-                amount: data.fee,
+                amount: String(data.fee),
                 date: 'Today',
                 iso_date: new Date().toISOString().split('T')[0],
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: data.feeStatus || 'Paid',
-                details: 'Service Fee',
-                created_by: localStorage.getItem('user_id') || 'STAFF-001'
+                details: 'Service Fee'
               };
-              await supabase.from('transactions').insert([newTxn]);
+              const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
+              if (txnError) console.error('Transaction Insert Error:', txnError);
             }
+
+            // Refresh the page so the dashboard sees the new data
+            window.location.reload();
+            
           } catch(e) {
             console.error('Failed to create global task', e);
+            alert('An unexpected error occurred.');
           }
         }}
       />
