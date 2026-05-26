@@ -36,8 +36,8 @@ export const StaffProfileScreen: React.FC = () => {
         name: profile.name || localStorage.getItem('user_name') || 'User',
         role: profile.role || localStorage.getItem('user_role') || 'Staff',
         id: profile.id || userId,
-        phone: profile.phone || '+91 98765 43210',
-        email: profile.email || 'No email provided'
+        phone: profile.phone || localStorage.getItem('user_phone') || '+91 98765 43210',
+        email: profile.email || localStorage.getItem('user_email') || 'No email provided'
       };
     }
 
@@ -46,8 +46,8 @@ export const StaffProfileScreen: React.FC = () => {
       name: localStorage.getItem('user_name') || 'User',
       role: localStorage.getItem('user_role') || 'Staff',
       id: userId,
-      phone: '+91 98765 43210',
-      email: profile?.email || 'Fetching email...'
+      phone: localStorage.getItem('user_phone') || '+91 98765 43210',
+      email: localStorage.getItem('user_email') || 'Fetching email...'
     };
   };
 

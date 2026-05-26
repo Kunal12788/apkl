@@ -54,8 +54,8 @@ export const CollectionStaffProfileScreen: React.FC = () => {
     name: profile?.name || localStorage.getItem('user_name') || 'Staff Member',
     role: profile?.role || localStorage.getItem('user_role') || 'Collection Staff',
     id: profile?.id || userId,
-    phone: profile?.phone || '+91 91234 56789',
-    email: profile?.email || 'Fetching email...',
+    phone: profile?.phone || localStorage.getItem('user_phone') || '+91 91234 56789',
+    email: profile?.email || localStorage.getItem('user_email') || 'Fetching email...',
     stats
   };
 
