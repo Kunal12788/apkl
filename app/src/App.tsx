@@ -17,6 +17,7 @@ import { CollectionStaffBillingScreen } from './components/CollectionStaffBillin
 import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScreen';
 import { GlobalFAB } from './components/GlobalFAB';
 import { SessionProvider, useSession } from './context/SessionContext';
+import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -24,8 +25,9 @@ const LoginWrapper = () => {
 };
 
 const DashboardWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
   
   if (user.id.startsWith('SUPER-')) {
     return <SuperAdminDashboardScreen />;
@@ -37,8 +39,9 @@ const DashboardWrapper = () => {
 };
 
 const BillingWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
   if (user.id.startsWith('COLL-')) {
     return <CollectionStaffBillingScreen />;
@@ -47,8 +50,9 @@ const BillingWrapper = () => {
 };
 
 const TasksWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
   if (user.id.startsWith('COLL-')) {
     return <CollectionStaffTasksScreen />;
@@ -57,8 +61,9 @@ const TasksWrapper = () => {
 };
 
 const ProfileWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
   if (user.id.startsWith('COLL-')) {
     return <CollectionStaffProfileScreen />;
@@ -67,8 +72,9 @@ const ProfileWrapper = () => {
 };
 
 const LedgerWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
   if (user.id.startsWith('SUPER-')) {
     return <SuperAdminLedgerScreen />;
@@ -77,8 +83,9 @@ const LedgerWrapper = () => {
 };
 
 const CollectionHistoryWrapper = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
   return <CollectionHistoryScreen />;
 };
 
