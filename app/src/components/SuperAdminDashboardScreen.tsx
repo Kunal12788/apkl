@@ -58,7 +58,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         setCashRemaining(cash); 
         setUpiCollection(upi);
       } else {
-        setLoading(true); // Only show spinner if absolutely no cache exists
+        // No cache available, fetch directly
       }
 
       // 2. Fetch fresh data in background
