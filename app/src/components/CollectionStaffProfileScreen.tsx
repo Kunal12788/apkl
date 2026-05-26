@@ -51,11 +51,11 @@ export const CollectionStaffProfileScreen: React.FC = () => {
   }, [userId]);
 
   const staffData = {
-    name: profile?.name || 'Vikram Singh',
-    role: profile?.role || 'Collection Staff',
+    name: profile?.name || localStorage.getItem('user_name') || 'Staff Member',
+    role: profile?.role || localStorage.getItem('user_role') || 'Collection Staff',
     id: profile?.id || userId,
     phone: profile?.phone || '+91 91234 56789',
-    email: profile?.email || 'vikram@auroradivine.com',
+    email: profile?.email || 'Fetching email...',
     stats
   };
 

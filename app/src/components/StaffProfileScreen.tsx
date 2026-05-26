@@ -30,40 +30,24 @@ export const StaffProfileScreen: React.FC = () => {
   }, [userId]);
 
   const getProfileData = () => {
+    // 1. If we have the exact profile from DB, use it
     if (profile) {
       return {
-        name: profile.name,
-        role: profile.role,
-        id: profile.id,
+        name: profile.name || localStorage.getItem('user_name') || 'User',
+        role: profile.role || localStorage.getItem('user_role') || 'Staff',
+        id: profile.id || userId,
         phone: profile.phone || '+91 98765 43210',
-        email: profile.email || 'k7474740@gmail.com'
+        email: profile.email || 'No email provided'
       };
     }
 
-    if (userId.startsWith('ADMIN-')) {
-      return {
-        name: 'Delhi Branch Admin',
-        role: 'Admin',
-        id: 'ADMIN-001',
-        phone: '+91 98888 77777',
-        email: 'k9836282432@gmail.com'
-      };
-    }
-    if (userId.startsWith('SUPER-')) {
-      return {
-        name: 'Chief Super Admin',
-        role: 'Super Admin',
-        id: 'SUPER-001',
-        phone: '+91 99999 88888',
-        email: 'ssrcreations41@gmail.com'
-      };
-    }
+    // 2. Otherwise fall back to local storage before DB fetch completes
     return {
-      name: 'Marcus Reynolds',
-      role: 'Staff',
-      id: 'STAFF-001',
+      name: localStorage.getItem('user_name') || 'User',
+      role: localStorage.getItem('user_role') || 'Staff',
+      id: userId,
       phone: '+91 98765 43210',
-      email: 'k7474740@gmail.com'
+      email: profile?.email || 'Fetching email...'
     };
   };
 
