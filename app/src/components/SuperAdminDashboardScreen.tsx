@@ -6,7 +6,7 @@ import { useSession } from '../context/SessionContext';
 
 export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const userId = user?.id || 'SUPER-001';
   const userName = user?.name || '';
   
@@ -84,9 +84,10 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         });
         setCashRemaining(cash); 
         setUpiCollection(upi);
-      } else {
-        // No cache available, fetch directly
       }
+
+      // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
+      if (!isFullyAuthenticated) return;
 
       // 2. Fetch fresh data in background in parallel
       try {
@@ -131,7 +132,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
       }
     };
     fetchData();
-  }, [userId]);
+  }, [userId, isFullyAuthenticated]);
 
 
 

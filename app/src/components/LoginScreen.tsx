@@ -1,81 +1,119 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { setCachedData } from '../cache';
 
+const guessRoleFromEmail = (email: string) => {
+  const emailLower = email.toLowerCase().trim();
+  if (emailLower === 'ssrcreations41@gmail.com' || emailLower.includes('super') || emailLower.includes('director')) {
+    return { id: 'SUPER-temp', name: 'Chief Super Admin', role: 'Super Admin' };
+  }
+  if (emailLower === 'vikram@auroradivine.com' || emailLower.includes('coll') || emailLower.includes('courier')) {
+    return { id: 'COLL-temp', name: 'Collection Staff', role: 'Collection Staff' };
+  }
+  if (emailLower === 'k9836282432@gmail.com' || emailLower.includes('admin')) {
+    return { id: 'ADMIN-temp', name: 'Branch Admin', role: 'Admin' };
+  }
+  return { id: 'STAFF-temp', name: 'Marcus Reynolds', role: 'Staff' };
+};
+
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
-  const { login } = useSession();
+  const { login, logout, authError } = useSession();
   const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [passkey, setPasskey] = useState("");
   const [email, setEmail] = useState("");
-  const [isAuthenticating, setIsAuthenticating] = useState(false); // only using this to prevent double clicks without showing UI lag
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
-  const handleInitialize = async () => {
+  useEffect(() => {
+    if (authError) {
+      setHasError(true);
+      setErrorMessage(authError);
+      setIsAuthenticating(false);
+    }
+  }, [authError]);
+
+  const handleInitialize = () => {
     if (isAuthenticating) return;
+    
+    const emailLower = email.toLowerCase().trim();
+    if (!emailLower || !passkey) {
+      setHasError(true);
+      setErrorMessage("Please enter both email and encryption passkey.");
+      return;
+    }
+
     setIsAuthenticating(true);
     setHasError(false);
     
-    try {
-      const emailLower = email.toLowerCase().trim();
-      
-      // 1. Authenticate via Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: emailLower,
-        password: passkey,
-      });
+    // 1. Instantly guess the role and log in optimistically (isFullyAuthenticated = false)
+    const guessed = guessRoleFromEmail(emailLower);
+    login({
+      id: guessed.id,
+      name: guessed.name,
+      role: guessed.role,
+      email: emailLower,
+      phone: ''
+    }, false);
 
-      if (authError || !authData.user) {
-        setHasError(true);
-        setErrorMessage("Invalid email address or encryption passkey.");
+    // 2. Instantly transition to the Dashboard (0ms delay)
+    onLogin();
+
+    // 3. Authenticate and query fresh data in the background
+    (async () => {
+      try {
+        const { data: authData, error: authErrorRes } = await supabase.auth.signInWithPassword({
+          email: emailLower,
+          password: passkey,
+        });
+
+        if (authErrorRes || !authData.user) {
+          logout("Invalid email address or encryption passkey.");
+          return;
+        }
+
+        // Fetch actual profile, ledger, transactions, and tasks in parallel to warm cache and get profile details
+        const [profileRes, ledgerRes, txRes, tasksRes] = await Promise.all([
+          supabase
+            .from('users')
+            .select('*')
+            .eq('email', emailLower)
+            .maybeSingle(),
+          supabase.from('ledger_entries').select('*'),
+          supabase.from('transactions').select('*'),
+          supabase.from('tasks').select('*')
+        ]);
+
+        const userData = profileRes.data;
+        const userError = profileRes.error;
+
+        if (userError || !userData) {
+          logout("Vault connection error: user profile not found.");
+          return;
+        }
+
+        // Warm up in-memory cache so all dashboard views render instantly
+        if (ledgerRes.data) setCachedData('ledger_data', ledgerRes.data);
+        if (txRes.data) setCachedData('tx_data', txRes.data);
+        if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+
+        // Promote in-memory session to fully authenticated
+        login({
+          id: userData.id,
+          name: userData.name,
+          role: userData.role,
+          email: userData.email || emailLower,
+          phone: userData.phone || ''
+        }, true);
+
+      } catch (err) {
+        console.error("Background authentication failed:", err);
+        logout("An unexpected validation error occurred.");
+      } finally {
         setIsAuthenticating(false);
-        return;
       }
-
-      // 2. Fetch profile, ledger, transactions, and tasks in parallel
-      const [profileRes, ledgerRes, txRes, tasksRes] = await Promise.all([
-        supabase
-          .from('users')
-          .select('*')
-          .eq('email', emailLower)
-          .maybeSingle(),
-        supabase.from('ledger_entries').select('*'),
-        supabase.from('transactions').select('*'),
-        supabase.from('tasks').select('*')
-      ]);
-
-      const userData = profileRes.data;
-      const userError = profileRes.error;
-
-      if (userError || !userData) {
-        setHasError(true);
-        setErrorMessage("Vault connection error: user profile not found.");
-        setIsAuthenticating(false);
-        return;
-      }
-      
-      // Warm up in-memory cache so all dashboard views render instantly
-      if (ledgerRes.data) setCachedData('ledger_data', ledgerRes.data);
-      if (txRes.data) setCachedData('tx_data', txRes.data);
-      if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
-
-      login({
-        id: userData.id,
-        name: userData.name,
-        role: userData.role,
-        email: userData.email || emailLower,
-        phone: userData.phone || ''
-      });
-      
-      // Instantly transition to the Dashboard upon successful validation
-      onLogin();
-      
-    } catch (e) {
-      setHasError(true);
-      setErrorMessage("An unexpected error occurred.");
-      setIsAuthenticating(false);
-    }
+    })();
   };
 
   return (

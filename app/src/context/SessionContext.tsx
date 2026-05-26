@@ -11,15 +11,20 @@ export interface UserSession {
 
 interface SessionContextType {
   user: UserSession | null;
-  login: (userData: UserSession) => void;
-  logout: () => void;
+  login: (userData: UserSession, isFullyAuthenticated?: boolean) => void;
+  logout: (errorMsg?: string) => void;
   loading: boolean;
+  isFullyAuthenticated: boolean;
+  authError: string | null;
+  setAuthError: (error: string | null) => void;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserSession | null>(null);
+  const [isFullyAuthenticated, setFullyAuthenticated] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +48,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 email: userData.email,
                 phone: userData.phone || ''
               });
+              setFullyAuthenticated(true);
             }
           }
         }
@@ -56,17 +62,21 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     checkActiveSession();
   }, []);
 
-  const login = (userData: UserSession) => {
+  const login = (userData: UserSession, isAuth = true) => {
     setUser(userData);
+    setFullyAuthenticated(isAuth);
+    setAuthError(null);
   };
 
-  const logout = async () => {
+  const logout = async (errorMsg?: string) => {
     setUser(null);
+    setFullyAuthenticated(false);
+    setAuthError(errorMsg || null);
     await supabase.auth.signOut();
   };
 
   return (
-    <SessionContext.Provider value={{ user, login, logout, loading }}>
+    <SessionContext.Provider value={{ user, login, logout, loading, isFullyAuthenticated, authError, setAuthError }}>
       {children}
     </SessionContext.Provider>
   );

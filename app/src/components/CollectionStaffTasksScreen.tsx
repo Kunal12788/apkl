@@ -204,7 +204,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
 
 export const CollectionStaffTasksScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -216,6 +216,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   useEffect(() => {
     const loadTasks = async () => {
       const currentUser = user?.id || 'COLL-001';
+      if (!isFullyAuthenticated) return;
       try {
         const { data, error } = await supabase.from('tasks').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;
@@ -238,7 +239,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     };
 
     loadTasks();
-  }, []);
+  }, [isFullyAuthenticated]);
 
   const filteredTasks = tasks.filter(t => (activeTab === t.status) && (t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())));
 

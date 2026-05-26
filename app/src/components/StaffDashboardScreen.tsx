@@ -6,7 +6,7 @@ import { useSession } from '../context/SessionContext';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const userId = user?.id || 'STAFF-001';
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
@@ -188,6 +188,9 @@ export const StaffDashboardScreen: React.FC = () => {
         setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
       }
 
+      // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
+      if (!isFullyAuthenticated) return;
+
       // 2. Fetch fresh data in background in parallel
       try {
         const [ledgerRes, txRes, tasksRes] = await Promise.all([
@@ -291,7 +294,7 @@ export const StaffDashboardScreen: React.FC = () => {
       }
     };
     fetchData();
-  }, [userId]);
+  }, [userId, isFullyAuthenticated]);
 
 
 

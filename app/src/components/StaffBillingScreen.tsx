@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { useSession } from '../context/SessionContext';
 
 type TabView = 'all' | 'customer';
 
@@ -276,6 +277,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -300,6 +302,9 @@ export const StaffBillingScreen: React.FC = () => {
         })));
       }
 
+      // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
+      if (!isFullyAuthenticated) return;
+
       // 2. Fetch fresh in background
       try {
         const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
@@ -321,7 +326,7 @@ export const StaffBillingScreen: React.FC = () => {
     };
 
     loadTransactions();
-  }, []);
+  }, [isFullyAuthenticated]);
 
   // Group by customer dynamically
   const dynamicCustomers: Customer[] = [];

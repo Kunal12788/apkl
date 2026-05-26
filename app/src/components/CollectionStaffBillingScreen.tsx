@@ -204,7 +204,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
 export const CollectionStaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
@@ -217,6 +217,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   useEffect(() => {
     const loadTransactions = async () => {
       const currentUser = user?.id || 'COLL-001';
+      if (!isFullyAuthenticated) return;
       try {
         const { data, error } = await supabase.from('transactions').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;
@@ -238,7 +239,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     };
 
     loadTransactions();
-  }, []);
+  }, [isFullyAuthenticated]);
 
   // Dynamically group transactions by customer
   const dynamicCustomers: Customer[] = [];

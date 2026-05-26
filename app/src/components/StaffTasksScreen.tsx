@@ -311,7 +311,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
 
 export const StaffTasksScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const taskId = searchParams.get('taskId');
   const [searchQuery, setSearchQuery] = useState('');
@@ -336,6 +336,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   useEffect(() => {
     const loadTasks = async () => {
+      if (!isFullyAuthenticated) return;
       try {
         const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (error) throw error;
@@ -360,7 +361,7 @@ export const StaffTasksScreen: React.FC = () => {
     };
 
     loadTasks();
-  }, [isAdminOrSuper]);
+  }, [isAdminOrSuper, isFullyAuthenticated]);
 
   const selectedTask = tasks.find(t => t.id === taskId) || null;
 

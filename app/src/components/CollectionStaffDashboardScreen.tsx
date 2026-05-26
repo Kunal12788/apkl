@@ -7,7 +7,7 @@ import { getCachedData, setCachedData } from '../cache';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const currentUser = user?.id || 'COLL-001';
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
@@ -32,6 +32,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!isFullyAuthenticated) return;
       try {
         const [tasksRes, txRes] = await Promise.all([
           supabase
@@ -77,7 +78,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
 
     loadData();
-  }, [currentUser]);
+  }, [currentUser, isFullyAuthenticated]);
 
   // 1. Calculate stats dynamically
   let tunchPcs = 0;
