@@ -9,6 +9,7 @@ import { StaffTasksScreen } from './components/StaffTasksScreen';
 import { StaffProfileScreen } from './components/StaffProfileScreen';
 import { StaffLedgerScreen } from './components/StaffLedgerScreen';
 import { SuperAdminLedgerScreen } from './components/SuperAdminLedgerScreen';
+import { SuperAdminDashboardScreen } from './components/SuperAdminDashboardScreen';
 import { CollectionStaffDashboardScreen } from './components/CollectionStaffDashboardScreen';
 import { CollectionHistoryScreen } from './components/CollectionHistoryScreen';
 import { CollectionStaffProfileScreen } from './components/CollectionStaffProfileScreen';
@@ -23,6 +24,9 @@ const LoginWrapper = () => {
 
 const DashboardWrapper = () => {
   const userId = localStorage.getItem('user_id') || '';
+  if (userId.startsWith('SUPER-')) {
+    return <SuperAdminDashboardScreen />;
+  }
   if (userId.startsWith('COLL-')) {
     return <CollectionStaffDashboardScreen />;
   }
