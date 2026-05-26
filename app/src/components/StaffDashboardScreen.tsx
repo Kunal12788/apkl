@@ -86,7 +86,10 @@ export const StaffDashboardScreen: React.FC = () => {
         
         // Populate from cache
         const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+        const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
+        const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
         setPureGoldWeight(100 - totalPureGiven); 
+        setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         
         let collected = 0, cash = 0, upi = 0;
         cachedTx.forEach((tx: any) => {
@@ -125,9 +128,6 @@ export const StaffDashboardScreen: React.FC = () => {
         });
 
         setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
-        setVolume({ tunch: volTunch, marking: volMark, shouldering: volShoulder });
-        setCashDues(cDues);
-        setGoldDues(gDues);
       } else {
         setLoading(true);
       }
@@ -149,7 +149,10 @@ export const StaffDashboardScreen: React.FC = () => {
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
           const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
+          const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
+          const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
           setPureGoldWeight(100 - totalPureGiven); 
+          setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         }
 
         const { data: txData } = await supabase.from('transactions').select('*');
