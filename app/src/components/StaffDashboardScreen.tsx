@@ -10,14 +10,74 @@ export const StaffDashboardScreen: React.FC = () => {
   
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
+  // Directly initialize state from cache for 0ms delay on mount
+  const initialLedger = getCachedData('ledger_data');
+  const initialTx = getCachedData('tx_data');
+  const initialTasks = getCachedData('tasks_data');
+
+  let initialPure = 0;
+  let initialImpure = 0;
+  let initialTotalCol = 0;
+  let initialCashCol = 0;
+  let initialUpiCol = 0;
+  let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
+  let initialStats = { pending: 0, inProgress: 0, completed: 0 };
+
+  if (initialLedger && initialTx && initialTasks) {
+    const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+    const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
+    const totalImpureRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
+    initialPure = 100 - totalPureGiven;
+    initialImpure = totalImpureReceived - totalImpureRefined;
+
+    initialTx.forEach((tx: any) => {
+      if (tx.status === 'Paid') {
+        const amt = Number(tx.amount) || 0;
+        initialTotalCol += amt;
+        if (tx.type === 'Cash') initialCashCol += amt;
+        if (tx.type === 'UPI') initialUpiCol += amt;
+      }
+    });
+
+    let revTunch = 0, revMark = 0, revShoulder = 0;
+    let volTunch = 0, volMark = 0, volShoulder = 0;
+    let cDues = 0, gDues = 0;
+
+    initialTasks.forEach((t: any) => {
+      const isCompleted = t.status === 'Completed';
+      const w = Number(t.weight_grams) || 0;
+      const amt = Number(t.bill_amount) || 0;
+
+      if (t.task_type === 'Tunch') {
+        if (isCompleted) { revTunch += amt; volTunch += w; }
+      } else if (t.task_type === 'Marking') {
+        if (isCompleted) { revMark += amt; volMark += w; }
+      } else if (t.task_type === 'Shouldering') {
+        if (isCompleted) { revShoulder += amt; volShoulder += w; }
+      }
+
+      if (t.payment_status === 'Unpaid') {
+        cDues += amt;
+        if (isCompleted) gDues += w;
+      }
+
+      if (t.status === 'Pending Verification' || t.status === 'Pending') initialStats.pending++;
+      else if (t.status === 'In Progress' || t.status === 'Working') initialStats.inProgress++;
+      else if (t.status === 'Completed') initialStats.completed++;
+    });
+
+    initialRev = { tunch: revTunch, marking: revMark, shouldering: revShoulder };
+  }
+
   // States for Metrics
-  const [pureGoldWeight, setPureGoldWeight] = useState(0);
-  const [impureGoldWeight, setImpureGoldWeight] = useState(0);
-  const [totalCollected, setTotalCollected] = useState(0);
-  const [cashCollection, setCashCollection] = useState(0);
-  const [upiCollection, setUpiCollection] = useState(0);
+  const [pureGoldWeight, setPureGoldWeight] = useState(initialPure);
+  const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
+  const [totalCollected, setTotalCollected] = useState(initialTotalCol);
+  const [cashCollection, setCashCollection] = useState(initialCashCol);
+  const [upiCollection, setUpiCollection] = useState(initialUpiCol);
   
-  const [revenue, setRevenue] = useState({ tunch: 0, marking: 0, shouldering: 0 });
+  const [revenue, setRevenue] = useState(initialRev);
+  const [globalStats, setGlobalStats] = useState(initialStats);
   const [tasksStats, setTasksStats] = useState({
     tunch: { processed: 0, pending: 0 },
     marking: { processed: 0, pending: 0 },
@@ -28,7 +88,6 @@ export const StaffDashboardScreen: React.FC = () => {
     customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0
   });
 
-  const [globalStats, setGlobalStats] = useState({ inProgress: 0, completed: 0, pending: 0 });
   const [recentTasks, setRecentTasks] = useState<any[]>([]);
 
   const getGreetingName = () => {

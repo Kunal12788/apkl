@@ -9,12 +9,40 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
+  // Directly initialize state from cache for 0ms delay on mount
+  const initialLedger = getCachedData('ledger_data');
+  const initialTx = getCachedData('tx_data');
+  
+  let initialPure = 0;
+  let initialImpure = 0;
+  let initialDues = 0;
+  let initialCash = 0;
+  let initialUpi = 0;
+
+  if (initialLedger && initialTx) {
+    const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+    const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
+    const totalImpureRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
+    
+    initialPure = 100 - totalPureGiven;
+    initialImpure = totalImpureReceived - totalImpureRefined;
+    initialDues = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0);
+
+    initialTx.forEach((tx: any) => {
+      if (tx.status === 'Paid') {
+        const amt = Number(tx.amount) || 0;
+        if (tx.type === 'Cash') initialCash += amt;
+        if (tx.type === 'UPI') initialUpi += amt;
+      }
+    });
+  }
+
   // States for Top Metrics
-  const [pureGoldWeight, setPureGoldWeight] = useState(0);
-  const [impureGoldWeight, setImpureGoldWeight] = useState(0);
-  const [cashRemaining, setCashRemaining] = useState(0);
-  const [totalDues, setTotalDues] = useState(0);
-  const [upiCollection, setUpiCollection] = useState(0);
+  const [pureGoldWeight, setPureGoldWeight] = useState(initialPure);
+  const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
+  const [cashRemaining, setCashRemaining] = useState(initialCash);
+  const [totalDues, setTotalDues] = useState(initialDues);
+  const [upiCollection, setUpiCollection] = useState(initialUpi);
 
   const getGreetingName = () => {
     if (userName) return userName;
