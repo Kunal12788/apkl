@@ -49,7 +49,7 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
 export const SuperAdminLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(true);
 
   const [setupPureInput, setSetupPureInput] = useState('');
@@ -270,12 +270,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
         </header>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-8 h-8 border-4 border-[#003366] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-            <p className="text-xs text-outline">Loading Corporate Ledger...</p>
-          </div>
-        ) : isFirstTimeSetup ? (
+        {isFirstTimeSetup ? (
           <div className="luxury-card bg-white p-6 border border-outline-variant/20 rounded-[2rem] shadow-xl animate-fade-in">
             <div className="w-16 h-16 rounded-full bg-[#003366]/10 flex items-center justify-center mb-4">
               <span className="material-symbols-outlined text-3xl text-[#003366]">upload_file</span>

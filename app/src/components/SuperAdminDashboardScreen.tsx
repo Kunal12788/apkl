@@ -7,7 +7,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem('user_id') || 'SUPER-001';
   
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
   // States for Top Metrics
@@ -115,9 +115,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     fetchData();
   }, [userId]);
 
-  if (loading) {
-    return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
-  }
+
 
   // Quick Action config
   const quickActions = [

@@ -8,7 +8,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
   // States for Metrics
@@ -244,9 +244,7 @@ export const StaffDashboardScreen: React.FC = () => {
     fetchData();
   }, [userId]);
 
-  if (loading) {
-    return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
-  }
+
 
   const totalTasks = globalStats.inProgress + globalStats.completed + globalStats.pending;
 

@@ -64,7 +64,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   // Fetch entries from Supabase
@@ -272,12 +272,6 @@ export const StaffLedgerScreen: React.FC = () => {
 
         {!selectedEntry && (
           <div className="space-y-6 animate-fade-in">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="w-8 h-8 border-4 border-[#003366] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                <p className="text-xs text-outline">Connecting to Supabase...</p>
-              </div>
-            ) : (
               <>
                 {/* Live Stock Engine Summary */}
                 <div className="grid grid-cols-2 gap-4">
@@ -406,7 +400,6 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                 </div>
               </>
-            )}
           </div>
         )}
 
