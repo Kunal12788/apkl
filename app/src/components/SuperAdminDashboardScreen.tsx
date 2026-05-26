@@ -7,7 +7,6 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem('user_id') || 'SUPER-001';
   
-  const [, setLoading] = useState(true);
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
   // States for Top Metrics
@@ -38,7 +37,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
       const cachedTx = getCachedData('tx_data');
       
       if (cachedLedger && cachedTx) {
-        setLoading(false); // Remove loading screen instantly
+        // Populate from cache
         
         // Populate from cache
         const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
@@ -108,8 +107,6 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
       } catch (err) {
         console.error('Error fetching super admin dashboard data:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchData();

@@ -8,7 +8,6 @@ export const StaffDashboardScreen: React.FC = () => {
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
-  const [, setLoading] = useState(true);
   const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
   
   // States for Metrics
@@ -82,7 +81,7 @@ export const StaffDashboardScreen: React.FC = () => {
       const cachedTasks = getCachedData('tasks_data');
 
       if (cachedLedger && cachedTx && cachedTasks) {
-        setLoading(false); // Remove loading immediately
+        // Populate from cache
         
         // Populate from cache
         const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
@@ -128,8 +127,6 @@ export const StaffDashboardScreen: React.FC = () => {
         });
 
         setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
-      } else {
-        setLoading(true);
       }
 
       // 2. Fetch fresh data in background
@@ -237,8 +234,6 @@ export const StaffDashboardScreen: React.FC = () => {
 
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
-      } finally {
-        setLoading(false);
       }
     };
     fetchData();
