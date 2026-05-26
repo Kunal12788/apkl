@@ -89,14 +89,14 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
   // Quick Action config
   const quickActions = [
-    { id: 'refinery', name: 'Refinery', desc: 'Refining & Melt Hub', icon: 'local_fire_department', color: 'text-tertiary', bgHover: 'group-hover:bg-tertiary-fixed/20', action: () => alert('Refinery Module opening...') },
-    { id: 'customer', name: 'Customer', desc: 'Client Directory', icon: 'groups', color: 'text-secondary', bgHover: 'group-hover:bg-secondary-fixed/20', action: () => alert('Client Directory opening...') },
-    { id: 'staff', name: 'Staff Allocation', desc: 'Personnel Management', icon: 'badge', color: 'text-primary', bgHover: 'group-hover:bg-primary-fixed/20', action: () => alert('Personnel Management opening...') },
-    { id: 'work', name: 'Work Profile', desc: 'Operational Metrics', icon: 'monitoring', color: 'text-tertiary', bgHover: 'group-hover:bg-tertiary-fixed/20', action: () => alert('Work Profile & Metrics opening...') },
-    { id: 'ledger', name: 'Complete Ledger', desc: 'Master Ledger', icon: 'account_balance', color: 'text-secondary', bgHover: 'group-hover:bg-secondary-fixed/20', action: () => navigate('/ledger') },
-    { id: 'stock', name: 'Stock Profile', desc: 'Vault Inventory', icon: 'inventory_2', color: 'text-primary', bgHover: 'group-hover:bg-primary-fixed/20', action: () => alert('Vault Inventory opening...') },
-    { id: 'complain', name: 'Complain or Errors', desc: 'System Alerts & Support', icon: 'warning', color: 'text-error', bgHover: 'group-hover:bg-error-container/20', action: () => alert('System Alerts opening...') },
-    { id: 'expansion', name: 'Expansion Module', desc: 'Future Feature', icon: 'extension', color: 'text-outline', bgHover: 'group-hover:bg-surface-container/80', action: () => alert('Future feature unlocking...') },
+    { id: 'refinery', name: 'Refinery', desc: 'Refining & Melt Hub', icon: 'local_fire_department', color: 'text-[#755b00]', grad: 'from-[#755b00]/10 to-[#755b00]/[0.02]', border: 'border-[#755b00]/20', glow: 'group-hover:shadow-[0_0_15px_rgba(117,91,0,0.2)]', action: () => alert('Refinery Module opening...') },
+    { id: 'customer', name: 'Customer', desc: 'Client Directory', icon: 'groups', color: 'text-secondary', grad: 'from-secondary/10 to-secondary/[0.02]', border: 'border-secondary/20', glow: 'group-hover:shadow-[0_0_15px_rgba(0,89,187,0.2)]', action: () => alert('Client Directory opening...') },
+    { id: 'staff', name: 'Staff', desc: 'Personnel Management', icon: 'badge', color: 'text-primary', grad: 'from-primary/10 to-primary/[0.02]', border: 'border-primary/20', glow: 'group-hover:shadow-[0_0_15px_rgba(0,30,64,0.2)]', action: () => alert('Personnel Management opening...') },
+    { id: 'work', name: 'Work', desc: 'Operational Metrics', icon: 'monitoring', color: 'text-tertiary', grad: 'from-tertiary/10 to-tertiary/[0.02]', border: 'border-tertiary/20', glow: 'group-hover:shadow-[0_0_15px_rgba(112,83,0,0.2)]', action: () => alert('Work Profile & Metrics opening...') },
+    { id: 'ledger', name: 'Ledger', desc: 'Master Ledger', icon: 'account_balance', color: 'text-emerald-600', grad: 'from-emerald-600/10 to-emerald-600/[0.02]', border: 'border-emerald-600/20', glow: 'group-hover:shadow-[0_0_15px_rgba(5,150,105,0.2)]', action: () => navigate('/ledger') },
+    { id: 'stock', name: 'Stock', desc: 'Vault Inventory', icon: 'inventory_2', color: 'text-purple-600', grad: 'from-purple-600/10 to-purple-600/[0.02]', border: 'border-purple-600/20', glow: 'group-hover:shadow-[0_0_15px_rgba(147,51,234,0.2)]', action: () => alert('Vault Inventory opening...') },
+    { id: 'complain', name: 'Alerts', desc: 'System Alerts & Support', icon: 'warning', color: 'text-error', grad: 'from-error/10 to-error/[0.02]', border: 'border-error/20', glow: 'group-hover:shadow-[0_0_15px_rgba(186,26,26,0.2)]', action: () => alert('System Alerts opening...') },
+    { id: 'expansion', name: 'More', desc: 'Future Feature', icon: 'grid_view', color: 'text-outline', grad: 'from-outline/10 to-outline/[0.02]', border: 'border-outline/20', glow: 'group-hover:shadow-[0_0_15px_rgba(116,119,127,0.2)]', action: () => alert('Future feature unlocking...') },
   ];
 
   return (
@@ -195,30 +195,47 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* Quick Actions / Operational Volume (Exact match to pattern) */}
-        <section className="space-y-3 relative z-10">
-          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Quick Actions</h3>
-          <div className="space-y-2">
-            {quickActions.map((action) => (
-              <button 
-                key={action.id}
-                onClick={action.action}
-                className="luxury-card p-4 flex items-center justify-between group w-full text-left"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-surface-container ${action.bgHover} transition-colors`}>
-                    <span className={`material-symbols-outlined text-lg ${action.color}`}>{action.icon}</span>
-                  </div>
-                  <div>
-                    <p className="font-headline font-bold text-primary text-sm uppercase">{action.name}</p>
-                    <p className="text-[9px] text-on-surface-variant">{action.desc}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
-                </div>
-              </button>
-            ))}
+        {/* Quick Actions (Ultra Premium 4x2 Grid) */}
+        <section className="relative z-10 pt-2">
+          <div className="luxury-card bg-white shadow-[0_12px_40px_rgba(0,30,64,0.06)] relative overflow-hidden border border-[#003366]/10">
+            {/* Ambient inner glow for the box */}
+            <div className="absolute top-[-50px] right-[-50px] w-[150px] h-[150px] bg-[#F6C358]/10 rounded-full blur-[40px] pointer-events-none"></div>
+            <div className="absolute bottom-[-50px] left-[-50px] w-[150px] h-[150px] bg-[#003366]/5 rounded-full blur-[40px] pointer-events-none"></div>
+
+            {/* Header embedded inside the card */}
+            <div className="px-6 py-5 border-b border-outline-variant/10 flex justify-between items-center bg-gradient-to-b from-white to-white/50">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm text-primary">apps</span>
+                <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-primary font-extrabold">Command Center</h3>
+              </div>
+            </div>
+
+            {/* 4x2 Grid */}
+            <div className="p-6">
+              <div className="grid grid-cols-4 gap-y-8 gap-x-2 relative z-10">
+                {quickActions.map((action) => (
+                  <button 
+                    key={action.id}
+                    onClick={action.action}
+                    className="flex flex-col items-center justify-start gap-3 group w-full active:scale-95 transition-transform"
+                  >
+                    {/* Circle Icon Container with Premium Gradient & Border */}
+                    <div className={`w-[3.5rem] h-[3.5rem] rounded-full bg-gradient-to-br ${action.grad} flex items-center justify-center border ${action.border} shadow-sm ${action.glow} group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden`}>
+                      {/* Glass glare effect */}
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                      <span className={`material-symbols-outlined text-[26px] ${action.color} relative z-10`}>{action.icon}</span>
+                    </div>
+                    {/* Typography */}
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="font-headline text-[9.5px] font-extrabold text-primary uppercase text-center leading-tight tracking-[0.05em] group-hover:text-secondary transition-colors">
+                        {action.name}
+                      </span>
+                      <div className="w-1 h-1 rounded-full bg-outline-variant/30 group-hover:bg-secondary/40 transition-colors mt-0.5"></div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
