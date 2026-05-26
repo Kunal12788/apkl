@@ -1,6 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export const SessionInitializationScreen: React.FC = () => {
+  const [progressWidth, setProgressWidth] = useState('0%');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setProgressWidth('100%');
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <div className="bg-background text-on-background font-body-md min-h-[100svh] flex flex-col ambient-bg relative z-10 w-full overflow-hidden items-center justify-center">
       <div className="w-full max-w-[400px] flex flex-col items-center px-margin-mobile">
@@ -26,7 +35,13 @@ export const SessionInitializationScreen: React.FC = () => {
 
           {/* Premium Custom Progress Loader */}
           <div className="w-full h-1.5 bg-outline-variant/20 rounded-full overflow-hidden relative">
-            <div className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary w-2/3 rounded-full animate-shimmer-sweep" style={{ animationDuration: '1.5s', width: '40%' }}></div>
+            <div 
+              className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
+              style={{ 
+                width: progressWidth,
+                transitionDuration: '5000ms'
+              }}
+            ></div>
           </div>
 
           <p className="font-label-caps text-[9px] tracking-[0.2em] text-outline font-extrabold uppercase">
