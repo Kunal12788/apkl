@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { useSession } from '../context/SessionContext';
 
 interface LedgerEntry {
   id: string;
@@ -59,7 +60,8 @@ const mapEntryToDb = (entry: LedgerEntry, staffId: string) => ({
 
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  const { user } = useSession();
+  const userId = user?.id || 'STAFF-001';
   const isAdmin = userId.startsWith('ADMIN-');
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
+  const { login } = useSession();
   const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -44,11 +46,13 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         return;
       }
       
-      localStorage.setItem('user_id', userData.id);
-      localStorage.setItem('user_name', userData.name);
-      localStorage.setItem('user_role', userData.role);
-      localStorage.setItem('user_email', userData.email || emailLower);
-      localStorage.setItem('user_phone', userData.phone || '');
+      login({
+        id: userData.id,
+        name: userData.name,
+        role: userData.role,
+        email: userData.email || emailLower,
+        phone: userData.phone || ''
+      });
       
       // Instantly transition to the Dashboard upon successful validation
       onLogin();

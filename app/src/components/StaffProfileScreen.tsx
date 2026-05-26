@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 export const StaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user, logout } = useSession();
 
-  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  const userId = user?.id || 'STAFF-001';
   
   const [profile, setProfile] = useState<any>(null);
 
@@ -33,21 +35,21 @@ export const StaffProfileScreen: React.FC = () => {
     // 1. If we have the exact profile from DB, use it
     if (profile) {
       return {
-        name: profile.name || localStorage.getItem('user_name') || 'User',
-        role: profile.role || localStorage.getItem('user_role') || 'Staff',
+        name: profile.name || user?.name || 'User',
+        role: profile.role || user?.role || 'Staff',
         id: profile.id || userId,
-        phone: profile.phone || localStorage.getItem('user_phone') || '+91 98765 43210',
-        email: profile.email || localStorage.getItem('user_email') || 'No email provided'
+        phone: profile.phone || user?.phone || '+91 98765 43210',
+        email: profile.email || user?.email || 'No email provided'
       };
     }
 
-    // 2. Otherwise fall back to local storage before DB fetch completes
+    // 2. Otherwise fall back to in-memory session context
     return {
-      name: localStorage.getItem('user_name') || 'User',
-      role: localStorage.getItem('user_role') || 'Staff',
+      name: user?.name || 'User',
+      role: user?.role || 'Staff',
       id: userId,
-      phone: localStorage.getItem('user_phone') || '+91 98765 43210',
-      email: localStorage.getItem('user_email') || 'Fetching email...'
+      phone: user?.phone || '+91 98765 43210',
+      email: user?.email || 'Fetching email...'
     };
   };
 
@@ -99,7 +101,7 @@ export const StaffProfileScreen: React.FC = () => {
 
 
         {/* Logout Button */}
-        <button onClick={() => navigate('/login')} className="w-full mt-4 bg-error/10 border border-error/20 hover:bg-error/20 hover:border-error/30 text-error rounded-2xl py-4 font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+        <button onClick={async () => { await logout(); navigate('/login'); }} className="w-full mt-4 bg-error/10 border border-error/20 hover:bg-error/20 hover:border-error/30 text-error rounded-2xl py-4 font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2">
           <span className="material-symbols-outlined text-lg">logout</span>
           Secure Logout
         </button>

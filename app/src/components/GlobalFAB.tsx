@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { AddTaskModal } from './AddTaskModal';
+import { useSession } from '../context/SessionContext';
 
 export const GlobalFAB: React.FC = () => {
+  const { user } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -55,7 +57,7 @@ export const GlobalFAB: React.FC = () => {
               progress_percentage: data.progressPercentage,
               assigned_to: data.assignedTo || 'Unassigned',
               source: 'Staff',
-              created_by: localStorage.getItem('user_id') || 'STAFF-001',
+              created_by: user?.id || 'STAFF-001',
               iso_date: new Date().toISOString().split('T')[0],
               estimated_completion: 'Today, 06:00 PM',
               notes: 'Created from Global FAB'

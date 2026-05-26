@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 interface CollectionEntryModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
 );
 
 export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { user } = useSession();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     customerName: '',
@@ -73,7 +75,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         status: 'Pending',
         progress_percentage: 0,
         source: 'Collection Staff',
-        created_by: localStorage.getItem('user_id') || 'COLL-001',
+        created_by: user?.id || 'COLL-001',
         date_given: 'Just Now',
         iso_date: new Date().toISOString().split('T')[0],
         estimated_completion: 'Awaiting Audit',

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
@@ -203,6 +204,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
 
 export const CollectionStaffTasksScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -213,7 +215,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
   useEffect(() => {
     const loadTasks = async () => {
-      const currentUser = localStorage.getItem('user_id') || 'COLL-001';
+      const currentUser = user?.id || 'COLL-001';
       try {
         const { data, error } = await supabase.from('tasks').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;

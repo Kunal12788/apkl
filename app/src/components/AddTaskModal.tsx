@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSession } from '../context/SessionContext';
 
 type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING';
 
@@ -32,10 +33,11 @@ interface AddTaskModalProps {
 }
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const { user } = useSession();
   const [step, setStep] = useState(1);
   const [workType, setWorkType] = useState<WorkType | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const isCollection = localStorage.getItem('user_id')?.startsWith('COLL-') || false;
+  const isCollection = user?.id?.startsWith('COLL-') || false;
 
   const [formData, setFormData] = useState({
     customerName: '', address: '', phone: '',

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TaskReconciliationModal } from './TaskReconciliationModal';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed';
 
@@ -307,15 +308,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
   );
 };
 
+
 export const StaffTasksScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const taskId = searchParams.get('taskId');
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const currentUser = localStorage.getItem('user_id') || 'STAFF-001';
+  const currentUser = user?.id || 'STAFF-001';
   const isAdminOrSuper = currentUser.startsWith('ADMIN-') || currentUser.startsWith('SUPER-');
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';

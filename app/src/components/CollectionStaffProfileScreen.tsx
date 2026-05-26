@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 export const CollectionStaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('user_id') || 'COLL-001';
+  const { user, logout } = useSession();
+  const userId = user?.id || 'COLL-001';
 
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({
@@ -51,11 +53,11 @@ export const CollectionStaffProfileScreen: React.FC = () => {
   }, [userId]);
 
   const staffData = {
-    name: profile?.name || localStorage.getItem('user_name') || 'Staff Member',
-    role: profile?.role || localStorage.getItem('user_role') || 'Collection Staff',
+    name: profile?.name || user?.name || 'Staff Member',
+    role: profile?.role || user?.role || 'Collection Staff',
     id: profile?.id || userId,
-    phone: profile?.phone || localStorage.getItem('user_phone') || '+91 91234 56789',
-    email: profile?.email || localStorage.getItem('user_email') || 'Fetching email...',
+    phone: profile?.phone || user?.phone || '+91 91234 56789',
+    email: profile?.email || user?.email || 'Fetching email...',
     stats
   };
 
@@ -117,7 +119,7 @@ export const CollectionStaffProfileScreen: React.FC = () => {
         </div>
 
         {/* Logout Button */}
-        <button onClick={() => navigate('/login')} className="w-full mt-4 bg-error/10 border border-error/20 hover:bg-error/20 hover:border-error/30 text-error rounded-2xl py-4 font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+        <button onClick={async () => { await logout(); navigate('/login'); }} className="w-full mt-4 bg-error/10 border border-error/20 hover:bg-error/20 hover:border-error/30 text-error rounded-2xl py-4 font-bold text-sm uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2">
           <span className="material-symbols-outlined text-lg">logout</span>
           Secure Logout
         </button>

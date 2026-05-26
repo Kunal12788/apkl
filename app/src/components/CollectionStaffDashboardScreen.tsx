@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CollectionEntryModal } from './CollectionEntryModal';
 import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useSession();
+  const currentUser = user?.id || 'COLL-001';
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
   const [tasks, setTasks] = useState<any[]>([]);
@@ -12,27 +15,30 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     const loadData = async () => {
-      const currentUser = localStorage.getItem('user_id') || 'COLL-001';
-
       try {
-        const { data: tasksData, error: taskError } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('created_by', currentUser)
-          .order('created_at', { ascending: false });
-          
+        const [tasksRes, txRes] = await Promise.all([
+          supabase
+            .from('tasks')
+            .select('*')
+            .eq('created_by', currentUser)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('transactions')
+            .select('*')
+            .eq('created_by', currentUser)
+            .order('created_at', { ascending: false })
+        ]);
+
+        const tasksData = tasksRes.data;
+        const taskError = tasksRes.error;
         if (!taskError && tasksData) {
           setTasks(tasksData.map((t: any) => ({
             id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
           })));
         }
 
-        const { data: txData, error: txError } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('created_by', currentUser)
-          .order('created_at', { ascending: false });
-          
+        const txData = txRes.data;
+        const txError = txRes.error;
         if (!txError && txData) {
           setTransactions(txData.map((t: any) => ({
              status: t.status, amount: t.amount, customerName: t.customer_name
@@ -44,7 +50,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
 
     loadData();
-  }, []);
+  }, [currentUser]);
 
   // 1. Calculate stats dynamically
   let tunchPcs = 0;

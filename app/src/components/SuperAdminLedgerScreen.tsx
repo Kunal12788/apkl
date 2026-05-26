@@ -81,14 +81,23 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
 
     try {
-      // 1. Fetch Super Admin Ledger
-      const { data: ledgerData, error: ledgerError } = await supabase
-        .from('super_admin_ledger')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Fetch Super Admin Ledger and pending refining transfers in parallel
+      const [ledgerRes, transfersRes] = await Promise.all([
+        supabase
+          .from('super_admin_ledger')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('refining_transfers')
+          .select('*')
+          .eq('status', 'Pending')
+          .order('created_at', { ascending: false })
+      ]);
 
-      if (ledgerError) throw ledgerError;
+      if (ledgerRes.error) throw ledgerRes.error;
+      if (transfersRes.error) throw transfersRes.error;
 
+      const ledgerData = ledgerRes.data;
       if (ledgerData) {
         setCachedData('super_admin_ledger_all', ledgerData);
         const mappedLedger = ledgerData.map(mapDbToSaEntry);
@@ -96,15 +105,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         setIsFirstTimeSetup(mappedLedger.length === 0);
       }
 
-      // 2. Fetch pending refining transfers
-      const { data: transfersData, error: transfersError } = await supabase
-        .from('refining_transfers')
-        .select('*')
-        .eq('status', 'Pending')
-        .order('created_at', { ascending: false });
-
-      if (transfersError) throw transfersError;
-
+      const transfersData = transfersRes.data;
       if (transfersData) {
         setCachedData('refining_transfers_pending', transfersData);
         setPendingTransfers(transfersData.map(mapDbToTransfer));

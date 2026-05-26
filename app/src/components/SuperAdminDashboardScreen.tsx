@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { useSession } from '../context/SessionContext';
 
 export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('user_id') || 'SUPER-001';
-  
-  const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
+  const { user } = useSession();
+  const userId = user?.id || 'SUPER-001';
+  const userName = user?.name || '';
   
   // Directly initialize state from cache for 0ms delay on mount
   const initialLedger = getCachedData('ledger_data');
@@ -66,8 +67,6 @@ export const SuperAdminDashboardScreen: React.FC = () => {
       
       if (cachedLedger && cachedTx) {
         // Populate from cache
-        
-        // Populate from cache
         const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
         const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -89,20 +88,14 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         // No cache available, fetch directly
       }
 
-      // 2. Fetch fresh data in background
+      // 2. Fetch fresh data in background in parallel
       try {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', userId)
-          .maybeSingle();
-          
-        if (userData && userData.name) {
-          setUserName(userData.name);
-          localStorage.setItem('user_name', userData.name);
-        }
+        const [ledgerRes, txRes] = await Promise.all([
+          supabase.from('ledger_entries').select('*'),
+          supabase.from('transactions').select('*')
+        ]);
 
-        const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
+        const ledgerData = ledgerRes.data;
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
           const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
@@ -116,7 +109,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           setTotalDues(pureDue);
         }
 
-        const { data: txData } = await supabase.from('transactions').select('*');
+        const txData = txRes.data;
         if (txData) {
           setCachedData('tx_data', txData);
           let cash = 0, upi = 0;

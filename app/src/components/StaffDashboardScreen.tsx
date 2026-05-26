@@ -2,13 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { useSession } from '../context/SessionContext';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const userId = localStorage.getItem('user_id') || 'STAFF-001';
+  const { user } = useSession();
+  const userId = user?.id || 'STAFF-001';
   const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
   
-  const [userName, setUserName] = useState(localStorage.getItem('user_name') || '');
+  const userName = user?.name || '';
   
   // Directly initialize state from cache for 0ms delay on mount
   const initialLedger = getCachedData('ledger_data');
@@ -141,8 +143,6 @@ export const StaffDashboardScreen: React.FC = () => {
 
       if (cachedLedger && cachedTx && cachedTasks) {
         // Populate from cache
-        
-        // Populate from cache
         const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
         const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -188,20 +188,15 @@ export const StaffDashboardScreen: React.FC = () => {
         setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
       }
 
-      // 2. Fetch fresh data in background
+      // 2. Fetch fresh data in background in parallel
       try {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', userId)
-          .maybeSingle();
-          
-        if (userData && userData.name) {
-          setUserName(userData.name);
-          localStorage.setItem('user_name', userData.name);
-        }
+        const [ledgerRes, txRes, tasksRes] = await Promise.all([
+          supabase.from('ledger_entries').select('*'),
+          supabase.from('transactions').select('*'),
+          supabase.from('tasks').select('*')
+        ]);
 
-        const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
+        const ledgerData = ledgerRes.data;
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
           const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
@@ -211,7 +206,7 @@ export const StaffDashboardScreen: React.FC = () => {
           setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         }
 
-        const { data: txData } = await supabase.from('transactions').select('*');
+        const txData = txRes.data;
         if (txData) {
           setCachedData('tx_data', txData);
           let total = 0, cash = 0, upi = 0;
@@ -237,7 +232,7 @@ export const StaffDashboardScreen: React.FC = () => {
         }
 
         // Fetch Tasks for stats
-        const { data: tasksData } = await supabase.from('tasks').select('*');
+        const tasksData = tasksRes.data;
         if (tasksData) {
           let tunch = { processed: 0, pending: 0 };
           let marking = { processed: 0, pending: 0 };
