@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 export const SessionInitializationScreen: React.FC = () => {
   const [progressWidth, setProgressWidth] = useState('0%');
-  const [stepText, setStepText] = useState('Authenticating security credentials...');
+  const [stepText, setStepText] = useState('Authenticating credentials...');
 
   useEffect(() => {
     // Start progress bar animation
@@ -12,11 +12,11 @@ export const SessionInitializationScreen: React.FC = () => {
 
     // Update status text dynamically during the 2 seconds
     const stepTimer1 = setTimeout(() => {
-      setStepText('Decrypting secure database keys...');
+      setStepText('Decrypting vault keymaps...');
     }, 700);
 
     const stepTimer2 = setTimeout(() => {
-      setStepText('Establishing secure in-memory sandbox...');
+      setStepText('Warming session sandbox...');
     }, 1400);
 
     return () => {
@@ -27,55 +27,72 @@ export const SessionInitializationScreen: React.FC = () => {
   }, []);
 
   return (
-    <div className="bg-[#0b0f19] text-[#e2e8f0] font-body-md min-h-[100svh] flex flex-col relative z-10 w-full overflow-hidden items-center justify-center">
-      {/* Background Subtle Gradient Blobs */}
-      <div className="absolute top-[10%] left-[10%] w-72 h-72 bg-[#003366]/10 rounded-full blur-[80px] pointer-events-none"></div>
-      <div className="absolute bottom-[10%] right-[10%] w-72 h-72 bg-[#C9A646]/5 rounded-full blur-[80px] pointer-events-none"></div>
-
-      <div className="w-full max-w-[420px] flex flex-col items-center px-6 relative z-10">
-        {/* Institutional Shield Badge */}
-        <div className="mb-6 relative">
-          <div className="relative w-16 h-16 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] flex items-center justify-center animate-pulse-soft">
-            <span className="material-symbols-outlined text-[32px] text-[#F6C358]" style={{ fontVariationSettings: '"FILL" 1' }}>
-              shield_lock
-            </span>
-          </div>
+    <div className="bg-background text-on-background font-body-md min-h-[100svh] flex flex-col ambient-bg relative z-10 w-full overflow-hidden">
+      {/* Header Pattern */}
+      <header className="absolute top-0 w-full z-50 flex justify-between items-center px-margin-mobile h-16">
+        <div className="flex items-center gap-2">
+          <span className="font-display-lg text-[22px] tracking-tight text-primary font-bold"><br /></span>
         </div>
+      </header>
 
-        {/* Status Card */}
-        <div className="bg-white/[0.02] backdrop-blur-xl w-full rounded-2xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col items-center gap-6 text-center">
-          <div className="space-y-2">
-            <h1 className="font-headline text-[15px] font-black text-white uppercase tracking-[0.25em] leading-none">
-              Security Gateway
-            </h1>
-            <p className="text-[12px] text-outline/80 leading-relaxed font-medium">
-              Initializing secure connection and decrypting vault directories.
-            </p>
-          </div>
-
-          {/* Premium Custom Progress Loader */}
-          <div className="w-full space-y-2">
-            <div className="w-full h-[3px] bg-white/5 rounded-full overflow-hidden relative">
-              <div 
-                className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[#F6C358] to-[#0059bb] rounded-full transition-all ease-linear" 
-                style={{ 
-                  width: progressWidth,
-                  transitionDuration: '2000ms'
-                }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center text-[10px] text-outline font-semibold tracking-wide">
-              <span className="animate-pulse">{stepText}</span>
-              <span className="tabular-nums font-bold text-[#F6C358]">SECURE</span>
+      {/* Main Content Pattern */}
+      <main className="flex-grow flex items-center justify-center px-margin-mobile w-full relative z-10 mt-12 mb-4">
+        <div className="w-full max-w-[400px] flex flex-col items-center">
+          
+          {/* Security Core Icon Section Pattern */}
+          <div className="-mt-2 mb-8 relative">
+            <div className="relative w-20 h-20 rounded-full glass-card premium-shadow flex items-center justify-center border border-white/90 animate-pulse-soft" style={{ willChange: 'transform' }}>
+              <span className="material-symbols-outlined text-[40px] text-secondary animate-spin-slow" style={{ fontVariationSettings: '"FILL" 1' }}>
+                security
+              </span>
             </div>
           </div>
 
-          <div className="w-full border-t border-white/5 pt-4 flex justify-between items-center">
-            <span className="text-[9px] tracking-[0.15em] text-outline/60 font-bold uppercase">SANDBOX ENGINE v2.0</span>
-            <span className="text-[9px] tracking-[0.15em] text-[#F6C358]/80 font-bold uppercase">ENCRYPTED</span>
+          {/* Secure Card Pattern */}
+          <section className="glass-card w-full rounded-lg p-6 premium-shadow flex flex-col gap-6 border border-white/70 relative overflow-hidden">
+            <span className="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[240px] opacity-[0.03] pointer-events-none select-none z-0 text-primary">security</span>
+            
+            <div className="text-center relative z-10">
+              <h1 className="font-headline-md text-[24px] mb-1 font-bold leading-tight text-primary">
+                Initializing Session
+              </h1>
+              <p className="font-body-md text-[13px] text-on-surface-variant/80">
+                Verifying security tokens and decrypting vault directories.
+              </p>
+            </div>
+
+            {/* Custom Linear Progress Loader Pattern */}
+            <div className="flex flex-col gap-2 relative z-10 w-full">
+              <div className="w-full h-1.5 bg-outline-variant/20 rounded-full overflow-hidden relative">
+                <div 
+                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
+                  style={{ 
+                    width: progressWidth,
+                    transitionDuration: '2000ms'
+                  }}
+                ></div>
+              </div>
+              <div className="flex justify-between items-center text-[10px] text-outline font-semibold tracking-wide px-1">
+                <span className="animate-pulse">{stepText}</span>
+                <span className="tabular-nums font-bold text-secondary">SECURE</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Institutional Trust Indicator Pattern */}
+          <div className="flex flex-col items-center mt-6">
+            <div className="flex items-center py-2.5 px-5 rounded-full bg-white/40 backdrop-blur-md border border-white/50 premium-shadow justify-center">
+              <p className="font-label-caps text-[10px] tracking-[0.15em] text-primary font-extrabold uppercase">STRATEGICALLY DIRECTED BY KUNAL</p>
+            </div>
           </div>
+
         </div>
-      </div>
+      </main>
+
+      {/* Footer Pattern */}
+      <footer className="w-full py-4 border-t border-outline-variant/20 flex flex-col items-center gap-2 text-center px-margin-mobile relative z-10 mt-auto bg-background/50 backdrop-blur-sm">
+        <p className="font-label-caps text-[9px] tracking-[0.2em] text-tertiary font-bold">© 2024 AURORA DIVINE. SECURED BY JEWELRY-GRADE ENCRYPTION.</p>
+      </footer>
     </div>
   );
 };
