@@ -8,7 +8,6 @@ export const StaffProfileScreen: React.FC = () => {
   const userId = localStorage.getItem('user_id') || 'STAFF-001';
   
   const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -24,8 +23,6 @@ export const StaffProfileScreen: React.FC = () => {
         }
       } catch (err) {
         console.error('Error fetching profile from Supabase:', err);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -69,10 +66,6 @@ export const StaffProfileScreen: React.FC = () => {
       email: 'k7474740@gmail.com'
     };
   };
-
-  if (loading) {
-    return <div className="bg-background text-on-background font-body w-full h-[100svh] flex items-center justify-center">Loading...</div>;
-  }
 
   const staffData = getProfileData();
 

@@ -7,10 +7,11 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
   const [errorMessage, setErrorMessage] = useState("");
   const [passkey, setPasskey] = useState("");
   const [email, setEmail] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false); // only using this to prevent double clicks without showing UI lag
 
   const handleInitialize = async () => {
-    setIsLoading(true);
+    if (isAuthenticating) return;
+    setIsAuthenticating(true);
     setHasError(false);
     
     try {
@@ -25,7 +26,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
       if (authError) {
         setHasError(true);
         setErrorMessage("Invalid email address or encryption passkey.");
-        setIsLoading(false);
+        setIsAuthenticating(false);
         return;
       }
 
@@ -39,7 +40,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
       if (userError || !userData) {
         setHasError(true);
         setErrorMessage("Vault connection error: user profile not found.");
-        setIsLoading(false);
+        setIsAuthenticating(false);
         return;
       }
       
@@ -47,14 +48,12 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
       localStorage.setItem('user_name', userData.name);
       localStorage.setItem('user_role', userData.role);
       
-      setTimeout(() => {
-        onLogin();
-      }, 300);
+      onLogin();
       
     } catch (e) {
       setHasError(true);
       setErrorMessage("An unexpected error occurred.");
-      setIsLoading(false);
+      setIsAuthenticating(false);
     }
   };
 
@@ -122,8 +121,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             </div>
             
             <div className="flex flex-col gap-4 relative z-10">
-              <button disabled={isLoading} onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out disabled:opacity-50`}>
-                {isLoading ? 'AUTHENTICATING...' : hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
+              <button disabled={isAuthenticating} onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out disabled:opacity-50`}>
+                {hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
                 <span className="material-symbols-outlined text-[16px]">{hasError ? 'warning' : 'arrow_forward'}</span>
               </button>
               <div className="flex justify-between items-center px-2">
