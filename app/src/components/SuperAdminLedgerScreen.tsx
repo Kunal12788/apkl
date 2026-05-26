@@ -49,14 +49,19 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
 export const SuperAdminLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const [, setLoading] = useState(true);
-  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(true);
+  const cachedSaLedger = getCachedData('super_admin_ledger_all');
+  const cachedTransfers = getCachedData('refining_transfers_pending');
+
+  const initialLedger = cachedSaLedger ? cachedSaLedger.map(mapDbToSaEntry) : [];
+  const initialTransfers = cachedTransfers ? cachedTransfers.map(mapDbToTransfer) : [];
+
+  const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialLedger);
+  const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(initialTransfers);
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(initialLedger.length === 0);
+  const [, setLoading] = useState(initialLedger.length === 0 && initialTransfers.length === 0);
 
   const [setupPureInput, setSetupPureInput] = useState('');
   const [setupCashInput, setSetupCashInput] = useState('');
-
-  const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>([]);
-  const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>([]);
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustPure, setAdjustPure] = useState('');
@@ -68,17 +73,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
-    // 1. Load instantly from cache
-    const cachedSaLedger = getCachedData('super_admin_ledger_all');
-    const cachedTransfers = getCachedData('refining_transfers_pending');
-
-    if (cachedSaLedger && cachedTransfers) {
-      const mappedLedger = cachedSaLedger.map(mapDbToSaEntry);
-      setSaLedger(mappedLedger);
-      setPendingTransfers(cachedTransfers.map(mapDbToTransfer));
-      setIsFirstTimeSetup(mappedLedger.length === 0);
-      setLoading(false);
-    }
+    // Already initialized from cache synchronously on mount, background fetch handles update
 
     try {
       // Fetch Super Admin Ledger and pending refining transfers in parallel

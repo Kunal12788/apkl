@@ -64,18 +64,17 @@ export const StaffLedgerScreen: React.FC = () => {
   const userId = user?.id || 'STAFF-001';
   const isAdmin = userId.startsWith('ADMIN-');
 
+  const cachedEntries = getCachedData('ledger_entries_all');
+  const initialEntries = cachedEntries ? cachedEntries.map(mapDbToEntry) : [];
+
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
-  const [entries, setEntries] = useState<LedgerEntry[]>([]);
-  const [, setLoading] = useState(true);
+  const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
+  const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   // Fetch entries from Supabase
   const fetchEntries = async () => {
-    const cached = getCachedData('ledger_entries_all');
-    if (cached) {
-      setEntries(cached.map(mapDbToEntry));
-      setLoading(false);
-    }
+    // Already initialized from cache synchronously, background fetch handles updates
 
     try {
       const { data, error } = await supabase
