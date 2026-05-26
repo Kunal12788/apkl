@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -32,7 +33,36 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // 1. Instantly load from cache if available
+      const cachedLedger = getCachedData('ledger_data');
+      const cachedTx = getCachedData('tx_data');
+      
+      if (cachedLedger && cachedTx) {
+        setLoading(false); // Remove loading screen instantly
+        
+        // Populate from cache
+        const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+        const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
+        const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
+        setPureGoldWeight(100 - totalPureGiven); 
+        setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
+        setTotalDues(cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0));
+
+        let cash = 0, upi = 0;
+        cachedTx.forEach((tx: any) => {
+          if (tx.status === 'Paid') {
+            const amt = Number(tx.amount) || 0;
+            if (tx.type === 'Cash') cash += amt;
+            if (tx.type === 'UPI') upi += amt;
+          }
+        });
+        setCashRemaining(cash); 
+        setUpiCollection(upi);
+      } else {
+        setLoading(true); // Only show spinner if absolutely no cache exists
+      }
+
+      // 2. Fetch fresh data in background
       try {
         const { data: userData } = await supabase
           .from('users')
@@ -47,6 +77,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
         const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
         if (ledgerData) {
+          setCachedData('ledger_data', ledgerData);
           const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
           const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
           const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -60,6 +91,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
         const { data: txData } = await supabase.from('transactions').select('*');
         if (txData) {
+          setCachedData('tx_data', txData);
           let cash = 0, upi = 0;
           
           txData.forEach(tx => {

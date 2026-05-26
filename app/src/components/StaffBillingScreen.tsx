@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 type TabView = 'all' | 'customer';
 
@@ -288,10 +289,23 @@ export const StaffBillingScreen: React.FC = () => {
 
   React.useEffect(() => {
     const loadTransactions = async () => {
+      // 1. Instantly load from cache
+      const cachedTx = getCachedData('tx_data');
+      if (cachedTx) {
+        setTransactions(cachedTx.map((t: any) => ({
+          id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+          date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
+          impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+          pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
+        })));
+      }
+
+      // 2. Fetch fresh in background
       try {
         const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         if (data && data.length > 0) {
+          setCachedData('tx_data', data); // Update cache
           setTransactions(data.map(t => ({
             id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
             date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -75,32 +76,85 @@ export const StaffDashboardScreen: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
+      // 1. Instantly load from cache
+      const cachedLedger = getCachedData('ledger_data');
+      const cachedTx = getCachedData('tx_data');
+      const cachedTasks = getCachedData('tasks_data');
+
+      if (cachedLedger && cachedTx && cachedTasks) {
+        setLoading(false); // Remove loading immediately
+        
+        // Populate from cache
+        const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+        setPureGoldWeight(100 - totalPureGiven); 
+        
+        let collected = 0, cash = 0, upi = 0;
+        cachedTx.forEach((tx: any) => {
+          if (tx.status === 'Paid') {
+            const amt = Number(tx.amount) || 0;
+            collected += amt;
+            if (tx.type === 'Cash') cash += amt;
+            if (tx.type === 'UPI') upi += amt;
+          }
+        });
+        setTotalCollected(collected);
+        setCashCollection(cash);
+        setUpiCollection(upi);
+
+        let revTunch = 0, revMark = 0, revShoulder = 0;
+        let volTunch = 0, volMark = 0, volShoulder = 0;
+        let cDues = 0, gDues = 0;
+
+        cachedTasks.forEach((task: any) => {
+          if (task.work_type === 'Tunch') {
+            volTunch++;
+            revTunch += Number(task.price) || 0;
+          } else if (task.work_type === 'Marking') {
+            volMark++;
+            revMark += Number(task.price) || 0;
+          } else if (task.work_type === 'Shouldering') {
+            volShoulder++;
+            revShoulder += Number(task.price) || 0;
+          }
+
+          if (task.status === 'Completed' || task.status === 'In Progress') {
+            const dueAmt = Number(task.price) || 0;
+            cDues += dueAmt;
+            gDues += (dueAmt * 0.05); 
+          }
+        });
+
+        setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
+        setVolume({ tunch: volTunch, marking: volMark, shouldering: volShoulder });
+        setCashDues(cDues);
+        setGoldDues(gDues);
+      } else {
+        setLoading(true);
+      }
+
+      // 2. Fetch fresh data in background
       try {
-        // Fetch User Profile
         const { data: userData } = await supabase
           .from('users')
           .select('name')
           .eq('id', userId)
           .maybeSingle();
+          
         if (userData && userData.name) {
           setUserName(userData.name);
           localStorage.setItem('user_name', userData.name);
         }
 
-        // Fetch Ledger for Gold Weights
         const { data: ledgerData } = await supabase.from('ledger_entries').select('*');
         if (ledgerData) {
+          setCachedData('ledger_data', ledgerData);
           const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
-          const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
-          const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
-          setPureGoldWeight(100 - totalPureGiven); // Assuming 100 opening
-          setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
+          setPureGoldWeight(100 - totalPureGiven); 
         }
 
-        // Fetch Transactions for Billing/Revenue
         const { data: txData } = await supabase.from('transactions').select('*');
         if (txData) {
+          setCachedData('tx_data', txData);
           let total = 0, cash = 0, upi = 0;
           let revTunch = 0, revMarking = 0, revShouldering = 0;
           
