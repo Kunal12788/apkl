@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 interface LedgerEntry {
   id: string;
@@ -68,6 +69,12 @@ export const StaffLedgerScreen: React.FC = () => {
 
   // Fetch entries from Supabase
   const fetchEntries = async () => {
+    const cached = getCachedData('ledger_entries_all');
+    if (cached) {
+      setEntries(cached.map(mapDbToEntry));
+      setLoading(false);
+    }
+
     try {
       const { data, error } = await supabase
         .from('ledger_entries')
@@ -77,6 +84,7 @@ export const StaffLedgerScreen: React.FC = () => {
       if (error) throw error;
 
       if (data && data.length > 0) {
+        setCachedData('ledger_entries_all', data);
         setEntries(data.map(mapDbToEntry));
       } else {
         setEntries([]);

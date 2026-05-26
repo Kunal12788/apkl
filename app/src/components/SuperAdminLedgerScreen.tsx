@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 interface RefiningTransfer {
   id: string;
@@ -67,6 +68,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
+    // 1. Load instantly from cache
+    const cachedSaLedger = getCachedData('super_admin_ledger_all');
+    const cachedTransfers = getCachedData('refining_transfers_pending');
+
+    if (cachedSaLedger && cachedTransfers) {
+      const mappedLedger = cachedSaLedger.map(mapDbToSaEntry);
+      setSaLedger(mappedLedger);
+      setPendingTransfers(cachedTransfers.map(mapDbToTransfer));
+      setIsFirstTimeSetup(mappedLedger.length === 0);
+      setLoading(false);
+    }
+
     try {
       // 1. Fetch Super Admin Ledger
       const { data: ledgerData, error: ledgerError } = await supabase
@@ -76,14 +89,11 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (ledgerError) throw ledgerError;
 
-      const mappedLedger = (ledgerData || []).map(mapDbToSaEntry);
-      setSaLedger(mappedLedger);
-
-      // Check if there are any stock entries to decide if setup is needed
-      if (mappedLedger.length > 0) {
-        setIsFirstTimeSetup(false);
-      } else {
-        setIsFirstTimeSetup(true);
+      if (ledgerData) {
+        setCachedData('super_admin_ledger_all', ledgerData);
+        const mappedLedger = ledgerData.map(mapDbToSaEntry);
+        setSaLedger(mappedLedger);
+        setIsFirstTimeSetup(mappedLedger.length === 0);
       }
 
       // 2. Fetch pending refining transfers
@@ -95,7 +105,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (transfersError) throw transfersError;
 
-      setPendingTransfers((transfersData || []).map(mapDbToTransfer));
+      if (transfersData) {
+        setCachedData('refining_transfers_pending', transfersData);
+        setPendingTransfers(transfersData.map(mapDbToTransfer));
+      }
 
     } catch (err) {
       console.error('Error fetching Super Admin data:', err);
