@@ -99,9 +99,9 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         if (txRes.data) setCachedData('tx_data', txRes.data);
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
 
-        // Guarantee exactly 5 seconds of loading time for smooth transition and full cache pre-warming
+        // Guarantee exactly 2 seconds of loading time for smooth transition and full cache pre-warming
         const elapsed = Date.now() - startTime;
-        const remaining = 5000 - elapsed;
+        const remaining = 2000 - elapsed;
         if (remaining > 0) {
           await new Promise(resolve => setTimeout(resolve, remaining));
         }
