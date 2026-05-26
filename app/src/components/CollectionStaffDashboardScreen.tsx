@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CollectionEntryModal } from './CollectionEntryModal';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -10,8 +11,24 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const currentUser = user?.id || 'COLL-001';
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
-  const [tasks, setTasks] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  // Directly initialize state from cache for 0ms delay on mount
+  const cachedTasks = getCachedData('tasks_data');
+  const cachedTx = getCachedData('tx_data');
+
+  const initialTasks = cachedTasks 
+    ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+        id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
+      }))
+    : [];
+
+  const initialTx = cachedTx
+    ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+        status: t.status, amount: t.amount, customerName: t.customer_name
+      }))
+    : [];
+
+  const [tasks, setTasks] = useState<any[]>(initialTasks);
+  const [transactions, setTransactions] = useState<any[]>(initialTx);
 
   useEffect(() => {
     const loadData = async () => {
@@ -35,6 +52,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           setTasks(tasksData.map((t: any) => ({
             id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
           })));
+
+          // Merge tasks back into in-memory cache
+          const allTasks = getCachedData('tasks_data') || [];
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
+          setCachedData('tasks_data', [...otherTasks, ...tasksData]);
         }
 
         const txData = txRes.data;
@@ -43,6 +65,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           setTransactions(txData.map((t: any) => ({
              status: t.status, amount: t.amount, customerName: t.customer_name
           })));
+
+          // Merge transactions back into in-memory cache
+          const allTx = getCachedData('tx_data') || [];
+          const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
+          setCachedData('tx_data', [...otherTx, ...txData]);
         }
       } catch (err) {
         console.error('Error fetching collection staff data:', err);

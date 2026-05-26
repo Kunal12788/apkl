@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { setCachedData } from '../cache';
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
   const { login } = useSession();
@@ -32,12 +33,20 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         return;
       }
 
-      // 2. Fetch profile from database users table
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', emailLower)
-        .maybeSingle();
+      // 2. Fetch profile, ledger, transactions, and tasks in parallel
+      const [profileRes, ledgerRes, txRes, tasksRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('*')
+          .eq('email', emailLower)
+          .maybeSingle(),
+        supabase.from('ledger_entries').select('*'),
+        supabase.from('transactions').select('*'),
+        supabase.from('tasks').select('*')
+      ]);
+
+      const userData = profileRes.data;
+      const userError = profileRes.error;
 
       if (userError || !userData) {
         setHasError(true);
@@ -46,6 +55,11 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         return;
       }
       
+      // Warm up in-memory cache so all dashboard views render instantly
+      if (ledgerRes.data) setCachedData('ledger_data', ledgerRes.data);
+      if (txRes.data) setCachedData('tx_data', txRes.data);
+      if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+
       login({
         id: userData.id,
         name: userData.name,
