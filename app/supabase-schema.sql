@@ -18,6 +18,7 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS passkey TEXT;
 ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS impure_gold_change NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000;
 
 -- Seed Initial Users
 INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
@@ -87,6 +88,7 @@ CREATE TABLE IF NOT EXISTS public.refining_transfers (
     impure_gold_sent NUMERIC(10,3) NOT NULL,
     date_sent DATE NOT NULL,
     status TEXT NOT NULL DEFAULT 'Pending',
+    calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000,
     refined_pure_achieved NUMERIC(10,3) DEFAULT 0.000,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );

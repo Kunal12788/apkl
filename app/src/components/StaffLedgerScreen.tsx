@@ -123,6 +123,20 @@ export const StaffLedgerScreen: React.FC = () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
     const trfId = `TRF-${Math.floor(100 + Math.random() * 900)}`;
 
+    // Calculate expected/calculated pure gold based on weighted purity of impure gold received
+    let totalImpureIn = 0;
+    let totalExpectedPure = 0;
+    entries.forEach(e => {
+      if (e.impureGoldIn > 0) {
+        totalImpureIn += e.impureGoldIn;
+        const p = parseFloat(e.purity || '0') || 0;
+        totalExpectedPure += e.impureGoldIn * (p / 100);
+      }
+    });
+    
+    const avgPurity = totalImpureIn > 0 ? (totalExpectedPure / totalImpureIn) : 0.92; // Default to 92% tunch
+    const calculatedPureGold = currentImpureStock * avgPurity;
+
     const newEntry: LedgerEntry = {
       id: txnId,
       date: 'Just Now',
@@ -153,7 +167,8 @@ export const StaffLedgerScreen: React.FC = () => {
           branch_name: 'Delhi Branch',
           impure_gold_sent: currentImpureStock,
           date_sent: new Date().toISOString().split('T')[0],
-          status: 'Pending'
+          status: 'Pending',
+          calculated_pure_gold: calculatedPureGold
         }]);
       if (transferError) throw transferError;
 

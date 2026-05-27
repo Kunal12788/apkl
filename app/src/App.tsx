@@ -18,6 +18,7 @@ import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScr
 import { GlobalFAB } from './components/GlobalFAB';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
+import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -82,6 +83,17 @@ const LedgerWrapper = () => {
   return <StaffLedgerScreen />;
 };
 
+const RefineryWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.id.startsWith('SUPER-')) {
+    return <SuperAdminRefineryScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const CollectionHistoryWrapper = () => {
   const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
@@ -135,6 +147,7 @@ function AppContent() {
             <Route path="/collections" element={<CollectionHistoryWrapper />} />
             <Route path="/profile" element={<ProfileWrapper />} />
             <Route path="/ledger" element={<LedgerWrapper />} />
+            <Route path="/refinery" element={<RefineryWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
