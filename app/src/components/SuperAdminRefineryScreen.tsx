@@ -36,10 +36,22 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   const [transfers, setTransfers] = useState<RefiningTransfer[]>(initialTransfers);
   const [loading, setLoading] = useState<boolean>(cachedTransfers === null);
   const [activeTab, setActiveTab] = useState<'All' | 'Pending' | 'Processed'>('All');
+  
+  // Choose between Current Session (current) and Refining History (past)
+  const [currentView, setCurrentView] = useState<'current' | 'past'>('current');
+  
+  // Persistent Refinery State Machine ('idle' | 'refining' | 'entering_yield')
+  const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining' | 'entering_yield'>(
+    (localStorage.getItem('refinery_status') as any) || 'idle'
+  );
 
   // Melt Processing State
-  const [selectedTransfer, setSelectedTransfer] = useState<RefiningTransfer | null>(null);
   const [netPureAchieved, setNetPureAchieved] = useState('');
+
+  const updateRefineryStatus = (status: 'idle' | 'refining' | 'entering_yield') => {
+    setRefineryStatus(status);
+    localStorage.setItem('refinery_status', status);
+  };
 
   const fetchTransfers = async () => {
     try {
@@ -68,32 +80,52 @@ export const SuperAdminRefineryScreen: React.FC = () => {
     fetchTransfers();
   }, []);
 
-  const handleProcessMelt = async (e: React.FormEvent) => {
+  const pendingTransfersInQueue = transfers.filter(t => t.status === 'Pending');
+  const pendingImpureGold = pendingTransfersInQueue.reduce((s, t) => s + t.impureGoldSent, 0);
+  const pendingExpectedPure = pendingTransfersInQueue.reduce((s, t) => s + t.calculatedPureGold, 0);
+
+  const handleProcessBatchRefining = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTransfer) return;
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
+    if (pendingTransfersInQueue.length === 0) return;
 
     try {
-      // 1. Update refining transfer status to Processed
-      const { error: transferError } = await supabase
-        .from('refining_transfers')
-        .update({ status: 'Processed', refined_pure_achieved: achieved })
-        .eq('id', selectedTransfer.id);
+      setLoading(true);
+      const totalExpected = pendingExpectedPure;
+      const totalImpure = pendingImpureGold;
 
-      if (transferError) throw transferError;
+      // Update each pending transfer with proportional pure achieved
+      const updates = pendingTransfersInQueue.map(transfer => {
+        let proportionalPure = 0;
+        if (totalExpected > 0) {
+          proportionalPure = (transfer.calculatedPureGold / totalExpected) * achieved;
+        } else if (totalImpure > 0) {
+          proportionalPure = (transfer.impureGoldSent / totalImpure) * achieved;
+        } else {
+          proportionalPure = achieved / pendingTransfersInQueue.length;
+        }
 
-      // 2. Insert Refining Yield into Super Admin Ledger
+        return supabase
+          .from('refining_transfers')
+          .update({ status: 'Processed', refined_pure_achieved: proportionalPure })
+          .eq('id', transfer.id);
+      });
+
+      await Promise.all(updates);
+
+      // Insert Refining transaction into Super Admin Ledger
+      const branchNames = Array.from(new Set(pendingTransfersInQueue.map(t => t.branchName))).join(', ');
       const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
         date: 'Today',
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Refining Yield',
-        branch_name: selectedTransfer.branchName,
+        branch_name: 'Corporate Vault',
         pure_gold_change: achieved,
-        impure_gold_change: -selectedTransfer.impureGoldSent,
+        impure_gold_change: -totalImpure,
         cash_change: 0,
-        details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
+        details: `Batch refined ${totalImpure.toFixed(3)}g Impure Gold from branches (${branchNames}). Yielded ${achieved.toFixed(3)}g Pure Gold.`
       };
 
       const { error: ledgerError } = await supabase
@@ -102,15 +134,18 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
       if (ledgerError) throw ledgerError;
 
-      setSelectedTransfer(null);
       setNetPureAchieved('');
-      fetchTransfers();
+      updateRefineryStatus('idle');
+      await fetchTransfers();
     } catch (err) {
-      console.error('Error processing melt:', err);
+      console.error('Error processing batch refining:', err);
+      alert('Error processing batch refining. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Metrics Calculations
+  // Metrics Calculations (Past History)
   const processedTransfers = transfers.filter(t => t.status === 'Processed');
   const totalImpureSent = transfers.reduce((s, t) => s + t.impureGoldSent, 0);
   const totalExpectedPure = transfers.reduce((s, t) => s + t.calculatedPureGold, 0);
@@ -156,203 +191,317 @@ export const SuperAdminRefineryScreen: React.FC = () => {
           </div>
         </header>
 
-        {/* Global Refinery Metrics */}
-        <section className="space-y-3 relative z-10">
-          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Refinery Analytics</h3>
-          <div className="grid grid-cols-2 gap-4">
-            
-            {/* Total Impure Processed */}
-            <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-[#755b00] flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
-              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-[#755b00]">local_fire_department</span>
-              <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Sent</p>
-              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                <span className="font-headline font-extrabold text-primary" style={fitText(totalImpureSent.toFixed(2), 7, 1.75, 1.15)}>{totalImpureSent.toFixed(2)}</span>
-                <span className="text-[10px] font-black text-[#755b00]">gram</span>
-              </div>
-            </div>
-
-            {/* Expected vs Actual Pure */}
-            <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
-              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">star</span>
-              <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Melt Yield Recovery</p>
-              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                <span className="font-headline font-extrabold text-primary" style={fitText(recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '0%', 6, 1.75, 1.15)}>{recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '100%'}</span>
-                <span className="text-[10px] font-black text-secondary">yield</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Expanded Summary Row */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-              <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Expected Pure</p>
-              <p className="font-headline text-sm font-bold text-primary mt-1" style={fitText(totalExpectedPure.toFixed(2), 8, 1.05, 0.85)}>{totalExpectedPure.toFixed(2)}g</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-              <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Actual Obtained</p>
-              <p className="font-headline text-sm font-bold text-emerald-600 mt-1" style={fitText(totalActualPure.toFixed(2), 8, 1.05, 0.85)}>{totalActualPure.toFixed(2)}g</p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-              <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Variance / Loss</p>
-              <p className={`font-headline text-sm font-bold mt-1 ${variance < 0 ? 'text-error' : 'text-emerald-600'}`} style={fitText((variance >= 0 ? '+' : '') + variance.toFixed(2), 8, 1.05, 0.85)}>
-                {variance >= 0 ? '+' : ''}{variance.toFixed(2)}g
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Tab Filters */}
-        <div className="flex gap-2 border-b border-outline-variant/20 pb-2">
-          {(['All', 'Pending', 'Processed'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
-                activeTab === tab 
-                  ? 'bg-[#755b00]/10 text-[#755b00]' 
-                  : 'text-outline hover:text-primary hover:bg-slate-50'
-              }`}
-            >
-              {tab}
-              {activeTab === tab && (
-                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#755b00] rounded-full"></span>
-              )}
-            </button>
-          ))}
+        {/* View Toggle Segmented Control */}
+        <div className="flex bg-[#003366]/5 p-1 rounded-2xl border border-outline-variant/10 relative z-10 w-full sm:max-w-xs animate-fade-in">
+          <button
+            onClick={() => setCurrentView('current')}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+              currentView === 'current'
+                ? 'bg-primary text-white shadow-md'
+                : 'text-outline hover:text-primary'
+            }`}
+          >
+            Current Session
+          </button>
+          <button
+            onClick={() => setCurrentView('past')}
+            className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider transition-all duration-300 ${
+              currentView === 'past'
+                ? 'bg-primary text-white shadow-md'
+                : 'text-outline hover:text-primary'
+            }`}
+          >
+            Refining History
+          </button>
         </div>
 
-        {/* Transfers Log History */}
-        <section className="space-y-4 relative z-10">
-          <p className="label-institutional text-outline uppercase px-1">Refinery Log Entries</p>
-          {filteredTransfers.length === 0 ? (
-            <div className="luxury-card p-12 bg-slate-50 border border-outline-variant/10 text-center rounded-[2rem]">
-              <span className="material-symbols-outlined text-slate-400 text-5xl mb-3">science</span>
-              <p className="text-sm text-outline font-bold">No transfers in this category found.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredTransfers.map(item => {
-                const itemVariance = item.refinedPureAchieved ? (item.refinedPureAchieved - item.calculatedPureGold) : null;
-                return (
-                  <div key={item.id} className="luxury-card p-5 bg-white border border-outline-variant/10 relative overflow-hidden shadow-sm flex flex-col gap-4">
-                    
-                    {/* Top Row: Title, Date, Status */}
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-sm text-[#755b00]">local_fire_department</span>
-                          <p className="font-bold text-sm text-primary">{item.branchName}</p>
-                        </div>
-                        <p className="text-[8px] uppercase tracking-widest font-black text-outline mt-1">Sent: {item.dateSent} • ID: {item.id}</p>
-                      </div>
-                      <div>
-                        <span className={`text-[8.5px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border ${
-                          item.status === 'Pending' 
-                            ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
-                            : 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
-                        }`}>
-                          {item.status}
-                        </span>
+        {currentView === 'current' ? (
+          <div className="space-y-6 relative z-10 animate-fade-in">
+            {/* Active Melt Queue Summary */}
+            <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10 shadow-lg p-6 relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-tertiary/10 to-transparent rounded-full blur-2xl"></div>
+              <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black mb-4">Active Melt Queue</h3>
+              
+              {pendingTransfersInQueue.length === 0 ? (
+                <div className="py-8 text-center">
+                  <span className="material-symbols-outlined text-outline/40 text-5xl mb-3">science</span>
+                  <p className="text-sm text-outline font-bold">Queue is Empty</p>
+                  <p className="text-xs text-outline/60 mt-1">Awaiting dispatches from branches.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Summary row */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Impure in Queue</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-headline text-2xl font-extrabold text-primary">{pendingImpureGold.toFixed(3)}</span>
+                        <span className="text-xs font-bold text-outline">g</span>
                       </div>
                     </div>
-
-                    {/* Middle Row: Metrics display */}
-                    <div className="grid grid-cols-3 gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
-                      <div className="flex flex-col items-center text-center">
-                        <p className="text-[11px] font-black text-primary" style={fitText(fmtG(item.impureGoldSent), 8, 0.75, 0.65)}>{fmtG(item.impureGoldSent)}</p>
-                        <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Sent</p>
+                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure Gold</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-headline text-2xl font-extrabold text-secondary">{pendingExpectedPure.toFixed(3)}</span>
+                        <span className="text-xs font-bold text-outline">g</span>
                       </div>
-                      <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
-                      <div className="flex flex-col items-center text-center">
-                        <p className="text-[11px] font-black text-secondary" style={fitText(fmtG(item.calculatedPureGold), 8, 0.75, 0.65)}>{fmtG(item.calculatedPureGold)}</p>
-                        <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Calculated Pure</p>
-                      </div>
-                      <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
-                      <div className="flex flex-col items-center text-center">
-                        <p className={`text-[11px] font-black ${item.refinedPureAchieved ? 'text-emerald-600' : 'text-amber-600'}`} style={fitText(item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending', 8, 0.75, 0.65)}>
-                          {item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending'}
-                        </p>
-                        <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Actual Obtained</p>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Variance and Action button */}
-                    <div className="flex justify-between items-center border-t border-outline-variant/10 pt-3">
-                      <div>
-                        {itemVariance !== null ? (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold text-outline">Variance:</span>
-                            <span className={`text-[9.5px] font-black ${itemVariance < 0 ? 'text-error' : 'text-emerald-600'}`}>
-                              {itemVariance >= 0 ? '+' : ''}{itemVariance.toFixed(3)}g
-                            </span>
-                          </div>
-                        ) : (
-                          <p className="text-[9px] text-outline font-medium">Awaiting melt results...</p>
-                        )}
-                      </div>
-                      {item.status === 'Pending' && (
-                        <button
-                          onClick={() => {
-                            setSelectedTransfer(item);
-                            setNetPureAchieved('');
-                          }}
-                          className="px-4 py-2 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-[9px] uppercase tracking-widest rounded-xl transition-all shadow-md active:scale-95"
-                        >
-                          Melt & Yield
-                        </button>
-                      )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </main>
 
-      {/* Melt Processing Modal */}
-      {selectedTransfer && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up">
-            <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-3xl text-[#755b00]">local_fire_department</span>
+                  {/* Queue Items Mini List */}
+                  <div className="space-y-2 border-t border-outline-variant/10 pt-4">
+                    <p className="text-[8px] font-bold text-outline uppercase tracking-widest mb-2">Pending transfers list</p>
+                    <div className="max-h-40 overflow-y-auto hide-scrollbar space-y-2">
+                      {pendingTransfersInQueue.map(item => (
+                        <div key={item.id} className="flex justify-between items-center bg-slate-50/30 p-3 rounded-xl border border-outline-variant/5">
+                          <div>
+                            <p className="text-xs font-bold text-primary">{item.branchName}</p>
+                            <p className="text-[8px] text-outline font-medium">ID: {item.id} • Sent: {item.dateSent}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-black text-[#755b00]">{item.impureGoldSent.toFixed(3)}g</p>
+                            <p className="text-[8px] text-outline uppercase tracking-wider font-bold">Impure</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <h3 className="font-headline text-lg font-bold text-center text-primary mb-2">Process Refinery Melt</h3>
-            <p className="text-xs text-center text-outline mb-6">
-              Melting <strong className="text-primary">{fmtG(selectedTransfer.impureGoldSent)}</strong> of Impure Gold from <strong>{selectedTransfer.branchName}</strong>. Expected Pure Gold yield is <strong className="text-secondary">{fmtG(selectedTransfer.calculatedPureGold)}</strong>.
-            </p>
-            <form onSubmit={handleProcessMelt} className="space-y-4">
-              <div className="relative group">
-                <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Actual Pure Gold Achieved (g)</span>
-                <input 
-                  type="number" 
-                  step="0.001"
-                  required
-                  placeholder="e.g. 110.150"
-                  value={netPureAchieved}
-                  onChange={e => setNetPureAchieved(e.target.value)}
-                  className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none"
-                />
+
+            {/* Refinery Control Dashboard */}
+            {pendingTransfersInQueue.length > 0 && (
+              <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6">
+                <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black">Refinery Process Panel</h3>
+
+                {refineryStatus === 'idle' && (
+                  <div className="text-center py-4 space-y-5">
+                    <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto border border-outline-variant/20">
+                      <span className="material-symbols-outlined text-4xl text-outline/60">local_fire_department</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Ready to Start Refining</p>
+                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">This will start the melt process for all {pendingTransfersInQueue.length} pending transfers totaling {pendingImpureGold.toFixed(3)}g impure gold.</p>
+                    </div>
+                    <button
+                      onClick={() => updateRefineryStatus('refining')}
+                      className="w-full py-4 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-base">local_fire_department</span>
+                      Start Refining
+                    </button>
+                  </div>
+                )}
+
+                {refineryStatus === 'refining' && (
+                  <div className="text-center py-4 space-y-5">
+                    <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto border border-[#755b00]/20 animate-pulse">
+                      <span className="material-symbols-outlined text-4xl text-[#755b00] animate-bounce">local_fire_department</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#755b00] animate-pulse">Refining Active</p>
+                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">The gold is currently in the crucible. Once the melt is complete and poured, select Refining Done to enter the final yield.</p>
+                    </div>
+                    <button
+                      onClick={() => updateRefineryStatus('entering_yield')}
+                      className="w-full py-4 bg-[#caa747] hover:bg-[#b08d2f] text-[#503d00] font-bold text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-base">check_circle</span>
+                      Refining Done
+                    </button>
+                  </div>
+                )}
+
+                {refineryStatus === 'entering_yield' && (
+                  <form onSubmit={handleProcessBatchRefining} className="space-y-5">
+                    <div className="text-center">
+                      <div className="w-16 h-16 rounded-full bg-[#caa747]/10 flex items-center justify-center mx-auto border border-[#caa747]/20 mb-3">
+                        <span className="material-symbols-outlined text-4xl text-[#caa747]">done_all</span>
+                      </div>
+                      <p className="text-sm font-bold text-primary">Enter Refining Yield</p>
+                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">Input the actual weight of the pure gold obtained from this melt batch. The vault pure gold stock will be increased by this amount.</p>
+                    </div>
+
+                    <div className="relative group">
+                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Actual Pure Gold Obtained (g)</span>
+                      <input 
+                        type="number" 
+                        step="0.001"
+                        required
+                        placeholder="e.g. 110.150"
+                        value={netPureAchieved}
+                        onChange={e => setNetPureAchieved(e.target.value)}
+                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-secondary transition-all"
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button 
+                        type="button"
+                        onClick={() => updateRefineryStatus('refining')}
+                        className="flex-1 py-3.5 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
+                      >
+                        Back
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="flex-1 py-3.5 bg-[#755b00] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95"
+                      >
+                        Confirm Yield
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
-              <div className="flex gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setSelectedTransfer(null)}
-                  className="flex-1 py-3 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit" 
-                  className="flex-1 py-3 bg-[#755b00] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg"
-                >
-                  Melt & Add to Stock
-                </button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-6 animate-fade-in">
+            {/* Global Refinery Metrics */}
+            <section className="space-y-3 relative z-10">
+              <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Refinery Analytics</h3>
+              <div className="grid grid-cols-2 gap-4">
+                
+                {/* Total Impure Processed */}
+                <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-[#755b00] flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
+                  <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-[#755b00]">local_fire_department</span>
+                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Sent</p>
+                  <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
+                    <span className="font-headline font-extrabold text-primary" style={fitText(totalImpureSent.toFixed(2), 7, 1.75, 1.15)}>{totalImpureSent.toFixed(2)}</span>
+                    <span className="text-[10px] font-black text-[#755b00]">gram</span>
+                  </div>
+                </div>
+
+                {/* Expected vs Actual Pure */}
+                <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
+                  <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">star</span>
+                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Melt Yield Recovery</p>
+                  <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
+                    <span className="font-headline font-extrabold text-primary" style={fitText(recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '0%', 6, 1.75, 1.15)}>{recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '100%'}</span>
+                    <span className="text-[10px] font-black text-secondary">yield</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded Summary Row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Expected Pure</p>
+                  <p className="font-headline text-sm font-bold text-primary mt-1" style={fitText(totalExpectedPure.toFixed(2), 8, 1.05, 0.85)}>{totalExpectedPure.toFixed(2)}g</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Actual Obtained</p>
+                  <p className="font-headline text-sm font-bold text-emerald-600 mt-1" style={fitText(totalActualPure.toFixed(2), 8, 1.05, 0.85)}>{totalActualPure.toFixed(2)}g</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Variance / Loss</p>
+                  <p className={`font-headline text-sm font-bold mt-1 ${variance < 0 ? 'text-error' : 'text-emerald-600'}`} style={fitText((variance >= 0 ? '+' : '') + variance.toFixed(2), 8, 1.05, 0.85)}>
+                    {variance >= 0 ? '+' : ''}{variance.toFixed(2)}g
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Tab Filters */}
+            <div className="flex gap-2 border-b border-outline-variant/20 pb-2">
+              {(['All', 'Pending', 'Processed'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
+                    activeTab === tab 
+                      ? 'bg-[#755b00]/10 text-[#755b00]' 
+                      : 'text-outline hover:text-primary hover:bg-slate-50'
+                  }`}
+                >
+                  {tab}
+                  {activeTab === tab && (
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#755b00] rounded-full"></span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Transfers Log History */}
+            <section className="space-y-4 relative z-10">
+              <p className="label-institutional text-outline uppercase px-1">Refinery Log Entries</p>
+              {filteredTransfers.length === 0 ? (
+                <div className="luxury-card p-12 bg-slate-50 border border-outline-variant/10 text-center rounded-[2rem]">
+                  <span className="material-symbols-outlined text-slate-400 text-5xl mb-3">science</span>
+                  <p className="text-sm text-outline font-bold">No transfers in this category found.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredTransfers.map(item => {
+                    const itemVariance = item.refinedPureAchieved ? (item.refinedPureAchieved - item.calculatedPureGold) : null;
+                    return (
+                      <div key={item.id} className="luxury-card p-5 bg-white border border-outline-variant/10 relative overflow-hidden shadow-sm flex flex-col gap-4">
+                        
+                        {/* Top Row: Title, Date, Status */}
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-sm text-[#755b00]">local_fire_department</span>
+                              <p className="font-bold text-sm text-primary">{item.branchName}</p>
+                            </div>
+                            <p className="text-[8px] uppercase tracking-widest font-black text-outline mt-1">Sent: {item.dateSent} • ID: {item.id}</p>
+                          </div>
+                          <div>
+                            <span className={`text-[8.5px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border ${
+                              item.status === 'Pending' 
+                                ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+                            }`}>
+                              {item.status}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Middle Row: Metrics display */}
+                        <div className="grid grid-cols-3 gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
+                          <div className="flex flex-col items-center text-center">
+                            <p className="text-[11px] font-black text-primary" style={fitText(fmtG(item.impureGoldSent), 8, 0.75, 0.65)}>{fmtG(item.impureGoldSent)}</p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Sent</p>
+                          </div>
+                          <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
+                          <div className="flex flex-col items-center text-center">
+                            <p className="text-[11px] font-black text-secondary" style={fitText(fmtG(item.calculatedPureGold), 8, 0.75, 0.65)}>{fmtG(item.calculatedPureGold)}</p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Calculated Pure</p>
+                          </div>
+                          <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
+                          <div className="flex flex-col items-center text-center">
+                            <p className={`text-[11px] font-black ${item.refinedPureAchieved ? 'text-emerald-600' : 'text-amber-600'}`} style={fitText(item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending', 8, 0.75, 0.65)}>
+                              {item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending'}
+                            </p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Actual Obtained</p>
+                          </div>
+                        </div>
+
+                        {/* Bottom Row: Variance */}
+                        <div className="flex justify-between items-center border-t border-outline-variant/10 pt-3">
+                          <div>
+                            {itemVariance !== null ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-outline">Variance:</span>
+                                <span className={`text-[9.5px] font-black ${itemVariance < 0 ? 'text-error' : 'text-emerald-600'}`}>
+                                  {itemVariance >= 0 ? '+' : ''}{itemVariance.toFixed(3)}g
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-[9px] text-outline font-medium">Awaiting melt results...</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+      </main>
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">

@@ -412,7 +412,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   {pendingTransfers.map(transfer => (
                     <div 
                       key={transfer.id}
-                      onClick={() => setSelectedTransfer(transfer)}
+                      onClick={() => navigate('/refinery')}
                       className="luxury-card p-4 bg-white border border-[#755b00]/20 hover:border-[#755b00]/50 cursor-pointer transition-all duration-300 flex justify-between items-center group active:scale-[0.99]"
                     >
                       <div className="flex items-center gap-3">
