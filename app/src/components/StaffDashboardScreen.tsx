@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
+import { fitText } from '../utils';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -333,7 +334,7 @@ export const StaffDashboardScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-secondary glow-icon text-lg">payments</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-headline text-3xl font-extrabold text-primary">{pureGoldWeight.toFixed(2)}</span>
+                <span className="font-headline font-extrabold text-primary" style={fitText(pureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{pureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-secondary">gram</span>
               </div>
             </div>
@@ -344,7 +345,7 @@ export const StaffDashboardScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-tertiary-container glow-icon text-lg">rebase</span>
               </div>
               <div className="flex items-baseline gap-1.5">
-                <span className="font-headline text-3xl font-extrabold text-primary">{impureGoldWeight.toFixed(2)}</span>
+                <span className="font-headline font-extrabold text-primary" style={fitText(impureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{impureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-tertiary-container">gram</span>
               </div>
             </div>
@@ -360,7 +361,7 @@ export const StaffDashboardScreen: React.FC = () => {
               <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Amount Collected</h3>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline text-5xl font-extrabold text-white tracking-tight">{totalCollected.toLocaleString('en-IN')}</span>
+                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(totalCollected.toLocaleString('en-IN'), 9, 3.0, 1.75)}>{totalCollected.toLocaleString('en-IN')}</span>
               </div>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
@@ -380,7 +381,7 @@ export const StaffDashboardScreen: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-bold text-[#F6C358]">₹</span>
-              <span className="font-headline text-xl font-bold text-primary">{cashCollection.toLocaleString('en-IN')}</span>
+              <span className="font-headline font-bold text-primary" style={fitText(cashCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{cashCollection.toLocaleString('en-IN')}</span>
             </div>
           </div>
           <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
@@ -391,7 +392,7 @@ export const StaffDashboardScreen: React.FC = () => {
             </div>
             <div className="flex items-baseline gap-1">
               <span className="text-xs font-bold text-secondary">₹</span>
-              <span className="font-headline text-xl font-bold text-primary">{upiCollection.toLocaleString('en-IN')}</span>
+              <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
             </div>
           </div>
         </section>

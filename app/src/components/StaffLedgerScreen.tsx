@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
 
 interface LedgerEntry {
@@ -282,7 +283,7 @@ export const StaffLedgerScreen: React.FC = () => {
                         <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Pure Stock</p>
                         <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                       </div>
-                      <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
+                      <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.0)}>{fmtG(currentPureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock)}</p>
                       </div>
@@ -295,7 +296,7 @@ export const StaffLedgerScreen: React.FC = () => {
                         <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Impure Stock</p>
                         <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">blur_on</span>
                       </div>
-                      <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
+                      <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.0)}>{fmtG(currentImpureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock)}</p>
                       </div>
@@ -320,7 +321,7 @@ export const StaffLedgerScreen: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-[9px] font-bold text-amber-800 uppercase tracking-[0.15em] mb-1">Pending Pure Liability</p>
-                        <p className="font-headline text-2xl font-black text-amber-700 tracking-tight">{fmtG(pendingPureLiability)}</p>
+                        <p className="font-headline font-black text-amber-700 tracking-tight" style={fitText(fmtG(pendingPureLiability), 8, 1.5, 1.0)}>{fmtG(pendingPureLiability)}</p>
                       </div>
                       <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-700">
                         <span className="material-symbols-outlined text-base">hourglass_empty</span>
@@ -337,7 +338,7 @@ export const StaffLedgerScreen: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Pure Disbursed</p>
-                        <p className="font-headline text-2xl font-black text-primary tracking-tight">{fmtG(totalPureGiven)}</p>
+                        <p className="font-headline font-black text-primary tracking-tight" style={fitText(fmtG(totalPureGiven), 8, 1.5, 1.0)}>{fmtG(totalPureGiven)}</p>
                       </div>
                       <div className="w-8 h-8 rounded-full bg-primary/5 flex items-center justify-center text-primary">
                         <span className="material-symbols-outlined text-base">outbound</span>

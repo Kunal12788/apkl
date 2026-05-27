@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { fitText } from '../utils';
 
 interface RefiningTransfer {
   id: string;
@@ -351,7 +352,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure Stock</p>
                       <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                     </div>
-                    <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
+                    <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.05)}>{fmtG(currentPureStock)}</p>
                     <div className="flex justify-between items-center mt-1">
                       <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
                       <button 
@@ -376,7 +377,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure Stock</p>
                       <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">local_fire_department</span>
                     </div>
-                    <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
+                    <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.05)}>{fmtG(currentImpureStock)}</p>
                     <div className="flex justify-between items-center mt-1">
                       <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
                     </div>
@@ -388,7 +389,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 <div className="p-5 flex justify-between items-center">
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline mb-1">Super Cash Stock</p>
-                    <p className="font-headline text-3xl font-bold text-primary">{fmt(currentCashStock)}</p>
+                    <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 10, 1.875, 1.25)}>{fmt(currentCashStock)}</p>
                   </div>
                   <div className="flex flex-col items-end">
                     <span className="material-symbols-outlined text-[#003366] glow-icon text-2xl mb-1">payments</span>

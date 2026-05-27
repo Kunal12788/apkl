@@ -4,6 +4,7 @@ import { CollectionEntryModal } from './CollectionEntryModal';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
+import { fitText } from '../utils';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -166,7 +167,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50">Total Outstanding Dues</p>
-                <h2 className="font-headline text-3xl font-black mt-2 text-white drop-shadow-md">₹ {totalDues.toLocaleString()}</h2>
+                <h2 className="font-headline font-black mt-2 text-white drop-shadow-md" style={fitText(`₹ ${totalDues.toLocaleString()}`, 10, 1.875, 1.25)}>₹ {totalDues.toLocaleString()}</h2>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
                 <span className="material-symbols-outlined text-white text-xl">payments</span>
