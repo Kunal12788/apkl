@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
@@ -211,17 +212,34 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Load tasks from cache synchronously on mount for 0ms delay
+  const cachedTasks = getCachedData('tasks_data');
+  const currentUser = user?.id || 'COLL-001';
+  const initialTasks = cachedTasks
+    ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+        id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+        workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+        dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
+        pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+        logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+      }))
+    : [];
+
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
   useEffect(() => {
     const loadTasks = async () => {
-      const currentUser = user?.id || 'COLL-001';
       if (!isFullyAuthenticated) return;
       try {
         const { data, error } = await supabase.from('tasks').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;
         
-        if (data && data.length > 0) {
+        if (data) {
+          // Merge tasks back into in-memory cache
+          const allTasks = getCachedData('tasks_data') || [];
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
+          setCachedData('tasks_data', [...otherTasks, ...data]);
+
           setTasks(data.map(t => ({
               id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,

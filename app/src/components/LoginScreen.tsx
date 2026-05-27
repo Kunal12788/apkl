@@ -74,8 +74,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Fetch actual profile, ledger, transactions, and tasks in parallel to warm cache and get profile details
-        const [profileRes, ledgerRes, txRes, tasksRes] = await Promise.all([
+        // Fetch actual profile, ledger, transactions, tasks, super admin ledger, and refining transfers in parallel
+        const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes] = await Promise.all([
           supabase
             .from('users')
             .select('*')
@@ -83,7 +83,9 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             .maybeSingle(),
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
-          supabase.from('tasks').select('*')
+          supabase.from('tasks').select('*'),
+          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
+          supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
         ]);
 
         const userData = profileRes.data;
@@ -94,10 +96,12 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Warm up in-memory cache so all dashboard views render instantly
+        // Warm up in-memory cache so all dashboard and ledger views render instantly
         if (ledgerRes.data) setCachedData('ledger_data', ledgerRes.data);
         if (txRes.data) setCachedData('tx_data', txRes.data);
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+        if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
+        if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
 
         // Guarantee exactly 2 seconds of loading time for smooth transition and full cache pre-warming
         const elapsed = Date.now() - startTime;

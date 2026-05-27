@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TaskReconciliationModal } from './TaskReconciliationModal';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed';
 
@@ -332,7 +333,21 @@ export const StaffTasksScreen: React.FC = () => {
     setTimeout(() => setToastMessage(''), 3000);
   };
 
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Load tasks from cache synchronously on mount for 0ms delay
+  const cachedTasks = getCachedData('tasks_data');
+  const initialTasks = cachedTasks
+    ? (isAdminOrSuper 
+        ? cachedTasks.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification')
+        : cachedTasks
+      ).map((t: any) => ({
+        id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+        impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
+        broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+        settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+      }))
+    : [];
+
+  const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -341,7 +356,8 @@ export const StaffTasksScreen: React.FC = () => {
         const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         
-        if (data && data.length > 0) {
+        if (data) {
+          setCachedData('tasks_data', data);
           let filtered = data;
           if (isAdminOrSuper) {
             filtered = data.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification');

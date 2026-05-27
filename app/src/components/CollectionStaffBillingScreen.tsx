@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 type TabView = 'all' | 'customer';
 
@@ -212,17 +213,33 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // Load transactions from cache synchronously on mount for 0ms delay
+  const cachedTx = getCachedData('tx_data');
+  const currentUser = user?.id || 'COLL-001';
+  const initialTx = cachedTx
+    ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+        id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+        type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
+        status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+        logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+      }))
+    : [];
+
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
 
   useEffect(() => {
     const loadTransactions = async () => {
-      const currentUser = user?.id || 'COLL-001';
       if (!isFullyAuthenticated) return;
       try {
         const { data, error } = await supabase.from('transactions').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;
         
-        if (data && data.length > 0) {
+        if (data) {
+          // Merge transactions back into in-memory cache
+          const allTx = getCachedData('tx_data') || [];
+          const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
+          setCachedData('tx_data', [...otherTx, ...data]);
+
           setTransactions(data.map(t => ({
               id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
