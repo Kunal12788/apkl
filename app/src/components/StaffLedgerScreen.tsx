@@ -452,7 +452,7 @@ export const StaffLedgerScreen: React.FC = () => {
       </main>
 
       {/* Bottom Nav Bar */}
-      <nav className="fixed bottom-0 w-full z-50 bg-white/90 backdrop-blur-xl border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-10px_40px_rgba(0,30,64,0.05)]">
+      <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
         <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer transition-all">
           <span className="material-symbols-outlined text-2xl">dashboard</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
@@ -465,10 +465,10 @@ export const StaffLedgerScreen: React.FC = () => {
           <span className="material-symbols-outlined text-2xl">assignment</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
         </a>
-        <a onClick={() => navigate('/ledger')} className="flex flex-col items-center gap-1 text-[#003366] font-bold relative cursor-pointer">
+        <a onClick={() => navigate('/ledger')} className="flex flex-col items-center gap-1 text-primary font-bold relative cursor-pointer">
           <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>inventory_2</span>
           <span className="font-label text-[10px] uppercase tracking-widest">Ledger</span>
-          <div className="absolute -bottom-2 w-1.5 h-1.5 bg-[#003366] rounded-full"></div>
+          <div className="absolute -bottom-2 w-1.5 h-1.5 bg-tertiary rounded-full"></div>
         </a>
         <a onClick={() => navigate('/profile')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer transition-all">
           <span className="material-symbols-outlined text-2xl">person</span>
