@@ -11,28 +11,30 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   const userName = user?.name || '';
   
   // Directly initialize state from cache for 0ms delay on mount
+  const cachedSaLedger = getCachedData('super_admin_ledger_all');
   const initialLedger = getCachedData('ledger_data');
   const initialTx = getCachedData('tx_data');
   
   let initialPure = 0;
   let initialImpure = 0;
-  let initialDues = 0;
   let initialCash = 0;
+  let initialDues = 0;
   let initialUpi = 0;
 
-  if (initialLedger && initialTx) {
-    const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
-    const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
-    const totalImpureRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
-    
-    initialPure = 100 - totalPureGiven;
-    initialImpure = totalImpureReceived - totalImpureRefined;
-    initialDues = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0);
+  if (cachedSaLedger) {
+    initialPure = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_gold_change) || 0), 0);
+    initialImpure = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_gold_change) || 0), 0);
+    initialCash = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0);
+  }
 
+  if (initialLedger) {
+    initialDues = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0);
+  }
+
+  if (initialTx) {
     initialTx.forEach((tx: any) => {
       if (tx.status === 'Paid') {
         const amt = Number(tx.amount) || 0;
-        if (tx.type === 'Cash') initialCash += amt;
         if (tx.type === 'UPI') initialUpi += amt;
       }
     });
@@ -62,27 +64,26 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       // 1. Instantly load from cache if available
+      const cachedSaLedger = getCachedData('super_admin_ledger_all');
       const cachedLedger = getCachedData('ledger_data');
       const cachedTx = getCachedData('tx_data');
       
-      if (cachedLedger && cachedTx) {
-        // Populate from cache
-        const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
-        const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
-        const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
-        setPureGoldWeight(100 - totalPureGiven); 
-        setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
+      if (cachedSaLedger) {
+        setPureGoldWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_gold_change) || 0), 0));
+        setImpureGoldWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_gold_change) || 0), 0));
+        setCashRemaining(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0));
+      }
+      if (cachedLedger) {
         setTotalDues(cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0));
-
-        let cash = 0, upi = 0;
+      }
+      if (cachedTx) {
+        let upi = 0;
         cachedTx.forEach((tx: any) => {
           if (tx.status === 'Paid') {
             const amt = Number(tx.amount) || 0;
-            if (tx.type === 'Cash') cash += amt;
             if (tx.type === 'UPI') upi += amt;
           }
         });
-        setCashRemaining(cash); 
         setUpiCollection(upi);
       }
 
@@ -91,21 +92,23 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
       // 2. Fetch fresh data in background in parallel
       try {
-        const [ledgerRes, txRes] = await Promise.all([
+        const [ledgerRes, txRes, saLedgerRes] = await Promise.all([
           supabase.from('ledger_entries').select('*'),
-          supabase.from('transactions').select('*')
+          supabase.from('transactions').select('*'),
+          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false })
         ]);
+
+        const saLedgerData = saLedgerRes.data;
+        if (saLedgerData) {
+          setCachedData('super_admin_ledger_all', saLedgerData);
+          setPureGoldWeight(saLedgerData.reduce((s, e) => s + (Number(e.pure_gold_change) || 0), 0));
+          setImpureGoldWeight(saLedgerData.reduce((s, e) => s + (Number(e.impure_gold_change) || 0), 0));
+          setCashRemaining(saLedgerData.reduce((s, e) => s + (Number(e.cash_change) || 0), 0));
+        }
 
         const ledgerData = ledgerRes.data;
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
-          const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
-          const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
-          const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
-          
-          setPureGoldWeight(100 - totalPureGiven); 
-          setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
-          
           const pureDue = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_due) || 0), 0);
           setTotalDues(pureDue);
         }
@@ -113,17 +116,15 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         const txData = txRes.data;
         if (txData) {
           setCachedData('tx_data', txData);
-          let cash = 0, upi = 0;
+          let upi = 0;
           
           txData.forEach(tx => {
             if (tx.status === 'Paid') {
               const amt = Number(tx.amount) || 0;
-              if (tx.type === 'Cash') cash += amt;
               if (tx.type === 'UPI') upi += amt;
             }
           });
           
-          setCashRemaining(cash); 
           setUpiCollection(upi);
         }
 

@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.users (
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS passkey TEXT;
+ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS impure_gold_change NUMERIC(10,3) DEFAULT 0.000;
 
 -- Seed Initial Users
 INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
@@ -98,6 +99,7 @@ CREATE TABLE IF NOT EXISTS public.super_admin_ledger (
     type TEXT NOT NULL,
     branch_name TEXT,
     pure_gold_change NUMERIC(10,3) DEFAULT 0.000,
+    impure_gold_change NUMERIC(10,3) DEFAULT 0.000,
     cash_change NUMERIC(15,2) DEFAULT 0.00,
     details TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL

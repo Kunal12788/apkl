@@ -20,6 +20,7 @@ interface SuperAdminLedgerEntry {
   type: 'Allocation' | 'Refining Yield' | 'Stock Correction';
   branchName?: string;
   pureGoldChange: number;
+  impureGoldChange: number;
   cashChange: number;
   details: string;
 }
@@ -42,6 +43,7 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
   type: db.type,
   branchName: db.branch_name,
   pureGoldChange: Number(db.pure_gold_change || 0),
+  impureGoldChange: Number(db.impure_gold_change || 0),
   cashChange: Number(db.cash_change || 0),
   details: db.details
 });
@@ -61,10 +63,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
 
   const [setupPureInput, setSetupPureInput] = useState('');
+  const [setupImpureInput, setSetupImpureInput] = useState('');
   const [setupCashInput, setSetupCashInput] = useState('');
 
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustPure, setAdjustPure] = useState('');
+  const [adjustImpure, setAdjustImpure] = useState('');
   const [adjustCash, setAdjustCash] = useState('');
 
   // Selected Transfer for Refining Processing
@@ -120,8 +124,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const handleFirstTimeSetup = async (e: React.FormEvent) => {
     e.preventDefault();
     const pureVal = parseFloat(setupPureInput);
+    const impureVal = parseFloat(setupImpureInput);
     const cashVal = parseFloat(setupCashInput);
-    if (isNaN(pureVal) || isNaN(cashVal)) return;
+    if (isNaN(pureVal) || isNaN(impureVal) || isNaN(cashVal)) return;
 
     try {
       const newEntry = {
@@ -130,6 +135,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Stock Correction',
         pure_gold_change: pureVal,
+        impure_gold_change: impureVal,
         cash_change: cashVal,
         details: 'Initial corporate stock upload setup.'
       };
@@ -151,15 +157,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const pureVal = parseFloat(adjustPure);
+    const impureVal = parseFloat(adjustImpure);
     const cashVal = parseFloat(adjustCash);
-    if (isNaN(pureVal) || isNaN(cashVal)) return;
+    if (isNaN(pureVal) || isNaN(impureVal) || isNaN(cashVal)) return;
 
     try {
       // Stock Correction is an adjustment: we calculate difference and insert
       const currentPure = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
+      const currentImpure = saLedger.reduce((s, e) => s + e.impureGoldChange, 0);
       const currentCash = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
       const pureDiff = pureVal - currentPure;
+      const impureDiff = impureVal - currentImpure;
       const cashDiff = cashVal - currentCash;
 
       const newEntry = {
@@ -168,6 +177,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Stock Correction',
         pure_gold_change: pureDiff,
+        impure_gold_change: impureDiff,
         cash_change: cashDiff,
         details: `Manual Stock Correction adjustment.`
       };
@@ -209,6 +219,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         type: 'Refining Yield',
         branch_name: selectedTransfer.branchName,
         pure_gold_change: achieved,
+        impure_gold_change: -selectedTransfer.impureGoldSent,
         cash_change: 0,
         details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
       };
@@ -229,6 +240,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Calculations based on running sum of DB ledger records
   const currentPureStock = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
+  const currentImpureStock = saLedger.reduce((s, e) => s + e.impureGoldChange, 0);
   const currentCashStock = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -282,7 +294,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
             </div>
             <h2 className="font-headline text-xl font-bold text-primary mb-2">First-Time Setup</h2>
             <p className="text-xs text-outline mb-6">
-              Please enter the initial values for the total pure gold and total cash available at the Head Office.
+              Please enter the initial values for the total pure gold, total impure gold, and total cash available at the Head Office.
             </p>
             <form onSubmit={handleFirstTimeSetup} className="space-y-4">
               <div className="relative group">
@@ -294,6 +306,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   placeholder="e.g. 1000.000" 
                   value={setupPureInput} 
                   onChange={e => setSetupPureInput(e.target.value)}
+                  className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                />
+              </div>
+              <div className="relative group">
+                <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Total Impure Gold Stock (grams)</span>
+                <input 
+                  type="number" 
+                  step="0.001"
+                  required
+                  placeholder="e.g. 500.000" 
+                  value={setupImpureInput} 
+                  onChange={e => setSetupImpureInput(e.target.value)}
                   className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
                 />
               </div>
@@ -319,19 +343,20 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         ) : (
           <>
             {/* Live Stock Summary */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
-                <div className="p-5">
+                <div className="p-4">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure Stock</p>
                     <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                   </div>
-                  <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
+                  <p className="font-headline text-xl font-bold text-primary">{fmtG(currentPureStock)}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
                     <button 
                       onClick={() => {
                         setAdjustPure(currentPureStock.toString());
+                        setAdjustImpure(currentImpureStock.toString());
                         setAdjustCash(currentCashStock.toString());
                         setShowAdjustModal(true);
                       }}
@@ -344,13 +369,26 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 </div>
               </div>
               
+              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure Stock</p>
+                    <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">local_fire_department</span>
+                  </div>
+                  <p className="font-headline text-xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
+                  </div>
+                </div>
+              </div>
+
               <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#003366] shadow-lg">
-                <div className="p-5">
+                <div className="p-4">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Cash Stock</p>
                     <span className="material-symbols-outlined text-[#003366] glow-icon text-lg">payments</span>
                   </div>
-                  <p className="font-headline text-2xl font-bold text-primary">{fmt(currentCashStock)}</p>
+                  <p className="font-headline text-xl font-bold text-primary">{fmt(currentCashStock)}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Cash</p>
                   </div>
@@ -417,6 +455,11 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                             {entry.pureGoldChange > 0 ? '+' : ''}{fmtG(entry.pureGoldChange)}
                           </p>
                         )}
+                        {entry.impureGoldChange !== 0 && (
+                          <p className={`text-xs font-black ${entry.impureGoldChange > 0 ? 'text-amber-600' : 'text-error'}`}>
+                            {entry.impureGoldChange > 0 ? '+' : ''}{fmtG(entry.impureGoldChange)} (Impure)
+                          </p>
+                        )}
                         {entry.cashChange !== 0 && (
                           <p className={`text-xs font-black ${entry.cashChange > 0 ? 'text-emerald-600' : 'text-error'}`}>
                             {entry.cashChange > 0 ? '+' : ''}{fmt(entry.cashChange)}
@@ -446,6 +489,17 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                     required
                     value={adjustPure}
                     onChange={e => setAdjustPure(e.target.value)}
+                    className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
+                  />
+                </div>
+                <div className="relative group">
+                  <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Opening Impure Gold (g)</span>
+                  <input 
+                    type="number" 
+                    step="0.001"
+                    required
+                    value={adjustImpure}
+                    onChange={e => setAdjustImpure(e.target.value)}
                     className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
                   />
                 </div>
