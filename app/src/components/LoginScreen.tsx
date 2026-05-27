@@ -97,7 +97,10 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         }
 
         // Warm up in-memory cache so all dashboard and ledger views render instantly
-        if (ledgerRes.data) setCachedData('ledger_data', ledgerRes.data);
+        if (ledgerRes.data) {
+          setCachedData('ledger_data', ledgerRes.data);
+          setCachedData('ledger_entries_all', ledgerRes.data);
+        }
         if (txRes.data) setCachedData('tx_data', txRes.data);
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
         if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
