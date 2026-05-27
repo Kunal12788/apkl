@@ -343,53 +343,55 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         ) : (
           <>
             {/* Live Stock Summary */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure Stock</p>
-                    <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
-                  </div>
-                  <p className="font-headline text-xl font-bold text-primary">{fmtG(currentPureStock)}</p>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
-                    <button 
-                      onClick={() => {
-                        setAdjustPure(currentPureStock.toString());
-                        setAdjustImpure(currentImpureStock.toString());
-                        setAdjustCash(currentCashStock.toString());
-                        setShowAdjustModal(true);
-                      }}
-                      className="text-[8px] uppercase font-bold text-secondary hover:text-primary transition-colors flex items-center gap-0.5"
-                    >
-                      <span className="material-symbols-outlined text-[10px]">edit</span>
-                      Adjust
-                    </button>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
+                  <div className="p-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure Stock</p>
+                      <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
+                    </div>
+                    <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentPureStock)}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
+                      <button 
+                        onClick={() => {
+                          setAdjustPure(currentPureStock.toString());
+                          setAdjustImpure(currentImpureStock.toString());
+                          setAdjustCash(currentCashStock.toString());
+                          setShowAdjustModal(true);
+                        }}
+                        className="text-[8px] uppercase font-bold text-secondary hover:text-primary transition-colors flex items-center gap-0.5"
+                      >
+                        <span className="material-symbols-outlined text-[10px]">edit</span>
+                        Adjust
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure Stock</p>
-                    <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">local_fire_department</span>
-                  </div>
-                  <p className="font-headline text-xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
-                  <div className="flex justify-between items-center mt-1">
-                    <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
+                
+                <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
+                  <div className="p-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure Stock</p>
+                      <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">local_fire_department</span>
+                    </div>
+                    <p className="font-headline text-2xl font-bold text-primary">{fmtG(currentImpureStock)}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Stock</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#003366] shadow-lg">
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Cash Stock</p>
-                    <span className="material-symbols-outlined text-[#003366] glow-icon text-lg">payments</span>
+              <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#003366] shadow-lg w-full">
+                <div className="p-5 flex justify-between items-center">
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline mb-1">Super Cash Stock</p>
+                    <p className="font-headline text-3xl font-bold text-primary">{fmt(currentCashStock)}</p>
                   </div>
-                  <p className="font-headline text-xl font-bold text-primary">{fmt(currentCashStock)}</p>
-                  <div className="flex justify-between items-center mt-1">
+                  <div className="flex flex-col items-end">
+                    <span className="material-symbols-outlined text-[#003366] glow-icon text-2xl mb-1">payments</span>
                     <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Active Cash</p>
                   </div>
                 </div>
