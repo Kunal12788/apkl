@@ -13,7 +13,6 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   
   // Directly initialize state from cache for 0ms delay on mount
   const cachedSaLedger = getCachedData('super_admin_ledger_all');
-  const initialLedger = getCachedData('ledger_data');
   const initialTx = getCachedData('tx_data');
   
   let initialPure = 0;
@@ -28,15 +27,13 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     initialCash = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0);
   }
 
-  if (initialLedger) {
-    initialDues = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0);
-  }
-
   if (initialTx) {
     initialTx.forEach((tx: any) => {
       if (tx.status === 'Paid') {
         const amt = Number(tx.amount) || 0;
         if (tx.type === 'UPI') initialUpi += amt;
+      } else if (tx.status === 'Pending') {
+        initialDues += Number(tx.amount) || 0;
       }
     });
   }
@@ -66,7 +63,6 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     const fetchData = async () => {
       // 1. Instantly load from cache if available
       const cachedSaLedger = getCachedData('super_admin_ledger_all');
-      const cachedLedger = getCachedData('ledger_data');
       const cachedTx = getCachedData('tx_data');
       
       if (cachedSaLedger) {
@@ -74,18 +70,18 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         setImpureGoldWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_gold_change) || 0), 0));
         setCashRemaining(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0));
       }
-      if (cachedLedger) {
-        setTotalDues(cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_due) || 0), 0));
-      }
       if (cachedTx) {
-        let upi = 0;
+        let upi = 0, dues = 0;
         cachedTx.forEach((tx: any) => {
           if (tx.status === 'Paid') {
             const amt = Number(tx.amount) || 0;
             if (tx.type === 'UPI') upi += amt;
+          } else if (tx.status === 'Pending') {
+            dues += Number(tx.amount) || 0;
           }
         });
         setUpiCollection(upi);
+        setTotalDues(dues);
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -110,23 +106,24 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         const ledgerData = ledgerRes.data;
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
-          const pureDue = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_due) || 0), 0);
-          setTotalDues(pureDue);
         }
 
         const txData = txRes.data;
         if (txData) {
           setCachedData('tx_data', txData);
-          let upi = 0;
+          let upi = 0, dues = 0;
           
           txData.forEach(tx => {
             if (tx.status === 'Paid') {
               const amt = Number(tx.amount) || 0;
               if (tx.type === 'UPI') upi += amt;
+            } else if (tx.status === 'Pending') {
+              dues += Number(tx.amount) || 0;
             }
           });
           
           setUpiCollection(upi);
+          setTotalDues(dues);
         }
 
       } catch (err) {
@@ -176,25 +173,25 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         <section className="space-y-3 relative z-10">
           <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Global Assets</h3>
           <div className="grid grid-cols-2 gap-4">
-            <div className="luxury-card p-6 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-32 relative overflow-hidden">
+            <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">pentagon</span>
               <div className="flex justify-between items-start">
                 <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Pure Gold</p>
                 <span className="material-symbols-outlined text-secondary glow-icon text-lg">star</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-headline font-extrabold text-primary" style={fitText(pureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{pureGoldWeight.toFixed(2)}</span>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(pureGoldWeight.toFixed(2), 6, 1.875, 1.0)}>{pureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-secondary">gram</span>
               </div>
             </div>
-            <div className="luxury-card p-6 bg-white border-l-4 border-l-tertiary-container flex flex-col justify-between h-32 relative overflow-hidden">
+            <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-tertiary-container flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-tertiary-container">heap_snapshot_thumbnail</span>
               <div className="flex justify-between items-start">
                 <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure</p>
                 <span className="material-symbols-outlined text-tertiary-container glow-icon text-lg">rebase</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-headline font-extrabold text-primary" style={fitText(impureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{impureGoldWeight.toFixed(2)}</span>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(impureGoldWeight.toFixed(2), 6, 1.875, 1.0)}>{impureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-tertiary-container">gram</span>
               </div>
             </div>
@@ -202,18 +199,18 @@ export const SuperAdminDashboardScreen: React.FC = () => {
         </section>
 
         {/* Top Section: Total Cash Remaining hero card (Exact match to pattern) */}
-        <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
+        <section className="relative overflow-hidden rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
+          <div className="flex justify-between items-start relative z-10 gap-4">
+            <div className="min-w-0 flex-1">
               <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Remaining</h3>
-              <div className="flex items-baseline gap-2">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(cashRemaining.toLocaleString('en-IN'), 9, 3.0, 1.75)}>{cashRemaining.toLocaleString('en-IN')}</span>
+                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(cashRemaining.toLocaleString('en-IN'), 9, 3.0, 1.25)}>{cashRemaining.toLocaleString('en-IN')}</span>
               </div>
             </div>
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden flex-shrink-0">
               <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">account_balance_wallet</span>
               <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance</span>
             </div>
@@ -222,26 +219,26 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
         {/* Second Section: Side-by-side breakdown (Exact match to pattern) */}
         <section className="grid grid-cols-2 gap-4 relative z-10">
-          <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
             <div className="flex justify-between items-start mb-1.5">
               <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Total Dues</p>
               <span className="material-symbols-outlined text-sm text-error opacity-60">pending_actions</span>
             </div>
-            <div className="flex items-baseline gap-1">
-              <span className="font-headline font-bold text-primary" style={fitText(totalDues.toFixed(2), 8, 1.25, 0.95)}>{totalDues.toFixed(2)}</span>
-              <span className="text-xs font-bold text-error">g</span>
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
+              <span className="text-xs font-bold text-error">₹</span>
+              <span className="font-headline font-bold text-primary" style={fitText(totalDues.toLocaleString('en-IN'), 8, 1.25, 0.85)}>{totalDues.toLocaleString('en-IN')}</span>
             </div>
           </div>
-          <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
             <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
             <div className="flex justify-between items-start mb-1.5">
               <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">UPI Collection</p>
               <span className="material-symbols-outlined text-sm text-secondary opacity-60">qr_code_2</span>
             </div>
-            <div className="flex items-baseline gap-1">
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
               <span className="text-xs font-bold text-secondary">₹</span>
-              <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
+              <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.85)}>{upiCollection.toLocaleString('en-IN')}</span>
             </div>
           </div>
         </section>
