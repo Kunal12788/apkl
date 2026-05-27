@@ -42,7 +42,7 @@ export const SessionInitializationScreen: React.FC = () => {
           {/* Security Core Icon Section Pattern */}
           <div className="-mt-2 mb-8 relative">
             <div className="relative w-20 h-20 rounded-full glass-card premium-shadow flex items-center justify-center border border-white/90 animate-pulse-soft" style={{ willChange: 'transform' }}>
-              <span className="material-symbols-outlined text-[40px] text-secondary animate-spin-slow" style={{ fontVariationSettings: '"FILL" 1' }}>
+              <span className="material-symbols-outlined text-[40px] text-secondary" style={{ fontVariationSettings: '"FILL" 1' }}>
                 security
               </span>
             </div>
