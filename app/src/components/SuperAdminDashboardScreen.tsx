@@ -144,7 +144,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     { id: 'ledger', name: 'Ledger', desc: 'Master Ledger', icon: 'account_balance', color: 'text-emerald-600', grad: 'from-emerald-600/10 to-emerald-600/[0.02]', border: 'border-emerald-600/20', glow: 'group-hover:shadow-[0_0_15px_rgba(5,150,105,0.2)]', action: () => navigate('/ledger') },
     { id: 'stock', name: 'Stock', desc: 'Vault Inventory', icon: 'inventory_2', color: 'text-purple-600', grad: 'from-purple-600/10 to-purple-600/[0.02]', border: 'border-purple-600/20', glow: 'group-hover:shadow-[0_0_15px_rgba(147,51,234,0.2)]', action: () => alert('Vault Inventory opening...') },
     { id: 'complain', name: 'Alerts', desc: 'System Alerts & Support', icon: 'warning', color: 'text-error', grad: 'from-error/10 to-error/[0.02]', border: 'border-error/20', glow: 'group-hover:shadow-[0_0_15px_rgba(186,26,26,0.2)]', action: () => alert('System Alerts opening...') },
-    { id: 'expansion', name: 'More', desc: 'Future Feature', icon: 'grid_view', color: 'text-outline', grad: 'from-outline/10 to-outline/[0.02]', border: 'border-outline/20', glow: 'group-hover:shadow-[0_0_15px_rgba(116,119,127,0.2)]', action: () => alert('Future feature unlocking...') },
+    { id: 'calculator', name: 'Calculator', desc: 'Gold Calculator', icon: 'calculate', color: 'text-indigo-600', grad: 'from-indigo-600/10 to-indigo-600/[0.02]', border: 'border-indigo-600/20', glow: 'group-hover:shadow-[0_0_15px_rgba(79,70,229,0.2)]', action: () => alert('Calculator Module coming soon...') },
   ];
 
   return (
