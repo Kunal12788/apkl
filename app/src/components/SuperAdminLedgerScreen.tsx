@@ -57,8 +57,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialLedger);
   const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(initialTransfers);
-  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(initialLedger.length === 0);
-  const [, setLoading] = useState(initialLedger.length === 0 && initialTransfers.length === 0);
+  const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
+  const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
 
   const [setupPureInput, setSetupPureInput] = useState('');
   const [setupCashInput, setSetupCashInput] = useState('');
@@ -233,6 +233,15 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
+
+  if (loading) {
+    return (
+      <div className="bg-[#0b0f19] text-[#e2e8f0] font-body-md min-h-[100svh] flex flex-col items-center justify-center ambient-bg relative z-10 w-full overflow-hidden">
+        <div className="w-10 h-10 rounded-full border-4 border-[#F6C358]/20 border-t-[#F6C358] animate-spin mb-4"></div>
+        <p className="font-label-caps text-[10px] tracking-widest text-[#F6C358]">Retrieving Corporate Records...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background ambient-bg text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
