@@ -349,24 +349,24 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               <button
                 key={metal}
                 onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
-                className={`flex-1 flex items-center justify-between p-3 rounded-2xl transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-between p-2 sm:p-3 rounded-2xl transition-all duration-300 ${
                   isActive 
                     ? `${activeClass} scale-[1.01] font-bold`
                     : 'bg-[#003366]/5 text-outline hover:bg-[#003366]/10 hover:text-primary'
                 }`}
               >
-                <div className="flex items-center gap-3 text-left">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-white border border-outline-variant/20 shadow-sm'}`}>
-                    <span className={`material-symbols-outlined text-xl ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
+                <div className="flex items-center gap-2 sm:gap-3 text-left">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20' : 'bg-white border border-outline-variant/20 shadow-sm'}`}>
+                    <span className={`material-symbols-outlined text-lg sm:text-xl ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
                       {icon}
                     </span>
                   </div>
                   <div>
-                    <p className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-outline'}`}>Active Metal</p>
-                    <p className={`text-sm font-bold font-headline tracking-wide ${isActive ? 'text-white' : 'text-on-background'}`}>{metal}</p>
+                    <p className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-outline'}`}>Active Metal</p>
+                    <p className={`text-xs sm:text-sm font-bold font-headline tracking-wide ${isActive ? 'text-white' : 'text-on-background'}`}>{metal}</p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-0.5 pr-2">
+                <div className="hidden sm:flex flex-col items-end gap-0.5 pr-2">
                   <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
                     isActive 
                       ? 'bg-white/20 border-white/30 text-white' 
