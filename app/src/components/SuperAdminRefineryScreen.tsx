@@ -323,21 +323,65 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                 <p className="text-xs text-outline font-medium">Super Admin Master Refining Log & Processing Terminal</p>
               </div>
             </div>
-            
-            {/* Metal Toggle */}
-            <div className="flex bg-surface-container p-1 rounded-full w-40">
-              {['Gold', 'Silver'].map(metal => (
-                <button
-                  key={metal}
-                  onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
-                  className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeMetal === metal ? 'bg-primary text-white premium-shadow' : 'text-outline hover:text-primary'}`}
-                >
-                  {metal}
-                </button>
-              ))}
-            </div>
           </div>
         </header>
+
+        {/* Premium Metal Selector Card */}
+        <div className="bg-white rounded-3xl p-1.5 border border-outline-variant/20 shadow-md flex gap-2 w-full animate-fade-in relative z-10">
+          {[
+            {
+              metal: 'Gold',
+              icon: 'workspace_premium',
+              symbol: 'Au',
+              sub: '24K / 22K pure stock',
+              activeClass: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-md shadow-amber-500/20'
+            },
+            {
+              metal: 'Silver',
+              icon: 'monetization_on',
+              symbol: 'Ag',
+              sub: '99.9% fine purity stock',
+              activeClass: 'bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/20'
+            }
+          ].map(({ metal, icon, symbol, sub, activeClass }) => {
+            const isActive = activeMetal === metal;
+            return (
+              <button
+                key={metal}
+                onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
+                className={`flex-1 flex items-center justify-between p-3 rounded-2xl transition-all duration-300 ${
+                  isActive 
+                    ? `${activeClass} scale-[1.01] font-bold`
+                    : 'bg-[#003366]/5 text-outline hover:bg-[#003366]/10 hover:text-primary'
+                }`}
+              >
+                <div className="flex items-center gap-3 text-left">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-white border border-outline-variant/20 shadow-sm'}`}>
+                    <span className={`material-symbols-outlined text-xl ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
+                      {icon}
+                    </span>
+                  </div>
+                  <div>
+                    <p className={`text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-outline'}`}>Active Metal</p>
+                    <p className={`text-sm font-bold font-headline tracking-wide ${isActive ? 'text-white' : 'text-on-background'}`}>{metal}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-0.5 pr-2">
+                  <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                    isActive 
+                      ? 'bg-white/20 border-white/30 text-white' 
+                      : 'bg-white text-outline border-outline-variant/30'
+                  }`}>
+                    {symbol} 99.9%
+                  </span>
+                  <span className={`text-[8px] font-medium hidden sm:inline ${isActive ? 'text-white/70' : 'text-outline/70'}`}>
+                    {sub}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
 
         {/* View Toggle Segmented Control */}
         <div className="flex bg-[#003366]/5 p-1 rounded-2xl border border-outline-variant/10 relative z-10 w-full sm:max-w-xs animate-fade-in">
