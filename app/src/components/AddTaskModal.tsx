@@ -40,6 +40,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const isCollection = user?.id?.startsWith('COLL-') || false;
 
   const [formData, setFormData] = useState({
+    metal: 'Gold',
     customerName: '', address: '', phone: '',
     impureWeight: '', purity: '', pureWeight: '',
     settlementCondition: 'Only Tunch', fee: '',
@@ -95,7 +96,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const handleFinalSubmit = () => {
     onSuccess({ ...formData, workType, id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, date: 'Just Now', status: 'In Progress', progressPercentage: 10, assignedTo: 'Staff' });
     setStep(1); setWorkType(null); setErrors({});
-    setFormData({ customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold' });
+    setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold' });
     onClose();
   };
 
@@ -177,6 +178,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
           {/* ── STEP 2: Form ── */}
           {step === 2 && (
             <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4 animate-fade-in">
+              <SectionCard title="Metal Selection" icon="diamond" color="bg-primary/5 text-primary">
+                <div>
+                  <label className={lbl}>Select Metal Type *</label>
+                  <ToggleBtn options={['Gold', 'Silver']} value={formData.metal} onChange={v => up('metal', v)} />
+                </div>
+              </SectionCard>
+
               {workType === 'TUNCH' && (<>
                 {/* Client Section */}
                 <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">

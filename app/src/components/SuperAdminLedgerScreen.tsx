@@ -5,6 +5,10 @@ import { getCachedData, setCachedData } from '../cache';
 import { fitText } from '../utils';
 
 interface RefiningTransfer {
+  metal: 'Gold' | 'Silver';
+  impureSilverSent: number;
+  calculatedPureSilver: number;
+  refinedPureSilverAchieved?: number;
   id: string;
   branchId: string;
   branchName: string;
@@ -16,6 +20,9 @@ interface RefiningTransfer {
 }
 
 interface SuperAdminLedgerEntry {
+  pureSilverChange: number;
+  impureSilverChange: number;
+  calculatedPureSilver: number;
   id: string;
   date: string;
   isoDate: string;
@@ -33,11 +40,15 @@ const mapDbToTransfer = (db: any): RefiningTransfer => ({
   id: db.id,
   branchId: db.branch_id,
   branchName: db.branch_name,
+  metal: db.metal || 'Gold',
   impureGoldSent: Number(db.impure_gold_sent || 0),
   calculatedPureGold: Number(db.calculated_pure_gold || (db.impure_gold_sent * 0.92)),
+  impureSilverSent: Number(db.impure_silver_sent || 0),
+  calculatedPureSilver: Number(db.calculated_pure_silver || 0),
   dateSent: db.date_sent,
   status: db.status,
-  refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined
+  refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined,
+  refinedPureSilverAchieved: db.refined_pure_silver_achieved ? Number(db.refined_pure_silver_achieved) : undefined
 });
 
 const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
@@ -49,6 +60,9 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
   pureGoldChange: Number(db.pure_gold_change || 0),
   impureGoldChange: Number(db.impure_gold_change || 0),
   calculatedPureGold: Number(db.calculated_pure_gold || 0),
+  pureSilverChange: Number(db.pure_silver_change || 0),
+  impureSilverChange: Number(db.impure_silver_change || 0),
+  calculatedPureSilver: Number(db.calculated_pure_silver || 0),
   cashChange: Number(db.cash_change || 0),
   details: db.details
 });
@@ -64,6 +78,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialLedger);
   const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(initialTransfers);
+  const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
   const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
 
@@ -169,9 +184,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
     try {
       // Stock Correction is an adjustment: we calculate difference and insert
-      const currentPure = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
-      const currentImpure = saLedger.reduce((s, e) => s + e.impureGoldChange, 0);
-      const currentCalculatedPure = saLedger.reduce((s, e) => s + e.calculatedPureGold, 0);
+      const currentPure = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0);
+      const currentImpure = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0);
+      const currentCalculatedPure = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.calculatedPureGold : (e.calculatedPureSilver || 0)), 0);
       const currentCash = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
       const pureDiff = pureVal - currentPure;
@@ -184,11 +199,14 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         date: 'Today',
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Stock Correction',
-        pure_gold_change: pureDiff,
-        impure_gold_change: impureDiff,
-        calculated_pure_gold: calculatedPureDiff,
+        pure_gold_change: activeMetal === 'Gold' ? pureDiff : 0,
+        impure_gold_change: activeMetal === 'Gold' ? impureDiff : 0,
+        calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureDiff : 0,
+        pure_silver_change: activeMetal === 'Silver' ? pureDiff : 0,
+        impure_silver_change: activeMetal === 'Silver' ? impureDiff : 0,
+        calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureDiff : 0,
         cash_change: cashDiff,
-        details: `Manual Stock Correction adjustment.`
+        details: `Manual Stock Correction adjustment for ${activeMetal}.`
       };
 
       const { error } = await supabase
@@ -221,17 +239,21 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       if (transferError) throw transferError;
 
       // 2. Insert Refining Yield into Super Admin Ledger
+      const isSilver = selectedTransfer.metal === 'Silver';
       const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
         date: 'Today',
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Refining Yield',
         branch_name: selectedTransfer.branchName,
-        pure_gold_change: achieved,
-        impure_gold_change: -selectedTransfer.impureGoldSent,
-        calculated_pure_gold: -selectedTransfer.calculatedPureGold,
+        pure_gold_change: isSilver ? 0 : achieved,
+        impure_gold_change: isSilver ? 0 : -selectedTransfer.impureGoldSent,
+        calculated_pure_gold: isSilver ? 0 : -selectedTransfer.calculatedPureGold,
+        pure_silver_change: isSilver ? achieved : 0,
+        impure_silver_change: isSilver ? -selectedTransfer.impureSilverSent : 0,
+        calculated_pure_silver: isSilver ? -selectedTransfer.calculatedPureSilver : 0,
         cash_change: 0,
-        details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
+        details: `Refined ${(isSilver ? selectedTransfer.impureSilverSent : selectedTransfer.impureGoldSent).toFixed(3)}g Impure ${selectedTransfer.metal} from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure ${selectedTransfer.metal}.`
       };
 
       const { error: ledgerError } = await supabase
@@ -249,8 +271,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   };
 
   // Calculations based on running sum of DB ledger records
-  const currentPureStock = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
-  const currentImpureStock = saLedger.reduce((s, e) => s + e.impureGoldChange, 0);
+  const currentPureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0);
+  const currentImpureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0);
   const currentCashStock = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
@@ -270,13 +292,26 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       <main className="px-6 max-w-5xl mx-auto pt-8 pb-32 relative space-y-6">
         
         {/* Header */}
-        <header className="flex justify-between items-end mb-4 animate-fade-in">
-          <div>
-            <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Head Office Hub</h1>
-            <p className="text-xs text-outline font-medium">Super Admin Global Allocation & Refining Terminal</p>
-          </div>
-          <div className="flex gap-2">
-            <button 
+        <header className="flex flex-col gap-4 mb-4 animate-fade-in">
+          <div className="flex justify-between items-end">
+            <div>
+              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Head Office Hub</h1>
+              <p className="text-xs text-outline font-medium">Super Admin Global Allocation & Refining Terminal</p>
+            </div>
+            <div className="flex gap-2">
+              {/* Metal Toggle */}
+              <div className="flex bg-surface-container p-1 rounded-full w-40 mr-4">
+                {['Gold', 'Silver'].map(metal => (
+                  <button
+                    key={metal}
+                    onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
+                    className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeMetal === metal ? 'bg-primary text-white premium-shadow' : 'text-outline hover:text-primary'}`}
+                  >
+                    {metal}
+                  </button>
+                ))}
+              </div>
+              <button 
               onClick={async () => {
                 // Clear DB super admin ledger for testing setup
                 if (window.confirm("Are you sure you want to reset all corporate records for testing setup?")) {
@@ -294,6 +329,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
             >
               <span className="material-symbols-outlined text-xl">restart_alt</span>
             </button>
+          </div>
           </div>
         </header>
 

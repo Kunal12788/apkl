@@ -7,6 +7,7 @@ import { getCachedData, setCachedData } from '../cache';
 type TabView = 'all' | 'customer';
 
 interface Transaction {
+  metal: 'Gold' | 'Silver';
   id: string;
   customerId: string;
   customerName: string;
@@ -218,7 +219,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const currentUser = user?.id || 'COLL-001';
   const initialTx = cachedTx
     ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
-        id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+        metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
         status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
         logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
@@ -241,7 +242,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           setCachedData('tx_data', [...otherTx, ...data]);
 
           setTransactions(data.map(t => ({
-              id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
               status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
               logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by

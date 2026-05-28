@@ -6,6 +6,10 @@ import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
 
 interface LedgerEntry {
+  pureSilverOut: number;
+  pureSilverDue: number;
+  impureSilverIn: number;
+  impureSilverOut?: number;
   id: string;
   date: string;
   isoDate: string;
@@ -22,8 +26,8 @@ interface LedgerEntry {
 }
 
 
-const openingPureStock = 100.000;
-const openingImpureStock = 0.000;
+const openingPureStock = { Gold: 100.000, Silver: 250.000 };
+const openingImpureStock = { Gold: 0.000, Silver: 0.000 };
 
 // DB Mapper helper functions
 const mapDbToEntry = (db: any): LedgerEntry => ({
@@ -36,6 +40,10 @@ const mapDbToEntry = (db: any): LedgerEntry => ({
   pureGoldDue: Number(db.pure_gold_due || 0),
   impureGoldIn: Number(db.impure_gold_in || 0),
   impureGoldOut: Number(db.impure_gold_out || 0),
+  pureSilverOut: Number(db.pure_silver_out || 0),
+  pureSilverDue: Number(db.pure_silver_due || 0),
+  impureSilverIn: Number(db.impure_silver_in || 0),
+  impureSilverOut: Number(db.impure_silver_out || 0),
   purity: db.purity,
   cashReceived: Number(db.cash_received || 0),
   cashPaid: Number(db.cash_paid || 0),
@@ -52,6 +60,10 @@ const mapEntryToDb = (entry: LedgerEntry, staffId: string) => ({
   pure_gold_due: entry.pureGoldDue,
   impure_gold_in: entry.impureGoldIn,
   impure_gold_out: entry.impureGoldOut || 0,
+  pure_silver_out: entry.pureSilverOut,
+  pure_silver_due: entry.pureSilverDue,
+  impure_silver_in: entry.impureSilverIn,
+  impure_silver_out: entry.impureSilverOut || 0,
   purity: entry.purity || '',
   cash_received: entry.cashReceived,
   cash_paid: entry.cashPaid,
@@ -70,6 +82,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
+  const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
@@ -110,14 +123,14 @@ export const StaffLedgerScreen: React.FC = () => {
     return isTakenPureGold || isTakenCash || isRefining;
   });
 
-  const totalPureGiven = entries.reduce((s, e) => s + e.pureGoldOut, 0);
-  const totalImpureReceived = entries.reduce((s, e) => s + e.impureGoldIn, 0);
-  const totalImpureRefined = entries.reduce((s, e) => s + (e.impureGoldOut || 0), 0);
+  const totalPureGiven = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0);
+  const totalImpureReceived = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0);
+  const totalImpureRefined = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0);
   
-  const currentPureStock = openingPureStock - totalPureGiven;
-  const currentImpureStock = openingImpureStock + totalImpureReceived - totalImpureRefined;
+  const currentPureStock = openingPureStock[activeMetal] - totalPureGiven;
+  const currentImpureStock = openingImpureStock[activeMetal] + totalImpureReceived - totalImpureRefined;
   
-  const pendingPureLiability = entries.reduce((s, e) => s + e.pureGoldDue, 0);
+  const pendingPureLiability = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0);
 
   const handleRefineConfirm = async () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -127,15 +140,16 @@ export const StaffLedgerScreen: React.FC = () => {
     let totalImpureIn = 0;
     let totalExpectedPure = 0;
     entries.forEach(e => {
-      if (e.impureGoldIn > 0) {
-        totalImpureIn += e.impureGoldIn;
+      const impureIn = activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn;
+      if (impureIn > 0) {
+        totalImpureIn += impureIn;
         const p = parseFloat(e.purity || '0') || 0;
-        totalExpectedPure += e.impureGoldIn * (p / 100);
+        totalExpectedPure += impureIn * (p / 100);
       }
     });
     
     const avgPurity = totalImpureIn > 0 ? (totalExpectedPure / totalImpureIn) : 0.92; // Default to 92% tunch
-    const calculatedPureGold = currentImpureStock * avgPurity;
+    const calculatedPureOutput = currentImpureStock * avgPurity;
 
     const newEntry: LedgerEntry = {
       id: txnId,
@@ -146,7 +160,11 @@ export const StaffLedgerScreen: React.FC = () => {
       pureGoldOut: 0,
       pureGoldDue: 0,
       impureGoldIn: 0,
-      impureGoldOut: currentImpureStock,
+      impureGoldOut: activeMetal === 'Gold' ? currentImpureStock : 0,
+      pureSilverOut: 0,
+      pureSilverDue: 0,
+      impureSilverIn: 0,
+      impureSilverOut: activeMetal === 'Silver' ? currentImpureStock : 0,
       cashReceived: 0,
       cashPaid: 0,
       status: 'Completed'
@@ -165,10 +183,13 @@ export const StaffLedgerScreen: React.FC = () => {
           id: trfId,
           branch_id: 'BR-DELHI',
           branch_name: 'Delhi Branch',
-          impure_gold_sent: currentImpureStock,
+          metal: activeMetal,
+          impure_gold_sent: activeMetal === 'Gold' ? currentImpureStock : 0,
+          calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
+          impure_silver_sent: activeMetal === 'Silver' ? currentImpureStock : 0,
+          calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureOutput : 0,
           date_sent: new Date().toISOString().split('T')[0],
           status: 'Pending',
-          calculated_pure_gold: calculatedPureGold
         }]);
       if (transferError) throw transferError;
 
@@ -180,10 +201,13 @@ export const StaffLedgerScreen: React.FC = () => {
         type: 'Branch Dispatch',
         branch_name: 'Delhi Branch',
         pure_gold_change: 0,
-        impure_gold_change: currentImpureStock,
-        calculated_pure_gold: calculatedPureGold,
+        impure_gold_change: activeMetal === 'Gold' ? currentImpureStock : 0,
+        calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
+        pure_silver_change: 0,
+        impure_silver_change: activeMetal === 'Silver' ? currentImpureStock : 0,
+        calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureOutput : 0,
         cash_change: 0,
-        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure Gold from Delhi Branch. Expected pure gold: ${calculatedPureGold.toFixed(3)}g.`
+        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure ${activeMetal} from Delhi Branch. Expected pure yield: ${calculatedPureOutput.toFixed(3)}g.`
       };
 
       const { error: saLedgerError } = await supabase
@@ -225,14 +249,29 @@ export const StaffLedgerScreen: React.FC = () => {
 
         {/* Header */}
         {!selectedEntry && (
-          <header className="flex justify-between items-end mb-4 animate-fade-in">
-            <div>
-              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Gold Ledger Panel</h1>
-              <p className="text-xs text-outline font-medium">Real-time Stock & Settlement Engine</p>
+          <header className="flex flex-col gap-4 mb-4 animate-fade-in">
+            <div className="flex justify-between items-end">
+              <div>
+                <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Ledger Panel</h1>
+                <p className="text-xs text-outline font-medium">Real-time Stock & Settlement Engine</p>
+              </div>
+              <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform">
+                <span className="material-symbols-outlined text-xl">notifications</span>
+              </button>
             </div>
-            <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform">
-              <span className="material-symbols-outlined text-xl">notifications</span>
-            </button>
+            
+            {/* Metal Toggle */}
+            <div className="flex bg-surface-container p-1 rounded-full w-full max-w-sm">
+              {['Gold', 'Silver'].map(metal => (
+                <button
+                  key={metal}
+                  onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
+                  className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeMetal === metal ? 'bg-primary text-white premium-shadow' : 'text-outline hover:text-primary'}`}
+                >
+                  {metal}
+                </button>
+              ))}
+            </div>
           </header>
         )}
 
@@ -320,7 +359,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.0)}>{fmtG(currentPureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock)}</p>
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock[activeMetal])}</p>
                       </div>
                     </div>
                   </div>
@@ -333,7 +372,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.0)}>{fmtG(currentImpureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock)}</p>
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock[activeMetal])}</p>
                       </div>
                     </div>
                   </div>

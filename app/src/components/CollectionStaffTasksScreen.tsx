@@ -7,6 +7,7 @@ import { getCachedData, setCachedData } from '../cache';
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
 interface Task {
+  metal: 'Gold' | 'Silver';
   id: string;
   customerName: string;
   customerId: string;
@@ -218,7 +219,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const initialTasks = cachedTasks
     ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-        workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+        workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
         dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
         pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
         logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
@@ -242,7 +243,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
           setTasks(data.map(t => ({
               id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-              workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+              workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
               pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
               logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
@@ -297,7 +298,11 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-headline font-bold text-primary text-[15px]">{task.customerName}</p>
-                      <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{task.id} • {task.pieces} Pcs</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <p className="text-[10px] text-outline font-bold tracking-widest uppercase">{task.id} • {task.pieces} Pcs</p>
+                        <span className="w-1 h-1 rounded-full bg-outline-variant/40"></span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${task.metal === 'Silver' ? 'bg-slate-100 text-slate-500' : 'bg-orange-50 text-orange-500'}`}>{task.metal}</span>
+                      </div>
                     </div>
                   </div>
                   <div className={`px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>

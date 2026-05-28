@@ -4,6 +4,10 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 
 interface RefiningTransfer {
+  metal: 'Gold' | 'Silver';
+  impureSilverSent: number;
+  calculatedPureSilver: number;
+  refinedPureSilverAchieved?: number;
   id: string;
   branchId: string;
   branchName: string;
@@ -19,14 +23,21 @@ const mapDbToTransfer = (db: any): RefiningTransfer => ({
   id: db.id,
   branchId: db.branch_id,
   branchName: db.branch_name,
+  metal: db.metal || 'Gold',
   impureGoldSent: Number(db.impure_gold_sent || 0),
   calculatedPureGold: Number(db.calculated_pure_gold || (db.impure_gold_sent * 0.92)), // Fallback to 92% expected yield for legacy entries
+  impureSilverSent: Number(db.impure_silver_sent || 0),
+  calculatedPureSilver: Number(db.calculated_pure_silver || 0),
   dateSent: db.date_sent,
   status: db.status,
-  refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined
+  refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined,
+  refinedPureSilverAchieved: db.refined_pure_silver_achieved ? Number(db.refined_pure_silver_achieved) : undefined
 });
 
 export interface SuperAdminLedgerEntry {
+  pureSilverChange: number;
+  impureSilverChange: number;
+  calculatedPureSilver: number;
   id: string;
   date: string;
   isoDate: string;
@@ -48,6 +59,9 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
   pureGoldChange: Number(db.pure_gold_change || 0),
   impureGoldChange: Number(db.impure_gold_change || 0),
   calculatedPureGold: Number(db.calculated_pure_gold || 0),
+  pureSilverChange: Number(db.pure_silver_change || 0),
+  impureSilverChange: Number(db.impure_silver_change || 0),
+  calculatedPureSilver: Number(db.calculated_pure_silver || 0),
   cashChange: Number(db.cash_change || 0),
   details: db.details
 });
@@ -67,6 +81,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   
   // Choose between Current Session (current) and Refining History (past)
   const [currentView, setCurrentView] = useState<'current' | 'past'>('current');
+  const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<SuperAdminLedgerEntry | null>(null);
   
   // Db-synchronized Refinery States
@@ -189,43 +204,47 @@ export const SuperAdminRefineryScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const pendingTransfersInQueue = transfers.filter(t => t.status === 'Pending');
-  const pendingImpureGold = Math.max(0, saLedger.reduce((s, e) => s + e.impureGoldChange, 0));
-  const pendingExpectedPure = Math.max(0, saLedger.reduce((s, e) => s + e.calculatedPureGold, 0));
+  const pendingTransfersInQueue = transfers.filter(t => t.status === 'Pending' && t.metal === activeMetal);
+  const pendingImpureMetal = Math.max(0, saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0));
+  const pendingExpectedPure = Math.max(0, saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.calculatedPureGold : (e.calculatedPureSilver || 0)), 0));
 
   const handleProcessBatchRefining = (e: React.FormEvent) => {
     e.preventDefault();
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
-    if (pendingImpureGold <= 0) return;
+    if (pendingImpureMetal <= 0) return;
     setShowConfirmModal(true);
   };
 
   const executeBatchRefining = async () => {
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
-    if (pendingImpureGold <= 0) return;
+    if (pendingImpureMetal <= 0) return;
 
     try {
       setShowConfirmModal(false);
       setLoading(true);
       const totalExpected = pendingExpectedPure;
-      const totalImpure = pendingImpureGold;
+      const totalImpure = pendingImpureMetal;
 
       // Update each pending transfer with proportional pure achieved
       const updates = pendingTransfersInQueue.map(transfer => {
         let proportionalPure = 0;
         if (totalExpected > 0) {
-          proportionalPure = (transfer.calculatedPureGold / totalExpected) * achieved;
+          proportionalPure = ((activeMetal === 'Gold' ? transfer.calculatedPureGold : (transfer.calculatedPureSilver || 0)) / totalExpected) * achieved;
         } else if (totalImpure > 0) {
-          proportionalPure = (transfer.impureGoldSent / totalImpure) * achieved;
+          proportionalPure = ((activeMetal === 'Gold' ? transfer.impureGoldSent : (transfer.impureSilverSent || 0)) / totalImpure) * achieved;
         } else {
           proportionalPure = achieved / pendingTransfersInQueue.length;
         }
 
+        const updateData: any = { status: 'Processed' };
+        if (activeMetal === 'Gold') updateData.refined_pure_achieved = proportionalPure;
+        else updateData.refined_pure_silver_achieved = proportionalPure;
+
         return supabase
           .from('refining_transfers')
-          .update({ status: 'Processed', refined_pure_achieved: proportionalPure })
+          .update(updateData)
           .eq('id', transfer.id);
       });
 
@@ -235,17 +254,21 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       const branchNames = pendingTransfersInQueue.length > 0
         ? Array.from(new Set(pendingTransfersInQueue.map(t => t.branchName))).join(', ')
         : 'Stock Adjustment';
+      const isSilver = activeMetal === 'Silver';
       const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
         date: 'Today',
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Refining Yield',
         branch_name: 'Corporate Vault',
-        pure_gold_change: achieved,
-        impure_gold_change: -totalImpure,
-        calculated_pure_gold: -totalExpected,
+        pure_gold_change: isSilver ? 0 : achieved,
+        impure_gold_change: isSilver ? 0 : -totalImpure,
+        calculated_pure_gold: isSilver ? 0 : -totalExpected,
+        pure_silver_change: isSilver ? achieved : 0,
+        impure_silver_change: isSilver ? -totalImpure : 0,
+        calculated_pure_silver: isSilver ? -totalExpected : 0,
         cash_change: 0,
-        details: `Batch refined ${totalImpure.toFixed(3)}g Impure Gold from branches (${branchNames}). Yielded ${achieved.toFixed(3)}g Pure Gold.`
+        details: `Batch refined ${totalImpure.toFixed(3)}g Impure ${activeMetal} from branches (${branchNames}). Yielded ${achieved.toFixed(3)}g Pure ${activeMetal}.`
       };
 
       const { error: ledgerError } = await supabase
@@ -267,6 +290,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
   const refiningHistory = saLedger
     .filter(e => e.type === 'Refining Yield')
+    .filter(e => activeMetal === 'Gold' ? (Math.abs(e.impureGoldChange) > 0 || Math.abs(e.calculatedPureGold) > 0) : (Math.abs(e.impureSilverChange) > 0 || Math.abs(e.calculatedPureSilver) > 0))
     .sort((a, b) => b.isoDate.localeCompare(a.isoDate) || b.id.localeCompare(a.id));
 
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
@@ -285,16 +309,33 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       <main className="px-6 max-w-5xl mx-auto pt-8 pb-32 relative space-y-6">
         
         {/* Header */}
-        <header className="flex items-center gap-4 mb-2 animate-fade-in">
-          <button 
-            onClick={() => navigate('/dashboard')}
-            className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform"
-          >
-            <span className="material-symbols-outlined text-xl">arrow_back</span>
-          </button>
-          <div>
-            <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Refinery Hub</h1>
-            <p className="text-xs text-outline font-medium">Super Admin Master Refining Log & Processing Terminal</p>
+        <header className="flex flex-col gap-4 mb-2 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform"
+              >
+                <span className="material-symbols-outlined text-xl">arrow_back</span>
+              </button>
+              <div>
+                <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Refinery Hub</h1>
+                <p className="text-xs text-outline font-medium">Super Admin Master Refining Log & Processing Terminal</p>
+              </div>
+            </div>
+            
+            {/* Metal Toggle */}
+            <div className="flex bg-surface-container p-1 rounded-full w-40">
+              {['Gold', 'Silver'].map(metal => (
+                <button
+                  key={metal}
+                  onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
+                  className={`flex-1 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeMetal === metal ? 'bg-primary text-white premium-shadow' : 'text-outline hover:text-primary'}`}
+                >
+                  {metal}
+                </button>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -329,7 +370,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-tertiary/10 to-transparent rounded-full blur-2xl"></div>
               <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black mb-4">Active Melt Queue</h3>
               
-              {pendingImpureGold <= 0 ? (
+              {pendingImpureMetal <= 0 ? (
                 <div className="py-8 text-center">
                   <span className="material-symbols-outlined text-outline/40 text-5xl mb-3">science</span>
                   <p className="text-sm text-outline font-bold">Queue is Empty</p>
@@ -342,7 +383,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
                       <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Impure in Queue</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="font-headline text-2xl font-extrabold text-primary">{pendingImpureGold.toFixed(3)}</span>
+                        <span className="font-headline text-2xl font-extrabold text-primary">{pendingImpureMetal.toFixed(3)}</span>
                         <span className="text-xs font-bold text-outline">g</span>
                       </div>
                     </div>
@@ -380,7 +421,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
             </div>
 
             {/* Refinery Control Dashboard */}
-            {pendingImpureGold > 0 && (
+            {pendingImpureMetal > 0 && (
               <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6 animate-fade-in relative overflow-hidden">
                 <div className="flex justify-between items-center relative z-10">
                   <h3 className="font-label text-[11px] uppercase tracking-[0.25em] font-black text-outline">
@@ -407,7 +448,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     <div>
                       <p className="text-sm font-bold text-primary">Ready to Start Refining</p>
                       <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">
-                        This will start the melt process for {pendingTransfersInQueue.length > 0 ? `all ${pendingTransfersInQueue.length} pending transfers` : 'the queue'} totaling {pendingImpureGold.toFixed(3)}g impure gold.
+                        This will start the melt process for {pendingTransfersInQueue.length > 0 ? `all ${pendingTransfersInQueue.length} pending transfers` : 'the queue'} totaling {pendingImpureMetal.toFixed(3)}g impure {activeMetal}.
                       </p>
                     </div>
                     <button
@@ -483,7 +524,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       </div>
                       
                       <p className="text-xs text-outline/80 leading-relaxed max-w-xs mx-auto">
-                        Processing {pendingImpureGold.toFixed(3)}g of impure gold. The input field will become available once the melt is finished.
+                        Processing {pendingImpureMetal.toFixed(3)}g of impure {activeMetal}. The input field will become available once the melt is finished.
                       </p>
                     </div>
 
@@ -514,12 +555,12 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
                         <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Impure Weight Melted</p>
                         <div className="flex items-baseline gap-1">
-                          <span className="font-headline text-lg font-extrabold text-primary">{pendingImpureGold.toFixed(3)}</span>
+                          <span className="font-headline text-lg font-extrabold text-primary">{pendingImpureMetal.toFixed(3)}</span>
                           <span className="text-[10px] font-bold text-outline">g</span>
                         </div>
                       </div>
                       <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
-                        <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure Gold</p>
+                        <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure {activeMetal}</p>
                         <div className="flex items-baseline gap-1">
                           <span className="font-headline text-lg font-extrabold text-secondary">{pendingExpectedPure.toFixed(3)}</span>
                           <span className="text-[10px] font-bold text-outline">g</span>
@@ -529,7 +570,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
                     {/* Actual Pure Input Field */}
                     <div className="relative group">
-                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Actual Pure Gold Obtained (g)</span>
+                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Actual Pure {activeMetal} Obtained (g)</span>
                       <input 
                         type="number" 
                         step="0.001"
@@ -637,12 +678,12 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
                         <div className="grid grid-cols-[1fr,auto,1fr] gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
                           <div className="flex flex-col items-center text-center">
-                            <p className="text-[11px] font-black text-primary">{fmtG(Math.abs(session.impureGoldChange))}</p>
+                            <p className="text-[11px] font-black text-primary">{fmtG(Math.abs(activeMetal === 'Gold' ? session.impureGoldChange : session.impureSilverChange))}</p>
                             <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Melted</p>
                           </div>
                           <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
                           <div className="flex flex-col items-center text-center">
-                            <p className="text-[11px] font-black text-emerald-600">{fmtG(session.pureGoldChange)}</p>
+                            <p className="text-[11px] font-black text-emerald-600">{fmtG(activeMetal === 'Gold' ? session.pureGoldChange : session.pureSilverChange)}</p>
                             <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Actual Yield</p>
                           </div>
                         </div>
@@ -677,8 +718,9 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                   </div>
 
                   {(() => {
-                    const sessExpected = Math.abs(selectedHistoryItem.calculatedPureGold);
-                    const sessActual = selectedHistoryItem.pureGoldChange;
+                    const sessExpected = Math.abs(activeMetal === 'Gold' ? selectedHistoryItem.calculatedPureGold : (selectedHistoryItem.calculatedPureSilver || 0));
+                    const sessActual = activeMetal === 'Gold' ? selectedHistoryItem.pureGoldChange : selectedHistoryItem.pureSilverChange;
+                    const sessImpure = Math.abs(activeMetal === 'Gold' ? selectedHistoryItem.impureGoldChange : selectedHistoryItem.impureSilverChange);
                     const sessVariance = sessActual - sessExpected;
                     const sessRecovery = sessExpected > 0 ? (sessActual / sessExpected) * 100 : 0;
 
@@ -690,12 +732,12 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                             <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-[#755b00]">local_fire_department</span>
                             <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Melted</p>
                             <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                              <span className="font-headline font-extrabold text-primary" style={{ fontSize: '24px' }}>{Math.abs(selectedHistoryItem.impureGoldChange).toFixed(3)}</span>
+                              <span className="font-headline font-extrabold text-primary" style={{ fontSize: '24px' }}>{sessImpure.toFixed(3)}</span>
                               <span className="text-[10px] font-black text-[#755b00]">gram</span>
                             </div>
                           </div>
 
-                          {/* Actual Pure Gold Obtained */}
+                          {/* Actual Pure Obtained */}
                           <div className="luxury-card p-4 sm:p-5 bg-emerald-50 border-l-4 border-l-emerald-600 flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
                             <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-emerald-600">workspace_premium</span>
                             <p className="text-[9px] font-bold text-emerald-800 uppercase tracking-[0.2em]">Total Pure Obtained</p>
@@ -777,7 +819,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white rounded-2xl p-4 border border-outline-variant/10 shadow-sm">
                   <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Impure Melted</p>
-                  <p className="font-headline text-lg font-extrabold text-primary">{pendingImpureGold.toFixed(3)}g</p>
+                  <p className="font-headline text-lg font-extrabold text-primary">{pendingImpureMetal.toFixed(3)}g</p>
                 </div>
                 <div className="bg-white rounded-2xl p-4 border border-outline-variant/10 shadow-sm border-b-4 border-b-[#0059bb]">
                   <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1 text-[#0059bb]">Actual Pure Obtained</p>

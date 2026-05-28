@@ -22,6 +22,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   const { user } = useSession();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
+    metal: 'Gold',
     customerName: '',
     phone: '',
     address: '',
@@ -67,6 +68,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         customer_address: formData.address,
         logo_name: formData.logoName,
         work_type: formData.category === 'TUNCH' ? 'Tunch' : formData.category === 'MARKING' ? 'Marking' : 'Shouldering',
+        metal: formData.metal,
         pieces: formData.pieces,
         impure_weight: formData.weight,
         notes: formData.specifications || 'Collection intake from field.',
@@ -91,7 +93,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
       }
 
      onSuccess(newEntry);
-     setFormData({ customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
+     setFormData({ metal: 'Gold', customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
      setStep(1);
   };
 
@@ -129,6 +131,20 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         <div className="flex-grow overflow-y-auto hide-scrollbar px-6 py-6 space-y-4">
            {step === 1 ? (
              <>
+               <SectionCard title="Metal Selection" icon="diamond" color="bg-primary/5 text-primary">
+                  <div>
+                    <label className={lbl}>Select Metal Type *</label>
+                    <div className="flex gap-2 bg-surface-container p-1 rounded-full">
+                      {['Gold', 'Silver'].map(opt => (
+                        <button key={opt} onClick={() => up('metal', opt)}
+                          className={`flex-1 py-2 rounded-full text-[11px] font-bold transition-colors ${formData.metal === opt ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant'}`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+               </SectionCard>
+
                <SectionCard title="Job Selection" icon="category" color="bg-primary/5 text-primary">
                   <div className="grid grid-cols-3 gap-2">
                      {['TUNCH', 'MARKING', 'SHOULDERING'].map(cat => (

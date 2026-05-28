@@ -1,1 +1,17 @@
 .idea/
+
+# Secret / config files
+supabase.txt
+*.env
+.env*
+
+# Misc files
+first_timer.txt
+first_timer_utf8.txt
+search.txt
+
+# Media
+*.mp4
+*.png
+*.jpg
+*.jpeg

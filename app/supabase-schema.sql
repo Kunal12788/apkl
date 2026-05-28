@@ -21,6 +21,24 @@ ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS impure_gold_chang
 ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000;
 ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000;
 
+-- Silver Support Columns
+ALTER TABLE public.ledger_entries ADD COLUMN IF NOT EXISTS pure_silver_out NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.ledger_entries ADD COLUMN IF NOT EXISTS pure_silver_due NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.ledger_entries ADD COLUMN IF NOT EXISTS impure_silver_in NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.ledger_entries ADD COLUMN IF NOT EXISTS impure_silver_out NUMERIC(10,3) DEFAULT 0.000;
+
+ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS metal TEXT DEFAULT 'Gold';
+ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS impure_silver_sent NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS calculated_pure_silver NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.refining_transfers ADD COLUMN IF NOT EXISTS refined_pure_silver_achieved NUMERIC(10,3) DEFAULT 0.000;
+
+ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS pure_silver_change NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS impure_silver_change NUMERIC(10,3) DEFAULT 0.000;
+ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS calculated_pure_silver NUMERIC(10,3) DEFAULT 0.000;
+
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS metal TEXT DEFAULT 'Gold';
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metal TEXT DEFAULT 'Gold';
+
 -- Seed Initial Users
 INSERT INTO public.users (id, name, role, branch_id, email, phone, passkey) VALUES
 ('STAFF-001', 'Marcus Reynolds', 'Staff', 'BR-DELHI', 'k7474740@gmail.com', '+91 98765 43210', '1234')
@@ -73,6 +91,10 @@ CREATE TABLE IF NOT EXISTS public.ledger_entries (
     pure_gold_due NUMERIC(10,3) DEFAULT 0.000,
     impure_gold_in NUMERIC(10,3) DEFAULT 0.000,
     impure_gold_out NUMERIC(10,3) DEFAULT 0.000,
+    pure_silver_out NUMERIC(10,3) DEFAULT 0.000,
+    pure_silver_due NUMERIC(10,3) DEFAULT 0.000,
+    impure_silver_in NUMERIC(10,3) DEFAULT 0.000,
+    impure_silver_out NUMERIC(10,3) DEFAULT 0.000,
     purity TEXT DEFAULT '',
     cash_received INTEGER DEFAULT 0,
     cash_paid INTEGER DEFAULT 0,
@@ -91,6 +113,10 @@ CREATE TABLE IF NOT EXISTS public.refining_transfers (
     status TEXT NOT NULL DEFAULT 'Pending',
     calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000,
     refined_pure_achieved NUMERIC(10,3) DEFAULT 0.000,
+    metal TEXT NOT NULL DEFAULT 'Gold',
+    impure_silver_sent NUMERIC(10,3) DEFAULT 0.000,
+    calculated_pure_silver NUMERIC(10,3) DEFAULT 0.000,
+    refined_pure_silver_achieved NUMERIC(10,3) DEFAULT 0.000,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -104,6 +130,9 @@ CREATE TABLE IF NOT EXISTS public.super_admin_ledger (
     pure_gold_change NUMERIC(10,3) DEFAULT 0.000,
     impure_gold_change NUMERIC(10,3) DEFAULT 0.000,
     calculated_pure_gold NUMERIC(10,3) DEFAULT 0.000,
+    pure_silver_change NUMERIC(10,3) DEFAULT 0.000,
+    impure_silver_change NUMERIC(10,3) DEFAULT 0.000,
+    calculated_pure_silver NUMERIC(10,3) DEFAULT 0.000,
     cash_change NUMERIC(15,2) DEFAULT 0.00,
     details TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -114,6 +143,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     id TEXT PRIMARY KEY,
     customer_name TEXT NOT NULL,
     customer_id TEXT NOT NULL,
+    metal TEXT NOT NULL DEFAULT 'Gold',
     work_type TEXT NOT NULL,
     assigned_to TEXT NOT NULL,
     status TEXT NOT NULL,
@@ -146,6 +176,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     id TEXT PRIMARY KEY,
     customer_id TEXT NOT NULL,
     customer_name TEXT NOT NULL,
+    metal TEXT NOT NULL DEFAULT 'Gold',
     type TEXT NOT NULL,
     work_type TEXT NOT NULL,
     amount TEXT NOT NULL,
