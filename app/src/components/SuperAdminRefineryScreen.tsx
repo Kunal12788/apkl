@@ -65,10 +65,10 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   const [transfers, setTransfers] = useState<RefiningTransfer[]>(initialTransfers);
   const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialSaLedger);
   const [loading, setLoading] = useState<boolean>(cachedTransfers === null || cachedSaLedger === null);
-  const [activeTab, setActiveTab] = useState<'All' | 'Pending' | 'Processed'>('All');
   
   // Choose between Current Session (current) and Refining History (past)
   const [currentView, setCurrentView] = useState<'current' | 'past'>('current');
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<SuperAdminLedgerEntry | null>(null);
   
   // Db-synchronized Refinery States
   const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining'>('idle');
@@ -277,11 +277,9 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   
   const recoveryRate = processedExpectedPure > 0 ? (totalActualPure / processedExpectedPure) * 100 : 0;
 
-  const filteredTransfers = transfers.filter(t => {
-    if (activeTab === 'Pending') return t.status === 'Pending';
-    if (activeTab === 'Processed') return t.status === 'Processed';
-    return true;
-  });
+  const refiningHistory = saLedger
+    .filter(e => e.type === 'Refining Yield')
+    .sort((a, b) => b.isoDate.localeCompare(a.isoDate) || b.id.localeCompare(a.id));
 
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
 
@@ -662,102 +660,127 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               </div>
             </section>
 
-            {/* Tab Filters */}
-            <div className="flex gap-2 border-b border-outline-variant/20 pb-2">
-              {(['All', 'Pending', 'Processed'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all relative ${
-                    activeTab === tab 
-                      ? 'bg-[#755b00]/10 text-[#755b00]' 
-                      : 'text-outline hover:text-primary hover:bg-slate-50'
-                  }`}
-                >
-                  {tab}
-                  {activeTab === tab && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-[#755b00] rounded-full"></span>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Transfers Log History */}
-            <section className="space-y-4 relative z-10">
-              <p className="label-institutional text-outline uppercase px-1">Refinery Log Entries</p>
-              {filteredTransfers.length === 0 ? (
-                <div className="luxury-card p-12 bg-slate-50 border border-outline-variant/10 text-center rounded-[2rem]">
-                  <span className="material-symbols-outlined text-slate-400 text-5xl mb-3">science</span>
-                  <p className="text-sm text-outline font-bold">No transfers in this category found.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredTransfers.map(item => {
-                    const itemVariance = item.refinedPureAchieved ? (item.refinedPureAchieved - item.calculatedPureGold) : null;
-                    return (
-                      <div key={item.id} className="luxury-card p-5 bg-white border border-outline-variant/10 relative overflow-hidden shadow-sm flex flex-col gap-4">
-                        
-                        {/* Top Row: Title, Date, Status */}
+            {/* Refining Sessions History */}
+            {!selectedHistoryItem ? (
+              <section className="space-y-4 relative z-10 mt-6">
+                <p className="label-institutional text-outline uppercase px-1">Refinery Melt Sessions</p>
+                {refiningHistory.length === 0 ? (
+                  <div className="luxury-card p-12 bg-slate-50 border border-outline-variant/10 text-center rounded-[2rem]">
+                    <span className="material-symbols-outlined text-slate-400 text-5xl mb-3">history</span>
+                    <p className="text-sm text-outline font-bold">No refining sessions found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {refiningHistory.map(session => (
+                      <div 
+                        key={session.id} 
+                        onClick={() => setSelectedHistoryItem(session)}
+                        className="luxury-card p-5 bg-white border border-outline-variant/10 relative overflow-hidden shadow-sm flex flex-col gap-4 cursor-pointer hover:shadow-md hover:border-[#0059bb]/30 transition-all active:scale-[0.98]"
+                      >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="material-symbols-outlined text-sm text-[#755b00]">local_fire_department</span>
-                              <p className="font-bold text-sm text-primary">{item.branchName}</p>
+                              <span className="material-symbols-outlined text-sm text-[#0059bb]">local_fire_department</span>
+                              <p className="font-bold text-sm text-primary">Melt Session</p>
                             </div>
-                            <p className="text-[8px] uppercase tracking-widest font-black text-outline mt-1">Sent: {item.dateSent} • ID: {item.id}</p>
+                            <p className="text-[8px] uppercase tracking-widest font-black text-outline mt-1">{session.date} • ID: {session.id}</p>
                           </div>
                           <div>
-                            <span className={`text-[8.5px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border ${
-                              item.status === 'Pending' 
-                                ? 'bg-amber-50 text-amber-700 border-amber-200/50' 
-                                : 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
-                            }`}>
-                              {item.status}
+                            <span className="text-[8.5px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200/50">
+                              Completed
                             </span>
                           </div>
                         </div>
 
-                        {/* Middle Row: Metrics display */}
                         <div className="grid grid-cols-3 gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
                           <div className="flex flex-col items-center text-center">
-                            <p className="text-[11px] font-black text-primary" style={fitText(fmtG(item.impureGoldSent), 8, 0.75, 0.65)}>{fmtG(item.impureGoldSent)}</p>
-                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Sent</p>
+                            <p className="text-[11px] font-black text-primary">{fmtG(Math.abs(session.impureGoldChange))}</p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Melted</p>
                           </div>
                           <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
                           <div className="flex flex-col items-center text-center">
-                            <p className="text-[11px] font-black text-secondary" style={fitText(fmtG(item.calculatedPureGold), 8, 0.75, 0.65)}>{fmtG(item.calculatedPureGold)}</p>
-                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Calculated Pure</p>
+                            <p className="text-[11px] font-black text-secondary">{fmtG(Math.abs(session.calculatedPureGold))}</p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Expected Yield</p>
                           </div>
                           <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
                           <div className="flex flex-col items-center text-center">
-                            <p className={`text-[11px] font-black ${item.refinedPureAchieved ? 'text-emerald-600' : 'text-amber-600'}`} style={fitText(item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending', 8, 0.75, 0.65)}>
-                              {item.refinedPureAchieved ? fmtG(item.refinedPureAchieved) : 'Pending'}
-                            </p>
-                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Actual Obtained</p>
-                          </div>
-                        </div>
-
-                        {/* Bottom Row: Variance */}
-                        <div className="flex justify-between items-center border-t border-outline-variant/10 pt-3">
-                          <div>
-                            {itemVariance !== null ? (
-                              <div className="flex items-center gap-1">
-                                <span className="text-[9px] font-bold text-outline">Variance:</span>
-                                <span className={`text-[9.5px] font-black ${itemVariance < 0 ? 'text-error' : 'text-emerald-600'}`}>
-                                  {itemVariance >= 0 ? '+' : ''}{itemVariance.toFixed(3)}g
-                                </span>
-                              </div>
-                            ) : (
-                              <p className="text-[9px] text-outline font-medium">Awaiting melt results...</p>
-                            )}
+                            <p className="text-[11px] font-black text-emerald-600">{fmtG(session.pureGoldChange)}</p>
+                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Actual Yield</p>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ) : (
+              <section className="space-y-4 relative z-10 animate-fade-in mt-6">
+                <button 
+                  onClick={() => setSelectedHistoryItem(null)}
+                  className="flex items-center gap-2 text-xs font-bold text-outline hover:text-primary transition-colors mb-4"
+                >
+                  <span className="material-symbols-outlined text-sm">arrow_back</span>
+                  Back to History
+                </button>
+                
+                <div className="luxury-card p-6 bg-white border border-[#0059bb]/20 shadow-lg relative overflow-hidden space-y-6">
+                  <div className="absolute -right-10 -top-10 text-[#0059bb]/5">
+                    <span className="material-symbols-outlined text-[150px]">local_fire_department</span>
+                  </div>
+                  
+                  <div className="relative z-10 border-b border-outline-variant/10 pb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="material-symbols-outlined text-lg text-[#0059bb]">verified</span>
+                      <h3 className="font-bold text-lg text-primary">Detailed Melt Report</h3>
+                    </div>
+                    <p className="text-[9px] uppercase tracking-widest font-black text-outline">
+                      ID: {selectedHistoryItem.id} • Date: {selectedHistoryItem.isoDate}
+                    </p>
+                  </div>
+
+                  <div className="relative z-10 grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Impure Melted</p>
+                      <p className="font-headline text-lg font-extrabold text-primary">{fmtG(Math.abs(selectedHistoryItem.impureGoldChange))}</p>
+                    </div>
+                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure Gold</p>
+                      <p className="font-headline text-lg font-extrabold text-secondary">{fmtG(Math.abs(selectedHistoryItem.calculatedPureGold))}</p>
+                    </div>
+                    <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200/50 col-span-2">
+                      <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-[0.15em] mb-1">Actual Pure Gold Yielded</p>
+                      <p className="font-headline text-2xl font-black text-emerald-600">{fmtG(selectedHistoryItem.pureGoldChange)}</p>
+                    </div>
+                  </div>
+
+                  <div className="relative z-10 bg-slate-50 rounded-2xl p-4 border border-outline-variant/10">
+                    <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-2">Refining Details & Sources</p>
+                    <p className="text-sm font-medium text-primary leading-relaxed">
+                      {selectedHistoryItem.details}
+                    </p>
+                  </div>
+                  
+                  {/* Find related transfers for this date */}
+                  {(() => {
+                    const relatedTransfers = transfers.filter(t => t.dateSent === selectedHistoryItem.isoDate && t.status === 'Processed');
+                    if (relatedTransfers.length === 0) return null;
+                    return (
+                      <div className="relative z-10 pt-4 border-t border-outline-variant/10">
+                        <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-3">Involved Branch Transfers</p>
+                        <div className="space-y-2">
+                          {relatedTransfers.map(t => (
+                            <div key={t.id} className="flex justify-between items-center text-xs p-3 bg-white border border-outline-variant/20 rounded-xl">
+                              <span className="font-bold text-primary">{t.branchName}</span>
+                              <span className="text-outline font-mono font-medium">{t.impureGoldSent.toFixed(3)}g Sent</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     );
-                  })}
+                  })()}
                 </div>
-              )}
-            </section>
+              </section>
+            )}
           </div>
         )}
       </main>
