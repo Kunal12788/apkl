@@ -5,13 +5,13 @@ import { AddTaskModal } from './AddTaskModal';
 import { useSession } from '../context/SessionContext';
 
 export const GlobalFAB: React.FC = () => {
-  const { user } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
   // Define paths where the FAB should be hidden (e.g., login, splash)
   const hideOnPaths = ['/login', '/forgot', '/splash', '/'];
-  if (hideOnPaths.includes(location.pathname) || (user?.id?.startsWith('SUPER-') && location.pathname === '/ledger')) return null;
+  if (hideOnPaths.includes(location.pathname) || (user?.id?.startsWith('SUPER-') && location.pathname === '/ledger') || !isFullyAuthenticated) return null;
 
   return (
     <>
