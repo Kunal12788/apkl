@@ -181,7 +181,31 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
               <SectionCard title="Metal Selection" icon="diamond" color="bg-primary/5 text-primary">
                 <div>
                   <label className={lbl}>Select Metal Type *</label>
-                  <ToggleBtn options={['Gold', 'Silver']} value={formData.metal} onChange={v => up('metal', v)} />
+                  <div className="flex gap-3 mt-1">
+                    {[
+                      { metal: 'Gold', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-md shadow-amber-500/20' },
+                      { metal: 'Silver', icon: 'monetization_on', activeClass: 'bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/20' }
+                    ].map(({ metal, icon, activeClass }) => {
+                      const isActive = formData.metal === metal;
+                      return (
+                        <button
+                          type="button"
+                          key={metal}
+                          onClick={() => up('metal', metal)}
+                          className={`flex-grow flex items-center justify-center gap-2 py-3 rounded-2xl border font-bold text-xs uppercase tracking-wider transition-all duration-200 ${
+                            isActive 
+                              ? `${activeClass} border-transparent scale-[1.01]`
+                              : 'bg-surface-container/40 text-outline border-outline-variant/20 hover:bg-surface-container/80'
+                          }`}
+                        >
+                          <span className={`material-symbols-outlined text-base ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
+                            {icon}
+                          </span>
+                          {metal}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </SectionCard>
 

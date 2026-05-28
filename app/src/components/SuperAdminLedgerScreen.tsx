@@ -576,7 +576,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               <h3 className="font-headline text-lg font-bold text-primary mb-4">Adjust Stock Starting Balances</h3>
               <form onSubmit={handleAdjustSubmit} className="space-y-4">
                 <div className="relative group">
-                  <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Opening Pure Gold (g)</span>
+                  <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Opening Pure {activeMetal} (g)</span>
                   <input 
                     type="number" 
                     step="0.001"
@@ -587,7 +587,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   />
                 </div>
                 <div className="relative group">
-                  <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Opening Impure Gold (g)</span>
+                  <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Opening Impure {activeMetal} (g)</span>
                   <input 
                     type="number" 
                     step="0.001"
