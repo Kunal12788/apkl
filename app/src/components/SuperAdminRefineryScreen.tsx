@@ -437,82 +437,52 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     </button>
                   </div>
                 ) : timerRemaining > 0 ? (
-                  <div className="text-center py-4 space-y-6 animate-fade-in relative z-10">
+                  <div className="py-8 space-y-8 animate-fade-in relative z-10 w-full flex flex-col items-center">
                     
-                    {/* Header Typography Pattern */}
-                    <div className="text-center">
-                      <h1 className="font-headline-md text-[22px] font-bold leading-tight text-[#F6C358] mb-1">
-                        Refinery Melt Active
-                      </h1>
-                      <p className="font-body-md text-[12px] text-white/60">
-                        Crucible sequence running. System locks active until melt completion.
+                    {/* Premium Minimal Header */}
+                    <div className="text-center space-y-1">
+                      <div className="flex items-center justify-center gap-2 mb-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <h1 className="font-label-caps text-[10px] font-bold tracking-[0.25em] text-[#F6C358] uppercase">
+                          Refinery Melt Sequence
+                        </h1>
+                      </div>
+                      <p className="font-body-md text-xs text-white/40 font-medium">
+                        System locked until crucible operation completes
                       </p>
                     </div>
 
-                    {/* Premium Vault / Scanner Graphic Pattern */}
-                    <div className="relative w-48 h-48 mx-auto flex items-center justify-center my-4">
-                      
-                      {/* Outer decorative ring with nodes */}
-                      <div className="absolute w-[160px] h-[160px] rounded-full border border-dashed border-[#F6C358]/35 animate-[spin_15s_linear_infinite] flex items-center justify-center">
-                         <div className="absolute top-[-3px] w-1.5 h-1.5 rounded-full bg-[#F6C358] shadow-[0_0_8px_#F6C358]"></div>
-                         <div className="absolute bottom-[-3px] w-1.5 h-1.5 rounded-full bg-[#F6C358] shadow-[0_0_8px_#F6C358]"></div>
-                      </div>
-                      
-                      {/* Inner dashed rotating ring */}
-                      <div className="absolute w-[110px] h-[110px] rounded-full border border-dashed border-white/[0.06] animate-[spin_8s_linear_infinite_reverse]"></div>
-                      
-                      {/* Inner glow */}
-                      <div className="absolute inset-0 blur-2xl rounded-full scale-125 bg-amber-500/10 animate-pulse"></div>
-
-                      {/* SVG circular progress tracking remaining time */}
-                      <svg className="absolute w-[160px] h-[160px] transform -rotate-90 z-20 pointer-events-none">
-                        {/* Track ring */}
+                    {/* Minimalist Professional Circular Progress & Data Readout */}
+                    <div className="relative flex items-center justify-center mt-2 mb-4">
+                      <svg className="w-[220px] h-[220px] transform -rotate-90">
+                        {/* Background track */}
                         <circle
-                          cx="80"
-                          cy="80"
-                          r="62"
+                          cx="110"
+                          cy="110"
+                          r="102"
                           className="stroke-white/[0.04]"
-                          strokeWidth="3.5"
+                          strokeWidth="2"
                           fill="transparent"
                         />
-                        {/* Active Progress arc */}
+                        {/* Active Progress */}
                         <circle
-                          cx="80"
-                          cy="80"
-                          r="62"
-                          className="stroke-[#F6C358] animate-gold-glow"
-                          strokeWidth="3.5"
+                          cx="110"
+                          cy="110"
+                          r="102"
+                          className="stroke-[#F6C358]"
+                          strokeWidth="2.5"
                           fill="transparent"
-                          strokeDasharray={389.56}
-                          strokeDashoffset={389.56 * (1 - timerRemaining / 120)}
+                          strokeDasharray={640.88}
+                          strokeDashoffset={640.88 * (1 - timerRemaining / 120)}
                           strokeLinecap="round"
-                          style={{ transition: 'stroke-dashoffset 1s linear' }}
+                          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
                         />
                       </svg>
-
-                      {/* Core Shield Badge inside (glassmorphic circle with timer readout) */}
-                      <div className="relative w-[84px] h-[84px] rounded-full glass-card premium-shadow flex flex-col items-center justify-center border border-white/80 animate-pulse-glow z-10 bg-[#0c0f14]/85">
-                        
-                        {/* Temperature indicator */}
-                        <span className="text-[8px] font-bold text-amber-500/80 tracking-widest font-mono uppercase mb-0.5">
-                          {(() => {
-                            const elapsed = 120 - timerRemaining;
-                            let temp = 0;
-                            if (timerRemaining > 90) {
-                              temp = Math.floor(150 + ((30 - (timerRemaining - 90)) / 30) * (1064 - 150));
-                            } else if (timerRemaining > 60) {
-                              temp = Math.floor(1064 + (elapsed % 3));
-                            } else if (timerRemaining > 30) {
-                              temp = Math.floor(1080 - ((90 - timerRemaining) / 30) * 30);
-                            } else {
-                              temp = Math.floor(1050 - ((120 - timerRemaining) / 30) * 88);
-                            }
-                            return `${temp}°C`;
-                          })()}
-                        </span>
-                        
-                        {/* Time display */}
-                        <span className="font-mono text-xl font-black text-[#F6C358] tracking-widest drop-shadow-[0_0_8px_rgba(246,195,88,0.5)]">
+                      
+                      {/* Inner Data Block */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[9px] font-bold text-white/30 tracking-[0.2em] uppercase mb-2">Time Remaining</span>
+                        <span className="font-mono text-[42px] leading-none font-light text-white tracking-widest drop-shadow-md">
                           {(() => {
                             const mins = Math.floor(timerRemaining / 60);
                             const secs = timerRemaining % 60;
@@ -520,142 +490,101 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                           })()}
                         </span>
                         
-                        {/* Small dynamic status flag */}
-                        <span className="text-[6px] font-black uppercase tracking-wider text-amber-400 mt-0.5 flex items-center gap-0.5">
-                          <span className="material-symbols-outlined text-[8px] text-[#F6C358] animate-flame">local_fire_department</span>
-                          {(() => {
-                            if (timerRemaining > 90) return "Heating";
-                            if (timerRemaining > 60) return "Melting";
-                            if (timerRemaining > 30) return "Refining";
-                            return "Pouring";
-                          })()}
-                        </span>
-
+                        <div className="mt-4 flex items-center gap-1.5 bg-white/[0.03] border border-white/[0.06] rounded-full pl-2 pr-3 py-1">
+                          <span className="material-symbols-outlined text-[13px] text-[#F6C358]">device_thermostat</span>
+                          <span className="text-[11px] font-mono font-medium text-white/70 tracking-wider">
+                            {(() => {
+                              const elapsed = 120 - timerRemaining;
+                              let temp = 0;
+                              if (timerRemaining > 90) {
+                                temp = Math.floor(150 + ((30 - (timerRemaining - 90)) / 30) * (1064 - 150));
+                              } else if (timerRemaining > 60) {
+                                temp = Math.floor(1064 + (elapsed % 3));
+                              } else if (timerRemaining > 30) {
+                                temp = Math.floor(1080 - ((90 - timerRemaining) / 30) * 30);
+                              } else {
+                                temp = Math.floor(1050 - ((120 - timerRemaining) / 30) * 88);
+                              }
+                              return `${temp}°C`;
+                            })()}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Timeline stepper */}
-                    <div className="pt-2 px-2 max-w-sm mx-auto relative z-10">
-                      <div className="flex items-center justify-between relative mb-2">
-                        {/* Connector line */}
-                        <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-0.5 bg-white/[0.08] z-0"></div>
+                    {/* Clean Horizontal Timeline */}
+                    <div className="w-full max-w-sm mt-8">
+                      <div className="flex items-start justify-between relative px-2">
+                        {/* Connecting line background */}
+                        <div className="absolute top-[9px] left-6 right-6 h-[1px] bg-white/[0.06] z-0"></div>
+                        {/* Connecting line active */}
                         <div 
-                          className="absolute left-4 top-1/2 -translate-y-1/2 h-0.5 bg-[#F6C358] z-0 transition-all duration-500"
+                          className="absolute top-[9px] left-6 h-[1px] bg-[#F6C358] z-0 transition-all duration-1000 ease-out"
                           style={{
                             width: (() => {
                               if (timerRemaining > 90) return '0%';
                               if (timerRemaining > 60) return '33.33%';
                               if (timerRemaining > 30) return '66.66%';
-                              return '100%';
+                              return 'calc(100% - 3rem)';
                             })()
                           }}
                         ></div>
 
-                        {/* Step 1: Pre-heating */}
-                        <div className="flex flex-col items-center relative z-10">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                            timerRemaining > 90 
-                              ? 'bg-amber-500/20 border-[#F6C358] text-[#F6C358] shadow-[0_0_10px_rgba(246,195,88,0.25)]' 
-                              : 'bg-[#0d0f14] border-white/[0.08] text-white/40'
-                          }`}>
-                            <span className="material-symbols-outlined text-base">thermostat</span>
+                        {[
+                          { step: 1, label: 'Heating', active: timerRemaining > 90, completed: timerRemaining <= 90 },
+                          { step: 2, label: 'Melting', active: timerRemaining <= 90 && timerRemaining > 60, completed: timerRemaining <= 60 },
+                          { step: 3, label: 'Filtering', active: timerRemaining <= 60 && timerRemaining > 30, completed: timerRemaining <= 30 },
+                          { step: 4, label: 'Pouring', active: timerRemaining <= 30, completed: timerRemaining <= 0 }
+                        ].map((s, i) => (
+                          <div key={i} className="flex flex-col items-center relative z-10 bg-transparent px-1">
+                            <div className={`w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-bold border transition-all duration-500 bg-[#0c0e14] ${
+                              s.active ? 'border-[#F6C358] text-[#F6C358] shadow-[0_0_12px_rgba(246,195,88,0.2)]' :
+                              s.completed ? 'border-emerald-500/40 text-emerald-500' :
+                              'border-white/[0.08] text-white/20'
+                            }`}>
+                              {s.completed ? <span className="material-symbols-outlined text-[10px] font-bold">check</span> : s.step}
+                            </div>
+                            <span className={`text-[8px] uppercase tracking-[0.15em] font-bold mt-2 transition-colors duration-500 ${
+                              s.active ? 'text-[#F6C358]' :
+                              s.completed ? 'text-white/60' :
+                              'text-white/20'
+                            }`}>
+                              {s.label}
+                            </span>
                           </div>
-                          <span className="text-[7.5px] uppercase tracking-wider font-extrabold mt-1.5 text-white/50">Heating</span>
-                        </div>
-
-                        {/* Step 2: Melting */}
-                        <div className="flex flex-col items-center relative z-10">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                            timerRemaining <= 90 && timerRemaining > 60
-                              ? 'bg-amber-500/20 border-[#F6C358] text-[#F6C358] shadow-[0_0_10px_rgba(246,195,88,0.25)]'
-                              : timerRemaining <= 60 
-                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-500/80' 
-                                : 'bg-[#0d0f14] border-white/[0.08] text-white/40'
-                          }`}>
-                            <span className="material-symbols-outlined text-base">local_fire_department</span>
-                          </div>
-                          <span className="text-[7.5px] uppercase tracking-wider font-extrabold mt-1.5 text-white/50">Melting</span>
-                        </div>
-
-                        {/* Step 3: Filtering */}
-                        <div className="flex flex-col items-center relative z-10">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                            timerRemaining <= 60 && timerRemaining > 30
-                              ? 'bg-amber-500/20 border-[#F6C358] text-[#F6C358] shadow-[0_0_10px_rgba(246,195,88,0.25)]'
-                              : timerRemaining <= 30
-                                ? 'bg-amber-500/10 border-amber-500/40 text-amber-500/80'
-                                : 'bg-[#0d0f14] border-white/[0.08] text-white/40'
-                          }`}>
-                            <span className="material-symbols-outlined text-base">science</span>
-                          </div>
-                          <span className="text-[7.5px] uppercase tracking-wider font-extrabold mt-1.5 text-white/50">Filtering</span>
-                        </div>
-
-                        {/* Step 4: Pouring */}
-                        <div className="flex flex-col items-center relative z-10">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-all duration-300 ${
-                            timerRemaining <= 30
-                              ? 'bg-amber-500/20 border-[#F6C358] text-[#F6C358] shadow-[0_0_10px_rgba(246,195,88,0.25)]'
-                              : 'bg-[#0d0f14] border-white/[0.08] text-white/40'
-                          }`}>
-                            <span className="material-symbols-outlined text-base">liquids</span>
-                          </div>
-                          <span className="text-[7.5px] uppercase tracking-wider font-extrabold mt-1.5 text-white/50">Pouring</span>
-                        </div>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Step descriptions info box */}
-                    <div className="bg-white/[0.03] border border-white/[0.05] rounded-2xl p-4 max-w-sm mx-auto space-y-1.5 relative z-10">
-                      <p className="text-xs font-bold text-[#F6C358] animate-pulse-soft">
-                        {(() => {
-                          if (timerRemaining > 90) return "Pre-heating Crucible: Rising to 1064°C";
-                          if (timerRemaining > 60) return "Melting Stock: Liquefying Gold Bars";
-                          if (timerRemaining > 30) return "Refining Slag: Filtering Out Base Metals";
-                          return "Pouring Yield: Transferring to Vault Casts";
-                        })()}
-                      </p>
-                      <p className="text-[10px] text-white/60 leading-relaxed">
-                        Processing {pendingImpureGold.toFixed(3)}g of impure gold. The input field will become available once the melt is finished.
-                      </p>
-                    </div>
-
-                    {/* Heat waves & Sparks animations */}
-                    <div className="relative h-8 w-48 mx-auto overflow-hidden">
-                      <div className="flex justify-center gap-4 text-[#F6C358]/20">
-                        <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0s' }}>air</span>
-                        <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0.3s' }}>air</span>
-                        <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0.6s' }}>air</span>
+                    {/* Subtle Information Box */}
+                    <div className="w-full max-w-sm mt-6 bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 flex items-center justify-between shadow-inner">
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold">Current Phase</p>
+                        <p className="text-[11px] font-medium text-white/80">
+                          {(() => {
+                            if (timerRemaining > 90) return "Pre-heating crucible to target temperature";
+                            if (timerRemaining > 60) return "Liquefying impure gold stock";
+                            if (timerRemaining > 30) return "Extracting base metals and slag";
+                            return "Transferring refined yield to vault molds";
+                          })()}
+                        </p>
                       </div>
-                      
-                      {/* Sparks particles */}
-                      <span className="absolute bottom-1 left-[20%] w-1 h-1 bg-[#F6C358] rounded-full animate-ping opacity-60"></span>
-                      <span className="absolute bottom-2 left-[50%] w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping opacity-40" style={{ animationDelay: '0.4s' }}></span>
-                      <span className="absolute bottom-1 left-[80%] w-1 h-1 bg-[#F6C358] rounded-full animate-ping opacity-75" style={{ animationDelay: '0.8s' }}></span>
+                      <div className="text-right pl-4 border-l border-white/[0.05]">
+                        <p className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold">Load</p>
+                        <p className="text-[11px] font-mono font-bold text-[#F6C358] mt-1">{pendingImpureGold.toFixed(3)}g</p>
+                      </div>
                     </div>
 
-                    {/* Cancel button styled to match return button pattern */}
-                    <div className="border-t border-white/[0.06] pt-4 px-2 relative z-10 flex justify-center">
+                    {/* Abort Action */}
+                    <div className="pt-4">
                       <button 
                         type="button"
                         onClick={() => updateRefineryStatusInDb('idle')}
-                        className="h-12 flex items-center justify-center gap-1.5 text-white/60 hover:text-white transition-colors active:scale-[0.98] font-label-caps text-[11px] font-bold tracking-widest uppercase"
+                        className="text-[9px] font-label-caps uppercase tracking-[0.2em] font-bold text-white/20 hover:text-white/60 transition-colors flex items-center gap-1.5 active:scale-95"
                       >
-                        <span className="material-symbols-outlined text-[16px]">cancel</span>
-                        Abort Melt Sequence
+                        <span className="material-symbols-outlined text-[12px]">close</span>
+                        Abort Sequence
                       </button>
-                    </div>
-
-                    {/* Security Trust Indicators inside card Pattern */}
-                    <div className="flex items-center justify-center gap-5 pt-3 opacity-40 border-t border-white/[0.04] mt-2 relative z-10">
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-white">verified</span>
-                        <span className="text-[8px] font-label-caps tracking-widest text-white font-bold">SECURE MELT PROTOCOL</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-white">enhanced_encryption</span>
-                        <span className="text-[8px] font-label-caps tracking-widest text-white font-bold">LEDGER ENCRYPTED</span>
-                      </div>
                     </div>
 
                   </div>
