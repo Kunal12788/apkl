@@ -338,7 +338,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
             },
             {
               metal: 'Silver',
-              icon: 'monetization_on',
+              icon: 'workspace_premium',
               symbol: 'Ag',
               sub: '99.9% fine purity stock',
               activeClass: 'bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/20'
