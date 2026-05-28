@@ -78,10 +78,52 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   // Melt Processing State
   const [netPureAchieved, setNetPureAchieved] = useState('');
 
+  // Timer countdown state in seconds (2 minutes = 120 seconds)
+  const [timerRemaining, setTimerRemaining] = useState<number>(0);
+
   const updateRefineryStatus = (status: 'idle' | 'refining') => {
     setRefineryStatus(status);
     localStorage.setItem('refinery_status', status);
+    if (status === 'idle') {
+      localStorage.removeItem('refinery_timer_start');
+    }
   };
+
+  useEffect(() => {
+    if (refineryStatus !== 'refining') {
+      setTimerRemaining(0);
+      return;
+    }
+
+    // Check if we already have a start time in localStorage
+    let startTimestamp = localStorage.getItem('refinery_timer_start');
+    if (!startTimestamp) {
+      // If not, set it to now
+      startTimestamp = Date.now().toString();
+      localStorage.setItem('refinery_timer_start', startTimestamp);
+    }
+
+    const start = Number(startTimestamp);
+    const getRemaining = () => {
+      const elapsed = Math.floor((Date.now() - start) / 1000);
+      return Math.max(0, 120 - elapsed);
+    };
+
+    const initialRemaining = getRemaining();
+    setTimerRemaining(initialRemaining);
+
+    if (initialRemaining <= 0) return;
+
+    const interval = setInterval(() => {
+      const rem = getRemaining();
+      setTimerRemaining(rem);
+      if (rem <= 0) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [refineryStatus]);
 
   const fetchTransfers = async () => {
     try {
@@ -319,7 +361,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
             {/* Refinery Control Dashboard */}
             {pendingImpureGold > 0 && (
-              <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6">
+              <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6 animate-fade-in">
                 <div className="flex justify-between items-center">
                   <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black">Refinery Process Panel</h3>
                   {refineryStatus === 'refining' && (
@@ -348,6 +390,93 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       <span className="material-symbols-outlined text-base">local_fire_department</span>
                       Start Refining
                     </button>
+                  </div>
+                ) : timerRemaining > 0 ? (
+                  <div className="text-center py-6 space-y-6 animate-fade-in">
+                    {/* SVG circular progress timer */}
+                    <div className="relative w-36 h-36 mx-auto flex items-center justify-center">
+                      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#755b00]/10 to-transparent blur-md"></div>
+                      
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="72"
+                          cy="72"
+                          r="60"
+                          className="stroke-slate-100"
+                          strokeWidth="6"
+                          fill="transparent"
+                        />
+                        <circle
+                          cx="72"
+                          cy="72"
+                          r="60"
+                          className="stroke-[#755b00] animate-gold-glow"
+                          strokeWidth="6"
+                          fill="transparent"
+                          strokeDasharray={376.99}
+                          strokeDashoffset={376.99 * (1 - timerRemaining / 120)}
+                          strokeLinecap="round"
+                          style={{ transition: 'stroke-dashoffset 1s linear' }}
+                        />
+                      </svg>
+
+                      {/* Countdown Text */}
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="font-mono text-2xl font-black text-[#755b00] tracking-wider animate-pulse-soft">
+                          {(() => {
+                            const mins = Math.floor(timerRemaining / 60);
+                            const secs = timerRemaining % 60;
+                            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+                          })()}
+                        </span>
+                        <div className="flex items-center gap-0.5 mt-0.5">
+                          <span className="material-symbols-outlined text-[10px] text-[#755b00] animate-flame">local_fire_department</span>
+                          <span className="text-[7.5px] uppercase font-black tracking-widest text-outline">melting</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Step descriptions */}
+                    <div className="space-y-1.5 px-4">
+                      <p className="text-sm font-bold text-primary animate-pulse-soft">
+                        {(() => {
+                          if (timerRemaining > 90) return "Crucible Pre-heating Active";
+                          if (timerRemaining > 60) return "Melting Impure Gold Stock";
+                          if (timerRemaining > 30) return "Separating Slag & Impurities";
+                          return "Pouring Refined Pure Gold";
+                        })()}
+                      </p>
+                      
+                      {/* Sub-step indicator dots */}
+                      <div className="flex justify-center gap-1.5 py-1">
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${timerRemaining > 90 ? 'bg-[#755b00]' : 'bg-slate-200'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${timerRemaining <= 90 && timerRemaining > 60 ? 'bg-[#755b00]' : 'bg-slate-200'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${timerRemaining <= 60 && timerRemaining > 30 ? 'bg-[#755b00]' : 'bg-slate-200'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${timerRemaining <= 30 ? 'bg-[#755b00]' : 'bg-slate-200'}`}></span>
+                      </div>
+                      
+                      <p className="text-xs text-outline/80 leading-relaxed max-w-xs mx-auto">
+                        Processing {pendingImpureGold.toFixed(3)}g of impure gold. The input field will become available once the melt is finished.
+                      </p>
+                    </div>
+
+                    {/* Heat waves */}
+                    <div className="flex justify-center gap-2 text-[#755b00]/20 h-6 overflow-hidden">
+                      <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0s' }}>air</span>
+                      <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0.3s' }}>air</span>
+                      <span className="material-symbols-outlined text-sm animate-heat-wave" style={{ animationDelay: '0.6s' }}>air</span>
+                    </div>
+
+                    {/* Cancel Melt button during timer */}
+                    <div className="border-t border-outline-variant/10 pt-4 px-2">
+                      <button 
+                        type="button"
+                        onClick={() => updateRefineryStatus('idle')}
+                        className="w-full py-3 bg-surface-container hover:bg-surface-container/80 text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
+                      >
+                        Cancel Melt
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <form onSubmit={handleProcessBatchRefining} className="space-y-6">
