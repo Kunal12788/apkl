@@ -327,20 +327,20 @@ export const SuperAdminRefineryScreen: React.FC = () => {
         </header>
 
         {/* Premium Metal Selector Card */}
-        <div className="bg-white rounded-3xl p-1.5 border border-outline-variant/20 shadow-md flex gap-2 w-full animate-fade-in relative z-10">
+        <div className="bg-white rounded-3xl p-2 border border-outline-variant/20 shadow-md flex flex-col sm:flex-row gap-2 w-full animate-fade-in relative z-10 overflow-hidden">
           {[
             {
               metal: 'Gold',
               icon: 'workspace_premium',
               symbol: 'Au',
-              sub: '24K / 22K pure stock',
+              sub: '24K / 22K',
               activeClass: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-md shadow-amber-500/20'
             },
             {
               metal: 'Silver',
               icon: 'workspace_premium',
               symbol: 'Ag',
-              sub: '99.9% fine purity stock',
+              sub: '99.9% fine',
               activeClass: 'bg-gradient-to-r from-slate-400 via-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/20'
             }
           ].map(({ metal, icon, symbol, sub, activeClass }) => {
@@ -349,32 +349,32 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               <button
                 key={metal}
                 onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
-                className={`flex-1 flex items-center justify-between p-2 sm:p-3 rounded-2xl transition-all duration-300 ${
+                className={`flex-1 flex items-center justify-between p-3 rounded-2xl transition-all duration-300 overflow-hidden ${
                   isActive 
-                    ? `${activeClass} scale-[1.01] font-bold`
-                    : 'bg-[#003366]/5 text-outline hover:bg-[#003366]/10 hover:text-primary'
+                    ? `${activeClass} font-bold scale-[1.02] z-10 ring-2 ring-offset-2 ${metal === 'Gold' ? 'ring-amber-500' : 'ring-slate-400'}`
+                    : 'bg-[#003366]/5 text-outline hover:bg-[#003366]/10 hover:text-primary z-0'
                 }`}
               >
-                <div className="flex items-center gap-2 sm:gap-3 text-left">
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20' : 'bg-white border border-outline-variant/20 shadow-sm'}`}>
-                    <span className={`material-symbols-outlined text-lg sm:text-xl ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
+                <div className="flex items-center gap-3 text-left min-w-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isActive ? 'bg-white/20' : 'bg-white border border-outline-variant/20 shadow-sm'}`}>
+                    <span className={`material-symbols-outlined text-xl ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
                       {icon}
                     </span>
                   </div>
-                  <div>
-                    <p className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider ${isActive ? 'text-white/80' : 'text-outline'}`}>Active Metal</p>
-                    <p className={`text-xs sm:text-sm font-bold font-headline tracking-wide ${isActive ? 'text-white' : 'text-on-background'}`}>{metal}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[9px] font-black uppercase tracking-wider truncate ${isActive ? 'text-white/80' : 'text-outline'}`}>Active Metal</p>
+                    <p className={`text-sm md:text-base font-bold font-headline tracking-wide truncate ${isActive ? 'text-white' : 'text-on-background'}`}>{metal}</p>
                   </div>
                 </div>
-                <div className="hidden sm:flex flex-col items-end gap-0.5 pr-2">
-                  <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
+                <div className="flex flex-col items-end gap-1 pl-2 shrink-0">
+                  <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border ${
                     isActive 
                       ? 'bg-white/20 border-white/30 text-white' 
                       : 'bg-white text-outline border-outline-variant/30'
                   }`}>
-                    {symbol} 99.9%
+                    {symbol}
                   </span>
-                  <span className={`text-[8px] font-medium hidden sm:inline ${isActive ? 'text-white/70' : 'text-outline/70'}`}>
+                  <span className={`text-[9px] font-medium whitespace-nowrap ${isActive ? 'text-white/70' : 'text-outline/70'}`}>
                     {sub}
                   </span>
                 </div>
