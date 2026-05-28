@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
-import { fitText } from '../utils';
 
 interface RefiningTransfer {
   id: string;
@@ -265,17 +264,6 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       setLoading(false);
     }
   };
-
-  // Metrics Calculations (Past History)
-  const processedTransfers = transfers.filter(t => t.status === 'Processed');
-  const totalImpureSent = transfers.reduce((s, t) => s + t.impureGoldSent, 0);
-  const totalExpectedPure = transfers.reduce((s, t) => s + t.calculatedPureGold, 0);
-  
-  const totalActualPure = processedTransfers.reduce((s, t) => s + (t.refinedPureAchieved || 0), 0);
-  const processedExpectedPure = processedTransfers.reduce((s, t) => s + t.calculatedPureGold, 0);
-  const variance = totalActualPure - processedExpectedPure;
-  
-  const recoveryRate = processedExpectedPure > 0 ? (totalActualPure / processedExpectedPure) * 100 : 0;
 
   const refiningHistory = saLedger
     .filter(e => e.type === 'Refining Yield')
@@ -615,51 +603,6 @@ export const SuperAdminRefineryScreen: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6 animate-fade-in">
-            {/* Global Refinery Metrics */}
-            <section className="space-y-3 relative z-10">
-              <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Refinery Analytics</h3>
-              <div className="grid grid-cols-2 gap-4">
-                
-                {/* Total Impure Processed */}
-                <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-[#755b00] flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
-                  <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-[#755b00]">local_fire_department</span>
-                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Sent</p>
-                  <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                    <span className="font-headline font-extrabold text-primary" style={fitText(totalImpureSent.toFixed(2), 7, 1.75, 1.15)}>{totalImpureSent.toFixed(2)}</span>
-                    <span className="text-[10px] font-black text-[#755b00]">gram</span>
-                  </div>
-                </div>
-
-                {/* Expected vs Actual Pure */}
-                <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
-                  <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">star</span>
-                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Melt Yield Recovery</p>
-                  <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                    <span className="font-headline font-extrabold text-primary" style={fitText(recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '0%', 6, 1.75, 1.15)}>{recoveryRate > 0 ? `${recoveryRate.toFixed(1)}%` : '100%'}</span>
-                    <span className="text-[10px] font-black text-secondary">yield</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Summary Row */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Expected Pure</p>
-                  <p className="font-headline text-sm font-bold text-primary mt-1" style={fitText(totalExpectedPure.toFixed(2), 8, 1.05, 0.85)}>{totalExpectedPure.toFixed(2)}g</p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Actual Obtained</p>
-                  <p className="font-headline text-sm font-bold text-emerald-600 mt-1" style={fitText(totalActualPure.toFixed(2), 8, 1.05, 0.85)}>{totalActualPure.toFixed(2)}g</p>
-                </div>
-                <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-                  <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Variance / Loss</p>
-                  <p className={`font-headline text-sm font-bold mt-1 ${variance < 0 ? 'text-error' : 'text-emerald-600'}`} style={fitText((variance >= 0 ? '+' : '') + variance.toFixed(2), 8, 1.05, 0.85)}>
-                    {variance >= 0 ? '+' : ''}{variance.toFixed(2)}g
-                  </p>
-                </div>
-              </div>
-            </section>
-
             {/* Refining Sessions History */}
             {!selectedHistoryItem ? (
               <section className="space-y-4 relative z-10 mt-6">
@@ -738,20 +681,56 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     </p>
                   </div>
 
-                  <div className="relative z-10 grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
-                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Total Impure Melted</p>
-                      <p className="font-headline text-lg font-extrabold text-primary">{fmtG(Math.abs(selectedHistoryItem.impureGoldChange))}</p>
-                    </div>
-                    <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
-                      <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure Gold</p>
-                      <p className="font-headline text-lg font-extrabold text-secondary">{fmtG(Math.abs(selectedHistoryItem.calculatedPureGold))}</p>
-                    </div>
-                    <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200/50 col-span-2">
-                      <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-[0.15em] mb-1">Actual Pure Gold Yielded</p>
-                      <p className="font-headline text-2xl font-black text-emerald-600">{fmtG(selectedHistoryItem.pureGoldChange)}</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const sessExpected = Math.abs(selectedHistoryItem.calculatedPureGold);
+                    const sessActual = selectedHistoryItem.pureGoldChange;
+                    const sessVariance = sessActual - sessExpected;
+                    const sessRecovery = sessExpected > 0 ? (sessActual / sessExpected) * 100 : 0;
+
+                    return (
+                      <div className="relative z-10 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Total Impure Processed */}
+                          <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-[#755b00] flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
+                            <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-[#755b00]">local_fire_department</span>
+                            <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Melted</p>
+                            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
+                              <span className="font-headline font-extrabold text-primary" style={{ fontSize: '24px' }}>{Math.abs(selectedHistoryItem.impureGoldChange).toFixed(3)}</span>
+                              <span className="text-[10px] font-black text-[#755b00]">gram</span>
+                            </div>
+                          </div>
+
+                          {/* Melt Yield Recovery */}
+                          <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
+                            <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">star</span>
+                            <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Melt Yield Recovery</p>
+                            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
+                              <span className="font-headline font-extrabold text-primary" style={{ fontSize: '24px' }}>{sessRecovery > 0 ? `${sessRecovery.toFixed(1)}%` : '100%'}</span>
+                              <span className="text-[10px] font-black text-secondary">yield</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expanded Summary Row */}
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                            <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Expected Pure</p>
+                            <p className="font-headline text-sm font-bold text-primary mt-1">{sessExpected.toFixed(3)}g</p>
+                          </div>
+                          <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                            <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Actual Obtained</p>
+                            <p className="font-headline text-sm font-bold text-emerald-600 mt-1">{sessActual.toFixed(3)}g</p>
+                          </div>
+                          <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                            <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Variance / Loss</p>
+                            <p className={`font-headline text-sm font-bold mt-1 ${sessVariance < 0 ? 'text-error' : 'text-emerald-600'}`}>
+                              {sessVariance >= 0 ? '+' : ''}{sessVariance.toFixed(3)}g
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div className="relative z-10 bg-slate-50 rounded-2xl p-4 border border-outline-variant/10">
                     <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-2">Refining Details & Sources</p>
