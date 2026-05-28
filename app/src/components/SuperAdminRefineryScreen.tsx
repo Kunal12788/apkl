@@ -386,12 +386,19 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
             {/* Refinery Control Dashboard */}
             {pendingImpureGold > 0 && (
-              <div className={`luxury-card p-6 border transition-all duration-500 space-y-6 animate-fade-in ${
+              <div className={`luxury-card p-6 border transition-all duration-500 space-y-6 animate-fade-in relative overflow-hidden ${
                 refineryStatus === 'refining' && timerRemaining > 0
-                  ? 'bg-gradient-to-br from-[#0a0b10] via-[#1b1404] to-[#0a0b10] border-[#755b00]/40 text-white shadow-[0_25px_60px_-15px_rgba(117,91,0,0.3)]'
+                  ? 'bg-gradient-to-br from-[#0c0e14] via-[#1a1302] to-[#0c0e14] border-[#755b00]/40 text-white shadow-[0_25px_60px_-15px_rgba(117,91,0,0.3)]'
                   : 'bg-white border-outline-variant/10 text-on-background shadow-lg'
               }`}>
-                <div className="flex justify-between items-center">
+                {/* Watermark Pattern inside Card */}
+                {refineryStatus === 'refining' && timerRemaining > 0 && (
+                  <span className="material-symbols-outlined absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[260px] opacity-[0.015] pointer-events-none select-none z-0 text-[#F6C358]" style={{ fontVariationSettings: '"FILL" 1' }}>
+                    local_fire_department
+                  </span>
+                )}
+
+                <div className="flex justify-between items-center relative z-10">
                   <h3 className={`font-label text-[11px] uppercase tracking-[0.25em] font-black ${
                     refineryStatus === 'refining' && timerRemaining > 0 ? 'text-[#F6C358]/80' : 'text-outline'
                   }`}>
@@ -430,61 +437,62 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     </button>
                   </div>
                 ) : timerRemaining > 0 ? (
-                  <div className="text-center py-6 space-y-6 animate-fade-in">
-                    {/* SVG circular progress timer */}
-                    <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
-                      {/* Ambient background glow */}
-                      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-[#755b00]/20 to-transparent blur-lg opacity-85"></div>
-                      
-                      {/* Interactive Bezels */}
-                      <div className="absolute inset-2 rounded-full border border-white/[0.04] bg-[#0d0f14]/60 backdrop-blur-sm shadow-inner"></div>
+                  <div className="text-center py-4 space-y-6 animate-fade-in relative z-10">
+                    
+                    {/* Header Typography Pattern */}
+                    <div className="text-center">
+                      <h1 className="font-headline-md text-[22px] font-bold leading-tight text-[#F6C358] mb-1">
+                        Refinery Melt Active
+                      </h1>
+                      <p className="font-body-md text-[12px] text-white/60">
+                        Crucible sequence running. System locks active until melt completion.
+                      </p>
+                    </div>
 
-                      <svg className="w-full h-full transform -rotate-90 relative z-10">
-                        {/* Outer ticks decorative bezel */}
-                        <circle
-                          cx="80"
-                          cy="80"
-                          r="74"
-                          className="stroke-amber-500/10"
-                          strokeWidth="1.5"
-                          strokeDasharray="2, 6"
-                          fill="transparent"
-                        />
+                    {/* Premium Vault / Scanner Graphic Pattern */}
+                    <div className="relative w-48 h-48 mx-auto flex items-center justify-center my-4">
+                      
+                      {/* Outer decorative ring with nodes */}
+                      <div className="absolute w-[160px] h-[160px] rounded-full border border-dashed border-[#F6C358]/35 animate-[spin_15s_linear_infinite] flex items-center justify-center">
+                         <div className="absolute top-[-3px] w-1.5 h-1.5 rounded-full bg-[#F6C358] shadow-[0_0_8px_#F6C358]"></div>
+                         <div className="absolute bottom-[-3px] w-1.5 h-1.5 rounded-full bg-[#F6C358] shadow-[0_0_8px_#F6C358]"></div>
+                      </div>
+                      
+                      {/* Inner dashed rotating ring */}
+                      <div className="absolute w-[110px] h-[110px] rounded-full border border-dashed border-white/[0.06] animate-[spin_8s_linear_infinite_reverse]"></div>
+                      
+                      {/* Inner glow */}
+                      <div className="absolute inset-0 blur-2xl rounded-full scale-125 bg-amber-500/10 animate-pulse"></div>
+
+                      {/* SVG circular progress tracking remaining time */}
+                      <svg className="absolute w-[160px] h-[160px] transform -rotate-90 z-20 pointer-events-none">
                         {/* Track ring */}
                         <circle
                           cx="80"
                           cy="80"
-                          r="68"
-                          className="stroke-white/[0.06]"
-                          strokeWidth="5"
+                          r="62"
+                          className="stroke-white/[0.04]"
+                          strokeWidth="3.5"
                           fill="transparent"
                         />
                         {/* Active Progress arc */}
                         <circle
                           cx="80"
                           cy="80"
-                          r="68"
+                          r="62"
                           className="stroke-[#F6C358] animate-gold-glow"
-                          strokeWidth="5"
+                          strokeWidth="3.5"
                           fill="transparent"
-                          strokeDasharray={427.26}
-                          strokeDashoffset={427.26 * (1 - timerRemaining / 120)}
+                          strokeDasharray={389.56}
+                          strokeDashoffset={389.56 * (1 - timerRemaining / 120)}
                           strokeLinecap="round"
                           style={{ transition: 'stroke-dashoffset 1s linear' }}
                         />
-                        {/* Inner accent ring */}
-                        <circle
-                          cx="80"
-                          cy="80"
-                          r="62"
-                          className="stroke-white/[0.03]"
-                          strokeWidth="1"
-                          fill="transparent"
-                        />
                       </svg>
 
-                      {/* Inside readout details */}
-                      <div className="absolute flex flex-col items-center justify-center z-20">
+                      {/* Core Shield Badge inside (glassmorphic circle with timer readout) */}
+                      <div className="relative w-[84px] h-[84px] rounded-full glass-card premium-shadow flex flex-col items-center justify-center border border-white/80 animate-pulse-glow z-10 bg-[#0c0f14]/85">
+                        
                         {/* Temperature indicator */}
                         <span className="text-[8px] font-bold text-amber-500/80 tracking-widest font-mono uppercase mb-0.5">
                           {(() => {
@@ -504,7 +512,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                         </span>
                         
                         {/* Time display */}
-                        <span className="font-mono text-3xl font-black text-[#F6C358] tracking-widest drop-shadow-[0_0_8px_rgba(246,195,88,0.5)]">
+                        <span className="font-mono text-xl font-black text-[#F6C358] tracking-widest drop-shadow-[0_0_8px_rgba(246,195,88,0.5)]">
                           {(() => {
                             const mins = Math.floor(timerRemaining / 60);
                             const secs = timerRemaining % 60;
@@ -513,17 +521,16 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                         </span>
                         
                         {/* Small dynamic status flag */}
-                        <div className="flex items-center gap-0.5 mt-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                          <span className="material-symbols-outlined text-[9px] text-[#F6C358] animate-flame">local_fire_department</span>
-                          <span className="text-[7px] uppercase font-black tracking-widest text-amber-400">
-                            {(() => {
-                              if (timerRemaining > 90) return "Heating";
-                              if (timerRemaining > 60) return "Melting";
-                              if (timerRemaining > 30) return "Refining";
-                              return "Pouring";
-                            })()}
-                          </span>
-                        </div>
+                        <span className="text-[6px] font-black uppercase tracking-wider text-amber-400 mt-0.5 flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[8px] text-[#F6C358] animate-flame">local_fire_department</span>
+                          {(() => {
+                            if (timerRemaining > 90) return "Heating";
+                            if (timerRemaining > 60) return "Melting";
+                            if (timerRemaining > 30) return "Refining";
+                            return "Pouring";
+                          })()}
+                        </span>
+
                       </div>
                     </div>
 
@@ -627,16 +634,30 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       <span className="absolute bottom-1 left-[80%] w-1 h-1 bg-[#F6C358] rounded-full animate-ping opacity-75" style={{ animationDelay: '0.8s' }}></span>
                     </div>
 
-                    {/* Cancel Melt button during timer */}
-                    <div className="border-t border-white/[0.06] pt-4 px-2 relative z-10">
+                    {/* Cancel button styled to match return button pattern */}
+                    <div className="border-t border-white/[0.06] pt-4 px-2 relative z-10 flex justify-center">
                       <button 
                         type="button"
                         onClick={() => updateRefineryStatusInDb('idle')}
-                        className="w-full py-3 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white/90 font-bold text-xs uppercase tracking-widest rounded-xl transition-all active:scale-95"
+                        className="h-12 flex items-center justify-center gap-1.5 text-white/60 hover:text-white transition-colors active:scale-[0.98] font-label-caps text-[11px] font-bold tracking-widest uppercase"
                       >
-                        Cancel Melt
+                        <span className="material-symbols-outlined text-[16px]">cancel</span>
+                        Abort Melt Sequence
                       </button>
                     </div>
+
+                    {/* Security Trust Indicators inside card Pattern */}
+                    <div className="flex items-center justify-center gap-5 pt-3 opacity-40 border-t border-white/[0.04] mt-2 relative z-10">
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-white">verified</span>
+                        <span className="text-[8px] font-label-caps tracking-widest text-white font-bold">SECURE MELT PROTOCOL</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-white">enhanced_encryption</span>
+                        <span className="text-[8px] font-label-caps tracking-widest text-white font-bold">LEDGER ENCRYPTED</span>
+                      </div>
+                    </div>
+
                   </div>
                 ) : (
                   <form onSubmit={handleProcessBatchRefining} className="space-y-6">
