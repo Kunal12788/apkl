@@ -76,6 +76,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
   // Melt Processing State
   const [netPureAchieved, setNetPureAchieved] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Timer countdown state in seconds (2 minutes = 120 seconds)
   const [timerRemaining, setTimerRemaining] = useState<number>(0);
@@ -193,13 +194,21 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   const pendingImpureGold = Math.max(0, saLedger.reduce((s, e) => s + e.impureGoldChange, 0));
   const pendingExpectedPure = Math.max(0, saLedger.reduce((s, e) => s + e.calculatedPureGold, 0));
 
-  const handleProcessBatchRefining = async (e: React.FormEvent) => {
+  const handleProcessBatchRefining = (e: React.FormEvent) => {
     e.preventDefault();
+    const achieved = parseFloat(netPureAchieved);
+    if (isNaN(achieved) || achieved <= 0) return;
+    if (pendingImpureGold <= 0) return;
+    setShowConfirmModal(true);
+  };
+
+  const executeBatchRefining = async () => {
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
     if (pendingImpureGold <= 0) return;
 
     try {
+      setShowConfirmModal(false);
       setLoading(true);
       const totalExpected = pendingExpectedPure;
       const totalImpure = pendingImpureGold;
@@ -597,7 +606,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                         className="flex-1 py-3.5 bg-[#0059bb] disabled:bg-[#0059bb]/40 disabled:text-white/60 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
                       >
                         <span className="material-symbols-outlined text-sm">done_all</span>
-                        Confirm Yield
+                        Confirm
                       </button>
                     </div>
 
@@ -752,6 +761,53 @@ export const SuperAdminRefineryScreen: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowConfirmModal(false)}></div>
+          <div className="bg-white rounded-3xl w-full max-w-sm relative z-10 shadow-2xl overflow-hidden animate-slide-up">
+            <div className="bg-gradient-to-br from-[#003366] to-[#001f3f] p-6 text-center relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-4 -top-4 text-8xl text-white/5 rotate-12 pointer-events-none">gpp_good</span>
+              <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-md border border-white/20">
+                <span className="material-symbols-outlined text-3xl text-white">done_all</span>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-1">Confirm Refinery Yield</h3>
+              <p className="text-white/80 text-sm">Please verify the final obtained pure gold weight before committing.</p>
+            </div>
+            
+            <div className="p-6 space-y-6 bg-slate-50">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white rounded-2xl p-4 border border-outline-variant/10 shadow-sm">
+                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Impure Melted</p>
+                  <p className="font-headline text-lg font-extrabold text-primary">{pendingImpureGold.toFixed(3)}g</p>
+                </div>
+                <div className="bg-white rounded-2xl p-4 border border-outline-variant/10 shadow-sm border-b-4 border-b-[#0059bb]">
+                  <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1 text-[#0059bb]">Actual Pure Obtained</p>
+                  <p className="font-headline text-lg font-extrabold text-[#0059bb]">{parseFloat(netPureAchieved).toFixed(3)}g</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 py-3.5 bg-white border-2 border-outline-variant/20 text-primary font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeBatchRefining}
+                  className="flex-1 py-3.5 bg-[#0059bb] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95"
+                >
+                  Final Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
