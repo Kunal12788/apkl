@@ -9,6 +9,7 @@ interface RefiningTransfer {
   branchId: string;
   branchName: string;
   impureGoldSent: number;
+  calculatedPureGold: number;
   dateSent: string;
   status: 'Pending' | 'Processed';
   refinedPureAchieved?: number;
@@ -18,10 +19,11 @@ interface SuperAdminLedgerEntry {
   id: string;
   date: string;
   isoDate: string;
-  type: 'Allocation' | 'Refining Yield' | 'Stock Correction';
+  type: string;
   branchName?: string;
   pureGoldChange: number;
   impureGoldChange: number;
+  calculatedPureGold: number;
   cashChange: number;
   details: string;
 }
@@ -32,6 +34,7 @@ const mapDbToTransfer = (db: any): RefiningTransfer => ({
   branchId: db.branch_id,
   branchName: db.branch_name,
   impureGoldSent: Number(db.impure_gold_sent || 0),
+  calculatedPureGold: Number(db.calculated_pure_gold || (db.impure_gold_sent * 0.92)),
   dateSent: db.date_sent,
   status: db.status,
   refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined
@@ -45,6 +48,7 @@ const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
   branchName: db.branch_name,
   pureGoldChange: Number(db.pure_gold_change || 0),
   impureGoldChange: Number(db.impure_gold_change || 0),
+  calculatedPureGold: Number(db.calculated_pure_gold || 0),
   cashChange: Number(db.cash_change || 0),
   details: db.details
 });
@@ -137,6 +141,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         type: 'Stock Correction',
         pure_gold_change: pureVal,
         impure_gold_change: impureVal,
+        calculated_pure_gold: impureVal * 0.92,
         cash_change: cashVal,
         details: 'Initial corporate stock upload setup.'
       };
@@ -166,10 +171,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       // Stock Correction is an adjustment: we calculate difference and insert
       const currentPure = saLedger.reduce((s, e) => s + e.pureGoldChange, 0);
       const currentImpure = saLedger.reduce((s, e) => s + e.impureGoldChange, 0);
+      const currentCalculatedPure = saLedger.reduce((s, e) => s + e.calculatedPureGold, 0);
       const currentCash = saLedger.reduce((s, e) => s + e.cashChange, 0);
 
       const pureDiff = pureVal - currentPure;
       const impureDiff = impureVal - currentImpure;
+      const calculatedPureDiff = (impureVal * 0.92) - currentCalculatedPure;
       const cashDiff = cashVal - currentCash;
 
       const newEntry = {
@@ -179,6 +186,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         type: 'Stock Correction',
         pure_gold_change: pureDiff,
         impure_gold_change: impureDiff,
+        calculated_pure_gold: calculatedPureDiff,
         cash_change: cashDiff,
         details: `Manual Stock Correction adjustment.`
       };
@@ -221,6 +229,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         branch_name: selectedTransfer.branchName,
         pure_gold_change: achieved,
         impure_gold_change: -selectedTransfer.impureGoldSent,
+        calculated_pure_gold: -selectedTransfer.calculatedPureGold,
         cash_change: 0,
         details: `Refined ${selectedTransfer.impureGoldSent.toFixed(3)}g Impure Gold from ${selectedTransfer.branchName}. Yielded ${achieved.toFixed(3)}g Pure Gold.`
       };
@@ -461,6 +470,11 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                         {entry.impureGoldChange !== 0 && (
                           <p className={`text-xs font-black ${entry.impureGoldChange > 0 ? 'text-amber-600' : 'text-error'}`}>
                             {entry.impureGoldChange > 0 ? '+' : ''}{fmtG(entry.impureGoldChange)} (Impure)
+                          </p>
+                        )}
+                        {entry.calculatedPureGold !== 0 && (
+                          <p className={`text-xs font-black ${entry.calculatedPureGold > 0 ? 'text-[#755b00]' : 'text-error'}`}>
+                            {entry.calculatedPureGold > 0 ? '+' : ''}{fmtG(entry.calculatedPureGold)} (Expected Pure)
                           </p>
                         )}
                         {entry.cashChange !== 0 && (

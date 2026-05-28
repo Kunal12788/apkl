@@ -27,14 +27,44 @@ const mapDbToTransfer = (db: any): RefiningTransfer => ({
   refinedPureAchieved: db.refined_pure_achieved ? Number(db.refined_pure_achieved) : undefined
 });
 
+export interface SuperAdminLedgerEntry {
+  id: string;
+  date: string;
+  isoDate: string;
+  type: string;
+  branchName?: string;
+  pureGoldChange: number;
+  impureGoldChange: number;
+  calculatedPureGold: number;
+  cashChange: number;
+  details: string;
+}
+
+const mapDbToSaEntry = (db: any): SuperAdminLedgerEntry => ({
+  id: db.id,
+  date: db.date,
+  isoDate: db.iso_date,
+  type: db.type,
+  branchName: db.branch_name,
+  pureGoldChange: Number(db.pure_gold_change || 0),
+  impureGoldChange: Number(db.impure_gold_change || 0),
+  calculatedPureGold: Number(db.calculated_pure_gold || 0),
+  cashChange: Number(db.cash_change || 0),
+  details: db.details
+});
+
 export const SuperAdminRefineryScreen: React.FC = () => {
   const navigate = useNavigate();
 
   const cachedTransfers = getCachedData('refining_transfers_all');
+  const cachedSaLedger = getCachedData('super_admin_ledger_all');
+  
   const initialTransfers = cachedTransfers ? cachedTransfers.map(mapDbToTransfer) : [];
+  const initialSaLedger = cachedSaLedger ? cachedSaLedger.map(mapDbToSaEntry) : [];
 
   const [transfers, setTransfers] = useState<RefiningTransfer[]>(initialTransfers);
-  const [loading, setLoading] = useState<boolean>(cachedTransfers === null);
+  const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialSaLedger);
+  const [loading, setLoading] = useState<boolean>(cachedTransfers === null || cachedSaLedger === null);
   const [activeTab, setActiveTab] = useState<'All' | 'Pending' | 'Processed'>('All');
   
   // Choose between Current Session (current) and Refining History (past)
@@ -55,22 +85,34 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
   const fetchTransfers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('refining_transfers')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [transfersRes, ledgerRes] = await Promise.all([
+        supabase
+          .from('refining_transfers')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('super_admin_ledger')
+          .select('*')
+          .order('created_at', { ascending: false })
+      ]);
 
-      if (error) throw error;
+      if (transfersRes.error) throw transfersRes.error;
+      if (ledgerRes.error) throw ledgerRes.error;
 
-      if (data) {
-        setCachedData('refining_transfers_all', data);
+      if (transfersRes.data) {
+        setCachedData('refining_transfers_all', transfersRes.data);
         // Also update pending cache key used in ledger screen
-        const pendingData = data.filter(t => t.status === 'Pending');
+        const pendingData = transfersRes.data.filter(t => t.status === 'Pending');
         setCachedData('refining_transfers_pending', pendingData);
-        setTransfers(data.map(mapDbToTransfer));
+        setTransfers(transfersRes.data.map(mapDbToTransfer));
+      }
+
+      if (ledgerRes.data) {
+        setCachedData('super_admin_ledger_all', ledgerRes.data);
+        setSaLedger(ledgerRes.data.map(mapDbToSaEntry));
       }
     } catch (err) {
-      console.error('Error fetching refining transfers:', err);
+      console.error('Error fetching refining data:', err);
     } finally {
       setLoading(false);
     }
@@ -81,14 +123,14 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   }, []);
 
   const pendingTransfersInQueue = transfers.filter(t => t.status === 'Pending');
-  const pendingImpureGold = pendingTransfersInQueue.reduce((s, t) => s + t.impureGoldSent, 0);
-  const pendingExpectedPure = pendingTransfersInQueue.reduce((s, t) => s + t.calculatedPureGold, 0);
+  const pendingImpureGold = Math.max(0, saLedger.reduce((s, e) => s + e.impureGoldChange, 0));
+  const pendingExpectedPure = Math.max(0, saLedger.reduce((s, e) => s + e.calculatedPureGold, 0));
 
   const handleProcessBatchRefining = async (e: React.FormEvent) => {
     e.preventDefault();
     const achieved = parseFloat(netPureAchieved);
     if (isNaN(achieved) || achieved <= 0) return;
-    if (pendingTransfersInQueue.length === 0) return;
+    if (pendingImpureGold <= 0) return;
 
     try {
       setLoading(true);
@@ -115,7 +157,9 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       await Promise.all(updates);
 
       // Insert Refining transaction into Super Admin Ledger
-      const branchNames = Array.from(new Set(pendingTransfersInQueue.map(t => t.branchName))).join(', ');
+      const branchNames = pendingTransfersInQueue.length > 0
+        ? Array.from(new Set(pendingTransfersInQueue.map(t => t.branchName))).join(', ')
+        : 'Stock Adjustment';
       const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
         date: 'Today',
@@ -124,6 +168,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
         branch_name: 'Corporate Vault',
         pure_gold_change: achieved,
         impure_gold_change: -totalImpure,
+        calculated_pure_gold: -totalExpected,
         cash_change: 0,
         details: `Batch refined ${totalImpure.toFixed(3)}g Impure Gold from branches (${branchNames}). Yielded ${achieved.toFixed(3)}g Pure Gold.`
       };
@@ -222,7 +267,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-tertiary/10 to-transparent rounded-full blur-2xl"></div>
               <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black mb-4">Active Melt Queue</h3>
               
-              {pendingTransfersInQueue.length === 0 ? (
+              {pendingImpureGold <= 0 ? (
                 <div className="py-8 text-center">
                   <span className="material-symbols-outlined text-outline/40 text-5xl mb-3">science</span>
                   <p className="text-sm text-outline font-bold">Queue is Empty</p>
@@ -249,29 +294,31 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                   </div>
 
                   {/* Queue Items Mini List */}
-                  <div className="space-y-2 border-t border-outline-variant/10 pt-4">
-                    <p className="text-[8px] font-bold text-outline uppercase tracking-widest mb-2">Pending transfers list</p>
-                    <div className="max-h-40 overflow-y-auto hide-scrollbar space-y-2">
-                      {pendingTransfersInQueue.map(item => (
-                        <div key={item.id} className="flex justify-between items-center bg-slate-50/30 p-3 rounded-xl border border-outline-variant/5">
-                          <div>
-                            <p className="text-xs font-bold text-primary">{item.branchName}</p>
-                            <p className="text-[8px] text-outline font-medium">ID: {item.id} • Sent: {item.dateSent}</p>
+                  {pendingTransfersInQueue.length > 0 && (
+                    <div className="space-y-2 border-t border-outline-variant/10 pt-4">
+                      <p className="text-[8px] font-bold text-outline uppercase tracking-widest mb-2">Pending transfers list</p>
+                      <div className="max-h-40 overflow-y-auto hide-scrollbar space-y-2">
+                        {pendingTransfersInQueue.map(item => (
+                          <div key={item.id} className="flex justify-between items-center bg-slate-50/30 p-3 rounded-xl border border-outline-variant/5">
+                            <div>
+                              <p className="text-xs font-bold text-primary">{item.branchName}</p>
+                              <p className="text-[8px] text-outline font-medium">ID: {item.id} • Sent: {item.dateSent}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-black text-[#755b00]">{item.impureGoldSent.toFixed(3)}g</p>
+                              <p className="text-[8px] text-outline uppercase tracking-wider font-bold">Impure</p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-black text-[#755b00]">{item.impureGoldSent.toFixed(3)}g</p>
-                            <p className="text-[8px] text-outline uppercase tracking-wider font-bold">Impure</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Refinery Control Dashboard */}
-            {pendingTransfersInQueue.length > 0 && (
+            {pendingImpureGold > 0 && (
               <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6">
                 <div className="flex justify-between items-center">
                   <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black">Refinery Process Panel</h3>
@@ -290,7 +337,9 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-primary">Ready to Start Refining</p>
-                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">This will start the melt process for all {pendingTransfersInQueue.length} pending transfers totaling {pendingImpureGold.toFixed(3)}g impure gold.</p>
+                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">
+                        This will start the melt process for {pendingTransfersInQueue.length > 0 ? `all ${pendingTransfersInQueue.length} pending transfers` : 'the queue'} totaling {pendingImpureGold.toFixed(3)}g impure gold.
+                      </p>
                     </div>
                     <button
                       onClick={() => updateRefineryStatus('refining')}

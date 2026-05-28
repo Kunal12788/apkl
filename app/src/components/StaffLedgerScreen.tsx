@@ -172,6 +172,26 @@ export const StaffLedgerScreen: React.FC = () => {
         }]);
       if (transferError) throw transferError;
 
+      // Add to Super Admin Corporate Ledger to track unrefined stock increases
+      const newSaEntry = {
+        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        type: 'Branch Dispatch',
+        branch_name: 'Delhi Branch',
+        pure_gold_change: 0,
+        impure_gold_change: currentImpureStock,
+        calculated_pure_gold: calculatedPureGold,
+        cash_change: 0,
+        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure Gold from Delhi Branch. Expected pure gold: ${calculatedPureGold.toFixed(3)}g.`
+      };
+
+      const { error: saLedgerError } = await supabase
+        .from('super_admin_ledger')
+        .insert([newSaEntry]);
+
+      if (saLedgerError) throw saLedgerError;
+
       setShowRefiningConfirm(false);
       fetchEntries();
     } catch (err) {
