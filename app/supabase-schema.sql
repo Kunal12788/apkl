@@ -164,6 +164,19 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- 7. Refinery Session State Table
+CREATE TABLE IF NOT EXISTS public.refinery_state (
+    id TEXT PRIMARY KEY DEFAULT 'current_session',
+    status TEXT NOT NULL DEFAULT 'idle',
+    timer_start BIGINT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Seed initial row if not exists
+INSERT INTO public.refinery_state (id, status, timer_start)
+VALUES ('current_session', 'idle', NULL)
+ON CONFLICT (id) DO NOTHING;
+
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
@@ -174,6 +187,7 @@ ALTER TABLE public.refining_transfers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.super_admin_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.refinery_state ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if any to prevent conflicts when running schema again
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.users;
@@ -182,6 +196,7 @@ DROP POLICY IF EXISTS "Allow authenticated full access" ON public.refining_trans
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.super_admin_ledger;
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.tasks;
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.transactions;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.refinery_state;
 
 -- Create policy for all tables to allow only authenticated users
 CREATE POLICY "Allow authenticated full access" ON public.users FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
@@ -190,4 +205,5 @@ CREATE POLICY "Allow authenticated full access" ON public.refining_transfers FOR
 CREATE POLICY "Allow authenticated full access" ON public.super_admin_ledger FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated full access" ON public.tasks FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated full access" ON public.transactions FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.refinery_state FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 

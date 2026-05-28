@@ -70,10 +70,9 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   // Choose between Current Session (current) and Refining History (past)
   const [currentView, setCurrentView] = useState<'current' | 'past'>('current');
   
-  // Persistent Refinery State Machine ('idle' | 'refining')
-  const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining'>(
-    (localStorage.getItem('refinery_status') as any) || 'idle'
-  );
+  // Db-synchronized Refinery States
+  const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining'>('idle');
+  const [timerStartTimestamp, setTimerStartTimestamp] = useState<number | null>(null);
 
   // Melt Processing State
   const [netPureAchieved, setNetPureAchieved] = useState('');
@@ -81,31 +80,40 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   // Timer countdown state in seconds (2 minutes = 120 seconds)
   const [timerRemaining, setTimerRemaining] = useState<number>(0);
 
-  const updateRefineryStatus = (status: 'idle' | 'refining') => {
-    setRefineryStatus(status);
-    localStorage.setItem('refinery_status', status);
-    if (status === 'idle') {
-      localStorage.removeItem('refinery_timer_start');
+  const updateRefineryStatusInDb = async (status: 'idle' | 'refining', startVal?: number | null) => {
+    try {
+      setLoading(true);
+      const timerStart = status === 'refining' ? (startVal || Date.now()) : null;
+      
+      const { error } = await supabase
+        .from('refinery_state')
+        .update({
+          status: status,
+          timer_start: timerStart,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', 'current_session');
+
+      if (error) throw error;
+
+      setRefineryStatus(status);
+      setTimerStartTimestamp(timerStart);
+    } catch (err) {
+      console.error('Error updating refinery status:', err);
+      alert('Failed to update refinery status on database.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (refineryStatus !== 'refining') {
+    if (refineryStatus !== 'refining' || !timerStartTimestamp) {
       setTimerRemaining(0);
       return;
     }
 
-    // Check if we already have a start time in localStorage
-    let startTimestamp = localStorage.getItem('refinery_timer_start');
-    if (!startTimestamp) {
-      // If not, set it to now
-      startTimestamp = Date.now().toString();
-      localStorage.setItem('refinery_timer_start', startTimestamp);
-    }
-
-    const start = Number(startTimestamp);
     const getRemaining = () => {
-      const elapsed = Math.floor((Date.now() - start) / 1000);
+      const elapsed = Math.floor((Date.now() - timerStartTimestamp) / 1000);
       return Math.max(0, 120 - elapsed);
     };
 
@@ -123,11 +131,11 @@ export const SuperAdminRefineryScreen: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [refineryStatus]);
+  }, [refineryStatus, timerStartTimestamp]);
 
   const fetchTransfers = async () => {
     try {
-      const [transfersRes, ledgerRes] = await Promise.all([
+      const [transfersRes, ledgerRes, stateRes] = await Promise.all([
         supabase
           .from('refining_transfers')
           .select('*')
@@ -135,15 +143,20 @@ export const SuperAdminRefineryScreen: React.FC = () => {
         supabase
           .from('super_admin_ledger')
           .select('*')
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('refinery_state')
+          .select('*')
+          .eq('id', 'current_session')
+          .single()
       ]);
 
       if (transfersRes.error) throw transfersRes.error;
       if (ledgerRes.error) throw ledgerRes.error;
+      if (stateRes.error) throw stateRes.error;
 
       if (transfersRes.data) {
         setCachedData('refining_transfers_all', transfersRes.data);
-        // Also update pending cache key used in ledger screen
         const pendingData = transfersRes.data.filter(t => t.status === 'Pending');
         setCachedData('refining_transfers_pending', pendingData);
         setTransfers(transfersRes.data.map(mapDbToTransfer));
@@ -152,6 +165,11 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       if (ledgerRes.data) {
         setCachedData('super_admin_ledger_all', ledgerRes.data);
         setSaLedger(ledgerRes.data.map(mapDbToSaEntry));
+      }
+
+      if (stateRes.data) {
+        setRefineryStatus(stateRes.data.status);
+        setTimerStartTimestamp(stateRes.data.timer_start ? Number(stateRes.data.timer_start) : null);
       }
     } catch (err) {
       console.error('Error fetching refining data:', err);
@@ -222,7 +240,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       if (ledgerError) throw ledgerError;
 
       setNetPureAchieved('');
-      updateRefineryStatus('idle');
+      await updateRefineryStatusInDb('idle', null);
       await fetchTransfers();
     } catch (err) {
       console.error('Error processing batch refining:', err);
@@ -384,7 +402,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       </p>
                     </div>
                     <button
-                      onClick={() => updateRefineryStatus('refining')}
+                      onClick={() => updateRefineryStatusInDb('refining')}
                       className="w-full py-4 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
                     >
                       <span className="material-symbols-outlined text-base">local_fire_department</span>
@@ -471,7 +489,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                     <div className="border-t border-outline-variant/10 pt-4 px-2">
                       <button 
                         type="button"
-                        onClick={() => updateRefineryStatus('idle')}
+                        onClick={() => updateRefineryStatusInDb('idle')}
                         className="w-full py-3 bg-surface-container hover:bg-surface-container/80 text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
                       >
                         Cancel Melt
@@ -551,7 +569,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       <button 
                         type="button"
                         onClick={() => {
-                          updateRefineryStatus('idle');
+                          updateRefineryStatusInDb('idle');
                           setNetPureAchieved('');
                         }}
                         className="flex-1 py-3.5 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
