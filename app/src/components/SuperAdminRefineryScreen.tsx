@@ -635,15 +635,10 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-3 gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
+                        <div className="grid grid-cols-[1fr,auto,1fr] gap-3 px-4 py-3.5 bg-slate-50/50 rounded-2xl border border-outline-variant/10">
                           <div className="flex flex-col items-center text-center">
                             <p className="text-[11px] font-black text-primary">{fmtG(Math.abs(session.impureGoldChange))}</p>
                             <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Impure Melted</p>
-                          </div>
-                          <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
-                          <div className="flex flex-col items-center text-center">
-                            <p className="text-[11px] font-black text-secondary">{fmtG(Math.abs(session.calculatedPureGold))}</p>
-                            <p className="text-[7.5px] uppercase font-black text-outline tracking-wider mt-0.5">Expected Yield</p>
                           </div>
                           <div className="w-px h-6 bg-outline-variant/20 self-center"></div>
                           <div className="flex flex-col items-center text-center">
@@ -700,13 +695,13 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Melt Yield Recovery */}
-                          <div className="luxury-card p-4 sm:p-5 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
-                            <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">star</span>
-                            <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Melt Yield Recovery</p>
+                          {/* Actual Pure Gold Obtained */}
+                          <div className="luxury-card p-4 sm:p-5 bg-emerald-50 border-l-4 border-l-emerald-600 flex flex-col justify-between h-28 relative overflow-hidden shadow-md">
+                            <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-emerald-600">workspace_premium</span>
+                            <p className="text-[9px] font-bold text-emerald-800 uppercase tracking-[0.2em]">Total Pure Obtained</p>
                             <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 mt-2">
-                              <span className="font-headline font-extrabold text-primary" style={{ fontSize: '24px' }}>{sessRecovery > 0 ? `${sessRecovery.toFixed(1)}%` : '100%'}</span>
-                              <span className="text-[10px] font-black text-secondary">yield</span>
+                              <span className="font-headline font-extrabold text-emerald-600" style={{ fontSize: '24px' }}>{sessActual.toFixed(3)}</span>
+                              <span className="text-[10px] font-black text-emerald-600">gram</span>
                             </div>
                           </div>
                         </div>
@@ -718,14 +713,14 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                             <p className="font-headline text-sm font-bold text-primary mt-1">{sessExpected.toFixed(3)}g</p>
                           </div>
                           <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
-                            <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Actual Obtained</p>
-                            <p className="font-headline text-sm font-bold text-emerald-600 mt-1">{sessActual.toFixed(3)}g</p>
-                          </div>
-                          <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
                             <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Variance / Loss</p>
                             <p className={`font-headline text-sm font-bold mt-1 ${sessVariance < 0 ? 'text-error' : 'text-emerald-600'}`}>
                               {sessVariance >= 0 ? '+' : ''}{sessVariance.toFixed(3)}g
                             </p>
+                          </div>
+                          <div className="bg-white rounded-2xl p-4 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card flex flex-col justify-between">
+                            <p className="text-[8px] font-bold text-outline uppercase tracking-[0.1em]">Melt Yield</p>
+                            <p className="font-headline text-sm font-bold text-secondary mt-1">{sessRecovery > 0 ? `${sessRecovery.toFixed(1)}%` : '100%'}</p>
                           </div>
                         </div>
                       </div>
