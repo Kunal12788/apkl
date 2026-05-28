@@ -40,15 +40,15 @@ export const SuperAdminRefineryScreen: React.FC = () => {
   // Choose between Current Session (current) and Refining History (past)
   const [currentView, setCurrentView] = useState<'current' | 'past'>('current');
   
-  // Persistent Refinery State Machine ('idle' | 'refining' | 'entering_yield')
-  const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining' | 'entering_yield'>(
+  // Persistent Refinery State Machine ('idle' | 'refining')
+  const [refineryStatus, setRefineryStatus] = useState<'idle' | 'refining'>(
     (localStorage.getItem('refinery_status') as any) || 'idle'
   );
 
   // Melt Processing State
   const [netPureAchieved, setNetPureAchieved] = useState('');
 
-  const updateRefineryStatus = (status: 'idle' | 'refining' | 'entering_yield') => {
+  const updateRefineryStatus = (status: 'idle' | 'refining') => {
     setRefineryStatus(status);
     localStorage.setItem('refinery_status', status);
   };
@@ -273,9 +273,17 @@ export const SuperAdminRefineryScreen: React.FC = () => {
             {/* Refinery Control Dashboard */}
             {pendingTransfersInQueue.length > 0 && (
               <div className="luxury-card bg-white p-6 border border-outline-variant/10 shadow-lg space-y-6">
-                <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black">Refinery Process Panel</h3>
+                <div className="flex justify-between items-center">
+                  <h3 className="font-label text-[11px] uppercase tracking-[0.25em] text-outline font-black">Refinery Process Panel</h3>
+                  {refineryStatus === 'refining' && (
+                    <span className="flex items-center gap-1 text-[8.5px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200/50 animate-pulse">
+                      <span className="material-symbols-outlined text-[11px]">local_fire_department</span>
+                      Melting Active
+                    </span>
+                  )}
+                </div>
 
-                {refineryStatus === 'idle' && (
+                {refineryStatus === 'idle' ? (
                   <div className="text-center py-4 space-y-5">
                     <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto border border-outline-variant/20">
                       <span className="material-symbols-outlined text-4xl text-outline/60">local_fire_department</span>
@@ -292,37 +300,28 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       Start Refining
                     </button>
                   </div>
-                )}
-
-                {refineryStatus === 'refining' && (
-                  <div className="text-center py-4 space-y-5">
-                    <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto border border-[#755b00]/20 animate-pulse">
-                      <span className="material-symbols-outlined text-4xl text-[#755b00] animate-bounce">local_fire_department</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#755b00] animate-pulse">Refining Active</p>
-                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">The gold is currently in the crucible. Once the melt is complete and poured, select Refining Done to enter the final yield.</p>
-                    </div>
-                    <button
-                      onClick={() => updateRefineryStatus('entering_yield')}
-                      className="w-full py-4 bg-[#caa747] hover:bg-[#b08d2f] text-[#503d00] font-bold text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base">check_circle</span>
-                      Refining Done
-                    </button>
-                  </div>
-                )}
-
-                {refineryStatus === 'entering_yield' && (
-                  <form onSubmit={handleProcessBatchRefining} className="space-y-5">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-[#caa747]/10 flex items-center justify-center mx-auto border border-[#caa747]/20 mb-3">
-                        <span className="material-symbols-outlined text-4xl text-[#caa747]">done_all</span>
+                ) : (
+                  <form onSubmit={handleProcessBatchRefining} className="space-y-6">
+                    
+                    {/* Summary row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                        <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Impure Weight Melted</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-headline text-lg font-extrabold text-primary">{pendingImpureGold.toFixed(3)}</span>
+                          <span className="text-[10px] font-bold text-outline">g</span>
+                        </div>
                       </div>
-                      <p className="text-sm font-bold text-primary">Enter Refining Yield</p>
-                      <p className="text-xs text-outline/80 mt-1 max-w-sm mx-auto">Input the actual weight of the pure gold obtained from this melt batch. The vault pure gold stock will be increased by this amount.</p>
+                      <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10">
+                        <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em] mb-1">Expected Pure Gold</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="font-headline text-lg font-extrabold text-secondary">{pendingExpectedPure.toFixed(3)}</span>
+                          <span className="text-[10px] font-bold text-outline">g</span>
+                        </div>
+                      </div>
                     </div>
 
+                    {/* Actual Pure Input Field */}
                     <div className="relative group">
                       <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Actual Pure Gold Obtained (g)</span>
                       <input 
@@ -336,21 +335,61 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                       />
                     </div>
 
-                    <div className="flex gap-3">
+                    {/* Live computation metrics cards */}
+                    {(() => {
+                      const enteredVal = parseFloat(netPureAchieved);
+                      const hasValue = !isNaN(enteredVal) && enteredVal > 0;
+                      const liveRecoveryRate = hasValue && pendingExpectedPure > 0 ? (enteredVal / pendingExpectedPure) * 100 : 0;
+                      const liveVariance = hasValue ? enteredVal - pendingExpectedPure : 0;
+
+                      return (
+                        <div className="grid grid-cols-2 gap-4 border-t border-outline-variant/10 pt-5 animate-fade-in">
+                          {/* Live Recovery Rate Card */}
+                          <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10 relative overflow-hidden flex flex-col justify-between h-24">
+                            <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em]">Melt Yield Recovery</p>
+                            <div className="flex items-baseline gap-1 mt-2">
+                              <span className="font-headline text-2xl font-extrabold text-primary">
+                                {hasValue ? `${liveRecoveryRate.toFixed(2)}%` : '—'}
+                              </span>
+                              {hasValue && <span className="text-[9px] font-black text-secondary">yield</span>}
+                            </div>
+                          </div>
+
+                          {/* Live Variance Card */}
+                          <div className="bg-slate-50/50 rounded-2xl p-4 border border-outline-variant/10 relative overflow-hidden flex flex-col justify-between h-24">
+                            <p className="text-[9px] font-bold text-outline uppercase tracking-[0.15em]">Variance / Loss</p>
+                            <div className="flex items-baseline gap-1 mt-2">
+                              <span className={`font-headline text-2xl font-extrabold ${!hasValue ? 'text-primary' : liveVariance >= 0 ? 'text-emerald-600' : 'text-error'}`}>
+                                {hasValue ? `${liveVariance >= 0 ? '+' : ''}${liveVariance.toFixed(3)}g` : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Action buttons */}
+                    <div className="flex gap-3 border-t border-outline-variant/10 pt-5">
                       <button 
                         type="button"
-                        onClick={() => updateRefineryStatus('refining')}
+                        onClick={() => {
+                          updateRefineryStatus('idle');
+                          setNetPureAchieved('');
+                        }}
                         className="flex-1 py-3.5 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all"
                       >
-                        Back
+                        Cancel Melt
                       </button>
                       <button 
                         type="submit" 
-                        className="flex-1 py-3.5 bg-[#755b00] text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95"
+                        disabled={!netPureAchieved || parseFloat(netPureAchieved) <= 0 || isNaN(parseFloat(netPureAchieved))}
+                        className="flex-1 py-3.5 bg-[#755b00] disabled:bg-[#755b00]/40 disabled:text-white/60 text-white font-bold text-xs uppercase tracking-widest rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-1.5"
                       >
+                        <span className="material-symbols-outlined text-sm">done_all</span>
                         Confirm Yield
                       </button>
                     </div>
+
                   </form>
                 )}
               </div>
