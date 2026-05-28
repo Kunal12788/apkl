@@ -180,6 +180,13 @@ export const SuperAdminRefineryScreen: React.FC = () => {
 
   useEffect(() => {
     fetchTransfers();
+
+    // Polling interval of 3 seconds to keep multiple devices in sync
+    const interval = setInterval(() => {
+      fetchTransfers();
+    }, 3000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const pendingTransfersInQueue = transfers.filter(t => t.status === 'Pending');
