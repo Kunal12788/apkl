@@ -19,6 +19,7 @@ import { GlobalFAB } from './components/GlobalFAB';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
+import { SuperAdminCustomerScreen } from './components/SuperAdminCustomerScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -94,6 +95,17 @@ const RefineryWrapper = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const CustomerWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.id.startsWith('SUPER-')) {
+    return <SuperAdminCustomerScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const CollectionHistoryWrapper = () => {
   const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
@@ -148,6 +160,7 @@ function AppContent() {
             <Route path="/profile" element={<ProfileWrapper />} />
             <Route path="/ledger" element={<LedgerWrapper />} />
             <Route path="/refinery" element={<RefineryWrapper />} />
+            <Route path="/customers" element={<CustomerWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
