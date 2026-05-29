@@ -290,6 +290,30 @@ export const SuperAdminCustomerScreen: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Bottom Nav Bar */}
+      <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
+        <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>dashboard</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Dashboard</span>
+        </a>
+        <a onClick={() => navigate('/billing')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">payments</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Billing</span>
+        </a>
+        <a onClick={() => navigate('/tasks')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">assignment</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Tasks</span>
+        </a>
+        <a onClick={() => navigate('/ledger')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">inventory_2</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Ledger</span>
+        </a>
+        <a onClick={() => navigate('/profile')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
+          <span className="material-symbols-outlined text-2xl">person</span>
+          <span className="font-label text-[10px] uppercase tracking-widest">Profile</span>
+        </a>
+      </nav>
     </div>
   );
 };
