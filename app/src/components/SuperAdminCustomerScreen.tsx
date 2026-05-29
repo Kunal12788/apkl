@@ -21,7 +21,7 @@ interface CustomerHistory {
 
 export const SuperAdminCustomerScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { user, isFullyAuthenticated } = useSession();
+  const { isFullyAuthenticated } = useSession();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [tasksData, setTasksData] = useState<any[]>([]);
   const [txData, setTxData] = useState<any[]>([]);
