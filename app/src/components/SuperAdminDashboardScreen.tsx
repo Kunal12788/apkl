@@ -17,6 +17,8 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   
   let initialPure = 0;
   let initialImpure = 0;
+  let initialPureSilver = 0;
+  let initialImpureSilver = 0;
   let initialCash = 0;
   let initialDues = 0;
   let initialUpi = 0;
@@ -24,6 +26,8 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   if (cachedSaLedger) {
     initialPure = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_gold_change) || 0), 0);
     initialImpure = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_gold_change) || 0), 0);
+    initialPureSilver = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_silver_change) || 0), 0);
+    initialImpureSilver = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_silver_change) || 0), 0);
     initialCash = cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0);
   }
 
@@ -41,6 +45,8 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   // States for Top Metrics
   const [pureGoldWeight, setPureGoldWeight] = useState(initialPure);
   const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
+  const [pureSilverWeight, setPureSilverWeight] = useState(initialPureSilver);
+  const [impureSilverWeight, setImpureSilverWeight] = useState(initialImpureSilver);
   const [cashRemaining, setCashRemaining] = useState(initialCash);
   const [totalDues, setTotalDues] = useState(initialDues);
   const [upiCollection, setUpiCollection] = useState(initialUpi);
@@ -68,6 +74,8 @@ export const SuperAdminDashboardScreen: React.FC = () => {
       if (cachedSaLedger) {
         setPureGoldWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_gold_change) || 0), 0));
         setImpureGoldWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_gold_change) || 0), 0));
+        setPureSilverWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.pure_silver_change) || 0), 0));
+        setImpureSilverWeight(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.impure_silver_change) || 0), 0));
         setCashRemaining(cachedSaLedger.reduce((s: number, e: any) => s + (Number(e.cash_change) || 0), 0));
       }
       if (cachedTx) {
@@ -100,6 +108,8 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           setCachedData('super_admin_ledger_all', saLedgerData);
           setPureGoldWeight(saLedgerData.reduce((s, e) => s + (Number(e.pure_gold_change) || 0), 0));
           setImpureGoldWeight(saLedgerData.reduce((s, e) => s + (Number(e.impure_gold_change) || 0), 0));
+          setPureSilverWeight(saLedgerData.reduce((s, e) => s + (Number(e.pure_silver_change) || 0), 0));
+          setImpureSilverWeight(saLedgerData.reduce((s, e) => s + (Number(e.impure_silver_change) || 0), 0));
           setCashRemaining(saLedgerData.reduce((s, e) => s + (Number(e.cash_change) || 0), 0));
         }
 
@@ -169,9 +179,10 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           </button>
         </header>
 
-        {/* Gold Weight Summary (Exact match to pattern) */}
+        {/* Gold & Silver Weight Summary */}
         <section className="space-y-3 relative z-10">
           <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Global Assets</h3>
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">pentagon</span>
@@ -187,12 +198,37 @@ export const SuperAdminDashboardScreen: React.FC = () => {
             <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-tertiary-container flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-tertiary-container">heap_snapshot_thumbnail</span>
               <div className="flex justify-between items-start">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure</p>
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Gold</p>
                 <span className="material-symbols-outlined text-tertiary-container glow-icon text-lg">rebase</span>
               </div>
               <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="font-headline font-extrabold text-primary" style={fitText(impureGoldWeight.toFixed(2), 6, 1.875, 1.0)}>{impureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-tertiary-container">gram</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-slate-400 flex flex-col justify-between h-32 relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-slate-400">diamond</span>
+              <div className="flex justify-between items-start">
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Pure Silver</p>
+                <span className="material-symbols-outlined text-slate-400 glow-icon text-lg">star</span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(pureSilverWeight.toFixed(2), 6, 1.875, 1.0)}>{pureSilverWeight.toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-400">gram</span>
+              </div>
+            </div>
+            <div className="luxury-card p-4 sm:p-6 bg-white border-l-4 border-l-slate-300 flex flex-col justify-between h-32 relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-slate-300">lens_blur</span>
+              <div className="flex justify-between items-start">
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Silver</p>
+                <span className="material-symbols-outlined text-slate-300 glow-icon text-lg">rebase</span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(impureSilverWeight.toFixed(2), 6, 1.875, 1.0)}>{impureSilverWeight.toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-300">gram</span>
               </div>
             </div>
           </div>
