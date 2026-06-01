@@ -97,6 +97,10 @@ export const SuperAdminWorkScreen: React.FC = () => {
     u.role?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Overall aggregate stats
+  const totalCompletedTasks = tasks.filter(t => t.status === 'Completed').length;
+  const totalBroughtTasks = tasks.filter(t => t.brought_by).length;
+
   return (
     <div className="bg-background text-on-background font-body min-h-[100svh] relative overflow-y-auto hide-scrollbar">
       <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm">
@@ -116,38 +120,57 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
       <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
         
-        {/* Date Filter */}
-        <div className="bg-white p-5 rounded-3xl border border-outline-variant/20 shadow-md luxury-card flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative group">
-            <span className="text-[9px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">From Date</span>
-            <input 
-              type="date" 
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-              className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none focus:border-tertiary transition-all"
-            />
+        {/* Overall Quick Stats */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-5 rounded-3xl text-white shadow-lg relative overflow-hidden">
+            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl opacity-10">task_alt</span>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-white/70 mb-1">Tasks Completed</p>
+            <p className="font-headline text-3xl font-black">{totalCompletedTasks}</p>
           </div>
-          <div className="flex-1 relative group">
-            <span className="text-[9px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">To Date</span>
-            <input 
-              type="date" 
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-              className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none focus:border-tertiary transition-all"
-            />
+          <div className="bg-gradient-to-br from-secondary to-[#004080] p-5 rounded-3xl text-white shadow-lg relative overflow-hidden">
+            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl opacity-10">local_shipping</span>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-white/70 mb-1">Tasks Brought</p>
+            <p className="font-headline text-3xl font-black">{totalBroughtTasks}</p>
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative">
-          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">search</span>
-          <input 
-            type="text" 
-            placeholder="Search users by name or role..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-sm transition-all"
-          />
+        {/* Date Filter & Search */}
+        <div className="bg-white p-5 rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] luxury-card space-y-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative group">
+              <span className="text-[9px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[10px]">calendar_today</span> From
+              </span>
+              <input 
+                type="date" 
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none focus:border-tertiary focus:bg-white transition-all hover:border-outline-variant"
+              />
+            </div>
+            <div className="flex-1 relative group">
+              <span className="text-[9px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[10px]">event</span> To
+              </span>
+              <input 
+                type="date" 
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full bg-surface-container/50 border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none focus:border-tertiary focus:bg-white transition-all hover:border-outline-variant"
+              />
+            </div>
+          </div>
+          
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/70">search</span>
+            <input 
+              type="text" 
+              placeholder="Search personnel or role..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-surface-container/30 border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all hover:bg-surface-container/50"
+            />
+          </div>
         </div>
 
         {loading ? (
@@ -187,58 +210,68 @@ export const SuperAdminWorkScreen: React.FC = () => {
                   </div>
 
                   {user.role === 'Staff' && (
-                    <div className="grid grid-cols-3 gap-2 pl-3">
-                      <div className="bg-[#003366]/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-[#003366]/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Tunch</span>
-                        <span className="font-headline font-black text-primary text-xl">{user.stats.tunch}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Done</span>
+                    <div className="grid grid-cols-3 gap-3 pl-3">
+                      <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-primary/10 relative overflow-hidden group-hover:border-primary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-primary/5">local_fire_department</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">local_fire_department</span> Tunch</span>
+                        <span className="font-headline font-black text-primary text-2xl">{user.stats.tunch}</span>
                       </div>
-                      <div className="bg-[#003366]/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-[#003366]/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Marking</span>
-                        <span className="font-headline font-black text-primary text-xl">{user.stats.marking}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Done</span>
+                      <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-primary/10 relative overflow-hidden group-hover:border-primary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-primary/5">edit_document</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">edit_document</span> Marking</span>
+                        <span className="font-headline font-black text-primary text-2xl">{user.stats.marking}</span>
                       </div>
-                      <div className="bg-[#003366]/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-[#003366]/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Shoulder</span>
-                        <span className="font-headline font-black text-primary text-xl">{user.stats.shouldering}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Done</span>
+                      <div className="bg-gradient-to-br from-primary/5 to-primary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-primary/10 relative overflow-hidden group-hover:border-primary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-primary/5">precision_manufacturing</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-primary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">hardware</span> Shoulder</span>
+                        <span className="font-headline font-black text-primary text-2xl">{user.stats.shouldering}</span>
                       </div>
                     </div>
                   )}
 
                   {user.role === 'Collection Staff' && (
-                    <div className="grid grid-cols-3 gap-2 pl-3">
-                      <div className="bg-secondary/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-secondary/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Tunch</span>
-                        <span className="font-headline font-black text-secondary text-xl">{user.stats.tunch}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Brought</span>
+                    <div className="grid grid-cols-3 gap-3 pl-3">
+                      <div className="bg-gradient-to-br from-secondary/5 to-secondary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-secondary/10 relative overflow-hidden group-hover:border-secondary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-secondary/5">local_fire_department</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-secondary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">local_fire_department</span> Tunch</span>
+                        <span className="font-headline font-black text-secondary text-2xl">{user.stats.tunch}</span>
                       </div>
-                      <div className="bg-secondary/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-secondary/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Marking</span>
-                        <span className="font-headline font-black text-secondary text-xl">{user.stats.marking}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Brought</span>
+                      <div className="bg-gradient-to-br from-secondary/5 to-secondary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-secondary/10 relative overflow-hidden group-hover:border-secondary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-secondary/5">edit_document</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-secondary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">edit_document</span> Marking</span>
+                        <span className="font-headline font-black text-secondary text-2xl">{user.stats.marking}</span>
                       </div>
-                      <div className="bg-secondary/5 p-3 rounded-2xl flex flex-col items-center justify-center border border-secondary/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Shoulder</span>
-                        <span className="font-headline font-black text-secondary text-xl">{user.stats.shouldering}</span>
-                        <span className="text-[8px] font-medium text-outline">Pieces Brought</span>
+                      <div className="bg-gradient-to-br from-secondary/5 to-secondary/10 p-3.5 rounded-[1.25rem] flex flex-col items-center justify-center border border-secondary/10 relative overflow-hidden group-hover:border-secondary/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-secondary/5">precision_manufacturing</span>
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-secondary/70 mb-1 flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">hardware</span> Shoulder</span>
+                        <span className="font-headline font-black text-secondary text-2xl">{user.stats.shouldering}</span>
                       </div>
                     </div>
                   )}
 
                   {user.role === 'Admin' && (
-                    <div className="grid grid-cols-2 gap-2 pl-3">
-                      <div className="bg-tertiary/5 p-4 rounded-2xl flex flex-col items-center justify-center border border-tertiary/10">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1">Branch Tasks</span>
-                        <span className="font-headline font-black text-tertiary text-2xl">{user.stats.totalTasks}</span>
-                        <span className="text-[9px] font-medium text-outline mt-1 text-center">Total tasks handled by staff under this branch</span>
+                    <div className="pl-3">
+                      <div className="bg-gradient-to-r from-tertiary/10 to-transparent p-5 rounded-[1.5rem] border border-tertiary/20 relative overflow-hidden flex items-center justify-between">
+                        <div className="relative z-10">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-tertiary mb-1 flex items-center gap-1">
+                            <span className="material-symbols-outlined text-sm">account_tree</span> Branch Activity
+                          </span>
+                          <span className="text-[10px] font-medium text-outline">Total operational tasks completed by branch staff</span>
+                        </div>
+                        <div className="font-headline font-black text-tertiary text-4xl relative z-10 pr-2">
+                          {user.stats.totalTasks}
+                        </div>
+                        <span className="material-symbols-outlined absolute -right-4 -top-4 text-7xl text-tertiary/5">corporate_fare</span>
                       </div>
                     </div>
                   )}
                   
                   {user.role === 'Super Admin' && (
                     <div className="pl-3 mt-2">
-                      <p className="text-xs text-outline italic">Master account. System-wide visibility.</p>
+                      <div className="bg-error/5 border border-error/10 rounded-xl p-3 flex items-center gap-3">
+                        <span className="material-symbols-outlined text-error">admin_panel_settings</span>
+                        <p className="text-[10px] text-error font-medium uppercase tracking-wider">System Administrator Account</p>
+                      </div>
                     </div>
                   )}
 
