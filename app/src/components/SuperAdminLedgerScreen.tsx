@@ -78,6 +78,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialLedger);
   const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(initialTransfers);
+  
+  // Approval Workflow State
+  const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
+  const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>([]);
+  const [approving, setApproving] = useState(false);
+
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
   const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
@@ -119,7 +125,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
     try {
       // Fetch Super Admin Ledger and pending refining transfers in parallel
-      const [ledgerRes, transfersRes] = await Promise.all([
+      const [ledgerRes, transfersRes, branchEntriesRes, usersRes] = await Promise.all([
         supabase
           .from('super_admin_ledger')
           .select('*')
@@ -128,7 +134,13 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           .from('refining_transfers')
           .select('*')
           .eq('status', 'Pending')
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('ledger_entries')
+          .select('*')
+          .eq('is_approved', false)
+          .order('created_at', { ascending: false }),
+        supabase.from('users').select('*')
       ]);
 
       if (ledgerRes.error) throw ledgerRes.error;
@@ -146,6 +158,40 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       if (transfersData) {
         setCachedData('refining_transfers_pending', transfersData);
         setPendingTransfers(transfersData.map(mapDbToTransfer));
+      }
+
+      if (branchEntriesRes.data && usersRes.data) {
+        const usersMap = usersRes.data.reduce((acc: any, u: any) => {
+          acc[u.id] = u.branch_id || 'Unknown Branch';
+          return acc;
+        }, {});
+        
+        const grouped: any = {};
+        branchEntriesRes.data.forEach((entry: any) => {
+           const branch = usersMap[entry.staff_id] || 'Unknown Branch';
+           const key = `${entry.iso_date}_${branch}`;
+           if (!grouped[key]) {
+             grouped[key] = {
+               iso_date: entry.iso_date,
+               branch_name: branch,
+               entries: [],
+               totalPureGoldGiven: 0,
+               totalImpureGoldReceived: 0,
+               totalCashReceived: 0,
+               totalCashPaid: 0,
+               totalPureSilverGiven: 0,
+               totalImpureSilverReceived: 0
+             };
+           }
+           grouped[key].entries.push(entry);
+           grouped[key].totalPureGoldGiven += Number(entry.pure_gold_out || 0);
+           grouped[key].totalImpureGoldReceived += Number(entry.impure_gold_in || 0);
+           grouped[key].totalPureSilverGiven += Number(entry.pure_silver_out || 0);
+           grouped[key].totalImpureSilverReceived += Number(entry.impure_silver_in || 0);
+           grouped[key].totalCashReceived += Number(entry.cash_received || 0);
+           grouped[key].totalCashPaid += Number(entry.cash_paid || 0);
+        });
+        setPendingBranchGroups(Object.values(grouped).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date)));
       }
 
     } catch (err) {
@@ -409,7 +455,54 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  // Calculations based on running sum of DB ledger records
+  // Handle Branch Approval
+  const handleApproveBranch = async (group: any) => {
+    setApproving(true);
+    try {
+      const entryIds = group.entries.map((e: any) => e.id);
+      
+      // Update the ledger entries to approved
+      const { error: updateError } = await supabase
+        .from('ledger_entries')
+        .update({ is_approved: true })
+        .in('id', entryIds);
+
+      if (updateError) throw updateError;
+
+      const netCash = group.totalCashReceived - group.totalCashPaid;
+
+      // Insert consolidation into Super Admin Ledger
+      const newEntry = {
+        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        type: 'Branch Consolidation',
+        branch_name: group.branch_name,
+        pure_gold_change: -group.totalPureGoldGiven,
+        impure_gold_change: group.totalImpureGoldReceived,
+        calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
+        pure_silver_change: -group.totalPureSilverGiven,
+        impure_silver_change: group.totalImpureSilverReceived,
+        calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
+        cash_change: netCash,
+        details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
+      };
+
+      const { error: insertError } = await supabase
+        .from('super_admin_ledger')
+        .insert([newEntry]);
+
+      if (insertError) throw insertError;
+
+      fetchData();
+    } catch (e) {
+      console.error('Error approving branch data:', e);
+      alert('Failed to approve branch data.');
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const currentPureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0);
   const currentImpureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0);
   const currentCashStock = saLedger.reduce((s, e) => s + e.cashChange, 0);
@@ -426,16 +519,160 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     );
   }
 
+  // Initial Prompt UI
+  if (ledgerMode === 'prompt') {
+    return (
+      <div className="min-h-[100svh] flex items-center justify-center bg-background ambient-bg p-6 relative z-50">
+        <div className="absolute top-8 left-6">
+           <button onClick={() => navigate('/dashboard')} className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary shadow-sm active:scale-95 transition-transform">
+             <span className="material-symbols-outlined">arrow_back</span>
+           </button>
+        </div>
+        <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-outline-variant/20 flex flex-col items-center text-center space-y-8 animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-[#003366]/10 flex items-center justify-center text-[#003366] mb-2">
+            <span className="material-symbols-outlined text-4xl">admin_panel_settings</span>
+          </div>
+          <div>
+            <h2 className="font-headline font-bold text-2xl text-primary">Ledger Management</h2>
+            <p className="text-sm text-outline mt-2 px-4">Choose which corporate view you wish to access.</p>
+          </div>
+          
+          <div className="w-full space-y-4">
+            <button 
+              onClick={() => setLedgerMode('approval')}
+              className="w-full bg-gradient-to-r from-secondary to-[#004080] text-white py-5 rounded-2xl font-bold text-lg shadow-[0_8px_20px_rgba(112,83,0,0.2)] hover:shadow-[0_10px_25px_rgba(112,83,0,0.3)] hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
+            >
+              <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
+              <span className="material-symbols-outlined">verified</span>
+              Pending Approvals
+              {pendingBranchGroups.length > 0 && (
+                <span className="absolute right-4 bg-error text-white text-xs font-black px-2 py-0.5 rounded-full shadow-sm">
+                  {pendingBranchGroups.length}
+                </span>
+              )}
+            </button>
+            <button 
+              onClick={() => setLedgerMode('current')}
+              className="w-full bg-white border-2 border-[#003366]/20 text-[#003366] py-5 rounded-2xl font-bold text-lg hover:bg-[#003366]/5 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            >
+              <span className="material-symbols-outlined">account_balance</span>
+              Current Ledger Data
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Approval Dashboard UI
+  if (ledgerMode === 'approval') {
+    return (
+      <div className="bg-background ambient-bg text-on-background font-body w-full min-h-[100svh] relative overflow-y-auto hide-scrollbar">
+        <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setLedgerMode('prompt')} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20">
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <div>
+              <h1 className="font-headline text-xl font-bold text-primary leading-tight">Branch Approvals</h1>
+              <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Pending Submissions</p>
+            </div>
+          </div>
+        </header>
+
+        <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
+          {pendingBranchGroups.length === 0 ? (
+            <div className="luxury-card p-10 bg-white border border-outline-variant/10 text-center flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4">
+                <span className="material-symbols-outlined text-4xl">check_circle</span>
+              </div>
+              <h3 className="font-headline font-bold text-lg text-primary">All Caught Up!</h3>
+              <p className="text-xs text-outline mt-2">There are no pending branch ledger submissions to approve.</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {pendingBranchGroups.map((group, idx) => {
+                const netCash = group.totalCashReceived - group.totalCashPaid;
+                return (
+                  <div key={idx} className="luxury-card bg-white border border-outline-variant/20 shadow-lg overflow-hidden animate-fade-in">
+                    <div className="bg-gradient-to-r from-[#003366]/5 to-transparent p-5 border-b border-outline-variant/10">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-headline font-bold text-lg text-primary">{group.branch_name}</h3>
+                          <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-0.5">Date: {group.iso_date} • {group.entries.length} Entries</p>
+                        </div>
+                        <span className="bg-amber-500/10 text-amber-600 font-black text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-amber-500/20">
+                          Pending
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/50">
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Gold Given</p>
+                        <p className="font-black text-[#755b00]">{group.totalPureGoldGiven.toFixed(3)}g</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Gold Recv (Impure)</p>
+                        <p className="font-black text-amber-600">{group.totalImpureGoldReceived.toFixed(3)}g</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Net Cash</p>
+                        <p className={`font-black ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
+                          {netCash >= 0 ? '+' : ''}{fmt(netCash)}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Silver Recv (Impure)</p>
+                        <p className="font-black text-slate-500">{group.totalImpureSilverReceived.toFixed(3)}g</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-white flex justify-end">
+                      <button
+                        onClick={() => handleApproveBranch(group)}
+                        disabled={approving}
+                        className="px-6 py-3 bg-[#003366] text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        {approving ? (
+                          <>
+                            <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                            Merging...
+                          </>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-sm">fact_check</span>
+                            Approve & Merge
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-background ambient-bg text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
       <main className="px-6 max-w-5xl mx-auto pt-8 pb-32 relative space-y-6">
         
         {/* Header */}
         <header className="flex justify-between items-center mb-2 animate-fade-in">
-          <div>
-            <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Head Office Hub</h1>
-            <p className="text-xs text-outline font-medium">Super Admin Global Allocation & Refining Terminal</p>
-          </div>
+            <button 
+              onClick={() => setLedgerMode('prompt')} 
+              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20 mr-3 shrink-0"
+            >
+              <span className="material-symbols-outlined">arrow_back</span>
+            </button>
+            <div>
+              <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Head Office Hub</h1>
+              <p className="text-xs text-outline font-medium">Super Admin Global Allocation & Refining Terminal</p>
+            </div>
           <button 
             onClick={async () => {
               // Clear DB super admin ledger for testing setup
