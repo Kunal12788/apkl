@@ -525,7 +525,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
                   className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all appearance-none"
                 >
                   <option value="" disabled>-- Choose a user --</option>
-                  {users.filter(u => u.branch_id !== showAllocateModal).map(u => (
+                  {users.filter(u => u.branch_id !== showAllocateModal && u.role !== 'Super Admin').map(u => (
                     <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                   ))}
                 </select>
