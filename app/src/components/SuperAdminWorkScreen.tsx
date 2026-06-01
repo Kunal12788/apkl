@@ -97,10 +97,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
     u.role?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Overall aggregate stats
-  const totalCompletedTasks = tasks.filter(t => t.status === 'Completed').length;
-  const totalBroughtTasks = tasks.filter(t => t.brought_by).length;
-
   return (
     <div className="bg-background text-on-background font-body min-h-[100svh] relative overflow-y-auto hide-scrollbar">
       <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm">
@@ -120,19 +116,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
       <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
         
-        {/* Overall Quick Stats */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-5 rounded-3xl text-white shadow-lg relative overflow-hidden">
-            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl opacity-10">task_alt</span>
-            <p className="text-[10px] uppercase tracking-widest font-bold text-white/70 mb-1">Tasks Completed</p>
-            <p className="font-headline text-3xl font-black">{totalCompletedTasks}</p>
-          </div>
-          <div className="bg-gradient-to-br from-secondary to-[#004080] p-5 rounded-3xl text-white shadow-lg relative overflow-hidden">
-            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-6xl opacity-10">local_shipping</span>
-            <p className="text-[10px] uppercase tracking-widest font-bold text-white/70 mb-1">Tasks Brought</p>
-            <p className="font-headline text-3xl font-black">{totalBroughtTasks}</p>
-          </div>
-        </div>
 
         {/* Date Filter & Search */}
         <div className="bg-white p-5 rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] luxury-card space-y-4">
