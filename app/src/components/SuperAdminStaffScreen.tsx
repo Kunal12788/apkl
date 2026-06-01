@@ -335,12 +335,14 @@ export const SuperAdminStaffScreen: React.FC = () => {
                         </div>
                       </div>
                       
-                      <button 
-                        onClick={() => openEditModal(user)}
-                        className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-primary hover:bg-primary/5 hover:border-primary/30 transition-all shrink-0 shadow-sm"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
-                      </button>
+                      {user.role !== 'Super Admin' && (
+                        <button 
+                          onClick={() => openEditModal(user)}
+                          className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-primary hover:bg-primary/5 hover:border-primary/30 transition-all shrink-0 shadow-sm"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
