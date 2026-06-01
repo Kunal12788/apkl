@@ -11,6 +11,12 @@ const adminAuthClient = createClient(supabaseUrl, supabaseKey, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
+interface Branch {
+  id: string;
+  name: string;
+  created_at?: string;
+}
+
 interface UserProfile {
   id: string;
   name: string;
@@ -18,6 +24,7 @@ interface UserProfile {
   email: string;
   phone?: string;
   admin_id?: string | null;
+  branch_id?: string | null;
   passkey?: string; // Stored just for reference if needed
 }
 
@@ -26,37 +33,45 @@ export const SuperAdminStaffScreen: React.FC = () => {
   const { isFullyAuthenticated } = useSession();
   
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'allocation'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Modal State
+  // Modals
   const [showHireModal, setShowHireModal] = useState(false);
+  const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
+  const [showAllocateModal, setShowAllocateModal] = useState<string | null>(null); // holds branch_id when open
+
+  // Forms
   const [hireForm, setHireForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: 'Staff',
-    passkey: '',
-    admin_id: ''
+    name: '', email: '', phone: '', role: 'Staff', passkey: '', branch_id: ''
   });
+  const [newBranchName, setNewBranchName] = useState('');
+  const [allocateUserId, setAllocateUserId] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase.from('users').select('*').order('name');
-      if (error) throw error;
-      setUsers(data || []);
+      const [usersRes, branchesRes] = await Promise.all([
+        supabase.from('users').select('*').order('name'),
+        supabase.from('branches').select('*').order('name')
+      ]);
+      if (usersRes.error) throw usersRes.error;
+      if (branchesRes.error) throw branchesRes.error;
+      setUsers(usersRes.data || []);
+      setBranches(branchesRes.data || []);
     } catch (err) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (isFullyAuthenticated) fetchUsers();
+    if (isFullyAuthenticated) fetchData();
   }, [isFullyAuthenticated]);
 
   const handleHireSubmit = async (e: React.FormEvent) => {
@@ -80,19 +95,11 @@ export const SuperAdminStaffScreen: React.FC = () => {
       const { error: authError } = await adminAuthClient.auth.signUp({
         email: hireForm.email,
         password: hireForm.passkey,
-        options: {
-          data: {
-            name: hireForm.name,
-            role: hireForm.role
-          }
-        }
+        options: { data: { name: hireForm.name, role: hireForm.role } }
       });
 
-      if (authError) {
-        // If user already exists in auth, we might just proceed to insert in public.users
-        if (!authError.message.includes('User already registered')) {
-          throw new Error(authError.message);
-        }
+      if (authError && !authError.message.includes('User already registered')) {
+        throw new Error(authError.message);
       }
 
       // 2. Insert into public.users
@@ -102,18 +109,16 @@ export const SuperAdminStaffScreen: React.FC = () => {
         email: hireForm.email,
         phone: hireForm.phone || null,
         role: hireForm.role,
-        admin_id: (hireForm.role === 'Staff' || hireForm.role === 'Collection Staff') && hireForm.admin_id ? hireForm.admin_id : null,
+        branch_id: hireForm.branch_id ? hireForm.branch_id : null,
         passkey: hireForm.passkey
       };
 
       const { error: dbError } = await supabase.from('users').insert([newUser]);
       if (dbError) throw dbError;
 
-      // Reset & close
-      setHireForm({ name: '', email: '', phone: '', role: 'Staff', passkey: '', admin_id: '' });
+      setHireForm({ name: '', email: '', phone: '', role: 'Staff', passkey: '', branch_id: '' });
       setShowHireModal(false);
-      fetchUsers();
-
+      fetchData();
     } catch (err: any) {
       console.error('Hire error:', err);
       setSubmitError(err.message || 'Failed to hire member.');
@@ -122,13 +127,63 @@ export const SuperAdminStaffScreen: React.FC = () => {
     }
   };
 
-  // Derived data
-  const admins = users.filter(u => u.role === 'Admin');
+  const handleCreateBranch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBranchName) return;
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('branches').insert([{ name: newBranchName }]);
+      if (error) throw error;
+      setNewBranchName('');
+      setShowCreateBranchModal(false);
+      fetchData();
+    } catch (err) {
+      console.error('Error creating branch:', err);
+      alert('Failed to create branch');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAllocateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!allocateUserId || !showAllocateModal) return;
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.from('users').update({ branch_id: showAllocateModal }).eq('id', allocateUserId);
+      if (error) throw error;
+      setAllocateUserId('');
+      setShowAllocateModal(null);
+      fetchData();
+    } catch (err) {
+      console.error('Error allocating user:', err);
+      alert('Failed to allocate user');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const removeAllocation = async (userId: string) => {
+    try {
+      const { error } = await supabase.from('users').update({ branch_id: null }).eq('id', userId);
+      if (error) throw error;
+      fetchData();
+    } catch (err) {
+      console.error('Error removing allocation:', err);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     u.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
     u.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getBranchName = (branchId?: string | null) => {
+    if (!branchId) return null;
+    const b = branches.find(b => b.id === branchId);
+    return b ? b.name : branchId;
+  };
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative flex flex-col overflow-hidden">
@@ -142,7 +197,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
             </button>
             <div>
               <h1 className="text-xl font-headline font-bold text-white tracking-wide">Personnel</h1>
-              <p className="text-[10px] font-bold text-[#F6C358] uppercase tracking-widest opacity-90">Staff & Admins</p>
+              <p className="text-[10px] font-bold text-[#F6C358] uppercase tracking-widest opacity-90">Staff & Branches</p>
             </div>
           </div>
           <button 
@@ -183,7 +238,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
           onClick={() => setActiveTab('allocation')}
           className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'allocation' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
         >
-          Allocation Structure
+          Branch Allocation
         </button>
       </div>
 
@@ -191,7 +246,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
         {loading ? (
           <div className="flex flex-col items-center justify-center h-40 text-outline">
             <div className="w-8 h-8 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-3"></div>
-            <p className="text-xs font-bold uppercase tracking-widest">Loading Personnel...</p>
+            <p className="text-xs font-bold uppercase tracking-widest">Loading Data...</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -214,12 +269,12 @@ export const SuperAdminStaffScreen: React.FC = () => {
                         <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{user.id} • {user.role}</p>
                       </div>
                     </div>
-                    {user.admin_id && (
+                    {user.branch_id && (
                       <div className="text-right flex flex-col items-end">
-                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest">Reports To</p>
+                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest">Assigned To</p>
                         <div className="flex items-center gap-1 bg-surface-container-lowest px-2 py-0.5 rounded-md border border-outline-variant/20 mt-0.5">
-                          <span className="material-symbols-outlined text-[10px] text-secondary">shield_person</span>
-                          <p className="text-[9px] font-bold text-secondary">{users.find(u => u.id === user.admin_id)?.name || user.admin_id}</p>
+                          <span className="material-symbols-outlined text-[10px] text-secondary">domain</span>
+                          <p className="text-[9px] font-bold text-secondary truncate max-w-[100px]">{getBranchName(user.branch_id)}</p>
                         </div>
                       </div>
                     )}
@@ -231,57 +286,85 @@ export const SuperAdminStaffScreen: React.FC = () => {
               </div>
             )}
 
-            {/* View: Allocation Structure */}
+            {/* View: Allocation Structure (Branches) */}
             {activeTab === 'allocation' && (
               <div className="animate-fade-in space-y-6">
-                {admins.map(admin => {
-                  const assignedStaff = users.filter(u => u.admin_id === admin.id);
+                
+                <div className="flex justify-end">
+                  <button 
+                    onClick={() => setShowCreateBranchModal(true)}
+                    className="flex items-center gap-1.5 bg-white border border-outline-variant/30 text-primary px-4 py-2 rounded-full font-bold text-[10px] uppercase tracking-widest shadow-sm hover:bg-surface-container transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add_business</span>
+                    Create Branch
+                  </button>
+                </div>
+
+                {branches.map(branch => {
+                  const assignedStaff = users.filter(u => u.branch_id === branch.id);
                   return (
-                    <div key={admin.id} className="luxury-card bg-white border border-secondary/20 rounded-3xl overflow-hidden shadow-sm">
-                      {/* Admin Header */}
+                    <div key={branch.id} className="luxury-card bg-white border border-secondary/20 rounded-3xl overflow-hidden shadow-sm">
+                      {/* Branch Header */}
                       <div className="bg-gradient-to-r from-secondary/10 to-transparent p-4 flex items-center justify-between border-b border-secondary/10">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-secondary text-white flex items-center justify-center premium-shadow">
-                            <span className="material-symbols-outlined">shield_person</span>
+                            <span className="material-symbols-outlined">domain</span>
                           </div>
                           <div>
-                            <p className="font-headline font-extrabold text-primary text-base">{admin.name}</p>
-                            <p className="text-[9px] font-bold text-secondary uppercase tracking-widest">{admin.id} • Branch Admin</p>
+                            <p className="font-headline font-extrabold text-primary text-base">{branch.name}</p>
+                            <p className="text-[9px] font-bold text-secondary uppercase tracking-widest">Branch Location</p>
                           </div>
                         </div>
-                        <div className="bg-white px-3 py-1 rounded-full border border-secondary/20 shadow-sm">
-                          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{assignedStaff.length} Staff</p>
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="bg-white px-3 py-1 rounded-full border border-secondary/20 shadow-sm">
+                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{assignedStaff.length} Members</p>
+                          </div>
                         </div>
                       </div>
                       
                       {/* Assigned Staff List */}
                       <div className="p-3 bg-surface-container-lowest">
                         {assignedStaff.length > 0 ? (
-                          <div className="space-y-2">
+                          <div className="space-y-2 mb-3">
                             {assignedStaff.map(staff => (
-                              <div key={staff.id} className="bg-white p-3 rounded-xl border border-outline-variant/20 flex items-center gap-3 shadow-sm">
-                                <div className="w-8 h-8 rounded-full bg-tertiary/10 text-tertiary flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-sm">person</span>
+                              <div key={staff.id} className="bg-white p-3 rounded-xl border border-outline-variant/20 flex items-center justify-between shadow-sm group">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                                    ${staff.role === 'Admin' ? 'bg-secondary/10 text-secondary' : 'bg-tertiary/10 text-tertiary'}`}>
+                                    {staff.name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <p className="font-headline font-bold text-primary text-sm">{staff.name}</p>
+                                    <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{staff.id} • {staff.role}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="font-headline font-bold text-primary text-sm">{staff.name}</p>
-                                  <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{staff.id} • {staff.role}</p>
-                                </div>
+                                <button onClick={() => removeAllocation(staff.id)} className="w-8 h-8 rounded-full flex items-center justify-center text-outline opacity-0 group-hover:opacity-100 transition-opacity hover:bg-error/10 hover:text-error">
+                                  <span className="material-symbols-outlined text-sm">person_remove</span>
+                                </button>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <div className="p-4 text-center text-outline opacity-60 flex flex-col items-center">
+                          <div className="p-4 text-center text-outline opacity-60 flex flex-col items-center mb-2">
                             <span className="material-symbols-outlined mb-1">group_off</span>
-                            <p className="text-[10px] font-bold uppercase tracking-widest">No staff assigned</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest">No members assigned</p>
                           </div>
                         )}
+                        <button 
+                          onClick={() => setShowAllocateModal(branch.id)}
+                          className="w-full py-2.5 bg-white border border-dashed border-secondary/40 text-secondary hover:bg-secondary/5 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-sm">person_add</span> Allocate User
+                        </button>
                       </div>
                     </div>
                   );
                 })}
-                {admins.length === 0 && (
-                  <p className="text-center text-outline font-medium py-8 text-sm">No Admins available in the system.</p>
+                {branches.length === 0 && (
+                  <div className="text-center text-outline font-medium py-12 flex flex-col items-center gap-2">
+                    <span className="material-symbols-outlined text-4xl opacity-20">domain_disabled</span>
+                    <p className="text-sm">No Branches available.</p>
+                  </div>
                 )}
               </div>
             )}
@@ -347,7 +430,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Assign Role</label>
                   <select 
-                    value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value, admin_id: ''})}
+                    value={hireForm.role} onChange={e => setHireForm({...hireForm, role: e.target.value})}
                     className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all appearance-none"
                   >
                     <option value="Staff">Staff (Standard)</option>
@@ -356,22 +439,20 @@ export const SuperAdminStaffScreen: React.FC = () => {
                   </select>
                 </div>
 
-                {(hireForm.role === 'Staff' || hireForm.role === 'Collection Staff') && (
-                  <div className="space-y-1 animate-fade-in">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-secondary px-1 flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[12px]">shield_person</span> Report To Admin (Optional)
-                    </label>
-                    <select 
-                      value={hireForm.admin_id} onChange={e => setHireForm({...hireForm, admin_id: e.target.value})}
-                      className="w-full bg-secondary/5 border border-secondary/20 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-secondary focus:ring-1 focus:ring-secondary/20 outline-none transition-all appearance-none"
-                    >
-                      <option value="">-- No Admin Assigned --</option>
-                      {admins.map(admin => (
-                        <option key={admin.id} value={admin.id}>{admin.name} ({admin.id})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                <div className="space-y-1 animate-fade-in">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-secondary px-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">domain</span> Assign to Branch (Optional)
+                  </label>
+                  <select 
+                    value={hireForm.branch_id} onChange={e => setHireForm({...hireForm, branch_id: e.target.value})}
+                    className="w-full bg-secondary/5 border border-secondary/20 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-secondary focus:ring-1 focus:ring-secondary/20 outline-none transition-all appearance-none"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {branches.map(branch => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </div>
 
               </form>
             </div>
@@ -390,6 +471,70 @@ export const SuperAdminStaffScreen: React.FC = () => {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Create Branch Modal */}
+      {showCreateBranchModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center bg-[#001e40]/60 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+          <div className="absolute inset-0" onClick={() => setShowCreateBranchModal(false)} />
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] relative z-10 animate-slide-up sm:animate-modal-up flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-headline text-xl font-extrabold text-primary">Create Branch</h3>
+                <p className="text-[10px] text-outline font-bold uppercase tracking-widest mt-0.5">Add a new location</p>
+              </div>
+            </div>
+            <form onSubmit={handleCreateBranch} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Branch Name</label>
+                <input 
+                  type="text" required autoFocus
+                  value={newBranchName} onChange={e => setNewBranchName(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  placeholder="e.g. Delhi Branch"
+                />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setShowCreateBranchModal(false)} className="flex-1 py-3 text-outline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-surface-container transition-colors">Cancel</button>
+                <button type="submit" disabled={isSubmitting || !newBranchName} className="flex-1 py-3 bg-secondary text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#004a9e] transition-colors disabled:opacity-50">Create</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Allocate User Modal */}
+      {showAllocateModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center bg-[#001e40]/60 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+          <div className="absolute inset-0" onClick={() => setShowAllocateModal(null)} />
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] relative z-10 animate-slide-up sm:animate-modal-up flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="font-headline text-xl font-extrabold text-primary">Allocate User</h3>
+                <p className="text-[10px] text-outline font-bold uppercase tracking-widest mt-0.5">Assign personnel to branch</p>
+              </div>
+            </div>
+            <form onSubmit={handleAllocateUser} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Select User</label>
+                <select 
+                  required
+                  value={allocateUserId} onChange={e => setAllocateUserId(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all appearance-none"
+                >
+                  <option value="" disabled>-- Choose a user --</option>
+                  {users.filter(u => u.branch_id !== showAllocateModal).map(u => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setShowAllocateModal(null)} className="flex-1 py-3 text-outline font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-surface-container transition-colors">Cancel</button>
+                <button type="submit" disabled={isSubmitting || !allocateUserId} className="flex-1 py-3 bg-secondary text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-[#004a9e] transition-colors disabled:opacity-50">Allocate</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
