@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { getCachedData, setCachedData } from '../cache';
+
 
 export const SuperAdminWorkScreen: React.FC = () => {
   const navigate = useNavigate();
