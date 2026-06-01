@@ -42,10 +42,14 @@ export const SuperAdminStaffScreen: React.FC = () => {
   const [showHireModal, setShowHireModal] = useState(false);
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
   const [showAllocateModal, setShowAllocateModal] = useState<string | null>(null); // holds branch_id when open
+  const [showEditModal, setShowEditModal] = useState<UserProfile | null>(null);
 
   // Forms
   const [hireForm, setHireForm] = useState({
     name: '', email: '', phone: '', role: 'Staff', passkey: '', branch_id: ''
+  });
+  const [editForm, setEditForm] = useState({
+    id: '', name: '', email: '', role: 'Staff', passkey: '', branch_id: ''
   });
   const [newBranchName, setNewBranchName] = useState('');
   const [allocateUserId, setAllocateUserId] = useState('');
@@ -125,6 +129,51 @@ export const SuperAdminStaffScreen: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editForm.name || !editForm.email || !editForm.passkey) {
+      setSubmitError('Name, Email, and Passkey are required.');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const { error } = await supabase.rpc('update_user_credentials', {
+        p_user_id: editForm.id,
+        p_name: editForm.name,
+        p_email: editForm.email,
+        p_passkey: editForm.passkey,
+        p_role: editForm.role,
+        p_branch_id: editForm.branch_id || null
+      });
+
+      if (error) throw error;
+
+      setShowEditModal(null);
+      fetchData();
+    } catch (err: any) {
+      console.error('Edit error:', err);
+      setSubmitError(err.message || 'Failed to update member.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openEditModal = (user: UserProfile) => {
+    setEditForm({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      passkey: user.passkey || '',
+      branch_id: user.branch_id || ''
+    });
+    setSubmitError('');
+    setShowEditModal(user);
   };
 
   const handleCreateBranch = async (e: React.FormEvent) => {
@@ -255,29 +304,44 @@ export const SuperAdminStaffScreen: React.FC = () => {
             {activeTab === 'all' && (
               <div className="animate-fade-in space-y-3">
                 {filteredUsers.map(user => (
-                  <div key={user.id} className="luxury-card bg-white border border-outline-variant/20 rounded-2xl p-4 flex items-center justify-between transition-all hover:bg-surface-bright">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-lg border shadow-sm
-                        ${user.role === 'Super Admin' ? 'bg-primary/10 text-primary border-primary/20' : 
-                          user.role === 'Admin' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
-                          'bg-tertiary/10 text-tertiary border-tertiary/20'}`}
-                      >
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="font-headline font-bold text-primary">{user.name}</p>
-                        <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{user.id} • {user.role}</p>
-                      </div>
-                    </div>
-                    {user.branch_id && (
-                      <div className="text-right flex flex-col items-end">
-                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest">Assigned To</p>
-                        <div className="flex items-center gap-1 bg-surface-container-lowest px-2 py-0.5 rounded-md border border-outline-variant/20 mt-0.5">
-                          <span className="material-symbols-outlined text-[10px] text-secondary">domain</span>
-                          <p className="text-[9px] font-bold text-secondary truncate max-w-[100px]">{getBranchName(user.branch_id)}</p>
+                  <div key={user.id} className="luxury-card bg-white border border-outline-variant/20 rounded-2xl p-4 flex flex-col gap-3 transition-all hover:bg-surface-bright">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl border shadow-sm shrink-0
+                          ${user.role === 'Super Admin' ? 'bg-primary/10 text-primary border-primary/20' : 
+                            user.role === 'Admin' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
+                            'bg-tertiary/10 text-tertiary border-tertiary/20'}`}
+                        >
+                          {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 mb-1">
+                            <p className="font-headline font-bold text-primary text-base">{user.name}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className={`px-2 py-0.5 border rounded-md text-[9px] font-bold uppercase tracking-widest ${
+                                user.role === 'Super Admin' ? 'bg-primary/10 text-primary border-primary/20' : 
+                                user.role === 'Admin' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
+                                'bg-tertiary/10 text-tertiary border-tertiary/20'
+                              }`}>{user.role}</span>
+                              {user.branch_id && (
+                                <span className="px-2 py-0.5 bg-[#003366]/5 text-[#003366] border border-[#003366]/20 rounded-md text-[9px] font-bold uppercase tracking-widest flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[10px]">domain</span>
+                                  {getBranchName(user.branch_id)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-[10px] font-bold text-outline uppercase tracking-wider">{user.id}</p>
                         </div>
                       </div>
-                    )}
+                      
+                      <button 
+                        onClick={() => openEditModal(user)}
+                        className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-primary hover:bg-primary/5 hover:border-primary/30 transition-all shrink-0 shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {filteredUsers.length === 0 && (
@@ -372,6 +436,108 @@ export const SuperAdminStaffScreen: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center bg-[#001e40]/60 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+          <div className="absolute inset-0" onClick={() => setShowEditModal(null)} />
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] relative z-10 animate-slide-up sm:animate-modal-up flex flex-col max-h-[90svh]">
+            
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <div>
+                <h3 className="font-headline text-xl font-extrabold text-primary">Edit Member</h3>
+                <p className="text-[10px] text-outline font-bold uppercase tracking-widest mt-0.5">{editForm.id}</p>
+              </div>
+              <button onClick={() => setShowEditModal(null)} className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-outline hover:bg-error/10 hover:text-error transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto hide-scrollbar pb-2">
+              <form id="editForm" onSubmit={handleEditSubmit} className="space-y-4">
+                
+                {submitError && (
+                  <div className="bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2 text-error">
+                    <span className="material-symbols-outlined text-sm">error</span>
+                    <p className="text-xs font-bold">{submitError}</p>
+                  </div>
+                )}
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Full Name</label>
+                  <input 
+                    type="text" required
+                    value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Email Address</label>
+                  <input 
+                    type="email" required
+                    value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Encryption Passkey</label>
+                  <input 
+                    type="text" required
+                    value={editForm.passkey} onChange={e => setEditForm({...editForm, passkey: e.target.value})}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Assign Role</label>
+                  <select 
+                    value={editForm.role} onChange={e => setEditForm({...editForm, role: e.target.value})}
+                    className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all appearance-none"
+                  >
+                    <option value="Staff">Staff (Standard)</option>
+                    <option value="Collection Staff">Collection Staff</option>
+                    <option value="Admin">Branch Admin</option>
+                    <option value="Super Admin">Super Admin</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1 animate-fade-in">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-secondary px-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">domain</span> Assign to Branch
+                  </label>
+                  <select 
+                    value={editForm.branch_id} onChange={e => setEditForm({...editForm, branch_id: e.target.value})}
+                    className="w-full bg-secondary/5 border border-secondary/20 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-secondary focus:ring-1 focus:ring-secondary/20 outline-none transition-all appearance-none"
+                  >
+                    <option value="">-- Unassigned --</option>
+                    {branches.map(branch => (
+                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+              </form>
+            </div>
+            
+            <div className="mt-4 pt-4 border-t border-outline-variant/20 shrink-0">
+              <button 
+                form="editForm" type="submit" disabled={isSubmitting}
+                className="w-full py-3.5 bg-primary hover:bg-primary-dark text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 premium-shadow"
+              >
+                {isSubmitting ? (
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <span className="material-symbols-outlined text-sm">save</span>
+                )}
+                {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Hire Member Modal */}
       {showHireModal && (
