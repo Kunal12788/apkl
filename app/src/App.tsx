@@ -20,6 +20,7 @@ import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
 import { SuperAdminStaffScreen } from './components/SuperAdminStaffScreen';
+import { SuperAdminWorkScreen } from './components/SuperAdminWorkScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -106,6 +107,17 @@ const StaffWrapper = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const WorkWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.id.startsWith('SUPER-')) {
+    return <SuperAdminWorkScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const CollectionHistoryWrapper = () => {
   const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
@@ -161,6 +173,7 @@ function AppContent() {
             <Route path="/ledger" element={<LedgerWrapper />} />
             <Route path="/refinery" element={<RefineryWrapper />} />
             <Route path="/staff" element={<StaffWrapper />} />
+            <Route path="/work" element={<WorkWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
