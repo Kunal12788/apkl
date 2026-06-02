@@ -159,26 +159,76 @@ export const SuperAdminStockScreen: React.FC = () => {
         </div>
 
         {/* Totals Hero Card */}
-        <div className={`luxury-card p-6 sm:p-8 rounded-[2rem] border relative overflow-hidden animate-fade-in ${activeMetal === 'Gold' ? 'bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white border-amber-500/20' : 'bg-gradient-to-br from-slate-400/10 via-slate-400/5 to-white border-slate-400/20'}`}>
-          <span className={`material-symbols-outlined absolute -right-8 -bottom-8 text-9xl opacity-5 ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-500'} pointer-events-none`}>inventory_2</span>
+        <div className={`relative overflow-hidden rounded-[2.5rem] p-6 sm:p-10 shadow-2xl border animate-fade-in ${activeMetal === 'Gold' ? 'bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] border-amber-500/30' : 'bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] border-slate-400/30'}`}>
+          {/* Background Effects */}
+          <div className={`absolute top-0 right-0 w-64 h-64 rounded-full -mr-20 -mt-20 blur-3xl opacity-30 ${activeMetal === 'Gold' ? 'bg-amber-500' : 'bg-slate-400'}`}></div>
+          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
           
-          <h2 className="font-headline font-bold text-xl text-primary mb-6">Current {activeMetal} Vault Status</h2>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white/50 shadow-sm relative overflow-hidden">
-              <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-600'}`}>diamond</span>
-              <p className="text-[10px] uppercase tracking-widest font-bold text-outline mb-1">Total Pure {activeMetal}</p>
-              <p className={`font-headline font-black text-2xl md:text-3xl ${activeMetal === 'Gold' ? 'text-[#755b00]' : 'text-slate-700'}`}>
-                {(activeMetal === 'Gold' ? totals.pureGold : totals.pureSilver).toFixed(3)}g
+          {/* Decorative Icon */}
+          <span className={`material-symbols-outlined absolute -right-6 -bottom-6 text-[12rem] opacity-[0.04] pointer-events-none rotate-[-15deg] ${activeMetal === 'Gold' ? 'text-amber-400' : 'text-slate-300'}`}>
+            account_balance
+          </span>
+
+          <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8 border-b border-white/10 pb-6">
+            <div>
+              <p className={`font-label text-[10px] uppercase tracking-[0.3em] font-extrabold mb-2 ${activeMetal === 'Gold' ? 'text-amber-400' : 'text-slate-300'}`}>
+                Corporate Treasury
               </p>
+              <h2 className="font-headline font-black text-3xl md:text-4xl text-white tracking-wide">
+                {activeMetal} Vault Status
+              </h2>
             </div>
             
-            <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white/50 shadow-sm relative overflow-hidden">
-              <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-600'}`}>local_fire_department</span>
-              <p className="text-[10px] uppercase tracking-widest font-bold text-outline mb-1">Total Impure {activeMetal}</p>
-              <p className={`font-headline font-black text-2xl md:text-3xl ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-500'}`}>
-                {(activeMetal === 'Gold' ? totals.impureGold : totals.impureSilver).toFixed(3)}g
-              </p>
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center border shadow-xl backdrop-blur-xl ${activeMetal === 'Gold' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : 'bg-slate-400/10 border-slate-400/30 text-slate-300'}`}>
+              <span className="material-symbols-outlined text-4xl">
+                inventory_2
+              </span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 relative z-10">
+            {/* Pure Metal Card */}
+            <div className="bg-white/5 hover:bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-colors relative overflow-hidden group">
+              <div className={`absolute top-0 left-0 w-1 h-full ${activeMetal === 'Gold' ? 'bg-amber-400' : 'bg-slate-300'} opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+              
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/60 mb-1">Total Pure {activeMetal}</p>
+                  <p className="text-xs text-white/40 font-medium">{activeMetal === 'Gold' ? '24K Standard' : '99.9% Fine'}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-black/20 border border-white/5 ${activeMetal === 'Gold' ? 'text-amber-400' : 'text-slate-300'}`}>
+                  <span className="material-symbols-outlined text-xl">diamond</span>
+                </div>
+              </div>
+              
+              <div className="flex items-baseline gap-2">
+                <p className={`font-headline font-black text-4xl md:text-5xl tracking-tighter ${activeMetal === 'Gold' ? 'text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.3)]' : 'text-slate-300 drop-shadow-[0_0_15px_rgba(203,213,225,0.3)]'}`}>
+                  {(activeMetal === 'Gold' ? totals.pureGold : totals.pureSilver).toFixed(3)}
+                </p>
+                <span className="text-white/60 font-black text-lg tracking-widest">GRAMS</span>
+              </div>
+            </div>
+            
+            {/* Impure Metal Card */}
+            <div className="bg-white/5 hover:bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.12)] transition-colors relative overflow-hidden group">
+              <div className={`absolute top-0 left-0 w-1 h-full ${activeMetal === 'Gold' ? 'bg-[#ff8c00]' : 'bg-slate-400'} opacity-50 group-hover:opacity-100 transition-opacity`}></div>
+              
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/60 mb-1">Total Impure {activeMetal}</p>
+                  <p className="text-xs text-white/40 font-medium">Pre-Refinery Weight</p>
+                </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-black/20 border border-white/5 ${activeMetal === 'Gold' ? 'text-[#ff8c00]' : 'text-slate-400'}`}>
+                  <span className="material-symbols-outlined text-xl">local_fire_department</span>
+                </div>
+              </div>
+              
+              <div className="flex items-baseline gap-2">
+                <p className={`font-headline font-black text-4xl md:text-5xl tracking-tighter ${activeMetal === 'Gold' ? 'text-[#ff8c00] drop-shadow-[0_0_15px_rgba(255,140,0,0.3)]' : 'text-slate-400 drop-shadow-[0_0_15px_rgba(148,163,184,0.3)]'}`}>
+                  {(activeMetal === 'Gold' ? totals.impureGold : totals.impureSilver).toFixed(3)}
+                </p>
+                <span className="text-white/60 font-black text-lg tracking-widest">GRAMS</span>
+              </div>
             </div>
           </div>
         </div>
