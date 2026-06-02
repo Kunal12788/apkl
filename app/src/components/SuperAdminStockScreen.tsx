@@ -243,8 +243,8 @@ export const SuperAdminStockScreen: React.FC = () => {
           {currentEntries.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
               <div className="relative mb-6 group">
-                <div className="absolute inset-0 bg-[#003366]/10 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500"></div>
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#003366]/5 to-[#003366]/10 flex items-center justify-center text-outline shadow-inner relative z-10 border-2 border-white">
+                <div className={`absolute inset-0 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500 ${activeMetal === 'Gold' ? 'bg-amber-500/10' : 'bg-slate-400/10'}`}></div>
+                <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-inner relative z-10 border-2 border-white ${activeMetal === 'Gold' ? 'bg-gradient-to-br from-amber-500/5 to-amber-500/10 text-amber-600' : 'bg-gradient-to-br from-slate-400/5 to-slate-400/10 text-slate-500'}`}>
                   <span className="material-symbols-outlined text-4xl">inventory_2</span>
                 </div>
               </div>
@@ -259,22 +259,22 @@ export const SuperAdminStockScreen: React.FC = () => {
                 
                 return (
                   <div key={idx} className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#003366]/[0.03] to-transparent rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
+                    <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none ${activeMetal === 'Gold' ? 'bg-gradient-to-bl from-amber-500/[0.05] to-transparent' : 'bg-gradient-to-bl from-slate-500/[0.05] to-transparent'}`}></div>
                     
                     <div className="p-5 sm:p-6 flex flex-col md:flex-row justify-between md:items-center gap-5 relative z-10">
                       
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
-                          <span className="bg-gradient-to-r from-[#003366] to-[#001e40] text-white font-black text-[9px] uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm">
+                          <span className={`font-black text-[9px] uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm border ${activeMetal === 'Gold' ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-slate-50 text-slate-700 border-slate-200/50'}`}>
                             {entry.type}
                           </span>
-                          <div className="flex items-center gap-1.5 text-outline">
+                          <div className="flex items-center gap-1.5 text-outline/80">
                             <span className="material-symbols-outlined text-[14px]">schedule</span>
                             <span className="text-[10px] font-bold tracking-wider">{new Date(entry.createdAt).toLocaleDateString('en-GB')} {new Date(entry.createdAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
                           </div>
                         </div>
                         <h4 className="font-headline font-black text-primary text-lg tracking-wide">{entry.branchName || 'Corporate Head Office'}</h4>
-                        <p className="text-xs text-outline font-medium mt-1.5 leading-relaxed">{entry.details}</p>
+                        <p className="text-xs text-outline/80 font-medium mt-1.5 leading-relaxed">{entry.details}</p>
                       </div>
 
                       <div className="flex gap-3 md:text-right shrink-0">
