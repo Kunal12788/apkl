@@ -147,15 +147,17 @@ export const SuperAdminStockScreen: React.FC = () => {
 
         {/* Totals Hero Card */}
         <div className={`relative overflow-hidden rounded-[2rem] p-6 shadow-sm border bg-gradient-to-br ${activeMetal === 'Gold' ? 'from-[#fff9f0] to-[#fff3e0] border-amber-500/20' : 'from-slate-50 to-slate-100 border-slate-400/20'}`}>
-          <div className="relative z-10 flex flex-col mb-6">
-            <p className={`font-label text-[10px] uppercase tracking-[0.2em] font-extrabold mb-1.5 ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-500'}`}>
-              Corporate Treasury
-            </p>
-            <h2 className="font-headline font-black text-2xl text-primary tracking-wide mb-5">
-              {activeMetal} Vault Status
-            </h2>
+          <div className="relative z-10 flex justify-between items-start mb-6 gap-4">
+            <div className="flex flex-col">
+              <p className={`font-label text-[10px] uppercase tracking-[0.2em] font-extrabold mb-1.5 ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-500'}`}>
+                Corporate Treasury
+              </p>
+              <h2 className="font-headline font-black text-2xl text-primary tracking-wide">
+                {activeMetal} Vault Status
+              </h2>
+            </div>
             
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-sm ${activeMetal === 'Gold' ? 'bg-amber-100/50 border-amber-200 text-amber-600' : 'bg-slate-200/50 border-slate-300 text-slate-500'}`}>
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${activeMetal === 'Gold' ? 'bg-amber-100/50 border-amber-200 text-amber-600' : 'bg-slate-200/50 border-slate-300 text-slate-500'}`}>
               <span className="material-symbols-outlined text-2xl">
                 inventory_2
               </span>
