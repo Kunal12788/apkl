@@ -82,6 +82,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   // Approval Workflow State
   const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
   const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>([]);
+  const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
 
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
@@ -455,45 +456,51 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  // Handle Branch Approval
-  const handleApproveBranch = async (group: any) => {
+  // Handle Branch Approval (approves all pending groups for a specific branch)
+  const handleApproveBranch = async (branchName: string) => {
     setApproving(true);
     try {
-      const entryIds = group.entries.map((e: any) => e.id);
+      // Find all groups for this branch
+      const branchGroups = pendingBranchGroups.filter((g: any) => g.branch_name === branchName);
       
-      // Update the ledger entries to approved
-      const { error: updateError } = await supabase
-        .from('ledger_entries')
-        .update({ is_approved: true })
-        .in('id', entryIds);
+      for (const group of branchGroups) {
+        const entryIds = group.entries.map((e: any) => e.id);
+        
+        // Update the ledger entries to approved
+        const { error: updateError } = await supabase
+          .from('ledger_entries')
+          .update({ is_approved: true })
+          .in('id', entryIds);
 
-      if (updateError) throw updateError;
+        if (updateError) throw updateError;
 
-      const netCash = group.totalCashReceived - group.totalCashPaid;
+        const netCash = group.totalCashReceived - group.totalCashPaid;
 
-      // Insert consolidation into Super Admin Ledger
-      const newEntry = {
-        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
-        date: 'Today',
-        iso_date: new Date().toISOString().split('T')[0],
-        type: 'Branch Consolidation',
-        branch_name: group.branch_name,
-        pure_gold_change: -group.totalPureGoldGiven,
-        impure_gold_change: group.totalImpureGoldReceived,
-        calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
-        pure_silver_change: -group.totalPureSilverGiven,
-        impure_silver_change: group.totalImpureSilverReceived,
-        calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
-        cash_change: netCash,
-        details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
-      };
+        // Insert consolidation into Super Admin Ledger
+        const newEntry = {
+          id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: 'Today',
+          iso_date: new Date().toISOString().split('T')[0],
+          type: 'Branch Consolidation',
+          branch_name: group.branch_name,
+          pure_gold_change: -group.totalPureGoldGiven,
+          impure_gold_change: group.totalImpureGoldReceived,
+          calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
+          pure_silver_change: -group.totalPureSilverGiven,
+          impure_silver_change: group.totalImpureSilverReceived,
+          calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
+          cash_change: netCash,
+          details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
+        };
 
-      const { error: insertError } = await supabase
-        .from('super_admin_ledger')
-        .insert([newEntry]);
+        const { error: insertError } = await supabase
+          .from('super_admin_ledger')
+          .insert([newEntry]);
 
-      if (insertError) throw insertError;
+        if (insertError) throw insertError;
+      }
 
+      setSelectedBranchForApproval(null);
       fetchData();
     } catch (e) {
       console.error('Error approving branch data:', e);
@@ -566,16 +573,32 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Approval Dashboard UI
   if (ledgerMode === 'approval') {
+    // Get unique branches that have pending groups
+    const uniqueBranches = Array.from(new Set(pendingBranchGroups.map(g => g.branch_name)));
+
     return (
       <div className="bg-background ambient-bg text-on-background font-body w-full min-h-[100svh] relative overflow-y-auto hide-scrollbar">
         <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm">
           <div className="flex items-center gap-3">
-            <button onClick={() => setLedgerMode('prompt')} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20">
+            <button 
+              onClick={() => {
+                if (selectedBranchForApproval) {
+                  setSelectedBranchForApproval(null);
+                } else {
+                  setLedgerMode('prompt');
+                }
+              }} 
+              className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20"
+            >
               <span className="material-symbols-outlined">arrow_back</span>
             </button>
             <div>
-              <h1 className="font-headline text-xl font-bold text-primary leading-tight">Branch Approvals</h1>
-              <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Pending Submissions</p>
+              <h1 className="font-headline text-xl font-bold text-primary leading-tight">
+                {selectedBranchForApproval ? `${selectedBranchForApproval} Data` : 'Branch Approvals'}
+              </h1>
+              <p className="text-[10px] text-outline font-bold uppercase tracking-widest">
+                {selectedBranchForApproval ? 'Review & Confirm' : 'Pending Submissions'}
+              </p>
             </div>
           </div>
         </header>
@@ -594,78 +617,121 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 There are no pending branch ledger submissions. All corporate data is fully synchronized.
               </p>
             </div>
-          ) : (
+          ) : !selectedBranchForApproval ? (
+            // STEP 1: SELECT A BRANCH
             <div className="space-y-6">
-              {pendingBranchGroups.map((group, idx) => {
-                const netCash = group.totalCashReceived - group.totalCashPaid;
-                return (
-                  <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all overflow-hidden animate-fade-in group">
-                    <div className="bg-gradient-to-r from-[#003366] to-[#001e40] p-6 text-white relative overflow-hidden">
-                      <span className="material-symbols-outlined absolute -right-4 -bottom-6 text-8xl text-white/5 group-hover:scale-110 transition-transform duration-700">corporate_fare</span>
-                      <div className="flex justify-between items-start relative z-10">
+              <h2 className="font-headline text-lg font-bold text-primary">Select Branch to Review</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {uniqueBranches.map((branchName: string, idx) => {
+                  const branchGroups = pendingBranchGroups.filter(g => g.branch_name === branchName);
+                  const totalPendingEntries = branchGroups.reduce((sum, g) => sum + g.entries.length, 0);
+                  
+                  return (
+                    <div 
+                      key={idx} 
+                      onClick={() => setSelectedBranchForApproval(branchName)}
+                      className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden animate-fade-in group"
+                    >
+                      <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-6 text-white relative">
+                        <span className="material-symbols-outlined absolute right-2 bottom-2 text-6xl text-white/5 group-hover:scale-110 transition-transform duration-500">store</span>
+                        <h3 className="font-headline font-black text-xl mb-1 relative z-10">{branchName}</h3>
+                        <p className="text-[10px] uppercase tracking-widest text-white/70 font-bold">Branch Office</p>
+                      </div>
+                      <div className="p-5 flex justify-between items-center bg-slate-50/50">
                         <div>
-                          <h3 className="font-headline font-black text-2xl tracking-wide">{group.branch_name}</h3>
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className="material-symbols-outlined text-sm text-white/70">event</span>
-                            <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{group.iso_date} • {group.entries.length} Entries</p>
+                          <p className="text-xs text-outline font-bold">Pending Approval</p>
+                          <p className="font-black text-amber-600 text-lg">{totalPendingEntries} Entries</p>
+                        </div>
+                        <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-primary group-hover:bg-[#003366] group-hover:text-white transition-colors">
+                          <span className="material-symbols-outlined">arrow_forward</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            // STEP 2: REVIEW BRANCH DETAILS AND CONFIRM
+            <div className="space-y-6">
+              <div className="bg-gradient-to-r from-[#003366]/5 to-[#003366]/10 rounded-[2rem] p-6 border border-[#003366]/20">
+                <h2 className="font-headline text-lg font-bold text-primary mb-2">Reviewing Data for {selectedBranchForApproval}</h2>
+                <p className="text-xs text-outline leading-relaxed">
+                  Carefully review the pending dates below. When you click confirm, all pending ledger entries for this branch will be verified and merged into the Corporate Ledger.
+                </p>
+              </div>
+
+              {pendingBranchGroups
+                .filter(group => group.branch_name === selectedBranchForApproval)
+                .map((group, idx) => {
+                  const netCash = group.totalCashReceived - group.totalCashPaid;
+                  return (
+                    <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden animate-fade-in">
+                      <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-slate-50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#003366]/10 flex items-center justify-center text-[#003366]">
+                            <span className="material-symbols-outlined text-xl">event</span>
+                          </div>
+                          <div>
+                            <p className="font-headline font-bold text-lg text-primary">{group.iso_date}</p>
+                            <p className="text-[10px] uppercase tracking-widest text-outline font-bold">{group.entries.length} Entries from {group.branch_name}</p>
                           </div>
                         </div>
-                        <span className="bg-white/10 text-white font-bold text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-md shadow-sm">
-                          Pending Approval
+                        <span className="bg-amber-500/10 text-amber-600 font-black text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-amber-500/20">
+                          Pending
                         </span>
                       </div>
+                      
+                      <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-[#755b00]/5">diamond</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Given</p>
+                          <p className="font-headline font-black text-[#755b00] text-xl">{group.totalPureGoldGiven.toFixed(3)}g</p>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-amber-600/5">local_fire_department</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Recv (Impure)</p>
+                          <p className="font-headline font-black text-amber-600 text-xl">{group.totalImpureGoldReceived.toFixed(3)}g</p>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-emerald-600/5">payments</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Net Cash</p>
+                          <p className={`font-headline font-black text-xl ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
+                            {netCash >= 0 ? '+' : ''}{fmt(netCash)}
+                          </p>
+                        </div>
+                        
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">diamond</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Silver Recv (Impure)</p>
+                          <p className="font-headline font-black text-slate-500 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/30">
-                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-[#755b00]/30 transition-colors">
-                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-[#755b00]/5">diamond</span>
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Given</p>
-                        <p className="font-headline font-black text-[#755b00] text-xl">{group.totalPureGoldGiven.toFixed(3)}g</p>
-                      </div>
-                      
-                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-amber-600/30 transition-colors">
-                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-amber-600/5">local_fire_department</span>
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Recv (Impure)</p>
-                        <p className="font-headline font-black text-amber-600 text-xl">{group.totalImpureGoldReceived.toFixed(3)}g</p>
-                      </div>
-                      
-                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-emerald-600/30 transition-colors">
-                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-emerald-600/5">payments</span>
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Net Cash</p>
-                        <p className={`font-headline font-black text-xl ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
-                          {netCash >= 0 ? '+' : ''}{fmt(netCash)}
-                        </p>
-                      </div>
-                      
-                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-slate-500/30 transition-colors">
-                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">diamond</span>
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Silver Recv (Impure)</p>
-                        <p className="font-headline font-black text-slate-500 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
-                      </div>
-                    </div>
+                  );
+                })}
 
-                    <div className="p-5 bg-white border-t border-outline-variant/10 flex justify-end items-center bg-slate-50/50">
-                      <button
-                        onClick={() => handleApproveBranch(group)}
-                        disabled={approving}
-                        className="px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none"
-                      >
-                        {approving ? (
-                          <>
-                            <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
-                            Merging...
-                          </>
-                        ) : (
-                          <>
-                            <span className="material-symbols-outlined text-sm">fact_check</span>
-                            Approve & Merge
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="mt-8 flex justify-end">
+                <button
+                  onClick={() => handleApproveBranch(selectedBranchForApproval)}
+                  disabled={approving}
+                  className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-[1.5rem] font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:transform-none disabled:shadow-none"
+                >
+                  {approving ? (
+                    <>
+                      <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                      Merging Data...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined">fact_check</span>
+                      Confirm & Merge Branch Data
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           )}
         </main>
