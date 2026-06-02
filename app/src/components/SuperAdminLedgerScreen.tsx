@@ -83,6 +83,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
   const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>([]);
   const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
+  const [confirmStep, setConfirmStep] = useState<0 | 1>(0);
   const [approving, setApproving] = useState(false);
 
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
@@ -501,6 +502,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       }
 
       setSelectedBranchForApproval(null);
+      setConfirmStep(0);
       fetchData();
     } catch (e) {
       console.error('Error approving branch data:', e);
@@ -584,6 +586,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               onClick={() => {
                 if (selectedBranchForApproval) {
                   setSelectedBranchForApproval(null);
+                  setConfirmStep(0);
                 } else {
                   setLedgerMode('prompt');
                 }
@@ -629,7 +632,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   return (
                     <div 
                       key={idx} 
-                      onClick={() => setSelectedBranchForApproval(branchName)}
+                      onClick={() => {
+                        setSelectedBranchForApproval(branchName);
+                        setConfirmStep(0);
+                      }}
                       className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden animate-fade-in group"
                     >
                       <div className="bg-gradient-to-br from-[#003366] to-[#001e40] p-6 text-white relative">
@@ -715,14 +721,29 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
               <div className="mt-8 flex justify-end">
                 <button
-                  onClick={() => handleApproveBranch(selectedBranchForApproval)}
+                  onClick={() => {
+                    if (confirmStep === 0) {
+                      setConfirmStep(1);
+                    } else {
+                      handleApproveBranch(selectedBranchForApproval);
+                    }
+                  }}
                   disabled={approving}
-                  className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-[1.5rem] font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:transform-none disabled:shadow-none"
+                  className={`w-full sm:w-auto px-10 py-4 text-white rounded-[1.5rem] font-bold text-sm uppercase tracking-widest shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${
+                    confirmStep === 1 
+                      ? 'bg-gradient-to-r from-error to-red-600 shadow-red-500/30 hover:shadow-red-500/50 animate-pulse' 
+                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/30 hover:shadow-emerald-500/50'
+                  }`}
                 >
                   {approving ? (
                     <>
                       <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
                       Merging Data...
+                    </>
+                  ) : confirmStep === 1 ? (
+                    <>
+                      <span className="material-symbols-outlined">warning</span>
+                      Are you sure? Click again to execute!
                     </>
                   ) : (
                     <>
