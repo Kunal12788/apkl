@@ -582,57 +582,73 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
         <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
           {pendingBranchGroups.length === 0 ? (
-            <div className="luxury-card p-10 bg-white border border-outline-variant/10 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 mb-4">
-                <span className="material-symbols-outlined text-4xl">check_circle</span>
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+              <div className="relative mb-8 group">
+                <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500 animate-pulse"></div>
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white shadow-xl relative z-10 border-4 border-white">
+                  <span className="material-symbols-outlined text-5xl">verified</span>
+                </div>
               </div>
-              <h3 className="font-headline font-bold text-lg text-primary">All Caught Up!</h3>
-              <p className="text-xs text-outline mt-2">There are no pending branch ledger submissions to approve.</p>
+              <h3 className="font-headline font-black text-3xl text-primary mb-3">All Caught Up!</h3>
+              <p className="text-sm text-outline max-w-sm text-center leading-relaxed">
+                There are no pending branch ledger submissions. All corporate data is fully synchronized.
+              </p>
             </div>
           ) : (
             <div className="space-y-6">
               {pendingBranchGroups.map((group, idx) => {
                 const netCash = group.totalCashReceived - group.totalCashPaid;
                 return (
-                  <div key={idx} className="luxury-card bg-white border border-outline-variant/20 shadow-lg overflow-hidden animate-fade-in">
-                    <div className="bg-gradient-to-r from-[#003366]/5 to-transparent p-5 border-b border-outline-variant/10">
-                      <div className="flex justify-between items-start">
+                  <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all overflow-hidden animate-fade-in group">
+                    <div className="bg-gradient-to-r from-[#003366] to-[#001e40] p-6 text-white relative overflow-hidden">
+                      <span className="material-symbols-outlined absolute -right-4 -bottom-6 text-8xl text-white/5 group-hover:scale-110 transition-transform duration-700">corporate_fare</span>
+                      <div className="flex justify-between items-start relative z-10">
                         <div>
-                          <h3 className="font-headline font-bold text-lg text-primary">{group.branch_name}</h3>
-                          <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-0.5">Date: {group.iso_date} • {group.entries.length} Entries</p>
+                          <h3 className="font-headline font-black text-2xl tracking-wide">{group.branch_name}</h3>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="material-symbols-outlined text-sm text-white/70">event</span>
+                            <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{group.iso_date} • {group.entries.length} Entries</p>
+                          </div>
                         </div>
-                        <span className="bg-amber-500/10 text-amber-600 font-black text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-amber-500/20">
-                          Pending
+                        <span className="bg-white/10 text-white font-bold text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-md shadow-sm">
+                          Pending Approval
                         </span>
                       </div>
                     </div>
                     
-                    <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/50">
-                      <div className="space-y-1">
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Gold Given</p>
-                        <p className="font-black text-[#755b00]">{group.totalPureGoldGiven.toFixed(3)}g</p>
+                    <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4 bg-slate-50/30">
+                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-[#755b00]/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-[#755b00]/5">diamond</span>
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Given</p>
+                        <p className="font-headline font-black text-[#755b00] text-xl">{group.totalPureGoldGiven.toFixed(3)}g</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Gold Recv (Impure)</p>
-                        <p className="font-black text-amber-600">{group.totalImpureGoldReceived.toFixed(3)}g</p>
+                      
+                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-amber-600/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-amber-600/5">local_fire_department</span>
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Recv (Impure)</p>
+                        <p className="font-headline font-black text-amber-600 text-xl">{group.totalImpureGoldReceived.toFixed(3)}g</p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Net Cash</p>
-                        <p className={`font-black ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
+                      
+                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-emerald-600/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-emerald-600/5">payments</span>
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Net Cash</p>
+                        <p className={`font-headline font-black text-xl ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
                           {netCash >= 0 ? '+' : ''}{fmt(netCash)}
                         </p>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline">Silver Recv (Impure)</p>
-                        <p className="font-black text-slate-500">{group.totalImpureSilverReceived.toFixed(3)}g</p>
+                      
+                      <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden group-hover:border-slate-500/30 transition-colors">
+                        <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">diamond</span>
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Silver Recv (Impure)</p>
+                        <p className="font-headline font-black text-slate-500 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
                       </div>
                     </div>
 
-                    <div className="p-4 bg-white flex justify-end">
+                    <div className="p-5 bg-white border-t border-outline-variant/10 flex justify-end items-center bg-slate-50/50">
                       <button
                         onClick={() => handleApproveBranch(group)}
                         disabled={approving}
-                        className="px-6 py-3 bg-[#003366] text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:shadow-lg active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+                        className="px-8 py-3.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none"
                       >
                         {approving ? (
                           <>
