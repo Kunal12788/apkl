@@ -22,6 +22,7 @@ import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen'
 import { SuperAdminStaffScreen } from './components/SuperAdminStaffScreen';
 import { SuperAdminWorkScreen } from './components/SuperAdminWorkScreen';
 import { SuperAdminStockScreen } from './components/SuperAdminStockScreen';
+import { SuperAdminAlertsScreen } from './components/SuperAdminAlertsScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -130,6 +131,17 @@ const StockWrapper = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const AlertsWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.id.startsWith('SUPER-')) {
+    return <SuperAdminAlertsScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const CollectionHistoryWrapper = () => {
   const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
@@ -187,6 +199,7 @@ function AppContent() {
             <Route path="/staff" element={<StaffWrapper />} />
             <Route path="/work" element={<WorkWrapper />} />
             <Route path="/stock" element={<StockWrapper />} />
+            <Route path="/alerts" element={<AlertsWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
