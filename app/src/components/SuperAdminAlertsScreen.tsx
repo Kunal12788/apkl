@@ -44,9 +44,10 @@ const mockAlerts = [
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
+  const [alerts, setAlerts] = useState(mockAlerts);
   
   // Filter alerts based on selection
-  const filteredAlerts = mockAlerts.filter(alert => 
+  const filteredAlerts = alerts.filter(alert => 
     activeFilter === 'all' ? true : alert.status === activeFilter
   );
 
@@ -101,7 +102,7 @@ export const SuperAdminAlertsScreen: React.FC = () => {
             campaign
           </span>
 
-          <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-outline-variant/10 pb-6">
+          <div className="relative z-10 flex justify-between items-start gap-4 mb-8 border-b border-outline-variant/10 pb-6">
             <div className="flex flex-col">
               <p className="font-label text-[10px] uppercase tracking-[0.2em] font-extrabold mb-1.5 text-error">
                 Security Protocol
@@ -134,7 +135,7 @@ export const SuperAdminAlertsScreen: React.FC = () => {
               
               <div className="flex items-baseline gap-2">
                 <p className="font-headline font-black text-4xl tracking-tighter text-error">
-                  {mockAlerts.filter(a => a.status === 'unresolved').length}
+                  {alerts.filter(a => a.status === 'unresolved').length}
                 </p>
               </div>
             </div>
@@ -199,7 +200,11 @@ export const SuperAdminAlertsScreen: React.FC = () => {
 
                   <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
                     {alert.status === 'unresolved' ? (
-                      <button className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved' } : a));
+                        }}
+                        className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2">
                         <span>Acknowledge</span>
                         <span className="material-symbols-outlined text-[16px]">done_all</span>
                       </button>
