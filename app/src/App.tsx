@@ -23,6 +23,7 @@ import { SuperAdminStaffScreen } from './components/SuperAdminStaffScreen';
 import { SuperAdminWorkScreen } from './components/SuperAdminWorkScreen';
 import { SuperAdminStockScreen } from './components/SuperAdminStockScreen';
 import { SuperAdminAlertsScreen } from './components/SuperAdminAlertsScreen';
+import { SuperAdminCalculatorScreen } from './components/SuperAdminCalculatorScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -142,6 +143,17 @@ const AlertsWrapper = () => {
   return <Navigate to="/dashboard" replace />;
 };
 
+const CalculatorWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.id.startsWith('SUPER-')) {
+    return <SuperAdminCalculatorScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
 const CollectionHistoryWrapper = () => {
   const { user, isFullyAuthenticated } = useSession();
   if (!user) return <Navigate to="/login" replace />;
@@ -200,6 +212,7 @@ function AppContent() {
             <Route path="/work" element={<WorkWrapper />} />
             <Route path="/stock" element={<StockWrapper />} />
             <Route path="/alerts" element={<AlertsWrapper />} />
+            <Route path="/calculator" element={<CalculatorWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
