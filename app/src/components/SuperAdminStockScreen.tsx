@@ -110,17 +110,7 @@ export const SuperAdminStockScreen: React.FC = () => {
 
       <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
         
-        {/* Metal Tabs */}
-        <div className="bg-white rounded-3xl p-2 border border-outline-variant/20 shadow-md flex flex-col sm:flex-row gap-2 w-full animate-fade-in relative z-10 overflow-hidden">
-          {[
-            {
-              metal: 'Gold',
-              icon: 'workspace_premium',
-              symbol: 'Au',
-              sub: '24K / 22K',
-              activeClass: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-white shadow-md shadow-amber-500/20'
-            },
-            {
+
         {/* Metal Toggle */}
         <div className="flex flex-col gap-3 bg-white p-3 rounded-[2rem] border border-outline-variant/30 mb-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] relative z-10">
           {['Gold', 'Silver'].map((metal) => {
