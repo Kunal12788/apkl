@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 
+// Create a separate client for auth signups so we don't log out the Super Admin
+import { createClient } from '@supabase/supabase-js';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const adminAuthClient = createClient(supabaseUrl, supabaseKey, {
+  auth: { persistSession: false, autoRefreshToken: false }
+});
+
 interface Branch {
   id: string;
   name: string;
@@ -87,20 +95,30 @@ export const SuperAdminStaffScreen: React.FC = () => {
       if (hireForm.role === 'Collection Staff') prefix = 'COLL-';
       const newId = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
 
-      // Bypass email rate limits by using the Postgres RPC
-      const { error: rpcError } = await supabase.rpc('create_user_bypass', {
-        p_id: newId,
-        p_name: hireForm.name,
-        p_email: hireForm.email,
-        p_passkey: hireForm.passkey,
-        p_role: hireForm.role,
-        p_phone: hireForm.phone || null,
-        p_branch_id: hireForm.branch_id || null
+      // 1. Sign up user in auth.users using the separate client to trigger Supabase Email Verification
+      const { error: authError } = await adminAuthClient.auth.signUp({
+        email: hireForm.email,
+        password: hireForm.passkey,
+        options: { data: { name: hireForm.name, role: hireForm.role } }
       });
 
-      if (rpcError) {
-        throw new Error(rpcError.message || 'Failed to create user via RPC');
+      if (authError && !authError.message.includes('User already registered')) {
+        throw new Error(authError.message);
       }
+
+      // 2. Insert into public.users
+      const newUser = {
+        id: newId,
+        name: hireForm.name,
+        email: hireForm.email,
+        phone: hireForm.phone || null,
+        role: hireForm.role,
+        branch_id: hireForm.branch_id ? hireForm.branch_id : null,
+        passkey: hireForm.passkey
+      };
+
+      const { error: dbError } = await supabase.from('users').insert([newUser]);
+      if (dbError) throw dbError;
 
       setHireForm({ name: '', email: '', phone: '', role: 'Staff', passkey: '', branch_id: '' });
       setShowHireModal(false);
