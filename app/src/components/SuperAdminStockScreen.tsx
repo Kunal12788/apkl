@@ -191,12 +191,15 @@ export const SuperAdminStockScreen: React.FC = () => {
           </h3>
           
           {currentEntries.length === 0 ? (
-            <div className="luxury-card p-10 bg-white border border-outline-variant/10 text-center flex flex-col items-center">
-              <div className="w-16 h-16 rounded-full bg-[#003366]/5 flex items-center justify-center text-outline mb-4">
-                <span className="material-symbols-outlined text-4xl">inventory_2</span>
+            <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
+              <div className="relative mb-6 group">
+                <div className="absolute inset-0 bg-[#003366]/10 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500"></div>
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#003366]/5 to-[#003366]/10 flex items-center justify-center text-outline shadow-inner relative z-10 border-2 border-white">
+                  <span className="material-symbols-outlined text-4xl">inventory_2</span>
+                </div>
               </div>
-              <h3 className="font-headline font-bold text-lg text-primary">No History Found</h3>
-              <p className="text-xs text-outline mt-2">There are no vault transactions recorded for {activeMetal} yet.</p>
+              <h3 className="font-headline font-bold text-xl text-primary mb-2">No History Found</h3>
+              <p className="text-xs text-outline text-center">There are no vault transactions recorded for {activeMetal} yet.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -205,34 +208,41 @@ export const SuperAdminStockScreen: React.FC = () => {
                 const impureChange = activeMetal === 'Gold' ? entry.impureGoldChange : entry.impureSilverChange;
                 
                 return (
-                  <div key={idx} className="luxury-card bg-white p-5 rounded-2xl border border-outline-variant/20 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-                    <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+                  <div key={idx} className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#003366]/[0.03] to-transparent rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none"></div>
+                    
+                    <div className="p-5 sm:p-6 flex flex-col md:flex-row justify-between md:items-center gap-5 relative z-10">
                       
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="bg-[#003366]/5 text-[#003366] font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-md">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="bg-gradient-to-r from-[#003366] to-[#001e40] text-white font-black text-[9px] uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm">
                             {entry.type}
                           </span>
-                          <span className="text-[10px] text-outline font-bold">{new Date(entry.createdAt).toLocaleDateString('en-GB')} {new Date(entry.createdAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
+                          <div className="flex items-center gap-1.5 text-outline">
+                            <span className="material-symbols-outlined text-[14px]">schedule</span>
+                            <span className="text-[10px] font-bold tracking-wider">{new Date(entry.createdAt).toLocaleDateString('en-GB')} {new Date(entry.createdAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
+                          </div>
                         </div>
-                        <h4 className="font-headline font-bold text-primary text-base">{entry.branchName || 'Corporate Head Office'}</h4>
-                        <p className="text-xs text-outline mt-1 line-clamp-2">{entry.details}</p>
+                        <h4 className="font-headline font-black text-primary text-lg tracking-wide">{entry.branchName || 'Corporate Head Office'}</h4>
+                        <p className="text-xs text-outline font-medium mt-1.5 leading-relaxed">{entry.details}</p>
                       </div>
 
-                      <div className="flex gap-4 md:text-right shrink-0">
+                      <div className="flex gap-3 md:text-right shrink-0">
                         {Math.abs(pureChange) > 0 && (
-                          <div className="bg-[#003366]/5 p-3 rounded-xl min-w-[100px]">
-                            <p className="text-[9px] uppercase tracking-widest font-bold text-outline mb-0.5">Pure</p>
-                            <p className={`font-black font-headline ${pureChange > 0 ? 'text-emerald-600' : pureChange < 0 ? 'text-error' : 'text-primary'}`}>
-                              {pureChange > 0 ? '+' : ''}{pureChange.toFixed(3)}g
+                          <div className={`bg-white border p-3.5 rounded-2xl min-w-[110px] relative overflow-hidden transition-colors ${pureChange > 0 ? 'border-emerald-500/20 group-hover:border-emerald-500/40 shadow-[0_2px_10px_rgba(16,185,129,0.05)]' : pureChange < 0 ? 'border-error/20 group-hover:border-error/40 shadow-[0_2px_10px_rgba(239,68,68,0.05)]' : 'border-outline-variant/20'}`}>
+                            <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${pureChange > 0 ? 'text-emerald-500' : 'text-error'}`}>diamond</span>
+                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-outline mb-1 relative z-10">Pure</p>
+                            <p className={`font-black font-headline text-lg tracking-tight relative z-10 ${pureChange > 0 ? 'text-emerald-600' : pureChange < 0 ? 'text-error' : 'text-primary'}`}>
+                              {pureChange > 0 ? '+' : ''}{pureChange.toFixed(3)}<span className="text-xs ml-0.5">g</span>
                             </p>
                           </div>
                         )}
                         {Math.abs(impureChange) > 0 && (
-                          <div className="bg-[#003366]/5 p-3 rounded-xl min-w-[100px]">
-                            <p className="text-[9px] uppercase tracking-widest font-bold text-outline mb-0.5">Impure</p>
-                            <p className={`font-black font-headline ${impureChange > 0 ? 'text-emerald-600' : impureChange < 0 ? 'text-error' : 'text-primary'}`}>
-                              {impureChange > 0 ? '+' : ''}{impureChange.toFixed(3)}g
+                          <div className={`bg-white border p-3.5 rounded-2xl min-w-[110px] relative overflow-hidden transition-colors ${impureChange > 0 ? 'border-emerald-500/20 group-hover:border-emerald-500/40 shadow-[0_2px_10px_rgba(16,185,129,0.05)]' : impureChange < 0 ? 'border-error/20 group-hover:border-error/40 shadow-[0_2px_10px_rgba(239,68,68,0.05)]' : 'border-outline-variant/20'}`}>
+                            <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${impureChange > 0 ? 'text-emerald-500' : 'text-error'}`}>local_fire_department</span>
+                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-outline mb-1 relative z-10">Impure</p>
+                            <p className={`font-black font-headline text-lg tracking-tight relative z-10 ${impureChange > 0 ? 'text-emerald-600' : impureChange < 0 ? 'text-error' : 'text-primary'}`}>
+                              {impureChange > 0 ? '+' : ''}{impureChange.toFixed(3)}<span className="text-xs ml-0.5">g</span>
                             </p>
                           </div>
                         )}
