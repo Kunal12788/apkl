@@ -201,23 +201,24 @@ function AppContent() {
         <Toaster 
           position="top-center" 
           toastOptions={{
+            duration: 1500, // Exactly 1.5 seconds
             style: {
-              background: 'rgba(28, 28, 30, 0.85)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
+              background: 'rgba(30, 30, 30, 0.65)', // More transparent for better glass effect
+              backdropFilter: 'saturate(180%) blur(24px)', // Authentic Apple frosted glass
+              WebkitBackdropFilter: 'saturate(180%) blur(24px)',
               color: '#ffffff',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              padding: '16px 20px',
-              borderRadius: '100px', // Apple pill-shape style
-              fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-              fontSize: '15px',
-              fontWeight: 500,
-              letterSpacing: '-0.2px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+              border: '0.5px solid rgba(255, 255, 255, 0.15)', // Extremely thin, subtle Apple border
+              padding: '12px 24px', // Sleeker, more horizontal pill shape
+              borderRadius: '9999px',
+              fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif",
+              fontSize: '14.5px',
+              fontWeight: 600, // Slightly bolder text
+              letterSpacing: '-0.3px',
+              boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)', // Deep, soft Apple shadow
             },
             success: {
               iconTheme: {
-                primary: '#34c759', // Apple iOS Green
+                primary: '#32d74b', // Apple iOS 16 Success Green
                 secondary: '#ffffff',
               },
             },
