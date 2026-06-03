@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { sendActivityNotification } from '../services/notificationService';
-import toast from 'react-hot-toast';
+import { triggerAppleToast } from '../components/AppleToast';
 import { sendOSNotification } from '../utils/osNotifications';
 
 export interface UserSession {
@@ -73,8 +73,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async (errorMsg?: string) => {
     if (user) {
-      // Trigger In-App Toast
-      toast.success('Session Terminated Securely');
+      // Trigger In-App Apple Toast
+      triggerAppleToast('Security Alert', 'Session Terminated Securely', 'logout');
 
       // Trigger OS System Notification
       sendOSNotification(

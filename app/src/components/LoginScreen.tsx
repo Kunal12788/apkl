@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { setCachedData } from '../cache';
 import { sendActivityNotification } from '../services/notificationService';
-import toast from 'react-hot-toast';
+import { triggerAppleToast } from './AppleToast';
 import { requestOSNotificationPermission, sendOSNotification } from '../utils/osNotifications';
 
 const guessRoleFromEmail = (email: string) => {
@@ -121,8 +121,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           await new Promise(resolve => setTimeout(resolve, remaining));
         }
 
-        // Trigger In-App Toast
-        toast.success('Secure Connection Established');
+        // Trigger In-App Apple Toast
+        triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');
 
         // Trigger OS System Notification
         sendOSNotification(
