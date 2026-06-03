@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { setCachedData } from '../cache';
 import { sendActivityNotification } from '../services/notificationService';
+import toast from 'react-hot-toast';
+import { requestOSNotificationPermission, sendOSNotification } from '../utils/osNotifications';
 
 const guessRoleFromEmail = (email: string) => {
   const emailLower = email.toLowerCase().trim();
@@ -34,6 +36,11 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
       setIsAuthenticating(false);
     }
   }, [authError]);
+
+  // Request OS Notification permission on mount if not already granted
+  useEffect(() => {
+    requestOSNotificationPermission();
+  }, []);
 
   const handleInitialize = () => {
     if (isAuthenticating) return;
@@ -113,6 +120,15 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         if (remaining > 0) {
           await new Promise(resolve => setTimeout(resolve, remaining));
         }
+
+        // Trigger In-App Toast
+        toast.success('Secure Connection Established');
+
+        // Trigger OS System Notification
+        sendOSNotification(
+          'AURORA Security Alert', 
+          `Welcome back ${userData.name}. Connection secured.`
+        );
 
         // Fire login notification quietly in the background
         sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);

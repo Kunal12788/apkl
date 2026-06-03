@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
@@ -197,6 +198,27 @@ function AppContent() {
       )}
 
       <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
+        <Toaster 
+          position="top-center" 
+          toastOptions={{
+            style: {
+              background: '#0f172a',
+              color: '#ffffff',
+              border: '1px solid #f59e0b',
+              padding: '16px',
+              borderRadius: '8px',
+              fontFamily: "'Inter', sans-serif",
+              fontSize: '14px',
+              letterSpacing: '0.5px'
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#ffffff',
+              },
+            },
+          }}
+        />
         <HashRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { sendActivityNotification } from '../services/notificationService';
+import toast from 'react-hot-toast';
+import { sendOSNotification } from '../utils/osNotifications';
 
 export interface UserSession {
   id: string;
@@ -71,6 +73,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async (errorMsg?: string) => {
     if (user) {
+      // Trigger In-App Toast
+      toast.success('Session Terminated Securely');
+
+      // Trigger OS System Notification
+      sendOSNotification(
+        'AURORA Security Alert', 
+        `Logged out successfully. Goodbye ${user.name}.`
+      );
+
       // Fire and forget logout notification quietly in the background
       sendActivityNotification('logout', user.email, user.name, user.role);
     }
