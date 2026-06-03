@@ -1,20 +1,16 @@
 import nodemailer from 'nodemailer';
 
-// This is a serverless function that Vercel will automatically deploy
 export default async function handler(req, res) {
-  // CORS configuration
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'OPTIONS,POST');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-  // Handle preflight OPTIONS request
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
 
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -22,16 +18,23 @@ export default async function handler(req, res) {
   try {
     const { action, userEmail, userName, userRole, timestamp } = req.body;
 
-    // We expect these environment variables to be set in Vercel
     const gmailUser = process.env.GMAIL_USER;
     const gmailPass = process.env.GMAIL_APP_PASSWORD;
+    const adminEmail = process.env.NOTIFICATION_EMAIL || 'k7574750@gmail.com';
 
     if (!gmailUser || !gmailPass) {
-      console.warn("SMTP credentials missing. Notifications will not be sent.");
-      return res.status(200).json({ status: 'ignored', message: 'SMTP credentials not configured.' });
+      console.warn("SMTP credentials missing.");
+      return res.status(200).json({ 
+        status: 'ignored', 
+        message: 'SMTP credentials not configured.',
+        debug: {
+          hasUser: !!gmailUser,
+          hasPass: !!gmailPass,
+          envKeys: Object.keys(process.env).filter(k => k.includes('GMAIL') || k.includes('NOTIF'))
+        }
+      });
     }
 
-    // Set up Nodemailer transport
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
@@ -44,9 +47,8 @@ export default async function handler(req, res) {
 
     const isLogin = action === 'login';
     const actionText = isLogin ? 'logged in to' : 'logged out of';
-    const timeString = new Date(timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const timeString = timestamp ? new Date(timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : new Date().toLocaleString();
 
-    // 1. Email to the User
     const userMailOptions = {
       from: `"Aurora Divine Gold" <${gmailUser}>`,
       to: userEmail,
@@ -61,9 +63,6 @@ export default async function handler(req, res) {
             <p style="color: #475569; line-height: 1.6;">
               This is a security notification to inform you that your account was successfully <strong>${actionText}</strong> the Aurora Divine Gold Command Center at <strong>${timeString}</strong> (IST).
             </p>
-            <p style="color: #475569; line-height: 1.6;">
-              If this was you, no further action is required.
-            </p>
             ${isLogin ? `
             <p style="color: #dc2626; font-size: 13px; margin-top: 30px; padding: 15px; background-color: #fef2f2; border-radius: 6px; border: 1px solid #fecaca;">
               <strong>Security Warning:</strong> If you did not perform this login, please contact the Super Admin immediately.
@@ -74,13 +73,9 @@ export default async function handler(req, res) {
       `
     };
 
-    // 2. Email to the Super Admin (Audit Log)
-    // Replace this with the actual super admin email or send to the same GMAIL_USER account for logs
-    const superAdminEmail = 'k7574750@gmail.com'; 
-
     const adminMailOptions = {
       from: `"Aurora Audit System" <${gmailUser}>`,
-      to: superAdminEmail,
+      to: adminEmail,
       subject: `AUDIT LOG: User ${isLogin ? 'Login' : 'Logout'} - ${userName}`,
       html: `
         <div style="font-family: monospace; max-width: 600px; margin: 0 auto; background-color: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #cbd5e1;">
@@ -95,7 +90,6 @@ export default async function handler(req, res) {
       `
     };
 
-    // Send both emails concurrently
     await Promise.all([
       transporter.sendMail(userMailOptions),
       transporter.sendMail(adminMailOptions)
@@ -104,6 +98,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: 'Notifications sent successfully.' });
   } catch (error) {
     console.error('Error sending notification email:', error);
-    return res.status(500).json({ error: 'Failed to send notification email.' });
+    return res.status(500).json({ error: error.message || 'Failed to send notification email.' });
   }
 }
