@@ -1,6 +1,6 @@
 async function testAPI() {
   try {
-    const res = await fetch('https://ssrgold.vercel.app/api/notify', {
+    const res = await fetch('https://apkl.vercel.app/api/notify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

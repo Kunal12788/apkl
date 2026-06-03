@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     const gmailUser = process.env.GMAIL_USER;
     const gmailPass = process.env.GMAIL_APP_PASSWORD;
-    const adminEmail = process.env.NOTIFICATION_EMAIL || 'k7574750@gmail.com';
+    const adminEmail = process.env.NOTIFICATION_EMAIL || 'ssrcreations41@gmail.com';
 
     if (!gmailUser || !gmailPass) {
       console.warn("SMTP credentials missing.");
