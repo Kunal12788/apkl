@@ -13,7 +13,7 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
   return (
     <div
       className={`${
-        t.visible ? 'animate-enter' : 'animate-leave'
+        t.visible ? 'ios-animate-enter' : 'ios-animate-leave'
       } max-w-sm w-full bg-[#1c1c1e]/40 backdrop-blur-2xl shadow-2xl rounded-[24px] pointer-events-auto flex flex-col ring-1 ring-white/20 overflow-hidden`}
       style={{
         WebkitBackdropFilter: 'saturate(180%) blur(24px)',
