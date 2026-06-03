@@ -202,18 +202,22 @@ function AppContent() {
           position="top-center" 
           toastOptions={{
             style: {
-              background: '#0f172a',
+              background: 'rgba(28, 28, 30, 0.85)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
               color: '#ffffff',
-              border: '1px solid #f59e0b',
-              padding: '16px',
-              borderRadius: '8px',
-              fontFamily: "'Inter', sans-serif",
-              fontSize: '14px',
-              letterSpacing: '0.5px'
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '16px 20px',
+              borderRadius: '100px', // Apple pill-shape style
+              fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+              fontSize: '15px',
+              fontWeight: 500,
+              letterSpacing: '-0.2px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
             },
             success: {
               iconTheme: {
-                primary: '#10b981',
+                primary: '#34c759', // Apple iOS Green
                 secondary: '#ffffff',
               },
             },
