@@ -254,21 +254,20 @@ html, body, #root {
   touch-action: manipulation;
 }
 
-@keyframes ios-spring-enter {
-  0% { transform: translateY(-100%) scale(0.9); opacity: 0; }
-  50% { transform: translateY(5%) scale(1.02); opacity: 1; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
+@keyframes ios-pop-enter {
+  0% { transform: scale(0.85) translateY(-20px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-@keyframes ios-spring-leave {
-  0% { transform: translateY(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-100%) scale(0.9); opacity: 0; }
+@keyframes ios-pop-leave {
+  0% { transform: scale(1) translateY(0); opacity: 1; }
+  100% { transform: scale(0.9) translateY(-10px); opacity: 0; }
 }
 
 .ios-animate-enter {
-  animation: ios-spring-enter 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: ios-pop-enter 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .ios-animate-leave {
-  animation: ios-spring-leave 0.3s ease-in forwards;
+  animation: ios-pop-leave 0.3s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
