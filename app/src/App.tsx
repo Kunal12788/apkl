@@ -24,6 +24,7 @@ import { SuperAdminWorkScreen } from './components/SuperAdminWorkScreen';
 import { SuperAdminStockScreen } from './components/SuperAdminStockScreen';
 import { SuperAdminAlertsScreen } from './components/SuperAdminAlertsScreen';
 import { SuperAdminCalculatorScreen } from './components/SuperAdminCalculatorScreen';
+import { ConfirmAccountScreen } from './components/ConfirmAccountScreen';
 
 const LoginWrapper = () => {
   const navigate = useNavigate();
@@ -201,6 +202,7 @@ function AppContent() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginWrapper />} />
             <Route path="/forgot" element={<ForgotKeyWrapper />} />
+            <Route path="/confirm" element={<ConfirmAccountScreen />} />
             <Route path="/dashboard" element={<DashboardWrapper />} />
             <Route path="/billing" element={<BillingWrapper />} />
             <Route path="/tasks" element={<TasksWrapper />} />
