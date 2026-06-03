@@ -14,7 +14,7 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
     <div
       className={`${
         t.visible ? 'animate-enter' : 'animate-leave'
-      } max-w-sm w-full bg-[#1c1c1e]/85 backdrop-blur-xl shadow-2xl rounded-[24px] pointer-events-auto flex flex-col ring-1 ring-white/10 overflow-hidden`}
+      } max-w-sm w-full bg-[#1c1c1e]/40 backdrop-blur-2xl shadow-2xl rounded-[24px] pointer-events-auto flex flex-col ring-1 ring-white/20 overflow-hidden`}
       style={{
         WebkitBackdropFilter: 'saturate(180%) blur(24px)',
         backdropFilter: 'saturate(180%) blur(24px)',
