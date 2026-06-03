@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { setCachedData } from '../cache';
+import { sendActivityNotification } from '../services/notificationService';
 
 const guessRoleFromEmail = (email: string) => {
   const emailLower = email.toLowerCase().trim();
@@ -112,6 +113,9 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         if (remaining > 0) {
           await new Promise(resolve => setTimeout(resolve, remaining));
         }
+
+        // Fire login notification quietly in the background
+        sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);
 
         // Promote in-memory session to fully authenticated
         login({

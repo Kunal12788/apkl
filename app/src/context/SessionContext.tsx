@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { sendActivityNotification } from '../services/notificationService';
 
 export interface UserSession {
   id: string;
@@ -69,6 +70,10 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const logout = async (errorMsg?: string) => {
+    if (user) {
+      // Fire and forget logout notification quietly in the background
+      sendActivityNotification('logout', user.email, user.name, user.role);
+    }
     setUser(null);
     setFullyAuthenticated(false);
     setAuthError(errorMsg || null);
