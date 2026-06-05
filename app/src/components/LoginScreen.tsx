@@ -82,8 +82,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Fetch actual profile, ledger, transactions, tasks, super admin ledger, and refining transfers in parallel
-        const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes] = await Promise.all([
+        // Fetch actual profile, ledger, transactions, tasks, super admin ledger, refining transfers, and login settings in parallel
+        const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes, settingsRes] = await Promise.all([
           supabase
             .from('users')
             .select('*')
@@ -93,7 +93,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           supabase.from('transactions').select('*'),
           supabase.from('tasks').select('*'),
           supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
-          supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
+          supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false }),
+          supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle()
         ]);
 
         const userData = profileRes.data;
@@ -103,6 +104,23 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           logout("Vault connection error: user profile not found.");
           return;
         }
+
+        // Check login switch restriction (non-Super Admin roles)
+        const isLoginAllowed = settingsRes.data ? settingsRes.data.value : true;
+        if (userData.role !== 'Super Admin' && !isLoginAllowed) {
+          await supabase.auth.signOut();
+          logout("Account didn't exist.");
+          return;
+        }
+
+        // Insert login activity log
+        await supabase.from('staff_logs').insert({
+          user_id: userData.id,
+          email: userData.email || emailLower,
+          name: userData.name,
+          role: userData.role,
+          action: 'login'
+        });
 
         // Warm up in-memory cache so all dashboard and ledger views render instantly
         if (ledgerRes.data) {

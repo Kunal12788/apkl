@@ -84,6 +84,15 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       // Fire and forget logout notification quietly in the background
       sendActivityNotification('logout', user.email, user.name, user.role);
+
+      // Log logout event in database
+      await supabase.from('staff_logs').insert({
+        user_id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        action: 'logout'
+      });
     }
     setUser(null);
     setFullyAuthenticated(false);

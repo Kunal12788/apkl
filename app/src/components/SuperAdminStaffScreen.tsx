@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { triggerAppleToast } from './AppleToast';
 
 // Create a separate client for auth signups so we don't log out the Super Admin
 import { createClient } from '@supabase/supabase-js';
@@ -35,9 +36,14 @@ export const SuperAdminStaffScreen: React.FC = () => {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'allocation'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'allocation' | 'logs'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Access Control & Activity Logs State
+  const [loginAllowed, setLoginAllowed] = useState(true);
+  const [activityLogs, setActivityLogs] = useState<any[]>([]);
+  const [fetchingLogs, setFetchingLogs] = useState(false);
+
   // Modals
   const [showHireModal, setShowHireModal] = useState(false);
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
@@ -59,14 +65,24 @@ export const SuperAdminStaffScreen: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, branchesRes] = await Promise.all([
+      const [usersRes, branchesRes, settingsRes, logsRes] = await Promise.all([
         supabase.from('users').select('*').order('name'),
-        supabase.from('branches').select('*').order('name')
+        supabase.from('branches').select('*').order('name'),
+        supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle(),
+        supabase.from('staff_logs').select('*').order('created_at', { ascending: false }).limit(100)
       ]);
       if (usersRes.error) throw usersRes.error;
       if (branchesRes.error) throw branchesRes.error;
+      
       setUsers(usersRes.data || []);
       setBranches(branchesRes.data || []);
+      
+      if (settingsRes.data) {
+        setLoginAllowed(settingsRes.data.value);
+      }
+      if (logsRes.data) {
+        setActivityLogs(logsRes.data);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
@@ -74,8 +90,52 @@ export const SuperAdminStaffScreen: React.FC = () => {
     }
   };
 
+  const refreshLogsAndSettings = async () => {
+    setFetchingLogs(true);
+    try {
+      const [settingsRes, logsRes] = await Promise.all([
+        supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle(),
+        supabase.from('staff_logs').select('*').order('created_at', { ascending: false }).limit(100)
+      ]);
+      if (settingsRes.data) {
+        setLoginAllowed(settingsRes.data.value);
+      }
+      if (logsRes.data) {
+        setActivityLogs(logsRes.data);
+      }
+    } catch (err) {
+      console.error('Error refreshing logs:', err);
+    } finally {
+      setFetchingLogs(false);
+    }
+  };
+
+  const handleToggleLogin = async () => {
+    const newValue = !loginAllowed;
+    setLoginAllowed(newValue);
+    
+    triggerAppleToast(
+      'Security Action',
+      `Staff login access is now ${newValue ? 'ENABLED' : 'DISABLED'}`,
+      newValue ? 'login' : 'logout'
+    );
+
+    try {
+      const { error } = await supabase
+        .from('login_settings')
+        .upsert({ id: 'login_allowed', value: newValue, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to toggle login setting:', err);
+      setLoginAllowed(!newValue);
+      triggerAppleToast('Security Alert', 'Failed to update login control.', 'logout');
+    }
+  };
+
   useEffect(() => {
-    if (isFullyAuthenticated) fetchData();
+    if (isFullyAuthenticated) {
+      fetchData();
+    }
   }, [isFullyAuthenticated]);
 
   const handleHireSubmit = async (e: React.FormEvent) => {
@@ -279,15 +339,21 @@ export const SuperAdminStaffScreen: React.FC = () => {
       <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mx-4 mt-4 shrink-0 relative z-10">
         <button 
           onClick={() => setActiveTab('all')}
-          className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'all' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          className={`flex-1 rounded-full py-2.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'all' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
         >
           All Directory
         </button>
         <button 
           onClick={() => setActiveTab('allocation')}
-          className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'allocation' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          className={`flex-1 rounded-full py-2.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'allocation' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
         >
           Branch Allocation
+        </button>
+        <button 
+          onClick={() => setActiveTab('logs')}
+          className={`flex-1 rounded-full py-2.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'logs' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+        >
+          Access & Logs
         </button>
       </div>
 
@@ -432,6 +498,121 @@ export const SuperAdminStaffScreen: React.FC = () => {
                     <p className="text-sm">No Branches available.</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* View: Access & Logs */}
+            {activeTab === 'logs' && (
+              <div className="animate-fade-in space-y-4">
+                {/* 1. Login Access Control Card */}
+                <div className="luxury-card bg-white border border-outline-variant/20 rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="font-headline font-bold text-primary text-base flex items-center gap-2">
+                        <span className="material-symbols-outlined text-secondary">vpn_key</span>
+                        Staff Login Access
+                      </h3>
+                      <p className="text-xs text-outline leading-normal max-w-[240px] sm:max-w-none">
+                        When switched OFF, all regular staff, admins, and collection staff will be blocked from logging in. Only Super Admins can log in.
+                      </p>
+                    </div>
+                    
+                    {/* Toggle Button */}
+                    <button 
+                      onClick={handleToggleLogin}
+                      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-0 ${
+                        loginAllowed ? 'bg-secondary' : 'bg-outline/30'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          loginAllowed ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  {/* Status Indicator */}
+                  <div className={`mt-4 pt-3 border-t border-outline-variant/10 flex items-center gap-2 text-xs font-bold uppercase tracking-wider ${
+                    loginAllowed ? 'text-emerald-600' : 'text-error'
+                  }`}>
+                    <span className="relative flex h-2 w-2">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        loginAllowed ? 'bg-emerald-400' : 'bg-error'
+                      }`}></span>
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                        loginAllowed ? 'bg-emerald-500' : 'bg-error'
+                      }`}></span>
+                    </span>
+                    {loginAllowed ? 'Staff login active (Normal mode)' : 'Staff login blocked (Super admin only)'}
+                  </div>
+                </div>
+
+                {/* 2. Staff Activity Timeline */}
+                <div className="luxury-card bg-white border border-outline-variant/20 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
+                  <div className="flex justify-between items-center pb-2 border-b border-outline-variant/10">
+                    <h3 className="font-headline font-bold text-primary text-base flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary">history</span>
+                      Session Activity Log
+                    </h3>
+                    <button 
+                      onClick={refreshLogsAndSettings}
+                      disabled={fetchingLogs}
+                      className="text-secondary text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 hover:text-secondary-dark transition-colors active:scale-95 disabled:opacity-50"
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${fetchingLogs ? 'animate-spin' : ''}`}>sync</span>
+                      Refresh
+                    </button>
+                  </div>
+
+                  <div className="max-h-[350px] overflow-y-auto hide-scrollbar space-y-3.5 pr-1">
+                    {activityLogs.length > 0 ? (
+                      activityLogs.map((log) => {
+                        const date = new Date(log.created_at);
+                        const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const isLogin = log.action === 'login';
+                        
+                        return (
+                          <div key={log.id} className="flex gap-3 items-start text-xs border-b border-outline-variant/10 pb-3 last:border-b-0 last:pb-0">
+                            {/* Action Icon Indicator */}
+                            <div className={`w-7 h-7 rounded-full flex items-center justify-center border shrink-0 mt-0.5 ${
+                              isLogin 
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                : 'bg-rose-50 text-rose-600 border-rose-100'
+                            }`}>
+                              <span className="material-symbols-outlined text-base">
+                                {isLogin ? 'login' : 'logout'}
+                              </span>
+                            </div>
+                            
+                            {/* Log details */}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-primary">
+                                <span className="font-bold text-[#1c1c1e]">{log.name}</span> <span className="text-outline font-semibold text-[10px]">({log.role})</span> 
+                                {isLogin ? ' logged in successfully' : ' logged out safely'}
+                              </p>
+                              <p className="text-[10px] text-outline mt-0.5 uppercase tracking-wider font-semibold">
+                                {log.email} • {log.user_id}
+                              </p>
+                            </div>
+
+                            {/* Timestamp */}
+                            <div className="text-right shrink-0">
+                              <p className="font-bold text-primary text-[11px]">{timeStr}</p>
+                              <p className="text-[9px] text-outline font-semibold mt-0.5">{dateStr}</p>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-8 text-center text-outline opacity-60 flex flex-col items-center">
+                        <span className="material-symbols-outlined text-3xl mb-1.5 opacity-40">query_stats</span>
+                        <p className="text-[10px] font-bold uppercase tracking-widest">No activity logs recorded yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
             
