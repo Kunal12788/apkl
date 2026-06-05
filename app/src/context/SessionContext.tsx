@@ -15,7 +15,7 @@ export interface UserSession {
 interface SessionContextType {
   user: UserSession | null;
   login: (userData: UserSession, isFullyAuthenticated?: boolean) => void;
-  logout: (errorMsg?: string) => void;
+  logout: (errorMsg?: string, isSilent?: boolean) => void;
   loading: boolean;
   isFullyAuthenticated: boolean;
   authError: string | null;
@@ -44,6 +44,23 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
               .maybeSingle();
 
             if (!error && userData) {
+              // Restrict active session restore if login toggle is disabled
+              if (userData.role !== 'Super Admin') {
+                const { data: settingsData } = await supabase
+                  .from('login_settings')
+                  .select('value')
+                  .eq('id', 'login_allowed')
+                  .maybeSingle();
+                
+                const isLoginAllowed = settingsData ? settingsData.value : true;
+                if (!isLoginAllowed) {
+                  await supabase.auth.signOut();
+                  setAuthError("Account didn't exist.");
+                  setLoading(false);
+                  return;
+                }
+              }
+
               setUser({
                 id: userData.id,
                 name: userData.name,
@@ -71,21 +88,23 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setAuthError(null);
   };
 
-  const logout = async (errorMsg?: string) => {
+  const logout = async (errorMsg?: string, isSilent = false) => {
     if (user) {
-      // Trigger In-App Apple Toast
-      triggerAppleToast('Security Alert', 'Session Terminated Securely', 'logout');
+      if (!isSilent) {
+        // Trigger In-App Apple Toast
+        triggerAppleToast('Security Alert', 'Session Terminated Securely', 'logout');
 
-      // Trigger OS System Notification
-      sendOSNotification(
-        'AURORA Security Alert', 
-        `Logged out successfully. Goodbye ${user.name}.`
-      );
+        // Trigger OS System Notification
+        sendOSNotification(
+          'AURORA Security Alert', 
+          `Logged out successfully. Goodbye ${user.name}.`
+        );
 
-      // Fire and forget logout notification quietly in the background
-      sendActivityNotification('logout', user.email, user.name, user.role);
+        // Fire and forget logout notification quietly in the background
+        sendActivityNotification('logout', user.email, user.name, user.role);
+      }
 
-      // Log logout event in database
+      // Log logout event in database (always log for audit logs)
       await supabase.from('staff_logs').insert({
         user_id: user.id,
         email: user.email,
@@ -96,9 +115,34 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     setUser(null);
     setFullyAuthenticated(false);
-    setAuthError(errorMsg || null);
+    setAuthError(isSilent ? null : (errorMsg || null));
     await supabase.auth.signOut();
   };
+
+  // Background polling to instantly & silently log out active users when access is disabled
+  useEffect(() => {
+    if (!user || user.role === 'Super Admin') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const { data: settingsData } = await supabase
+          .from('login_settings')
+          .select('value')
+          .eq('id', 'login_allowed')
+          .maybeSingle();
+        
+        const isLoginAllowed = settingsData ? settingsData.value : true;
+        if (!isLoginAllowed) {
+          // Silent logout (no alerts, no messages, no toast notifications)
+          await logout(undefined, true);
+        }
+      } catch (err) {
+        console.error('Background login access polling error:', err);
+      }
+    }, 15000); // Check every 15 seconds for rapid revocation
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <SessionContext.Provider value={{ user, login, logout, loading, isFullyAuthenticated, authError, setAuthError }}>
