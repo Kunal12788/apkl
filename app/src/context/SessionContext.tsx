@@ -139,7 +139,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       } catch (err) {
         console.error('Background login access polling error:', err);
       }
-    }, 15000); // Check every 15 seconds for rapid revocation
+    }, 1200); // Check every 1.2 seconds for sub-2-second revocation response
 
     return () => clearInterval(interval);
   }, [user]);
