@@ -85,7 +85,7 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
 export const triggerAppleToast = (title: string, message: string, type: 'login' | 'logout') => {
   toast.custom(
     (t) => <AppleToast t={t} title={title} message={message} type={type} />,
-    { duration: 4000 }
+    { duration: 2500 }
   );
 };
 

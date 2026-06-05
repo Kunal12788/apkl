@@ -256,33 +256,29 @@ html, body, #root {
 
 @keyframes ios-slide-down-enter {
   0% { 
-    transform: translateY(-140px) scale(0.88); 
+    transform: translateY(-140px); 
     opacity: 0; 
-    filter: blur(6px);
   }
   55% { 
-    transform: translateY(10px) scale(1.02); 
-    filter: blur(0px);
+    transform: translateY(10px); 
   }
   78% { 
-    transform: translateY(-3px) scale(0.99); 
+    transform: translateY(-3px); 
   }
   100% { 
-    transform: translateY(0) scale(1); 
+    transform: translateY(0); 
     opacity: 1; 
   }
 }
 
 @keyframes ios-slide-up-leave {
   0% { 
-    transform: translateY(0) scale(1); 
+    transform: translateY(0); 
     opacity: 1; 
-    filter: blur(0px);
   }
   100% { 
-    transform: translateY(-160px) scale(0.92); 
+    transform: translateY(-150px); 
     opacity: 0; 
-    filter: blur(6px);
   }
 }
 
@@ -293,11 +289,14 @@ html, body, #root {
 }
 
 .ios-animate-enter {
-  animation: ios-slide-down-enter 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  animation: ios-slide-down-enter 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .ios-animate-leave {
-  animation: ios-slide-up-leave 0.48s cubic-bezier(0.32, 0.96, 0.3, 1) forwards;
+  will-change: transform, opacity;
+  animation: ios-slide-up-leave 0.35s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
+
 
 
