@@ -14,35 +14,69 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
     <div
       className={`${
         t.visible ? 'ios-animate-enter' : 'ios-animate-leave'
-      } max-w-sm w-full bg-[#1c1c1e]/40 backdrop-blur-2xl shadow-2xl rounded-[24px] pointer-events-auto flex flex-col ring-1 ring-white/20 overflow-hidden`}
+      } w-[358px] sm:w-[360px] max-w-full bg-[#161617]/85 border border-white/[0.08] rounded-[22px] pointer-events-auto flex flex-col overflow-hidden`}
       style={{
-        WebkitBackdropFilter: 'saturate(180%) blur(24px)',
-        backdropFilter: 'saturate(180%) blur(24px)',
+        WebkitBackdropFilter: 'saturate(200%) blur(24px)',
+        backdropFilter: 'saturate(200%) blur(24px)',
+        boxShadow: '0 16px 40px -6px rgba(0, 0, 0, 0.6), 0 4px 16px -2px rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.15)',
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      {/* iOS Header */}
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md bg-[#0f172a] flex items-center justify-center border border-amber-500/50">
+      <div className="flex items-start gap-3.5 p-4">
+        {/* iOS Native App Icon Squircle */}
+        <div className="flex-shrink-0 relative">
+          <div
+            className={`w-[38px] h-[38px] rounded-[9px] flex items-center justify-center relative overflow-hidden border border-white/[0.1] shadow-[0_2px_8px_rgba(0,0,0,0.4)] ${
+              type === 'login'
+                ? 'bg-gradient-to-br from-[#10b981] via-[#059669] to-[#047857]'
+                : 'bg-gradient-to-br from-[#f43f5e] via-[#e11d48] to-[#be123c]'
+            }`}
+          >
+            {/* Gloss overlay to simulate glass curve */}
+            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+            
             {type === 'login' ? (
-              <ShieldCheck className="w-3 h-3 text-[#32d74b]" />
+              <ShieldCheck className="w-[21px] h-[21px] text-white drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.3)]" />
             ) : (
-              <LogOut className="w-3 h-3 text-amber-500" />
+              <LogOut className="w-[21px] h-[21px] text-white drop-shadow-[0_1.5px_2px_rgba(0,0,0,0.3)] translate-x-[1px]" />
             )}
           </div>
-          <span className="text-[13px] font-medium tracking-wide text-white/60">AURORA</span>
+          
+          {/* Ambient colored backdrop glow behind the icon */}
+          <div
+            className={`absolute -inset-1 rounded-full blur-[10px] opacity-35 -z-10 ${
+              type === 'login' ? 'bg-[#10b981]' : 'bg-[#f43f5e]'
+            }`}
+          />
         </div>
-        <span className="text-[12px] text-white/40">now</span>
+
+        {/* Text Metadata and Message Content */}
+        <div className="flex-1 min-w-0 flex flex-col pt-0.5">
+          {/* Top Row: App Label & Time */}
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold tracking-[0.08em] text-white/50 uppercase leading-none">
+              AURORA
+            </span>
+            <span className="text-[11px] font-medium text-white/35 tracking-tight leading-none">
+              now
+            </span>
+          </div>
+
+          {/* Alert Title */}
+          <h4 className="text-[14px] font-semibold text-white tracking-tight leading-snug mt-1.5">
+            {title}
+          </h4>
+
+          {/* Detailed Message */}
+          <p className="text-[13px] font-normal text-white/80 tracking-wide leading-relaxed mt-0.5">
+            {message}
+          </p>
+        </div>
       </div>
 
-      {/* iOS Content */}
-      <div className="px-4 pb-4 pt-1">
-        <p className="text-[15px] font-semibold text-white leading-tight mb-0.5">
-          {title}
-        </p>
-        <p className="text-[14px] text-white/80 leading-snug">
-          {message}
-        </p>
+      {/* Glossy sheen sweeping overlay to elevate aesthetic */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[22px]">
+        <div className="w-[200%] h-[200%] absolute -top-1/2 -left-1/2 bg-gradient-to-tr from-transparent via-white/[0.04] to-transparent transform rotate-[25deg] -translate-x-[110%] animate-[ios-sheen_4.5s_ease-in-out_infinite]" />
       </div>
     </div>
   );
@@ -54,3 +88,4 @@ export const triggerAppleToast = (title: string, message: string, type: 'login' 
     { duration: 2000 }
   );
 };
+
