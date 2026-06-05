@@ -10,6 +10,7 @@ export interface UserSession {
   role: string;
   email: string;
   phone: string;
+  branch_id: string | null;
 }
 
 interface SessionContextType {
@@ -66,7 +67,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
                 name: userData.name,
                 role: userData.role,
                 email: userData.email,
-                phone: userData.phone || ''
+                phone: userData.phone || '',
+                branch_id: userData.branch_id || null
               });
               setFullyAuthenticated(true);
             }

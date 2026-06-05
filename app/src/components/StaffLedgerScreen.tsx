@@ -86,6 +86,30 @@ export const StaffLedgerScreen: React.FC = () => {
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
+  const [branchName, setBranchName] = useState('Delhi Branch');
+
+  // Dynamically resolve the staff member's assigned branch name from the database
+  useEffect(() => {
+    const fetchBranchName = async () => {
+      if (user?.branch_id) {
+        try {
+          const { data, error } = await supabase
+            .from('branches')
+            .select('name')
+            .eq('id', user.branch_id)
+            .maybeSingle();
+          
+          if (!error && data) {
+            setBranchName(data.name);
+          }
+        } catch (err) {
+          console.error('Error fetching branch name:', err);
+        }
+      }
+    };
+    fetchBranchName();
+  }, [user?.branch_id]);
+
   // Fetch entries from Supabase
   const fetchEntries = async () => {
     // Already initialized from cache synchronously, background fetch handles updates
@@ -181,8 +205,8 @@ export const StaffLedgerScreen: React.FC = () => {
         .from('refining_transfers')
         .insert([{
           id: trfId,
-          branch_id: 'BR-DELHI',
-          branch_name: 'Delhi Branch',
+          branch_id: user?.branch_id || 'BR-DELHI',
+          branch_name: branchName,
           metal: activeMetal,
           impure_gold_sent: activeMetal === 'Gold' ? currentImpureStock : 0,
           calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
@@ -199,7 +223,7 @@ export const StaffLedgerScreen: React.FC = () => {
         date: 'Today',
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Branch Dispatch',
-        branch_name: 'Delhi Branch',
+        branch_name: branchName,
         pure_gold_change: 0,
         impure_gold_change: activeMetal === 'Gold' ? currentImpureStock : 0,
         calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
@@ -207,7 +231,7 @@ export const StaffLedgerScreen: React.FC = () => {
         impure_silver_change: activeMetal === 'Silver' ? currentImpureStock : 0,
         calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureOutput : 0,
         cash_change: 0,
-        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure ${activeMetal} from Delhi Branch. Expected pure yield: ${calculatedPureOutput.toFixed(3)}g.`
+        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure ${activeMetal} from ${branchName}. Expected pure yield: ${calculatedPureOutput.toFixed(3)}g.`
       };
 
       const { error: saLedgerError } = await supabase

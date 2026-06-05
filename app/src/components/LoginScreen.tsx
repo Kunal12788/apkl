@@ -62,7 +62,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
       name: guessed.name,
       role: guessed.role,
       email: emailLower,
-      phone: ''
+      phone: '',
+      branch_id: null
     }, false);
 
     // 2. Instantly transition to the Dashboard (0ms delay)
@@ -157,7 +158,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           name: userData.name,
           role: userData.role,
           email: userData.email || emailLower,
-          phone: userData.phone || ''
+          phone: userData.phone || '',
+          branch_id: userData.branch_id || null
         }, true);
 
       } catch (err) {
