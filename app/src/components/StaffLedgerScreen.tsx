@@ -78,7 +78,10 @@ export const StaffLedgerScreen: React.FC = () => {
   const isAdmin = userId.startsWith('ADMIN-');
 
   const cachedEntries = getCachedData('ledger_entries_all');
-  const initialEntries = cachedEntries ? cachedEntries.map(mapDbToEntry) : [];
+  const isSuperSa = user?.id?.startsWith('SUPER-');
+  const initialEntries = cachedEntries 
+    ? (isSuperSa ? cachedEntries : cachedEntries.filter((e: any) => e.staff_id === userId)).map(mapDbToEntry) 
+    : [];
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
@@ -115,6 +118,21 @@ export const StaffLedgerScreen: React.FC = () => {
     // Already initialized from cache synchronously, background fetch handles updates
 
     try {
+      const isSuperSa = user?.id?.startsWith('SUPER-');
+      let branchUserIds: string[] = [];
+      if (!isSuperSa && user?.branch_id) {
+        const { data: bUsers, error: buError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (!buError && bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+        }
+      }
+      if (branchUserIds.length === 0) {
+        branchUserIds = [userId];
+      }
+
       const { data, error } = await supabase
         .from('ledger_entries')
         .select('*')
@@ -122,9 +140,13 @@ export const StaffLedgerScreen: React.FC = () => {
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
+      if (data) {
         setCachedData('ledger_entries_all', data);
-        setEntries(data.map(mapDbToEntry));
+        let filtered = data;
+        if (!isSuperSa && user?.branch_id) {
+          filtered = data.filter((e: any) => branchUserIds.includes(e.staff_id));
+        }
+        setEntries(filtered.map(mapDbToEntry));
       } else {
         setEntries([]);
       }

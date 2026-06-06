@@ -335,11 +335,13 @@ export const StaffTasksScreen: React.FC = () => {
 
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
+  const isSuperSa = user?.id?.startsWith('SUPER-');
   const initialTasks = cachedTasks
     ? (isAdminOrSuper 
         ? cachedTasks.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification')
         : cachedTasks
-      ).map((t: any) => ({
+      ).filter((t: any) => isSuperSa ? true : (t.created_by === currentUser))
+      .map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
         broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
@@ -353,6 +355,20 @@ export const StaffTasksScreen: React.FC = () => {
     const loadTasks = async () => {
       if (!isFullyAuthenticated) return;
       try {
+        let branchUserIds: string[] = [];
+        if (!isSuperSa && user?.branch_id) {
+          const { data: bUsers, error: buError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (!buError && bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+          }
+        }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [currentUser];
+        }
+
         const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         
@@ -361,6 +377,9 @@ export const StaffTasksScreen: React.FC = () => {
           let filtered = data;
           if (isAdminOrSuper) {
             filtered = data.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification');
+          }
+          if (!isSuperSa && user?.branch_id) {
+            filtered = filtered.filter((t: any) => branchUserIds.includes(t.created_by));
           }
           setTasks(filtered.map((t: any) => ({
             id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,

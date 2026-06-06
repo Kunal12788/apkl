@@ -278,7 +278,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { isFullyAuthenticated } = useSession();
+  const { user, isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -294,8 +294,15 @@ export const StaffBillingScreen: React.FC = () => {
     const loadTransactions = async () => {
       // 1. Instantly load from cache
       const cachedTx = getCachedData('tx_data');
+      const isSuperSa = user?.id?.startsWith('SUPER-');
+      const currentUserId = user?.id || 'STAFF-001';
+
       if (cachedTx) {
-        setTransactions(cachedTx.map((t: any) => ({
+        let filteredCache = cachedTx;
+        if (!isSuperSa) {
+          filteredCache = cachedTx.filter((t: any) => t.created_by === currentUserId || t.createdBy === currentUserId);
+        }
+        setTransactions(filteredCache.map((t: any) => ({
           metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
           date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
           impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
@@ -308,11 +315,29 @@ export const StaffBillingScreen: React.FC = () => {
 
       // 2. Fetch fresh in background
       try {
+        let branchUserIds: string[] = [];
+        if (!isSuperSa && user?.branch_id) {
+          const { data: bUsers, error: buError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (!buError && bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+          }
+        }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [currentUserId];
+        }
+
         const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
         if (error) throw error;
-        if (data && data.length > 0) {
+        if (data) {
           setCachedData('tx_data', data); // Update cache
-          setTransactions(data.map(t => ({
+          let filtered = data;
+          if (!isSuperSa && user?.branch_id) {
+            filtered = data.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          }
+          setTransactions(filtered.map((t: any) => ({
             metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
             date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
             impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,

@@ -14,9 +14,20 @@ export const StaffDashboardScreen: React.FC = () => {
   const userName = user?.name || '';
   
   // Directly initialize state from cache for 0ms delay on mount
-  const initialLedger = getCachedData('ledger_data');
-  const initialTx = getCachedData('tx_data');
-  const initialTasks = getCachedData('tasks_data');
+  const cachedLedger = getCachedData('ledger_data');
+  const cachedTx = getCachedData('tx_data');
+  const cachedTasks = getCachedData('tasks_data');
+
+  const isSuperSa = user?.id?.startsWith('SUPER-');
+  const initialLedger = cachedLedger 
+    ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => e.staff_id === userId))
+    : [];
+  const initialTx = cachedTx
+    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => t.created_by === userId || t.createdBy === userId))
+    : [];
+  const initialTasks = cachedTasks
+    ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => t.created_by === userId))
+    : [];
 
   let initialPure = 0;
   let initialImpure = 0;
@@ -26,7 +37,7 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
   let initialStats = { pending: 0, inProgress: 0, completed: 0 };
 
-  if (initialLedger && initialTx && initialTasks) {
+  if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0) {
     const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
     const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
     const totalImpureRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -142,51 +153,102 @@ export const StaffDashboardScreen: React.FC = () => {
       const cachedTx = getCachedData('tx_data');
       const cachedTasks = getCachedData('tasks_data');
 
-      if (cachedLedger && cachedTx && cachedTasks) {
-        // Populate from cache
-        const totalPureGiven = cachedLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
-        const totalImpureReceived = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
-        const totalImpureRefined = cachedLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
+      const isSuperSa = user?.id?.startsWith('SUPER-');
+
+      const applyData = (ledgerData: any[] | null, txData: any[] | null, tasksData: any[] | null, branchUserIds: string[]) => {
+        const hasBranchFilter = !isSuperSa && user?.branch_id;
+
+        const filteredLedger = ledgerData 
+          ? (hasBranchFilter ? ledgerData.filter((e: any) => branchUserIds.includes(e.staff_id)) : ledgerData)
+          : [];
+        const filteredTx = txData
+          ? (hasBranchFilter ? txData.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy)) : txData)
+          : [];
+        const filteredTasks = tasksData
+          ? (hasBranchFilter ? tasksData.filter((t: any) => branchUserIds.includes(t.created_by)) : tasksData)
+          : [];
+
+        // Populate metrics
+        const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
+        const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
+        const totalImpureRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
         setPureGoldWeight(100 - totalPureGiven); 
         setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         
         let collected = 0, cash = 0, upi = 0;
-        cachedTx.forEach((tx: any) => {
+        let revTunch = 0, revMarking = 0, revShouldering = 0;
+        filteredTx.forEach((tx: any) => {
           if (tx.status === 'Paid') {
             const amt = Number(tx.amount) || 0;
             collected += amt;
             if (tx.type === 'Cash') cash += amt;
             if (tx.type === 'UPI') upi += amt;
+
+            if (tx.work_type === 'Tunch') revTunch += amt;
+            if (tx.work_type === 'Marking') revMarking += amt;
+            if (tx.work_type === 'Shouldering') revShouldering += amt;
           }
         });
         setTotalCollected(collected);
         setCashCollection(cash);
         setUpiCollection(upi);
+        setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
 
-        let revTunch = 0, revMark = 0, revShoulder = 0;
-        let volTunch = 0, volMark = 0, volShoulder = 0;
-        let cDues = 0, gDues = 0;
+        // Tasks stats
+        let tunch = { processed: 0, pending: 0 };
+        let marking = { processed: 0, pending: 0 };
+        let shouldering = { processed: 0, pending: 0 };
+        let source = { customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0 };
+        
+        let inProgress = 0;
+        let completed = 0;
+        let pending = 0;
 
-        cachedTasks.forEach((task: any) => {
-          if (task.work_type === 'Tunch') {
-            volTunch++;
-            revTunch += Number(task.price) || 0;
-          } else if (task.work_type === 'Marking') {
-            volMark++;
-            revMark += Number(task.price) || 0;
-          } else if (task.work_type === 'Shouldering') {
-            volShoulder++;
-            revShoulder += Number(task.price) || 0;
-          }
+        filteredTasks.forEach(task => {
+          const isDone = task.status === 'Completed';
+          if (task.work_type === 'Tunch') { isDone ? tunch.processed++ : tunch.pending++; }
+          if (task.work_type === 'Marking') { isDone ? marking.processed++ : marking.pending++; }
+          if (task.work_type === 'Shouldering') { isDone ? shouldering.processed++ : shouldering.pending++; }
+          
+          if (task.source === 'Customer') source.customers++;
+          else if (task.source === 'Admin') source.admin++;
+          else if (task.source === 'Staff') source.staff++;
+          else if (task.source === 'Super Admin') source.superAdmin++;
+          else if (task.source === 'Collection Staff') source.collectionStaff++;
 
-          if (task.status === 'Completed' || task.status === 'In Progress') {
-            const dueAmt = Number(task.price) || 0;
-            cDues += dueAmt;
-            gDues += (dueAmt * 0.05); 
+          if (task.status === 'In Progress') {
+            inProgress++;
+          } else if (task.status === 'Completed') {
+            completed++;
+          } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
+            pending++;
           }
         });
+        
+        setTasksStats({ tunch, marking, shouldering });
+        setTaskSource(source);
+        setGlobalStats({ inProgress, completed, pending });
 
-        setRevenue({ tunch: revTunch, marking: revMark, shouldering: revShoulder });
+        // Sort tasks by created_at DESC
+        const sortedTasks = [...filteredTasks].sort((a, b) => {
+          const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        const formattedRecent = sortedTasks.slice(0, 5).map((t: any) => ({
+          id: t.id,
+          customerName: t.customer_name,
+          workType: t.work_type,
+          assignedTo: t.assigned_to,
+          status: t.status
+        }));
+
+        setRecentTasks(formattedRecent);
+      };
+
+      if (cachedLedger && cachedTx && cachedTasks) {
+        applyData(cachedLedger, cachedTx, cachedTasks, [userId]);
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -194,6 +256,20 @@ export const StaffDashboardScreen: React.FC = () => {
 
       // 2. Fetch fresh data in background in parallel
       try {
+        let branchUserIds: string[] = [];
+        if (!isSuperSa && user?.branch_id) {
+          const { data: bUsers, error: buError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (!buError && bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+          }
+        }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [userId];
+        }
+
         const [ledgerRes, txRes, tasksRes] = await Promise.all([
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
@@ -203,92 +279,19 @@ export const StaffDashboardScreen: React.FC = () => {
         const ledgerData = ledgerRes.data;
         if (ledgerData) {
           setCachedData('ledger_data', ledgerData);
-          const totalPureGiven = ledgerData.reduce((s, e) => s + (Number(e.pure_gold_out) || 0), 0);
-          const totalImpureReceived = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_in) || 0), 0);
-          const totalImpureRefined = ledgerData.reduce((s, e) => s + (Number(e.impure_gold_out) || 0), 0);
-          setPureGoldWeight(100 - totalPureGiven); 
-          setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         }
 
         const txData = txRes.data;
         if (txData) {
           setCachedData('tx_data', txData);
-          let total = 0, cash = 0, upi = 0;
-          let revTunch = 0, revMarking = 0, revShouldering = 0;
-          
-          txData.forEach(tx => {
-            if (tx.status === 'Paid') {
-              const amt = Number(tx.amount) || 0;
-              total += amt;
-              if (tx.type === 'Cash') cash += amt;
-              if (tx.type === 'UPI') upi += amt;
-              
-              if (tx.work_type === 'Tunch') revTunch += amt;
-              if (tx.work_type === 'Marking') revMarking += amt;
-              if (tx.work_type === 'Shouldering') revShouldering += amt;
-            }
-          });
-          
-          setTotalCollected(total);
-          setCashCollection(cash);
-          setUpiCollection(upi);
-          setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
         }
 
-        // Fetch Tasks for stats
         const tasksData = tasksRes.data;
         if (tasksData) {
-          let tunch = { processed: 0, pending: 0 };
-          let marking = { processed: 0, pending: 0 };
-          let shouldering = { processed: 0, pending: 0 };
-          let source = { customers: 0, admin: 0, staff: 0, superAdmin: 0, collectionStaff: 0 };
-          
-          let inProgress = 0;
-          let completed = 0;
-          let pending = 0;
-
-          tasksData.forEach(task => {
-            const isDone = task.status === 'Completed';
-            if (task.work_type === 'Tunch') { isDone ? tunch.processed++ : tunch.pending++; }
-            if (task.work_type === 'Marking') { isDone ? marking.processed++ : marking.pending++; }
-            if (task.work_type === 'Shouldering') { isDone ? shouldering.processed++ : shouldering.pending++; }
-            
-            if (task.source === 'Customer') source.customers++;
-            else if (task.source === 'Admin') source.admin++;
-            else if (task.source === 'Staff') source.staff++;
-            else if (task.source === 'Super Admin') source.superAdmin++;
-            else if (task.source === 'Collection Staff') source.collectionStaff++;
-
-            if (task.status === 'In Progress') {
-              inProgress++;
-            } else if (task.status === 'Completed') {
-              completed++;
-            } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
-              pending++;
-            }
-          });
-          
-          setTasksStats({ tunch, marking, shouldering });
-          setTaskSource(source);
-          setGlobalStats({ inProgress, completed, pending });
-
-          // Sort tasks by created_at DESC
-          const sortedTasks = [...tasksData].sort((a, b) => {
-            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-            return dateB - dateA;
-          });
-
-          const formattedRecent = sortedTasks.slice(0, 5).map((t: any) => ({
-            id: t.id,
-            customerName: t.customer_name,
-            workType: t.work_type,
-            assignedTo: t.assigned_to,
-            status: t.status
-          }));
-
-          setRecentTasks(formattedRecent);
+          setCachedData('tasks_data', tasksData);
         }
+
+        applyData(ledgerData, txData, tasksData, branchUserIds);
 
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
