@@ -123,8 +123,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Allocation form states
   const [allocBranchId, setAllocBranchId] = useState('');
-  const [allocMetal, setAllocMetal] = useState<'Gold' | 'Silver'>('Gold');
-  const [allocWeight, setAllocWeight] = useState('');
+  const [allocGoldWeight, setAllocGoldWeight] = useState('');
+  const [allocSilverWeight, setAllocSilverWeight] = useState('');
   const [allocCash, setAllocCash] = useState('');
   const [allocNotes, setAllocNotes] = useState('');
   const [availableBranches, setAvailableBranches] = useState<{id: string, name: string}[]>([]);
@@ -138,7 +138,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
     try {
       // Fetch Super Admin Ledger and pending refining transfers in parallel
-      const [ledgerRes, transfersRes, branchEntriesRes, usersRes, reportsRes] = await Promise.all([
+      const [ledgerRes, transfersRes, branchEntriesRes, usersRes, reportsRes, branchesRes] = await Promise.all([
         supabase
           .from('super_admin_ledger')
           .select('*')
@@ -157,12 +157,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         supabase
           .from('branch_daily_reports')
           .select('*')
-          .order('created_at', { ascending: false })
+          .order('created_at', { ascending: false }),
+        supabase.from('branches').select('*').order('name')
       ]);
 
       if (ledgerRes.error) throw ledgerRes.error;
       if (transfersRes.error) throw transfersRes.error;
       if (reportsRes.error) throw reportsRes.error;
+      if (branchesRes.error) throw branchesRes.error;
+
+      if (branchesRes.data) {
+        setAvailableBranches(branchesRes.data);
+      }
 
       const ledgerData = ledgerRes.data;
       if (ledgerData) {
@@ -183,10 +189,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           acc[u.id] = u.branch_id || 'Unknown Branch';
           return acc;
         }, {});
-        
-        // Extract unique branches for allocation
-        const uniqueBranches = Array.from(new Set(usersRes.data.map((u: any) => u.branch_id))).filter(id => id && id !== 'HEAD-OFFICE');
-        setAvailableBranches(uniqueBranches.map((id: any) => ({ id, name: id })));
         
         const grouped: any = {};
         branchEntriesRes.data.forEach((entry: any) => {
@@ -425,7 +427,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       setCashWeight('');
       setCashRate('');
       setCashTotalAmount('');
-      setAllocWeight('');
+      setAllocGoldWeight('');
+      setAllocSilverWeight('');
       setAllocCash('');
       setAllocNotes('');
       setAllocBranchId('');
@@ -443,7 +446,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       const dateStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
       const isoDateStr = new Date().toISOString().split('T')[0];
 
-      const weightVal = parseFloat(allocWeight) || 0;
+      const goldVal = parseFloat(allocGoldWeight) || 0;
+      const silverVal = parseFloat(allocSilverWeight) || 0;
       const cashVal = parseFloat(allocCash) || 0;
       
       if (!allocBranchId) {
@@ -451,48 +455,89 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         return;
       }
 
-      // 1. Insert into stock_allocations
-      const { error: allocError } = await supabase.from('stock_allocations').insert([{
-        id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
-        branch_id: allocBranchId,
-        branch_name: availableBranches.find(b => b.id === allocBranchId)?.name || allocBranchId,
-        staff_id: null,
-        metal: allocMetal,
-        pure_weight: weightVal,
-        cash_amount: cashVal,
-        allocated_by: 'SUPER-001',
-        date: dateStr,
-        iso_date: isoDateStr,
-        notes: allocNotes
-      }]);
-      if (allocError) throw allocError;
-
-      const newEntry = {
-        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
-        date: dateStr,
-        iso_date: isoDateStr,
-        type: 'Branch Allocation',
-        branch_name: 'HEAD-OFFICE',
-        pure_gold_change: 0,
-        impure_gold_change: 0,
-        calculated_pure_gold: 0,
-        pure_silver_change: 0,
-        impure_silver_change: 0,
-        calculated_pure_silver: 0,
-        cash_change: -cashVal,
-        details: `Allocated ${weightVal.toFixed(3)}g Pure ${allocMetal} and ₹${cashVal.toLocaleString('en-IN')} to ${allocBranchId}. Notes: ${allocNotes}`
-      };
-      
-      if (allocMetal === 'Gold') {
-        newEntry.pure_gold_change = -weightVal;
-      } else {
-        newEntry.pure_silver_change = -weightVal;
+      if (goldVal <= 0 && silverVal <= 0 && cashVal <= 0) {
+        alert('Please specify at least one allocation amount (Gold, Silver, or Cash).');
+        return;
       }
 
-      const { error } = await supabase.from('super_admin_ledger').insert([newEntry]);
-      if (error) throw error;
+      const allocations = [];
+      const saEntries = [];
+
+      // 1. Gold + Cash (or just Cash if no silver is selected)
+      if (goldVal > 0 || (cashVal > 0 && silverVal <= 0)) {
+        allocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: allocBranchId,
+          branch_name: availableBranches.find(b => b.id === allocBranchId)?.name || allocBranchId,
+          staff_id: null,
+          metal: 'Gold',
+          pure_weight: goldVal,
+          cash_amount: cashVal,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes
+        });
+        
+        saEntries.push({
+          id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: dateStr,
+          iso_date: isoDateStr,
+          type: 'Branch Allocation',
+          branch_name: 'HEAD-OFFICE',
+          pure_gold_change: -goldVal,
+          impure_gold_change: 0,
+          calculated_pure_gold: 0,
+          pure_silver_change: 0,
+          impure_silver_change: 0,
+          calculated_pure_silver: 0,
+          cash_change: -cashVal,
+          details: `Allocated ${goldVal > 0 ? `${goldVal.toFixed(3)}g Pure Gold` : ''}${goldVal > 0 && cashVal > 0 ? ' and ' : ''}${cashVal > 0 ? `₹${cashVal.toLocaleString('en-IN')}` : ''} to ${allocBranchId}. Notes: ${allocNotes}`
+        });
+      }
+
+      // 2. Silver
+      if (silverVal > 0) {
+        const silverCash = (goldVal <= 0 && cashVal > 0) ? cashVal : 0;
+        allocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: allocBranchId,
+          branch_name: availableBranches.find(b => b.id === allocBranchId)?.name || allocBranchId,
+          staff_id: null,
+          metal: 'Silver',
+          pure_weight: silverVal,
+          cash_amount: silverCash,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes
+        });
+        
+        saEntries.push({
+          id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: dateStr,
+          iso_date: isoDateStr,
+          type: 'Branch Allocation',
+          branch_name: 'HEAD-OFFICE',
+          pure_gold_change: 0,
+          impure_gold_change: 0,
+          calculated_pure_gold: 0,
+          pure_silver_change: -silverVal,
+          impure_silver_change: 0,
+          calculated_pure_silver: 0,
+          cash_change: -silverCash,
+          details: `Allocated ${silverVal.toFixed(3)}g Pure Silver${silverCash > 0 ? ` and ₹${silverCash.toLocaleString('en-IN')}` : ''} to ${allocBranchId}. Notes: ${allocNotes}`
+        });
+      }
+
+      const { error: allocError } = await supabase.from('stock_allocations').insert(allocations);
+      if (allocError) throw allocError;
+
+      const { error: saError } = await supabase.from('super_admin_ledger').insert(saEntries);
+      if (saError) throw saError;
       
-      setAllocWeight('');
+      setAllocGoldWeight('');
+      setAllocSilverWeight('');
       setAllocCash('');
       setAllocNotes('');
       alert('Stock successfully allocated!');
@@ -1064,7 +1109,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               <div className="luxury-card p-6 bg-white border border-[#003366]/20 shadow-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-[#003366]/5 rounded-bl-full -mr-10 -mt-10 blur-xl pointer-events-none"></div>
                 <form onSubmit={handleAllocateSubmit} className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Left Column: Branch & Metal */}
+                  {/* Left Column: Branch & Cash */}
                   <div className="space-y-4">
                     <div>
                       <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Select Branch *</label>
@@ -1082,58 +1127,44 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Select Metal Type *</label>
-                      <div className="flex gap-2 bg-slate-50 p-1.5 rounded-2xl border border-outline-variant/20">
-                        {[
-                          { metal: 'Gold', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-md' },
-                          { metal: 'Silver', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-md' }
-                        ].map(({ metal, icon, activeClass }) => {
-                          const isActive = allocMetal === metal;
-                          return (
-                            <button
-                              type="button"
-                              key={metal}
-                              onClick={() => setAllocMetal(metal as 'Gold' | 'Silver')}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-300 ${
-                                isActive ? activeClass : 'text-outline hover:text-primary hover:bg-slate-200/50'
-                              }`}
-                            >
-                              <span className={`material-symbols-outlined text-sm ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
-                                {icon}
-                              </span>
-                              {metal}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Cash Allocation (INR)</label>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={allocCash}
+                        onChange={e => setAllocCash(e.target.value)}
+                        className="w-full bg-slate-50 border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-sm font-black text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 transition-all placeholder:font-medium placeholder:text-outline/50"
+                        placeholder="e.g. 100000"
+                      />
                     </div>
                   </div>
 
-                  {/* Right Column: Values & Notes */}
+                  {/* Right Column: Metals & Submit */}
                   <div className="space-y-4">
                     <div className="flex gap-3">
-                      <div className="flex-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Pure Weight (g) *</label>
+                      <div className="flex-1 relative">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Gold Weight (g)</label>
                         <input 
                           type="number" 
                           step="0.001"
-                          required
-                          value={allocWeight}
-                          onChange={e => setAllocWeight(e.target.value)}
-                          className="w-full bg-slate-50 border border-outline-variant/30 rounded-2xl py-3 px-4 text-sm font-black text-primary focus:outline-none focus:ring-2 focus:ring-[#003366]/20 transition-all placeholder:font-medium placeholder:text-outline/50"
-                          placeholder="e.g. 50.000"
+                          value={allocGoldWeight}
+                          onChange={e => setAllocGoldWeight(e.target.value)}
+                          className="w-full bg-slate-50 border border-amber-500/30 rounded-2xl py-3.5 px-4 text-sm font-black text-[#755b00] focus:outline-none focus:ring-2 focus:ring-amber-500/20 transition-all placeholder:font-medium placeholder:text-outline/50"
+                          placeholder="0.000"
                         />
+                        <span className="material-symbols-outlined text-amber-500 absolute top-9 right-4 opacity-50">workspace_premium</span>
                       </div>
-                      <div className="flex-1">
-                        <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Cash (INR)</label>
+                      <div className="flex-1 relative">
+                        <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Silver Weight (g)</label>
                         <input 
                           type="number" 
-                          step="0.01"
-                          value={allocCash}
-                          onChange={e => setAllocCash(e.target.value)}
-                          className="w-full bg-slate-50 border border-outline-variant/30 rounded-2xl py-3 px-4 text-sm font-black text-primary focus:outline-none focus:ring-2 focus:ring-[#003366]/20 transition-all placeholder:font-medium placeholder:text-outline/50"
-                          placeholder="e.g. 100000"
+                          step="0.001"
+                          value={allocSilverWeight}
+                          onChange={e => setAllocSilverWeight(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-400/30 rounded-2xl py-3.5 px-4 text-sm font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/20 transition-all placeholder:font-medium placeholder:text-outline/50"
+                          placeholder="0.000"
                         />
+                        <span className="material-symbols-outlined text-slate-400 absolute top-9 right-4 opacity-50">workspace_premium</span>
                       </div>
                     </div>
                     <div>
@@ -1628,93 +1659,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                   </>
                 )}
 
-                {ledgerActionTab === 'allocate' && (
-                  <>
-                    {/* ALLOCATE FORM */}
-                    
-                    {/* Branch Selector */}
-                    <div>
-                      <label className="text-[8px] font-bold uppercase tracking-widest text-outline mb-1.5 block">Select Branch *</label>
-                      <select
-                        required
-                        value={allocBranchId}
-                        onChange={e => setAllocBranchId(e.target.value)}
-                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
-                      >
-                        <option value="" disabled>Select a branch...</option>
-                        {availableBranches.map(b => (
-                          <option key={b.id} value={b.id}>{b.name}</option>
-                        ))}
-                      </select>
-                    </div>
 
-                    {/* Metal Selector (Gold/Silver) */}
-                    <div className="mt-2">
-                      <label className="text-[8px] font-bold uppercase tracking-widest text-outline mb-1.5 block">Select Metal Type *</label>
-                      <div className="flex gap-2 bg-surface-container p-1 rounded-2xl">
-                        {[
-                          { metal: 'Gold', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm' },
-                          { metal: 'Silver', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-sm' }
-                        ].map(({ metal, icon, activeClass }) => {
-                          const isActive = allocMetal === metal;
-                          return (
-                            <button
-                              type="button"
-                              key={metal}
-                              onClick={() => setAllocMetal(metal as 'Gold' | 'Silver')}
-                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
-                                isActive ? activeClass : 'text-outline hover:text-primary'
-                              }`}
-                            >
-                              <span className={`material-symbols-outlined text-sm ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
-                                {icon}
-                              </span>
-                              {metal}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Pure Weight Input */}
-                    <div className="relative group mt-1">
-                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocated Pure Weight (g)</span>
-                      <input 
-                        type="number" 
-                        step="0.001"
-                        value={allocWeight}
-                        onChange={e => setAllocWeight(e.target.value)}
-                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
-                        placeholder="e.g. 50.000"
-                      />
-                    </div>
-
-                    {/* Cash Input */}
-                    <div className="relative group mt-1">
-                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocated Cash (INR)</span>
-                      <input 
-                        type="number" 
-                        step="0.01"
-                        value={allocCash}
-                        onChange={e => setAllocCash(e.target.value)}
-                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
-                        placeholder="e.g. 100000.00"
-                      />
-                    </div>
-
-                    {/* Notes Input */}
-                    <div className="relative group mt-1">
-                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocation Notes</span>
-                      <input 
-                        type="text" 
-                        value={allocNotes}
-                        onChange={e => setAllocNotes(e.target.value)}
-                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
-                        placeholder="e.g. Weekly stock refill"
-                      />
-                    </div>
-                  </>
-                )}
 
                 {/* Submit / Cancel Action Buttons */}
                 <div className="flex gap-3 pt-2">
