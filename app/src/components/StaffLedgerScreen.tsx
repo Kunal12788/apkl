@@ -26,8 +26,7 @@ interface LedgerEntry {
 }
 
 
-const openingPureStock = { Gold: 100.000, Silver: 250.000 };
-const openingImpureStock = { Gold: 0.000, Silver: 0.000 };
+// Dynamic Opening Stock variables are calculated from stock_allocations and ledger_entries.
 
 // DB Mapper helper functions
 const mapDbToEntry = (db: any): LedgerEntry => ({
@@ -85,6 +84,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
+  const [allocations, setAllocations] = useState<any[]>([]);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
@@ -133,22 +133,35 @@ export const StaffLedgerScreen: React.FC = () => {
         branchUserIds = [userId];
       }
 
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [entriesRes, allocationsRes] = await Promise.all([
+        supabase
+          .from('ledger_entries')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('stock_allocations')
+          .select('*')
+      ]);
 
-      if (error) throw error;
+      if (entriesRes.error) throw entriesRes.error;
 
-      if (data) {
-        setCachedData('ledger_entries_all', data);
-        let filtered = data;
+      if (entriesRes.data) {
+        setCachedData('ledger_entries_all', entriesRes.data);
+        let filtered = entriesRes.data;
         if (!isSuperSa && user?.branch_id) {
-          filtered = data.filter((e: any) => branchUserIds.includes(e.staff_id));
+          filtered = entriesRes.data.filter((e: any) => branchUserIds.includes(e.staff_id));
         }
         setEntries(filtered.map(mapDbToEntry));
       } else {
         setEntries([]);
+      }
+
+      if (allocationsRes.data) {
+        let allocFiltered = allocationsRes.data;
+        if (!isSuperSa && user?.branch_id) {
+          allocFiltered = allocationsRes.data.filter((a: any) => a.branch_id === user?.branch_id);
+        }
+        setAllocations(allocFiltered);
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);
@@ -169,12 +182,20 @@ export const StaffLedgerScreen: React.FC = () => {
     return isTakenPureGold || isTakenCash || isRefining;
   });
 
+  const totalAllocatedPureGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
+  const totalAllocatedPureSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
+  const totalAllocatedCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+
   const totalPureGiven = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0);
   const totalImpureReceived = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0);
   const totalImpureRefined = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0);
   
-  const currentPureStock = openingPureStock[activeMetal] - totalPureGiven;
-  const currentImpureStock = openingImpureStock[activeMetal] + totalImpureReceived - totalImpureRefined;
+  const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
+  const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
+  
+  const totalCashReceived = entries.reduce((s, e) => s + e.cashReceived, 0);
+  const totalCashPaid = entries.reduce((s, e) => s + e.cashPaid, 0);
+  const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
   
   const pendingPureLiability = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0);
 
@@ -266,6 +287,68 @@ export const StaffLedgerScreen: React.FC = () => {
       fetchEntries();
     } catch (err) {
       console.error('Error dispatching to refinery:', err);
+    }
+  };
+
+  const handleSubmitDailyReport = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const todayEntries = entries.filter(e => e.isoDate === today);
+
+      const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
+      const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
+      const tAllocCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+
+      const pastEntries = entries.filter(e => e.isoDate < today);
+
+      const pastGoldUsed = pastEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+      const pastSilverUsed = pastEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+      const pastCashRecv = pastEntries.reduce((s, e) => s + e.cashReceived, 0);
+      const pastCashPaid = pastEntries.reduce((s, e) => s + e.cashPaid, 0);
+
+      const openingPureGold = tAllocGold - pastGoldUsed;
+      const openingPureSilver = tAllocSilver - pastSilverUsed;
+      const openingCash = tAllocCash + pastCashRecv - pastCashPaid;
+
+      const goldUsed = todayEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+      const silverUsed = todayEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+      const cashUsed = todayEntries.reduce((s, e) => s + e.cashPaid, 0);
+      
+      const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0);
+      const impureGoldRecv = todayEntries.reduce((s, e) => s + e.impureGoldIn, 0);
+      const impureSilverRecv = todayEntries.reduce((s, e) => s + e.impureSilverIn, 0);
+
+      const closingPureGold = openingPureGold - goldUsed;
+      const closingPureSilver = openingPureSilver - silverUsed;
+      const closingCash = openingCash + cashReceived - cashUsed;
+
+      const { error } = await supabase.from('branch_daily_reports').insert([{
+        id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
+        branch_id: user?.branch_id || 'BR-DELHI',
+        branch_name: branchName,
+        staff_id: userId,
+        date: 'Today',
+        iso_date: today,
+        opening_pure_gold: openingPureGold,
+        opening_pure_silver: openingPureSilver,
+        opening_cash: openingCash,
+        gold_used: goldUsed,
+        silver_used: silverUsed,
+        cash_used: cashUsed,
+        cash_received: cashReceived,
+        impure_gold_received: impureGoldRecv,
+        impure_silver_received: impureSilverRecv,
+        closing_pure_gold: closingPureGold,
+        closing_pure_silver: closingPureSilver,
+        closing_cash: closingCash,
+        status: 'Submitted'
+      }]);
+
+      if (error) throw error;
+      alert('Daily report submitted successfully!');
+    } catch (err) {
+      console.error('Error submitting daily report:', err);
+      alert('Failed to submit report.');
     }
   };
 
@@ -439,6 +522,21 @@ export const StaffLedgerScreen: React.FC = () => {
         {!selectedEntry && (
           <div className="space-y-6 animate-fade-in">
               <>
+                <div className="flex justify-between items-end">
+                  <div>
+                    <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
+                    <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
+                  </div>
+                  {isAdmin && (
+                    <button 
+                      onClick={handleSubmitDailyReport}
+                      className="bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                      Submit Data
+                    </button>
+                  )}
+                </div>
                 {/* Live Stock Engine Summary */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
@@ -449,7 +547,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.0)}>{fmtG(currentPureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingPureStock[activeMetal])}</p>
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Allocated: {fmtG(activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver)}</p>
                       </div>
                     </div>
                   </div>
@@ -462,7 +560,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.0)}>{fmtG(currentImpureStock)}</p>
                       <div className="flex justify-between items-center mt-1">
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Start: {fmtG(openingImpureStock[activeMetal])}</p>
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Allocated: 0.000</p>
                       </div>
                     </div>
                   </div>

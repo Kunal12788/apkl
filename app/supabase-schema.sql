@@ -208,6 +208,51 @@ INSERT INTO public.refinery_state (id, status, timer_start)
 VALUES ('current_session', 'idle', NULL)
 ON CONFLICT (id) DO NOTHING;
 
+-- 8. Stock Allocations (Super Admin to Branch)
+CREATE TABLE IF NOT EXISTS public.stock_allocations (
+    id TEXT PRIMARY KEY,
+    branch_id TEXT NOT NULL,
+    branch_name TEXT NOT NULL,
+    staff_id TEXT,
+    metal TEXT DEFAULT 'Gold',
+    pure_weight NUMERIC(10,3) DEFAULT 0.000,
+    cash_amount NUMERIC(15,2) DEFAULT 0.00,
+    allocated_by TEXT NOT NULL,
+    date TEXT NOT NULL,
+    iso_date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 9. Branch Daily Reports (End of Day Submissions)
+CREATE TABLE IF NOT EXISTS public.branch_daily_reports (
+    id TEXT PRIMARY KEY,
+    branch_id TEXT NOT NULL,
+    branch_name TEXT NOT NULL,
+    staff_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    iso_date DATE NOT NULL,
+    
+    opening_pure_gold NUMERIC(10,3) DEFAULT 0.000,
+    opening_pure_silver NUMERIC(10,3) DEFAULT 0.000,
+    opening_cash NUMERIC(15,2) DEFAULT 0.00,
+    
+    gold_used NUMERIC(10,3) DEFAULT 0.000,
+    silver_used NUMERIC(10,3) DEFAULT 0.000,
+    cash_used NUMERIC(15,2) DEFAULT 0.00,
+    
+    cash_received NUMERIC(15,2) DEFAULT 0.00,
+    impure_gold_received NUMERIC(10,3) DEFAULT 0.000,
+    impure_silver_received NUMERIC(10,3) DEFAULT 0.000,
+    
+    closing_pure_gold NUMERIC(10,3) DEFAULT 0.000,
+    closing_pure_silver NUMERIC(10,3) DEFAULT 0.000,
+    closing_cash NUMERIC(15,2) DEFAULT 0.00,
+    
+    status TEXT DEFAULT 'Submitted',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================================================
@@ -219,6 +264,8 @@ ALTER TABLE public.super_admin_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.refinery_state ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.stock_allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.branch_daily_reports ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if any to prevent conflicts when running schema again
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.users;
@@ -228,6 +275,8 @@ DROP POLICY IF EXISTS "Allow authenticated full access" ON public.super_admin_le
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.tasks;
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.transactions;
 DROP POLICY IF EXISTS "Allow authenticated full access" ON public.refinery_state;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.stock_allocations;
+DROP POLICY IF EXISTS "Allow authenticated full access" ON public.branch_daily_reports;
 
 -- Create policy for all tables to allow only authenticated users
 CREATE POLICY "Allow authenticated full access" ON public.users FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
@@ -237,4 +286,6 @@ CREATE POLICY "Allow authenticated full access" ON public.super_admin_ledger FOR
 CREATE POLICY "Allow authenticated full access" ON public.tasks FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated full access" ON public.transactions FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Allow authenticated full access" ON public.refinery_state FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.stock_allocations FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow authenticated full access" ON public.branch_daily_reports FOR ALL USING (auth.role() = 'authenticated') WITH CHECK (auth.role() = 'authenticated');
 

@@ -101,7 +101,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   // Custom Corporate Action Modal states
   const [showLedgerActionModal, setShowLedgerActionModal] = useState(false);
-  const [ledgerActionTab, setLedgerActionTab] = useState<'exchange' | 'cash'>('exchange');
+  const [ledgerActionTab, setLedgerActionTab] = useState<'exchange' | 'cash' | 'allocate'>('exchange');
   
   // Exchange form states
   const [exchangeMetal, setExchangeMetal] = useState<'Gold' | 'Silver'>('Gold');
@@ -121,13 +121,24 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [selectedTransfer, setSelectedTransfer] = useState<RefiningTransfer | null>(null);
   const [netPureAchieved, setNetPureAchieved] = useState('');
 
+  // Allocation form states
+  const [allocBranchId, setAllocBranchId] = useState('');
+  const [allocMetal, setAllocMetal] = useState<'Gold' | 'Silver'>('Gold');
+  const [allocWeight, setAllocWeight] = useState('');
+  const [allocCash, setAllocCash] = useState('');
+  const [allocNotes, setAllocNotes] = useState('');
+  const [availableBranches, setAvailableBranches] = useState<{id: string, name: string}[]>([]);
+  
+  // Branch Daily Reports
+  const [branchReports, setBranchReports] = useState<any[]>([]);
+
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
     // Already initialized from cache synchronously on mount, background fetch handles update
 
     try {
       // Fetch Super Admin Ledger and pending refining transfers in parallel
-      const [ledgerRes, transfersRes, branchEntriesRes, usersRes] = await Promise.all([
+      const [ledgerRes, transfersRes, branchEntriesRes, usersRes, reportsRes] = await Promise.all([
         supabase
           .from('super_admin_ledger')
           .select('*')
@@ -142,11 +153,16 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           .select('*')
           .eq('is_approved', false)
           .order('created_at', { ascending: false }),
-        supabase.from('users').select('*')
+        supabase.from('users').select('*'),
+        supabase
+          .from('branch_daily_reports')
+          .select('*')
+          .order('created_at', { ascending: false })
       ]);
 
       if (ledgerRes.error) throw ledgerRes.error;
       if (transfersRes.error) throw transfersRes.error;
+      if (reportsRes.error) throw reportsRes.error;
 
       const ledgerData = ledgerRes.data;
       if (ledgerData) {
@@ -167,6 +183,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           acc[u.id] = u.branch_id || 'Unknown Branch';
           return acc;
         }, {});
+        
+        // Extract unique branches for allocation
+        const uniqueBranches = Array.from(new Set(usersRes.data.map((u: any) => u.branch_id))).filter(id => id && id !== 'HEAD-OFFICE');
+        setAvailableBranches(uniqueBranches.map((id: any) => ({ id, name: id })));
         
         const grouped: any = {};
         branchEntriesRes.data.forEach((entry: any) => {
@@ -194,6 +214,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
            grouped[key].totalCashPaid += Number(entry.cash_paid || 0);
         });
         setPendingBranchGroups(Object.values(grouped).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date)));
+        
+        if (reportsRes.data) {
+          setBranchReports(reportsRes.data);
+        }
       }
 
     } catch (err) {
@@ -361,6 +385,40 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           newEntry.pure_silver_change = -pureVal;
           newEntry.calculated_pure_silver = pureVal;
         }
+      } else if (ledgerActionTab === 'allocate') {
+        const weightVal = parseFloat(allocWeight) || 0;
+        const cashVal = parseFloat(allocCash) || 0;
+        
+        if (!allocBranchId) {
+          alert('Please select a branch.');
+          return;
+        }
+
+        // 1. Insert into stock_allocations
+        const { error: allocError } = await supabase.from('stock_allocations').insert([{
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: allocBranchId,
+          branch_name: allocBranchId,
+          staff_id: null,
+          metal: allocMetal,
+          pure_weight: weightVal,
+          cash_amount: cashVal,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes
+        }]);
+        if (allocError) throw allocError;
+
+        newEntry.type = 'Branch Allocation';
+        newEntry.details = `Allocated ${weightVal.toFixed(3)}g Pure ${allocMetal} and ₹${cashVal.toLocaleString('en-IN')} to ${allocBranchId}. Notes: ${allocNotes}`;
+        newEntry.cash_change = -cashVal;
+        
+        if (allocMetal === 'Gold') {
+          newEntry.pure_gold_change = -weightVal;
+        } else {
+          newEntry.pure_silver_change = -weightVal;
+        }
       } else {
         const weightVal = parseFloat(cashWeight) || 0;
         const rateVal = parseFloat(cashRate) || 0;
@@ -401,6 +459,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       setCashWeight('');
       setCashRate('');
       setCashTotalAmount('');
+      setAllocWeight('');
+      setAllocCash('');
+      setAllocNotes('');
+      setAllocBranchId('');
       
       fetchData();
     } catch (err) {
@@ -999,6 +1061,59 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               )}
             </div>
 
+            {/* Branch Daily Reports Section */}
+            <div className="space-y-4">
+              <p className="label-institutional text-outline uppercase px-1">Branch End-Of-Day Reports</p>
+              {branchReports.length === 0 ? (
+                <div className="luxury-card p-6 bg-slate-50 border border-outline-variant/10 text-center">
+                  <span className="material-symbols-outlined text-slate-400 text-3xl mb-2">inventory</span>
+                  <p className="text-xs text-outline font-semibold">No daily reports submitted yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {branchReports.slice(0, 5).map(report => (
+                    <div 
+                      key={report.id}
+                      className="luxury-card p-4 bg-white border border-outline-variant/20 shadow-sm flex flex-col gap-2"
+                    >
+                      <div className="flex justify-between items-center border-b border-outline-variant/10 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-[#003366]/10 text-[#003366] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-sm">assignment_turned_in</span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs text-primary">{report.branch_name}</p>
+                            <p className="text-[8px] uppercase tracking-widest font-bold text-outline">{report.date} • {report.id}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100">
+                          {report.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-1">
+                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
+                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Gold Used</p>
+                          <p className="text-xs font-black text-[#755b00]">{fmtG(report.gold_used)}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
+                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Silver Used</p>
+                          <p className="text-xs font-black text-slate-500">{fmtG(report.silver_used)}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
+                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Cash Recv</p>
+                          <p className="text-xs font-black text-emerald-600">{fmt(report.cash_received)}</p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-1 px-1">
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Pure Gold: <span className="text-primary font-black">{fmtG(report.closing_pure_gold)}</span></p>
+                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Cash: <span className="text-primary font-black">{fmt(report.closing_cash)}</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Super Admin Ledger History */}
             <div className="space-y-3">
               <p className="label-institutional text-outline uppercase px-1">Corporate Ledger History</p>
@@ -1374,6 +1489,92 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                         onChange={e => setCashTotalAmount(e.target.value)}
                         className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
                         placeholder="e.g. 60000.00"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* ALLOCATE FORM */}
+                    
+                    {/* Branch Selector */}
+                    <div>
+                      <label className="text-[8px] font-bold uppercase tracking-widest text-outline mb-1.5 block">Select Branch *</label>
+                      <select
+                        required
+                        value={allocBranchId}
+                        onChange={e => setAllocBranchId(e.target.value)}
+                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
+                      >
+                        <option value="" disabled>Select a branch...</option>
+                        {availableBranches.map(b => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Metal Selector (Gold/Silver) */}
+                    <div className="mt-2">
+                      <label className="text-[8px] font-bold uppercase tracking-widest text-outline mb-1.5 block">Select Metal Type *</label>
+                      <div className="flex gap-2 bg-surface-container p-1 rounded-2xl">
+                        {[
+                          { metal: 'Gold', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-sm' },
+                          { metal: 'Silver', icon: 'workspace_premium', activeClass: 'bg-gradient-to-r from-slate-400 to-slate-500 text-white shadow-sm' }
+                        ].map(({ metal, icon, activeClass }) => {
+                          const isActive = allocMetal === metal;
+                          return (
+                            <button
+                              type="button"
+                              key={metal}
+                              onClick={() => setAllocMetal(metal as 'Gold' | 'Silver')}
+                              className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl font-bold text-xs uppercase tracking-wider transition-all ${
+                                isActive ? activeClass : 'text-outline hover:text-primary'
+                              }`}
+                            >
+                              <span className={`material-symbols-outlined text-sm ${isActive ? 'text-white' : metal === 'Gold' ? 'text-amber-500' : 'text-slate-400'}`}>
+                                {icon}
+                              </span>
+                              {metal}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Pure Weight Input */}
+                    <div className="relative group mt-1">
+                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocated Pure Weight (g)</span>
+                      <input 
+                        type="number" 
+                        step="0.001"
+                        value={allocWeight}
+                        onChange={e => setAllocWeight(e.target.value)}
+                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
+                        placeholder="e.g. 50.000"
+                      />
+                    </div>
+
+                    {/* Cash Input */}
+                    <div className="relative group mt-1">
+                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocated Cash (INR)</span>
+                      <input 
+                        type="number" 
+                        step="0.01"
+                        value={allocCash}
+                        onChange={e => setAllocCash(e.target.value)}
+                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
+                        placeholder="e.g. 100000.00"
+                      />
+                    </div>
+
+                    {/* Notes Input */}
+                    <div className="relative group mt-1">
+                      <span className="text-[8px] absolute -top-2 left-4 bg-white px-1.5 text-outline font-bold uppercase tracking-widest z-10">Allocation Notes</span>
+                      <input 
+                        type="text" 
+                        value={allocNotes}
+                        onChange={e => setAllocNotes(e.target.value)}
+                        className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3 px-4 text-xs font-bold text-primary focus:outline-none"
+                        placeholder="e.g. Weekly stock refill"
                       />
                     </div>
                   </>
