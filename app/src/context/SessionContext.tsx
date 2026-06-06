@@ -121,27 +121,62 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     await supabase.auth.signOut();
   };
 
-  // Background polling to instantly & silently log out active users when access is disabled
+  // Background polling to instantly sync profile changes (role, branch) and enforce access rules
   useEffect(() => {
-    if (!user || user.role === 'Super Admin') return;
+    if (!user) return;
 
     const interval = setInterval(async () => {
       try {
-        const { data: settingsData } = await supabase
-          .from('login_settings')
-          .select('value')
-          .eq('id', 'login_allowed')
+        // 1. Fetch current user from database
+        const { data: dbUser, error: dbErr } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
           .maybeSingle();
-        
-        const isLoginAllowed = settingsData ? settingsData.value : true;
-        if (!isLoginAllowed) {
-          // Silent logout (no alerts, no messages, no toast notifications)
+
+        if (!dbErr && !dbUser) {
+          // User has been deleted from public.users
           await logout(undefined, true);
+          return;
+        }
+
+        if (dbUser) {
+          // 2. Enforce login toggle restrictions for non-Super Admins
+          if (dbUser.role !== 'Super Admin') {
+            const { data: settingsData } = await supabase
+              .from('login_settings')
+              .select('value')
+              .eq('id', 'login_allowed')
+              .maybeSingle();
+            
+            const isLoginAllowed = settingsData ? settingsData.value : true;
+            if (!isLoginAllowed) {
+              await logout(undefined, true);
+              return;
+            }
+          }
+
+          // 3. Dynamically sync role/branch/profile updates
+          if (
+            dbUser.role !== user.role ||
+            dbUser.name !== user.name ||
+            (dbUser.phone || '') !== user.phone ||
+            dbUser.branch_id !== user.branch_id
+          ) {
+            setUser({
+              id: dbUser.id,
+              name: dbUser.name,
+              role: dbUser.role,
+              email: dbUser.email,
+              phone: dbUser.phone || '',
+              branch_id: dbUser.branch_id || null
+            });
+          }
         }
       } catch (err) {
-        console.error('Background login access polling error:', err);
+        console.error('Background user session polling error:', err);
       }
-    }, 1200); // Check every 1.2 seconds for sub-2-second revocation response
+    }, 1200); // Check every 1.2 seconds for sub-2-second responsive updates
 
     return () => clearInterval(interval);
   }, [user]);

@@ -75,10 +75,10 @@ export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSession();
   const userId = user?.id || 'STAFF-001';
-  const isAdmin = userId.startsWith('ADMIN-');
+  const isAdmin = user?.role === 'Admin';
 
   const cachedEntries = getCachedData('ledger_entries_all');
-  const isSuperSa = user?.id?.startsWith('SUPER-');
+  const isSuperSa = user?.role === 'Super Admin';
   const initialEntries = cachedEntries 
     ? (isSuperSa ? cachedEntries : cachedEntries.filter((e: any) => e.staff_id === userId)).map(mapDbToEntry) 
     : [];
@@ -118,7 +118,7 @@ export const StaffLedgerScreen: React.FC = () => {
     // Already initialized from cache synchronously, background fetch handles updates
 
     try {
-      const isSuperSa = user?.id?.startsWith('SUPER-');
+      const isSuperSa = user?.role === 'Super Admin';
       let branchUserIds: string[] = [];
       if (!isSuperSa && user?.branch_id) {
         const { data: bUsers, error: buError } = await supabase

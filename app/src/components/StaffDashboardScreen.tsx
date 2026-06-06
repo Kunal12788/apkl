@@ -9,7 +9,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
   const userId = user?.id || 'STAFF-001';
-  const isAdminOrSuper = userId.startsWith('ADMIN-') || userId.startsWith('SUPER-');
+  const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
   
   const userName = user?.name || '';
   
@@ -18,7 +18,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const cachedTx = getCachedData('tx_data');
   const cachedTasks = getCachedData('tasks_data');
 
-  const isSuperSa = user?.id?.startsWith('SUPER-');
+  const isSuperSa = user?.role === 'Super Admin';
   const initialLedger = cachedLedger 
     ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => e.staff_id === userId))
     : [];
@@ -106,8 +106,8 @@ export const StaffDashboardScreen: React.FC = () => {
 
   const getGreetingName = () => {
     if (userName) return userName;
-    if (userId.startsWith('ADMIN-')) return 'Chief Admin';
-    if (userId.startsWith('SUPER-')) return 'Director';
+    if (user?.role === 'Admin') return 'Chief Admin';
+    if (user?.role === 'Super Admin') return 'Director';
     return 'Alexander';
   };
 
@@ -153,7 +153,7 @@ export const StaffDashboardScreen: React.FC = () => {
       const cachedTx = getCachedData('tx_data');
       const cachedTasks = getCachedData('tasks_data');
 
-      const isSuperSa = user?.id?.startsWith('SUPER-');
+      const isSuperSa = user?.role === 'Super Admin';
 
       const applyData = (ledgerData: any[] | null, txData: any[] | null, tasksData: any[] | null, branchUserIds: string[]) => {
         const hasBranchFilter = !isSuperSa && user?.branch_id;

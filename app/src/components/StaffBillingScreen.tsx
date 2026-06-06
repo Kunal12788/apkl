@@ -294,7 +294,7 @@ export const StaffBillingScreen: React.FC = () => {
     const loadTransactions = async () => {
       // 1. Instantly load from cache
       const cachedTx = getCachedData('tx_data');
-      const isSuperSa = user?.id?.startsWith('SUPER-');
+      const isSuperSa = user?.role === 'Super Admin';
       const currentUserId = user?.id || 'STAFF-001';
 
       if (cachedTx) {

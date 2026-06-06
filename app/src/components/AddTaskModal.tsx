@@ -37,7 +37,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const [step, setStep] = useState(1);
   const [workType, setWorkType] = useState<WorkType | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const isCollection = user?.id?.startsWith('COLL-') || false;
+  const isCollection = user?.role === 'Collection Staff';
 
   const [formData, setFormData] = useState({
     metal: 'Gold',

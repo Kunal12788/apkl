@@ -11,7 +11,7 @@ export const GlobalFAB: React.FC = () => {
 
   // Define paths where the FAB should be hidden (e.g., login, splash)
   const hideOnPaths = ['/login', '/forgot', '/splash', '/'];
-  if (hideOnPaths.includes(location.pathname) || (user?.id?.startsWith('SUPER-') && location.pathname === '/ledger') || !isFullyAuthenticated) return null;
+  if (hideOnPaths.includes(location.pathname) || (user?.role === 'Super Admin' && location.pathname === '/ledger') || !isFullyAuthenticated) return null;
 
   return (
     <>

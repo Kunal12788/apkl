@@ -37,10 +37,10 @@ const DashboardWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
   
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminDashboardScreen />;
   }
-  if (user.id.startsWith('COLL-')) {
+  if (user.role === 'Collection Staff') {
     return <CollectionStaffDashboardScreen />;
   }
   return <StaffDashboardScreen />;
@@ -51,7 +51,7 @@ const BillingWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('COLL-')) {
+  if (user.role === 'Collection Staff') {
     return <CollectionStaffBillingScreen />;
   }
   return <StaffBillingScreen />;
@@ -62,7 +62,7 @@ const TasksWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('COLL-')) {
+  if (user.role === 'Collection Staff') {
     return <CollectionStaffTasksScreen />;
   }
   return <StaffTasksScreen />;
@@ -73,7 +73,7 @@ const ProfileWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('COLL-')) {
+  if (user.role === 'Collection Staff') {
     return <CollectionStaffProfileScreen />;
   }
   return <StaffProfileScreen />;
@@ -84,7 +84,7 @@ const LedgerWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminLedgerScreen />;
   }
   return <StaffLedgerScreen />;
@@ -95,7 +95,7 @@ const RefineryWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminRefineryScreen />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -106,7 +106,7 @@ const StaffWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminStaffScreen />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -117,7 +117,7 @@ const WorkWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminWorkScreen />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -128,7 +128,7 @@ const StockWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminStockScreen />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -139,7 +139,7 @@ const AlertsWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminAlertsScreen />;
   }
   return <Navigate to="/dashboard" replace />;
@@ -150,7 +150,7 @@ const CalculatorWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.id.startsWith('SUPER-')) {
+  if (user.role === 'Super Admin') {
     return <SuperAdminCalculatorScreen />;
   }
   return <Navigate to="/dashboard" replace />;

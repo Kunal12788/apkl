@@ -320,7 +320,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [endDate, setEndDate] = useState('');
 
   const currentUser = user?.id || 'STAFF-001';
-  const isAdminOrSuper = currentUser.startsWith('ADMIN-') || currentUser.startsWith('SUPER-');
+  const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
   const [toastMessage, setToastMessage] = useState('');
@@ -335,7 +335,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
-  const isSuperSa = user?.id?.startsWith('SUPER-');
+  const isSuperSa = user?.role === 'Super Admin';
   const initialTasks = cachedTasks
     ? (isAdminOrSuper 
         ? cachedTasks.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification')
