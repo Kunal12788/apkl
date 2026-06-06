@@ -123,7 +123,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Background polling to instantly sync profile changes (role, branch) and enforce access rules
   useEffect(() => {
-    if (!user) return;
+    if (!user || !isFullyAuthenticated) return;
 
     const interval = setInterval(async () => {
       try {
@@ -179,7 +179,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 1200); // Check every 1.2 seconds for sub-2-second responsive updates
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, isFullyAuthenticated]);
 
   return (
     <SessionContext.Provider value={{ user, login, logout, loading, isFullyAuthenticated, authError, setAuthError }}>
