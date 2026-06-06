@@ -319,7 +319,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const currentUser = user?.id || 'STAFF-001';
+  const currentUser = user?.id || '';
   const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
@@ -475,7 +475,7 @@ export const StaffTasksScreen: React.FC = () => {
          logo_name: verifiedTask.logoName,
          carat: verifiedTask.carat,
          point_suggestion: verifiedTask.pointSuggestion,
-         created_by: verifiedTask.createdBy || 'COLL-001'
+         created_by: verifiedTask.createdBy || ''
        };
 
        await supabase.from('transactions').insert([newTxn]);
@@ -525,7 +525,7 @@ export const StaffTasksScreen: React.FC = () => {
             logo_name: task.logoName,
             carat: task.carat,
             point_suggestion: task.pointSuggestion,
-            created_by: task.createdBy || 'COLL-001'
+            created_by: task.createdBy || ''
           };
 
           await supabase.from('transactions').insert([newTxn]);

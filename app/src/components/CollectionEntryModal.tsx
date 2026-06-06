@@ -77,7 +77,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         status: 'Pending',
         progress_percentage: 0,
         source: 'Collection Staff',
-        created_by: user?.id || 'COLL-001',
+        created_by: user?.id || '',
         date_given: 'Just Now',
         iso_date: new Date().toISOString().split('T')[0],
         estimated_completion: 'Awaiting Audit',

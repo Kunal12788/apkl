@@ -9,7 +9,7 @@ import { fitText } from '../utils';
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
-  const currentUser = user?.id || 'COLL-001';
+  const currentUser = user?.id || '';
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
   // Directly initialize state from cache for 0ms delay on mount

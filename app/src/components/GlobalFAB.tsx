@@ -58,7 +58,7 @@ export const GlobalFAB: React.FC = () => {
               progress_percentage: data.progressPercentage,
               assigned_to: data.assignedTo || 'Unassigned',
               source: 'Staff',
-              created_by: user?.id || 'STAFF-001',
+              created_by: user?.id || '',
               iso_date: new Date().toISOString().split('T')[0],
               estimated_completion: 'Today, 06:00 PM',
               notes: 'Created from Global FAB'

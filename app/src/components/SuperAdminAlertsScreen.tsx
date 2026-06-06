@@ -2,44 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Mock Data for UI presentation
-const mockAlerts = [
-  {
-    id: 'AL-101',
-    type: 'security',
-    severity: 'critical',
-    title: 'High-Value Anomaly Detected',
-    description: 'A transaction exceeding ₹50,00,000 has been initiated from the corporate ledger without prior clearance.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 mins ago
-    status: 'unresolved',
-  },
-  {
-    id: 'AL-102',
-    type: 'inventory',
-    severity: 'high',
-    title: 'Vault Capacity Warning',
-    description: 'Gold stock levels have dropped below the 5kg threshold. Immediate replenishment recommended.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-    status: 'unresolved',
-  },
-  {
-    id: 'AL-103',
-    type: 'system',
-    severity: 'medium',
-    title: 'Database Sync Delayed',
-    description: 'Branch B database synchronization is delayed by 14 minutes. Retrying connection...',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-    status: 'resolved',
-  },
-  {
-    id: 'AL-104',
-    type: 'staff',
-    severity: 'low',
-    title: 'Unusual Login Location',
-    description: 'Staff member ID: COLL-8832 logged in from an unrecognized IP address in Mumbai.',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
-    status: 'resolved',
-  }
-];
+const mockAlerts: any[] = [];
 
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();

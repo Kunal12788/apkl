@@ -17,7 +17,7 @@ const guessRoleFromEmail = (email: string) => {
   if (emailLower === 'k9836282432@gmail.com' || emailLower.includes('admin')) {
     return { id: 'ADMIN-temp', name: 'Branch Admin', role: 'Admin' };
   }
-  return { id: 'STAFF-temp', name: 'Marcus Reynolds', role: 'Staff' };
+  return { id: 'STAFF-temp', name: 'Staff Member', role: 'Staff' };
 };
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {

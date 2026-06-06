@@ -215,7 +215,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
-  const currentUser = user?.id || 'COLL-001';
+  const currentUser = user?.id || '';
   const initialTasks = cachedTasks
     ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,

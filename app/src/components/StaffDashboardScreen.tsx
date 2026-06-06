@@ -8,7 +8,7 @@ import { fitText } from '../utils';
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
-  const userId = user?.id || 'STAFF-001';
+  const userId = user?.id || '';
   const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
   
   const userName = user?.name || '';
@@ -108,7 +108,7 @@ export const StaffDashboardScreen: React.FC = () => {
     if (userName) return userName;
     if (user?.role === 'Admin') return 'Chief Admin';
     if (user?.role === 'Super Admin') return 'Director';
-    return 'Alexander';
+    return 'Staff Member';
   };
 
   const getInitials = (name: string) => {

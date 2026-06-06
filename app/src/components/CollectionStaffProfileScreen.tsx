@@ -6,7 +6,7 @@ import { useSession } from '../context/SessionContext';
 export const CollectionStaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useSession();
-  const userId = user?.id || 'COLL-001';
+  const userId = user?.id || '';
 
   const [profile, setProfile] = useState<any>(null);
   const [stats, setStats] = useState({

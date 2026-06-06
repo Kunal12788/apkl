@@ -74,7 +74,7 @@ const mapEntryToDb = (entry: LedgerEntry, staffId: string) => ({
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useSession();
-  const userId = user?.id || 'STAFF-001';
+  const userId = user?.id || '';
   const isAdmin = user?.role === 'Admin';
 
   const cachedEntries = getCachedData('ledger_entries_all');

@@ -7,7 +7,7 @@ export const StaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useSession();
 
-  const userId = user?.id || 'STAFF-001';
+  const userId = user?.id || '';
   
   const [profile, setProfile] = useState<any>(null);
 

@@ -1,16 +1,42 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import { useSession } from '../context/SessionContext';
+import { useState, useEffect } from 'react';
 
 export const CollectionHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const history = [
-    { id: 'COL-8921', customer: 'Ramesh Jewelers', category: 'TUNCH', purity: '22K', status: 'In Transit', time: '2024-05-16 10:30:15 AM', pieces: '12', weight: '145.50g', logo: 'RJ', type: 'Sample', fee: 'Paid' },
-    { id: 'COL-8922', customer: 'Sita Ram & Sons', category: 'MARKING', purity: '18K', status: 'Pending', time: '2024-05-16 11:15:22 AM', pieces: '45', weight: '89.20g', logo: 'SRS', type: 'Jewellery', fee: 'Due' },
-    { id: 'COL-8923', customer: 'Modern Goldsmith', category: 'SHOULDERING', purity: '22K', status: 'Verified', time: '2024-05-16 12:05:45 PM', pieces: '8', weight: '210.15g', logo: 'MG', type: 'Jewellery', fee: 'Paid' },
-    { id: 'COL-8924', customer: 'Om Shakti Jewelers', category: 'TUNCH', purity: '24K', status: 'Delivered', time: '2024-05-15 04:20:10 PM', pieces: '1', weight: '10.00g', logo: 'OM', type: 'Bullion', fee: 'Paid' },
-    { id: 'COL-8925', customer: 'Laxmi Gold', category: 'MARKING', purity: '22K', status: 'In Transit', time: '2024-05-15 05:45:30 PM', pieces: '120', weight: '340.50g', logo: 'LG', type: 'Jewellery', fee: 'Due' },
-  ];
+  const { user } = useSession();
+  const [history, setHistory] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (!user?.id) return;
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setHistory(data.map(t => ({
+          id: t.id,
+          customer: t.customer_name,
+          category: t.work_type,
+          purity: t.purity || 'N/A',
+          status: t.status,
+          time: t.date_given || new Date(t.created_at).toLocaleString(),
+          pieces: t.pieces || '0',
+          weight: t.weight || t.impure_weight || '0g',
+          logo: t.logo_name || t.customer_name?.charAt(0) || '?',
+          type: t.product_type || 'Unknown',
+          fee: t.fee_status || 'Due'
+        })));
+      }
+    };
+    fetchHistory();
+  }, [user]);
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative flex flex-col">

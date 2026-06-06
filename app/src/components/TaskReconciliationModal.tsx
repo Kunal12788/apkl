@@ -40,7 +40,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
 
   const handleFinalize = () => {
     if (result === 'MATCH') {
-      onVerified({ ...collectionTask, status: 'Completed', verifiedBy: 'Alexander', verifiedAt: new Date().toISOString() });
+      onVerified({ ...collectionTask, status: 'Completed', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString() });
     }
   };
 

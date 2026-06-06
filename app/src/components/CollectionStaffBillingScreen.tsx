@@ -216,7 +216,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
   // Load transactions from cache synchronously on mount for 0ms delay
   const cachedTx = getCachedData('tx_data');
-  const currentUser = user?.id || 'COLL-001';
+  const currentUser = user?.id || '';
   const initialTx = cachedTx
     ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
         metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
