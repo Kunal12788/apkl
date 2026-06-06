@@ -184,7 +184,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const totalAllocatedPureGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
   const totalAllocatedPureSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
-  const totalAllocatedCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+  // const totalAllocatedCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
 
   const totalPureGiven = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0);
   const totalImpureReceived = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0);
@@ -193,9 +193,9 @@ export const StaffLedgerScreen: React.FC = () => {
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
   
-  const totalCashReceived = entries.reduce((s, e) => s + e.cashReceived, 0);
-  const totalCashPaid = entries.reduce((s, e) => s + e.cashPaid, 0);
-  const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
+  // const totalCashReceived = entries.reduce((s, e) => s + e.cashReceived, 0);
+  // const totalCashPaid = entries.reduce((s, e) => s + e.cashPaid, 0);
+  // const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
   
   const pendingPureLiability = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0);
 

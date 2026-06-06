@@ -1307,7 +1307,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               {/* Form Container */}
               <form onSubmit={handleLedgerActionSubmit} className="space-y-4 overflow-y-auto hide-scrollbar flex-grow pr-1">
                 
-                {ledgerActionTab === 'exchange' ? (
+                {ledgerActionTab === 'exchange' && (
                   <>
                     {/* EXCHANGE FORM */}
                     
@@ -1393,7 +1393,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       />
                     </div>
                   </>
-                ) : (
+                )}
+
+                {ledgerActionTab === 'cash' && (
                   <>
                     {/* CASH FORM */}
                     
@@ -1492,7 +1494,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       />
                     </div>
                   </>
-                ) : (
+                )}
+
+                {ledgerActionTab === 'allocate' && (
                   <>
                     {/* ALLOCATE FORM */}
                     
