@@ -91,7 +91,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
   const [allocations, setAllocations] = useState<any[]>(initialAllocations);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
-  const [loading, setLoading] = useState(initialEntries.length === 0);
+  const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   const [branchName, setBranchName] = useState('Delhi Branch');

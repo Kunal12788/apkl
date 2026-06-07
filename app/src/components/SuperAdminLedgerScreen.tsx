@@ -91,7 +91,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
-  const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
+  const [, setLoading] = useState<boolean>(cachedSaLedger === null);
 
   const [setupPureInput, setSetupPureInput] = useState('');
   const [setupImpureInput, setSetupImpureInput] = useState('');
