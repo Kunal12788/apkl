@@ -76,15 +76,20 @@ export const StaffLedgerScreen: React.FC = () => {
   const userId = user?.id || '';
   const isAdmin = user?.role === 'Admin';
 
-  const cachedEntries = getCachedData('ledger_entries_all');
   const isSuperSa = user?.role === 'Super Admin';
-  const initialEntries = cachedEntries 
-    ? (isSuperSa ? cachedEntries : cachedEntries.filter((e: any) => e.staff_id === userId)).map(mapDbToEntry) 
-    : [];
+  const cacheKeyEntries = isSuperSa ? 'ledger_entries_superadmin' : `ledger_entries_branch_${user?.branch_id || userId}`;
+  const cacheKeyAllocations = isSuperSa ? 'stock_allocations_superadmin' : `stock_allocations_branch_${user?.branch_id || userId}`;
+  const cacheKeyBranchUsers = `branch_users_${user?.branch_id || 'unknown'}`;
+
+  const cachedEntries = getCachedData(cacheKeyEntries);
+  const initialEntries = cachedEntries ? cachedEntries.map(mapDbToEntry) : [];
+
+  const cachedAllocations = getCachedData(cacheKeyAllocations);
+  const initialAllocations = cachedAllocations || [];
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
-  const [allocations, setAllocations] = useState<any[]>([]);
+  const [allocations, setAllocations] = useState<any[]>(initialAllocations);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
@@ -115,53 +120,53 @@ export const StaffLedgerScreen: React.FC = () => {
 
   // Fetch entries from Supabase
   const fetchEntries = async () => {
-    // Already initialized from cache synchronously, background fetch handles updates
-
     try {
       const isSuperSa = user?.role === 'Super Admin';
-      let branchUserIds: string[] = [];
-      if (!isSuperSa && user?.branch_id) {
+      let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
+
+      if (!isSuperSa && user?.branch_id && branchUserIds.length === 0) {
         const { data: bUsers, error: buError } = await supabase
           .from('users')
           .select('id')
           .eq('branch_id', user.branch_id);
         if (!buError && bUsers) {
           branchUserIds = bUsers.map((bu: any) => bu.id);
+          setCachedData(cacheKeyBranchUsers, branchUserIds);
         }
       }
+
       if (branchUserIds.length === 0) {
         branchUserIds = [userId];
       }
 
+      let entriesQuery = supabase.from('ledger_entries').select('*').order('created_at', { ascending: false });
+      let allocationsQuery = supabase.from('stock_allocations').select('*');
+
+      if (!isSuperSa && user?.branch_id) {
+        entriesQuery = entriesQuery.in('staff_id', branchUserIds);
+        allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
+      }
+
       const [entriesRes, allocationsRes] = await Promise.all([
-        supabase
-          .from('ledger_entries')
-          .select('*')
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('stock_allocations')
-          .select('*')
+        entriesQuery,
+        allocationsQuery
       ]);
 
       if (entriesRes.error) throw entriesRes.error;
+      if (allocationsRes.error) throw allocationsRes.error;
 
       if (entriesRes.data) {
-        setCachedData('ledger_entries_all', entriesRes.data);
-        let filtered = entriesRes.data;
-        if (!isSuperSa && user?.branch_id) {
-          filtered = entriesRes.data.filter((e: any) => branchUserIds.includes(e.staff_id));
-        }
-        setEntries(filtered.map(mapDbToEntry));
+        setCachedData(cacheKeyEntries, entriesRes.data);
+        setEntries(entriesRes.data.map(mapDbToEntry));
       } else {
         setEntries([]);
       }
 
       if (allocationsRes.data) {
-        let allocFiltered = allocationsRes.data;
-        if (!isSuperSa && user?.branch_id) {
-          allocFiltered = allocationsRes.data.filter((a: any) => a.branch_id === user?.branch_id);
-        }
-        setAllocations(allocFiltered);
+        setCachedData(cacheKeyAllocations, allocationsRes.data);
+        setAllocations(allocationsRes.data);
+      } else {
+        setAllocations([]);
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);

@@ -1,5 +1,24 @@
 export const appCache: Record<string, { data: any; timestamp: number }> = {};
 
+// Load initial cache from localStorage to survive page refreshes
+try {
+  const stored = localStorage.getItem('aurora_app_cache');
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    Object.assign(appCache, parsed);
+  }
+} catch (e) {
+  console.error('Failed to load cache from localStorage', e);
+}
+
+const saveCacheToStorage = () => {
+  try {
+    localStorage.setItem('aurora_app_cache', JSON.stringify(appCache));
+  } catch (e) {
+    console.error('Failed to save cache to localStorage', e);
+  }
+};
+
 export const getCachedData = (key: string, maxAgeMs = 300000) => {
   const cached = appCache[key];
   if (cached && (Date.now() - cached.timestamp < maxAgeMs)) {
@@ -13,6 +32,7 @@ export const setCachedData = (key: string, data: any) => {
     data,
     timestamp: Date.now()
   };
+  saveCacheToStorage();
 };
 
 export const clearCache = (key?: string) => {
@@ -23,4 +43,6 @@ export const clearCache = (key?: string) => {
       delete appCache[k];
     }
   }
+  saveCacheToStorage();
 };
+

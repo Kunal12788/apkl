@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient';
 import { sendActivityNotification } from '../services/notificationService';
 import { triggerAppleToast } from '../components/AppleToast';
 import { sendOSNotification } from '../utils/osNotifications';
+import { clearCache } from '../cache';
+
 
 export interface UserSession {
   id: string;
@@ -91,6 +93,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const logout = async (errorMsg?: string, isSilent = false) => {
+    clearCache();
     if (user) {
       if (!isSilent) {
         // Trigger In-App Apple Toast

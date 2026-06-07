@@ -72,6 +72,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const cachedSaLedger = getCachedData('super_admin_ledger_all');
   const cachedTransfers = getCachedData('refining_transfers_pending');
+  const cachedBranches = getCachedData('super_admin_branches');
+  const cachedReports = getCachedData('super_admin_branch_reports');
+  const cachedPendingGroups = getCachedData('super_admin_pending_groups');
 
   const initialLedger = cachedSaLedger ? cachedSaLedger.map(mapDbToSaEntry) : [];
   const initialTransfers = cachedTransfers ? cachedTransfers.map(mapDbToTransfer) : [];
@@ -81,7 +84,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   
   // Approval Workflow State
   const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
-  const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>([]);
+  const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>(cachedPendingGroups || []);
   const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState<0 | 1>(0);
   const [approving, setApproving] = useState(false);
@@ -127,10 +130,10 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [allocSilverWeight, setAllocSilverWeight] = useState('');
   const [allocCash, setAllocCash] = useState('');
   const [allocNotes, setAllocNotes] = useState('');
-  const [availableBranches, setAvailableBranches] = useState<{id: string, name: string}[]>([]);
+  const [availableBranches, setAvailableBranches] = useState<{id: string, name: string}[]>(cachedBranches || []);
   
   // Branch Daily Reports
-  const [branchReports, setBranchReports] = useState<any[]>([]);
+  const [branchReports, setBranchReports] = useState<any[]>(cachedReports || []);
 
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
@@ -168,6 +171,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (branchesRes.data) {
         setAvailableBranches(branchesRes.data);
+        setCachedData('super_admin_branches', branchesRes.data);
       }
 
       const ledgerData = ledgerRes.data;
@@ -215,10 +219,13 @@ export const SuperAdminLedgerScreen: React.FC = () => {
            grouped[key].totalCashReceived += Number(entry.cash_received || 0);
            grouped[key].totalCashPaid += Number(entry.cash_paid || 0);
         });
-        setPendingBranchGroups(Object.values(grouped).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date)));
+        const sortedGroups = Object.values(grouped).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date));
+        setPendingBranchGroups(sortedGroups);
+        setCachedData('super_admin_pending_groups', sortedGroups);
         
         if (reportsRes.data) {
           setBranchReports(reportsRes.data);
+          setCachedData('super_admin_branch_reports', reportsRes.data);
         }
       }
 
