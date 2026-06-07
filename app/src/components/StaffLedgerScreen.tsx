@@ -196,25 +196,58 @@ export const StaffLedgerScreen: React.FC = () => {
     };
   }, [user?.branch_id, isSuperSa]);
 
-  const filtered = React.useMemo(() => entries.filter(e => {
-    const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
-    const isTakenCash = e.cashPaid > 0;
-    const isRefining = e.transactionType === 'Refining Dispatch';
-    
-    return isTakenPureGold || isTakenCash || isRefining;
-  }), [entries]);
-
   const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
   const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
+  const totalAllocatedCash = React.useMemo(() => allocations.reduce((s, a) => s + Number(a.cash_amount), 0), [allocations]);
 
   const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
   const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
   const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
   
+  const totalCashReceived = React.useMemo(() => entries.reduce((s, e) => s + e.cashReceived, 0), [entries]);
+  const totalCashPaid = React.useMemo(() => entries.reduce((s, e) => s + e.cashPaid, 0), [entries]);
+
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
+  const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
   
   const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
+
+  const combinedHistory = React.useMemo(() => {
+    const history: any[] = [];
+    
+    // Add allocations
+    allocations.forEach(a => {
+      history.push({
+        type: 'allocation',
+        id: a.id,
+        date: new Date(a.created_at || new Date()).toLocaleString(),
+        timestamp: new Date(a.created_at || new Date()).getTime(),
+        metal: a.metal,
+        pureWeight: Number(a.pure_weight),
+        cashAmount: Number(a.cash_amount)
+      });
+    });
+
+    // Add entries
+    entries.forEach(e => {
+      const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
+      const isTakenCash = e.cashPaid > 0;
+      const isRefining = e.transactionType === 'Refining Dispatch';
+      
+      if (isTakenPureGold || isTakenCash || isRefining) {
+        history.push({
+          type: 'entry',
+          id: e.id,
+          timestamp: new Date(e.isoDate || new Date()).getTime(),
+          entry: e
+        });
+      }
+    });
+
+    // Sort descending by timestamp
+    return history.sort((a, b) => b.timestamp - a.timestamp);
+  }, [allocations, entries]);
 
   const handleRefineConfirm = async () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -555,7 +588,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   )}
                 </div>
                 {/* Live Stock Engine Summary */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-2">
@@ -579,6 +612,19 @@ export const StaffLedgerScreen: React.FC = () => {
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Allocated: 0.000</p>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-emerald-500 shadow-lg mb-6">
+                  <div className="p-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Cash Stock</p>
+                      <span className="material-symbols-outlined text-emerald-500 glow-icon text-lg">payments</span>
+                    </div>
+                    <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Allocated: {fmt(totalAllocatedCash)}</p>
                     </div>
                   </div>
                 </div>
@@ -635,7 +681,30 @@ export const StaffLedgerScreen: React.FC = () => {
                   <p className="label-institutional text-outline uppercase px-1">Ledger History</p>
                   
                   <div className="space-y-3">
-                    {filtered.map(entry => {
+                    {combinedHistory.map((item: any) => {
+                      if (item.type === 'allocation') {
+                        return (
+                          <div key={item.id} className="luxury-card p-5 bg-white transition-all overflow-hidden border border-outline-variant/10">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50 text-blue-500">
+                                  <span className="material-symbols-outlined text-xl">inventory_2</span>
+                                </div>
+                                <div>
+                                  <p className="font-bold text-sm text-primary">Super Admin Allocation</p>
+                                  <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{item.date}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {item.pureWeight > 0 && <p className="text-[11px] font-black text-secondary">{fmtG(item.pureWeight)} {item.metal}</p>}
+                                {item.cashAmount > 0 && <p className="text-[11px] font-black text-emerald-600">{fmt(item.cashAmount)}</p>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      
+                      const entry = item.entry;
                       return (
                         <div 
                           key={entry.id} 
