@@ -90,6 +90,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
   const [allocations, setAllocations] = useState<any[]>(initialAllocations);
+  const [liveStock, setLiveStock] = useState<any>(null);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
@@ -139,7 +140,7 @@ export const StaffLedgerScreen: React.FC = () => {
         branchUserIds = [userId];
       }
 
-      let entriesQuery = supabase.from('ledger_entries').select('*').order('created_at', { ascending: false });
+      let entriesQuery = supabase.from('ledger_entries').select('*').order('created_at', { ascending: false }).limit(100);
       let allocationsQuery = supabase.from('stock_allocations').select('*');
 
       if (!isSuperSa && user?.branch_id) {
@@ -147,9 +148,10 @@ export const StaffLedgerScreen: React.FC = () => {
         allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
       }
 
-      const [entriesRes, allocationsRes] = await Promise.all([
+      const [entriesRes, allocationsRes, stockRes] = await Promise.all([
         entriesQuery,
-        allocationsQuery
+        allocationsQuery,
+        supabase.rpc('get_branch_stock', { p_branch_id: user?.branch_id })
       ]);
 
       if (entriesRes.error) throw entriesRes.error;
@@ -167,6 +169,10 @@ export const StaffLedgerScreen: React.FC = () => {
         setAllocations(allocationsRes.data);
       } else {
         setAllocations([]);
+      }
+
+      if (stockRes && stockRes.data) {
+        setLiveStock(stockRes.data);
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);
@@ -204,17 +210,15 @@ export const StaffLedgerScreen: React.FC = () => {
     return isTakenPureGold || isTakenCash || isRefining;
   }), [entries]);
 
-  const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
-  const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
+  const totalAllocatedPureGold = liveStock?.totalAllocatedPureGold || 0;
+  const totalAllocatedPureSilver = liveStock?.totalAllocatedPureSilver || 0;
 
-  const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
-  const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
-  const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
+  const totalPureGiven = liveStock ? (activeMetal === 'Gold' ? liveStock.totalPureGoldGiven : liveStock.totalPureSilverGiven) : 0;
   
-  const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
-  const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
+  const currentPureStock = liveStock ? (activeMetal === 'Gold' ? liveStock.currentPureGoldStock : liveStock.currentPureSilverStock) : 0;
+  const currentImpureStock = liveStock ? (activeMetal === 'Gold' ? liveStock.currentImpureGoldStock : liveStock.currentImpureSilverStock) : 0;
   
-  const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
+  const pendingPureLiability = liveStock ? (activeMetal === 'Gold' ? liveStock.pendingPureGoldLiability : liveStock.pendingPureSilverLiability) : 0;
 
   const handleRefineConfirm = async () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;

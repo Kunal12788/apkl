@@ -80,6 +80,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const initialTransfers = cachedTransfers ? cachedTransfers.map(mapDbToTransfer) : [];
 
   const [saLedger, setSaLedger] = useState<SuperAdminLedgerEntry[]>(initialLedger);
+  const [liveStock, setLiveStock] = useState<any>(null);
   const [pendingTransfers, setPendingTransfers] = useState<RefiningTransfer[]>(initialTransfers);
   
   // Approval Workflow State
@@ -141,11 +142,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
     try {
       // Fetch Super Admin Ledger and pending refining transfers in parallel
-      const [ledgerRes, transfersRes, branchEntriesRes, usersRes, reportsRes, branchesRes] = await Promise.all([
+      const [ledgerRes, transfersRes, branchEntriesRes, usersRes, reportsRes, branchesRes, stockRes] = await Promise.all([
         supabase
           .from('super_admin_ledger')
           .select('*')
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .limit(100),
         supabase
           .from('refining_transfers')
           .select('*')
@@ -161,13 +163,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           .from('branch_daily_reports')
           .select('*')
           .order('created_at', { ascending: false }),
-        supabase.from('branches').select('*').order('name')
+        supabase.from('branches').select('*').order('name'),
+        supabase.rpc('get_super_admin_stock')
       ]);
 
       if (ledgerRes.error) throw ledgerRes.error;
       if (transfersRes.error) throw transfersRes.error;
       if (reportsRes.error) throw reportsRes.error;
       if (branchesRes.error) throw branchesRes.error;
+      
+      if (stockRes && stockRes.data) {
+        setLiveStock(stockRes.data);
+      }
 
       if (branchesRes.data) {
         setAvailableBranches(branchesRes.data);
@@ -682,9 +689,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  const currentPureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0), [saLedger, activeMetal]);
-  const currentImpureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0), [saLedger, activeMetal]);
-  const currentCashStock = React.useMemo(() => saLedger.reduce((s, e) => s + e.cashChange, 0), [saLedger]);
+  const currentPureStock = liveStock ? (activeMetal === 'Gold' ? liveStock.currentPureGoldStock : liveStock.currentPureSilverStock) : 0;
+  const currentImpureStock = liveStock ? (activeMetal === 'Gold' ? liveStock.currentImpureGoldStock : liveStock.currentImpureSilverStock) : 0;
+  const currentCashStock = liveStock ? liveStock.currentCashStock : 0;
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
