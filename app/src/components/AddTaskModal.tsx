@@ -434,6 +434,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       ))}
                     </div>
                   </div>
+                  <div className={isCollection ? "grid grid-cols-1 mt-3" : "grid grid-cols-2 gap-3 mt-3"}>
                     <div>
                       <label className={lbl}>Total Weight (g) *</label>
                       <input className={inp(errors.totalWeight)} placeholder="e.g. 15.2" value={formData.totalWeight} onChange={e => up('totalWeight', e.target.value)} />
