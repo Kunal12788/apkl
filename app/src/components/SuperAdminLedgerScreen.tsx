@@ -238,6 +238,30 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+
+    const saLedgerSub = supabase.channel('public:super_admin_ledger')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'super_admin_ledger' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    const transfersSub = supabase.channel('public:refining_transfers')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'refining_transfers' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    const entriesSub = supabase.channel('public:ledger_entries')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(saLedgerSub);
+      supabase.removeChannel(transfersSub);
+      supabase.removeChannel(entriesSub);
+    };
   }, []);
 
   const handleFirstTimeSetup = async (e: React.FormEvent) => {
@@ -658,21 +682,14 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  const currentPureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0);
-  const currentImpureStock = saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0);
-  const currentCashStock = saLedger.reduce((s, e) => s + e.cashChange, 0);
+  const currentPureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0), [saLedger, activeMetal]);
+  const currentImpureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0), [saLedger, activeMetal]);
+  const currentCashStock = React.useMemo(() => saLedger.reduce((s, e) => s + e.cashChange, 0), [saLedger]);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
 
-  if (loading) {
-    return (
-      <div className="bg-background text-on-background font-body-md min-h-[100svh] flex flex-col items-center justify-center ambient-bg relative z-10 w-full overflow-hidden">
-        <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4"></div>
-        <p className="font-label-caps text-[10px] tracking-widest text-outline">Retrieving Corporate Records...</p>
-      </div>
-    );
-  }
+
 
   // Initial Prompt UI
   if (ledgerMode === 'prompt') {

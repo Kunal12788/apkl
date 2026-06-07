@@ -91,7 +91,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [entries, setEntries] = useState<LedgerEntry[]>(initialEntries);
   const [allocations, setAllocations] = useState<any[]>(initialAllocations);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
-  const [, setLoading] = useState(initialEntries.length === 0);
+  const [loading, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
 
   const [branchName, setBranchName] = useState('Delhi Branch');
@@ -177,32 +177,44 @@ export const StaffLedgerScreen: React.FC = () => {
 
   useEffect(() => {
     fetchEntries();
-  }, []);
 
-  const filtered = entries.filter(e => {
+    const allocationsSub = supabase.channel('public:stock_allocations')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_allocations' }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
+    const ledgerSub = supabase.channel('public:ledger_entries')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(allocationsSub);
+      supabase.removeChannel(ledgerSub);
+    };
+  }, [user?.branch_id, isSuperSa]);
+
+  const filtered = React.useMemo(() => entries.filter(e => {
     const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
     const isTakenCash = e.cashPaid > 0;
     const isRefining = e.transactionType === 'Refining Dispatch';
     
     return isTakenPureGold || isTakenCash || isRefining;
-  });
+  }), [entries]);
 
-  const totalAllocatedPureGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
-  const totalAllocatedPureSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
-  // const totalAllocatedCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+  const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
+  const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
 
-  const totalPureGiven = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0);
-  const totalImpureReceived = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0);
-  const totalImpureRefined = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0);
+  const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
+  const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
+  const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
   
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
   
-  // const totalCashReceived = entries.reduce((s, e) => s + e.cashReceived, 0);
-  // const totalCashPaid = entries.reduce((s, e) => s + e.cashPaid, 0);
-  // const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
-  
-  const pendingPureLiability = entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0);
+  const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
 
   const handleRefineConfirm = async () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
