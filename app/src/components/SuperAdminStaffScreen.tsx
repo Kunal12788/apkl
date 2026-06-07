@@ -49,6 +49,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
   const [showCreateBranchModal, setShowCreateBranchModal] = useState(false);
   const [showAllocateModal, setShowAllocateModal] = useState<string | null>(null); // holds branch_id when open
   const [showEditModal, setShowEditModal] = useState<UserProfile | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState<UserProfile | null>(null);
 
   // Forms
   const [hireForm, setHireForm] = useState({
@@ -236,6 +237,22 @@ export const SuperAdminStaffScreen: React.FC = () => {
     setShowEditModal(user);
   };
 
+  const handleDeleteSubmit = async (user: UserProfile) => {
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const { error } = await supabase.rpc('delete_user_account', { p_user_id: user.id });
+      if (error) throw error;
+      setShowDeleteModal(null);
+      fetchData();
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      setSubmitError(err.message || 'Failed to delete member.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBranchName) return;
@@ -402,12 +419,22 @@ export const SuperAdminStaffScreen: React.FC = () => {
                       </div>
                       
                       {user.role !== 'Super Admin' && (
-                        <button 
-                          onClick={() => openEditModal(user)}
-                          className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-primary hover:bg-primary/5 hover:border-primary/30 transition-all shrink-0 shadow-sm"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">edit</span>
-                        </button>
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                          <button 
+                            onClick={() => openEditModal(user)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-primary hover:bg-primary/5 hover:border-primary/30 transition-all shrink-0 shadow-sm"
+                            title="Edit User"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">edit</span>
+                          </button>
+                          <button 
+                            onClick={() => setShowDeleteModal(user)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-surface-container-lowest border border-outline-variant/30 text-error hover:bg-error/10 hover:border-error/30 transition-all shrink-0 shadow-sm"
+                            title="Remove User"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -715,6 +742,56 @@ export const SuperAdminStaffScreen: React.FC = () => {
                   <span className="material-symbols-outlined text-sm">save</span>
                 )}
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center bg-[#001e40]/60 backdrop-blur-sm animate-fade-in p-0 sm:p-4">
+          <div className="absolute inset-0" onClick={() => setShowDeleteModal(null)} />
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.2)] relative z-10 animate-slide-up sm:animate-modal-up flex flex-col">
+            
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-error/10 text-error flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-3xl">warning</span>
+              </div>
+              <h3 className="font-headline text-xl font-extrabold text-primary">Remove User</h3>
+              <p className="text-sm text-outline mt-2">
+                Are you sure you want to permanently remove <span className="font-bold text-primary">{showDeleteModal.name}</span>?
+                They will no longer be able to log in. Their past ledger entries will be preserved.
+              </p>
+            </div>
+
+            {submitError && (
+              <div className="bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2 text-error mb-4">
+                <span className="material-symbols-outlined text-sm">error</span>
+                <p className="text-xs font-bold">{submitError}</p>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => handleDeleteSubmit(showDeleteModal)}
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-error hover:bg-error/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 premium-shadow"
+              >
+                {isSubmitting ? (
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <span className="material-symbols-outlined text-sm">delete_forever</span>
+                )}
+                {isSubmitting ? 'Removing...' : 'Yes, Remove User'}
+              </button>
+              <button 
+                onClick={() => setShowDeleteModal(null)}
+                disabled={isSubmitting}
+                className="w-full py-3.5 bg-surface-container-lowest border border-outline-variant/30 hover:bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-all active:scale-[0.98]"
+              >
+                Cancel
               </button>
             </div>
 
