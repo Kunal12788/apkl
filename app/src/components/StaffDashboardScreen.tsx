@@ -38,7 +38,7 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialImpure = 0;
   let initialPureSilver = 0;
   let initialImpureSilver = 0;
-  let initialTotalCol = 0;
+  let initialCashRemaining = 0;
   let initialCashCol = 0;
   let initialUpiCol = 0;
   let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
@@ -47,6 +47,7 @@ export const StaffDashboardScreen: React.FC = () => {
   if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0 || initialAllocations.length > 0) {
     const totalAllocatedPureGold = initialAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
     const totalAllocatedPureSilver = initialAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+    const totalAllocatedCash = initialAllocations.reduce((s: any, a: any) => s + Number(a.cash_amount || 0), 0);
 
     const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
     const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
@@ -60,10 +61,13 @@ export const StaffDashboardScreen: React.FC = () => {
     initialPureSilver = totalAllocatedPureSilver - totalPureSilverGiven;
     initialImpureSilver = totalImpureSilverReceived - totalImpureSilverRefined;
 
+    const totalCashReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.cash_received) || 0), 0);
+    const totalCashPaid = initialLedger.reduce((s: any, e: any) => s + (Number(e.cash_paid) || 0), 0);
+    initialCashRemaining = totalAllocatedCash + totalCashReceived - totalCashPaid;
+
     initialTx.forEach((tx: any) => {
       if (tx.status === 'Paid') {
         const amt = Number(tx.amount) || 0;
-        initialTotalCol += amt;
         if (tx.type === 'Cash') initialCashCol += amt;
         if (tx.type === 'UPI') initialUpiCol += amt;
       }
@@ -104,7 +108,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
   const [pureSilverWeight, setPureSilverWeight] = useState(initialPureSilver);
   const [impureSilverWeight, setImpureSilverWeight] = useState(initialImpureSilver);
-  const [totalCollected, setTotalCollected] = useState(initialTotalCol);
+  const [cashRemaining, setCashRemaining] = useState(initialCashRemaining);
   const [cashCollection, setCashCollection] = useState(initialCashCol);
   const [upiCollection, setUpiCollection] = useState(initialUpiCol);
   
@@ -193,6 +197,7 @@ export const StaffDashboardScreen: React.FC = () => {
         // Populate metrics
         const totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
         const totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+        const totalAllocatedCash = filteredAllocations.reduce((s: any, a: any) => s + Number(a.cash_amount || 0), 0);
 
         const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
@@ -202,17 +207,20 @@ export const StaffDashboardScreen: React.FC = () => {
         const totalImpureSilverReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_in) || 0), 0);
         const totalImpureSilverRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_out) || 0), 0);
 
+        const totalCashReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.cash_received) || 0), 0);
+        const totalCashPaid = filteredLedger.reduce((s: any, e: any) => s + (Number(e.cash_paid) || 0), 0);
+
         setPureGoldWeight(totalAllocatedPureGold - totalPureGiven); 
         setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         setPureSilverWeight(totalAllocatedPureSilver - totalPureSilverGiven);
         setImpureSilverWeight(totalImpureSilverReceived - totalImpureSilverRefined);
+        setCashRemaining(totalAllocatedCash + totalCashReceived - totalCashPaid);
         
-        let collected = 0, cash = 0, upi = 0;
+        let cash = 0, upi = 0;
         let revTunch = 0, revMarking = 0, revShouldering = 0;
         filteredTx.forEach((tx: any) => {
           if (tx.status === 'Paid') {
             const amt = Number(tx.amount) || 0;
-            collected += amt;
             if (tx.type === 'Cash') cash += amt;
             if (tx.type === 'UPI') upi += amt;
 
@@ -221,7 +229,6 @@ export const StaffDashboardScreen: React.FC = () => {
             if (tx.work_type === 'Shouldering') revShouldering += amt;
           }
         });
-        setTotalCollected(collected);
         setCashCollection(cash);
         setUpiCollection(upi);
         setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
@@ -418,16 +425,16 @@ export const StaffDashboardScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* 1. Top Section: Total Amount Collected hero card */}
+        {/* 1. Top Section: Total Cash Remaining hero card */}
         <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Amount Collected</h3>
+              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Remaining</h3>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(totalCollected.toLocaleString('en-IN'), 9, 3.0, 1.75)}>{totalCollected.toLocaleString('en-IN')}</span>
+                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(cashRemaining.toLocaleString('en-IN'), 9, 3.0, 1.75)}>{cashRemaining.toLocaleString('en-IN')}</span>
               </div>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
