@@ -40,7 +40,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
 
   const handleFinalize = () => {
     if (result === 'MATCH') {
-      onVerified({ ...collectionTask, status: 'Completed', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString() });
+      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString() });
     }
   };
 
@@ -79,6 +79,22 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                  <span className="text-sm font-bold text-primary">{collectionTask.customerName}</span>
               </div>
            </div>
+
+           {collectionTask.images && collectionTask.images.length > 0 && (
+             <div className="p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/10">
+                <p className="text-[10px] font-bold text-outline uppercase mb-2">Uploaded Images ({collectionTask.images.length}) *</p>
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
+                  {collectionTask.images.map((imgUrl: string, idx: number) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-outline-variant/20 shrink-0 bg-surface-container shadow-sm cursor-pointer group" onClick={() => window.open(imgUrl, '_blank')}>
+                      <img src={imgUrl} alt={`Piece ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="material-symbols-outlined text-white text-sm">visibility</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </div>
+           )}
 
            <SectionCard title="Staff Independent Audit" icon="app_registration" color="bg-secondary/5 text-secondary">
               <div className="grid grid-cols-2 gap-3">
@@ -143,13 +159,13 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                CHECK AUDIT DATA
              </button>
            ) : (
-             <button 
-               onClick={handleFinalize}
-               className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all animate-bounce-slow"
-             >
-               <span className="material-symbols-outlined">verified_user</span>
-               AUTHORIZE & COMPLETE
-             </button>
+              <button 
+                onClick={handleFinalize}
+                className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all"
+              >
+                <span className="material-symbols-outlined">check_circle</span>
+                CONFIRM & START WORK
+              </button>
            )}
         </div>
       </div>

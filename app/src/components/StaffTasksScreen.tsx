@@ -35,6 +35,10 @@ interface Task {
   carat?: string;
   pointSuggestion?: string;
   createdBy?: string;
+  metal?: string;
+  totalWeight?: string;
+  pieceCategories?: Record<string, string>;
+  images?: string[];
 }
 
 const getWorkIcon = (workType: string) => {
@@ -150,9 +154,30 @@ interface TaskDetailsModalProps {
   onUpdateStatus: (task: Task) => void;
   onDeleteTask: (id: string) => void;
   isAdminOrSuper?: boolean;
+  onProcessTask?: (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => void;
+  onFinalizePricing?: (task: Task, finalPrice: string) => void;
 }
 
-export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task, onUpdateStatus, onDeleteTask, isAdminOrSuper = false }) => {
+export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ 
+  isOpen, onClose, task, onUpdateStatus, onDeleteTask, isAdminOrSuper = false, onProcessTask, onFinalizePricing 
+}) => {
+  const { user } = useSession();
+  const userRole = user?.role;
+
+  const [purityInput, setPurityInput] = useState('');
+  const [pureWeightInput, setPureWeightInput] = useState('');
+  const [settlementInput, setSettlementInput] = useState('Only Tunch');
+  const [finalPriceInput, setFinalPriceInput] = useState('');
+
+  useEffect(() => {
+    if (task) {
+      setPurityInput(task.purity || '');
+      setPureWeightInput(task.pureWeight || '');
+      setSettlementInput(task.settlementCondition || 'Only Tunch');
+      setFinalPriceInput('');
+    }
+  }, [task]);
+
   if (!isOpen || !task) return null;
 
   const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
@@ -161,10 +186,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
       <div className="absolute inset-0" onClick={onClose} />
-      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden">
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden"
+        style={{ maxHeight: '92svh' }}>
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 shrink-0">
           <div>
             <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
               <span className="material-symbols-outlined text-lg text-secondary">assignment_turned_in</span>
@@ -175,6 +201,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             task.status === 'Completed' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 
             task.status === 'In Progress' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
+            task.status === 'Pending Verification' ? 'bg-secondary/10 text-secondary border-secondary/20 animate-pulse' :
             'bg-error/10 text-error border-error/20'
           }`}>
             {task.status}
@@ -182,7 +209,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Unified Clean Details Container */}
-        <div className="space-y-3">
+        <div className="space-y-3 flex-grow overflow-y-auto hide-scrollbar pb-4 pr-1">
           
           {/* Section 1: Customer Profile */}
           <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
@@ -210,56 +237,225 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
           {/* Section 2: Work Specifications */}
           <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
             <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Specifications</p>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              <div>
-                <span className={lbl}>Operation</span>
-                <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
+            
+            {task.workType === 'Tunch' && (
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div>
+                  <span className={lbl}>Operation</span>
+                  <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
+                </div>
+                {task.metal && (
+                  <div>
+                    <span className={lbl}>Metal</span>
+                    <p className={val}>{task.metal}</p>
+                  </div>
+                )}
+                {task.productType && (
+                  <div>
+                    <span className={lbl}>Category</span>
+                    <p className={val}>{task.productType}</p>
+                  </div>
+                )}
+                {task.impureWeight && (
+                  <div>
+                    <span className={lbl}>Impure Weight</span>
+                    <p className={val}>{task.impureWeight} g</p>
+                  </div>
+                )}
+                {task.purity && (
+                  <div>
+                    <span className={lbl}>Purity</span>
+                    <p className={val}>{task.purity}%</p>
+                  </div>
+                )}
+                {task.pureWeight && (
+                  <div>
+                    <span className={lbl}>Pure Weight</span>
+                    <p className={val}>{task.pureWeight} g</p>
+                  </div>
+                )}
+                {task.pieces && (
+                  <div>
+                    <span className={lbl}>Pieces</span>
+                    <p className={val}>{task.pieces}</p>
+                  </div>
+                )}
+                {task.settlementCondition && (
+                  <div>
+                    <span className={lbl}>Settlement Mode</span>
+                    <p className={val}>{task.settlementCondition}</p>
+                  </div>
+                )}
               </div>
+            )}
+
+            {task.workType === 'Marking' && (
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div>
+                  <span className={lbl}>Operation</span>
+                  <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
+                </div>
+                {task.metal && (
+                  <div>
+                    <span className={lbl}>Metal</span>
+                    <p className={val}>{task.metal}</p>
+                  </div>
+                )}
+                {task.logoName && (
+                  <div>
+                    <span className={lbl}>Logo Markings</span>
+                    <p className={val}>{task.logoName}</p>
+                  </div>
+                )}
+                {task.carat && (
+                  <div>
+                    <span className={lbl}>Carat</span>
+                    <p className={val}>{task.carat.toUpperCase()}</p>
+                  </div>
+                )}
+                {task.totalWeight && (
+                  <div>
+                    <span className={lbl}>Total Weight</span>
+                    <p className={val}>{task.totalWeight} g</p>
+                  </div>
+                )}
+                {task.pieces && (
+                  <div>
+                    <span className={lbl}>Pieces</span>
+                    <p className={val}>{task.pieces}</p>
+                  </div>
+                )}
+                {task.pieceCategories && Object.keys(task.pieceCategories).some(k => task.pieceCategories?.[k]) && (
+                  <div className="col-span-2 bg-surface-container/30 p-2 rounded-xl border border-outline-variant/10 mt-1">
+                    <span className={lbl}>Category Breakdown</span>
+                    <div className="flex gap-4 mt-1">
+                      {Object.entries(task.pieceCategories).map(([k, val]) => val && (
+                        <div key={k} className="text-center">
+                          <span className="text-[9px] text-outline font-bold uppercase">{k}</span>
+                          <p className="text-xs font-black text-primary">{val}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {task.workType === 'Shouldering' && (
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                <div>
+                  <span className={lbl}>Operation</span>
+                  <p className={`${val} uppercase text-secondary`}>{task.workType}</p>
+                </div>
+                {task.metal && (
+                  <div>
+                    <span className={lbl}>Metal</span>
+                    <p className={val}>{task.metal}</p>
+                  </div>
+                )}
+                {task.pointSuggestion && (
+                  <div className="col-span-2">
+                    <span className={lbl}>Solder Points</span>
+                    <p className={val}>{task.pointSuggestion} Gold/Silver suggested</p>
+                  </div>
+                )}
+                {task.pieces && (
+                  <div>
+                    <span className={lbl}>Pieces</span>
+                    <p className={val}>{task.pieces}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Mandatory Image Gallery Section */}
+          {task.images && task.images.length > 0 && (
+            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Uploaded Pieces ({task.images.length}) *</p>
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
+                {task.images.map((imgUrl, idx) => (
+                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-outline-variant/20 shrink-0 bg-surface-container shadow-sm cursor-pointer group" onClick={() => window.open(imgUrl, '_blank')}>
+                    <img src={imgUrl} alt={`Piece ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="material-symbols-outlined text-white text-sm">visibility</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Section: Staff Processing Panel */}
+          {task.status === 'In Progress' && userRole === 'Staff' && (
+            <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
               
-              {task.productType && (
-                <div>
-                  <span className={lbl}>Category</span>
-                  <p className={val}>{task.productType}</p>
-                </div>
-              )}
-              {task.impureWeight && (
-                <div>
-                  <span className={lbl}>Weight</span>
-                  <p className={val}>{task.impureWeight}</p>
-                </div>
-              )}
-              {task.pieces && (
-                <div>
-                  <span className={lbl}>Pieces</span>
-                  <p className={val}>{task.pieces}</p>
-                </div>
-              )}
-              {task.settlementCondition && (
-                <div>
-                  <span className={lbl}>Settlement Mode</span>
-                  <p className={val}>{task.settlementCondition}</p>
-                </div>
-              )}
-              {task.logoName && (
-                <div>
-                  <span className={lbl}>Logo Markings</span>
-                  <p className={val}>{task.logoName}</p>
-                </div>
-              )}
-              {task.carat && (
-                <div>
-                  <span className={lbl}>Carat</span>
-                  <p className={val}>{task.carat.toUpperCase()}</p>
-                </div>
-              )}
-              {task.pointSuggestion && (
-                <div className="col-span-2">
-                  <span className={lbl}>Solder Points</span>
-                  <p className={val}>{task.pointSuggestion} Gold/Silver suggested</p>
-                </div>
+              {task.workType === 'Tunch' ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className={lbl}>Purity (%) *</span>
+                      <input 
+                        type="number" step="0.1" 
+                        value={purityInput} 
+                        onChange={e => setPurityInput(e.target.value)}
+                        placeholder="e.g. 91.6" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+                    <div>
+                      <span className={lbl}>Pure Output (g) *</span>
+                      <input 
+                        type="number" step="0.001" 
+                        value={pureWeightInput} 
+                        onChange={e => setPureWeightInput(e.target.value)}
+                        placeholder="e.g. 11.4" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <span className={lbl}>Settlement Condition *</span>
+                    <div className="flex gap-2 mt-1">
+                      {['Only Tunch', 'Pure Gold', 'Cash'].map(opt => (
+                        <button 
+                          key={opt} type="button" 
+                          onClick={() => setSettlementInput(opt)}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${settlementInput === opt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-[11px] font-medium text-outline">Marking/Shouldering processing verified. Ready to submit for pricing.</p>
               )}
             </div>
-          </div>
+          )}
+
+          {/* Section: Admin Pricing Panel */}
+          {task.status === 'Pending Verification' && isAdminOrSuper && (
+            <div className="rounded-2xl border border-tertiary/20 p-3.5 bg-tertiary-container/5 space-y-3">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-tertiary">Admin pricing verification</p>
+              
+              <div>
+                <span className={lbl}>Set Service Price / Fee (₹) *</span>
+                <div className="relative mt-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-outline">₹</span>
+                  <input 
+                    type="number" 
+                    value={finalPriceInput} 
+                    onChange={e => setFinalPriceInput(e.target.value)}
+                    placeholder="e.g. 500" 
+                    className="w-full h-10 pl-7 pr-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Section 3: Schedule Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
@@ -280,14 +476,44 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
 
         {/* Action Buttons */}
         <div className="flex gap-2 mt-4 shrink-0">
-          {task.status !== 'Completed' && (
+          {task.status === 'In Progress' && userRole === 'Staff' ? (
             <button 
-              onClick={() => onUpdateStatus(task)}
-              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+              onClick={() => {
+                if (task.workType === 'Tunch' && (!purityInput.trim() || !pureWeightInput.trim())) {
+                  alert('Please enter purity and pure weight.');
+                  return;
+                }
+                onProcessTask?.(task, { purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput });
+              }}
+              className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-sm">check_circle</span>
-              {task.status === 'In Progress' ? 'Complete' : (isAdminOrSuper ? 'Start' : 'Verify')}
+              <span className="material-symbols-outlined text-sm">send</span>
+              Submit to Admin
             </button>
+          ) : task.status === 'Pending Verification' && isAdminOrSuper ? (
+            <button 
+              onClick={() => {
+                if (!finalPriceInput.trim()) {
+                  alert('Please enter the service price/fee.');
+                  return;
+                }
+                onFinalizePricing?.(task, finalPriceInput);
+              }}
+              className="flex-1 py-2.5 bg-tertiary hover:bg-tertiary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">payments</span>
+              Approve & Price
+            </button>
+          ) : (
+            task.status !== 'Completed' && (
+              <button 
+                onClick={() => onUpdateStatus(task)}
+                className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">check_circle</span>
+                {task.status === 'In Progress' ? 'Complete' : (isAdminOrSuper ? 'Start' : 'Verify')}
+              </button>
+            )
           )}
           <button 
             onClick={() => onDeleteTask(task.id)}
@@ -338,14 +564,15 @@ export const StaffTasksScreen: React.FC = () => {
   const isSuperSa = user?.role === 'Super Admin';
   const initialTasks = cachedTasks
     ? (isAdminOrSuper 
-        ? cachedTasks.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification')
+        ? cachedTasks.filter((t: any) => t.status === 'Pending Verification' || !t.created_by?.startsWith('COLL-'))
         : cachedTasks
       ).filter((t: any) => isSuperSa ? true : (t.created_by === currentUser))
       .map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
         broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-        settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+        settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
+        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images
       }))
     : [];
 
@@ -376,7 +603,7 @@ export const StaffTasksScreen: React.FC = () => {
           setCachedData('tasks_data', data);
           let filtered = data;
           if (isAdminOrSuper) {
-            filtered = data.filter((t: any) => !t.created_by?.startsWith('COLL-') && t.status !== 'Pending Verification');
+            filtered = data.filter((t: any) => t.status === 'Pending Verification' || !t.created_by?.startsWith('COLL-'));
           }
           if (!isSuperSa && user?.branch_id) {
             filtered = filtered.filter((t: any) => branchUserIds.includes(t.created_by));
@@ -385,7 +612,8 @@ export const StaffTasksScreen: React.FC = () => {
             id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
             impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
             broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-            settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+            settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
+            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images
           })));
         } else {
           setTasks([]);
@@ -450,42 +678,81 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleVerifySuccess = async (verifiedTask: any) => {
      try {
-       await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', verifiedTask.id);
-       setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+       await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', verifiedTask.id);
+       setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
        setVerificationOpen(false);
-
-       const newTxn = {
-         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-         customer_id: verifiedTask.customerId || 'CUST-COL',
-         customer_name: verifiedTask.customerName,
-         customer_phone: verifiedTask.customerPhone || '',
-         customer_address: verifiedTask.customerAddress || '',
-         type: verifiedTask.settlementCondition || 'Cash',
-         work_type: verifiedTask.workType || 'Tunch',
-         amount: verifiedTask.workType === 'Tunch' ? '45000' : verifiedTask.workType === 'Marking' ? '12000' : '85500',
-         date: 'Today',
-         iso_date: new Date().toISOString().split('T')[0],
-         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-         status: 'Unpaid',
-         details: verifiedTask.notes || 'Collection intake verified and completed.',
-         pieces: verifiedTask.pieces || '1',
-         product_type: verifiedTask.productType,
-         impure_weight: verifiedTask.impureWeight,
-         settlement_condition: verifiedTask.settlementCondition,
-         logo_name: verifiedTask.logoName,
-         carat: verifiedTask.carat,
-         point_suggestion: verifiedTask.pointSuggestion,
-         created_by: verifiedTask.createdBy || ''
-       };
-
-       await supabase.from('transactions').insert([newTxn]);
-
-       showToast('Audit matched! Task verified, completed and billed.');
+       showToast('Audit matched! Task is now In Progress.');
        handleCloseModal();
      } catch(e) {
        console.error(e);
        showToast('Error verifying task');
      }
+  };
+
+  const handleProcessTask = async (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => {
+    try {
+      await supabase.from('tasks').update({
+        purity: details.purity,
+        pure_weight: details.pureWeight,
+        settlement_condition: details.settlementCondition,
+        status: 'Pending Verification',
+        progress_percentage: 80
+      }).eq('id', task.id);
+
+      setTasks(prev => prev.map(t => t.id === task.id ? {
+        ...t,
+        purity: details.purity,
+        pureWeight: details.pureWeight,
+        settlementCondition: details.settlementCondition,
+        status: 'Pending Verification',
+        progressPercentage: 80
+      } : t));
+
+      showToast('Task processing details submitted to Admin.');
+      handleCloseModal();
+    } catch (e) {
+      console.error(e);
+      showToast('Error processing task');
+    }
+  };
+
+  const handleFinalizePricing = async (task: Task, finalPrice: string) => {
+    try {
+      await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', task.id);
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+
+      const newTxn = {
+        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+        customer_id: task.customerId || 'CUST-COL',
+        customer_name: task.customerName,
+        customer_phone: task.customerPhone || '',
+        customer_address: task.customerAddress || '',
+        type: task.settlementCondition || 'Cash',
+        work_type: task.workType || 'Tunch',
+        amount: finalPrice,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'Unpaid',
+        details: task.notes || 'Collection intake verified, processed and completed.',
+        pieces: task.pieces || '1',
+        product_type: task.productType,
+        impure_weight: task.impureWeight,
+        settlement_condition: task.settlementCondition,
+        logo_name: task.logoName,
+        carat: task.carat,
+        point_suggestion: task.pointSuggestion,
+        created_by: task.createdBy || ''
+      };
+
+      await supabase.from('transactions').insert([newTxn]);
+
+      showToast('Task approved & completed! Billing ledger updated.');
+      handleCloseModal();
+    } catch(e) {
+      console.error(e);
+      showToast('Error finalizing pricing');
+    }
   };
 
   const handleUpdateStatus = async (task: Task) => {
@@ -681,6 +948,8 @@ export const StaffTasksScreen: React.FC = () => {
         onUpdateStatus={handleUpdateStatus}
         onDeleteTask={handleDeleteTask}
         isAdminOrSuper={isAdminOrSuper}
+        onProcessTask={handleProcessTask}
+        onFinalizePricing={handleFinalizePricing}
       />
         
         {/* Toast Notification System */}

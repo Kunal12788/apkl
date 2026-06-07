@@ -35,6 +35,7 @@ export const GlobalFAB: React.FC = () => {
           console.log('Global Task Created:', data);
           try {
             const generatedCustomerId = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+            const isCollection = user?.role === 'Collection Staff';
             const newTask = {
               id: data.id,
               customer_name: data.customerName || 'Walk-in Customer',
@@ -50,18 +51,21 @@ export const GlobalFAB: React.FC = () => {
               logo_name: data.logoName,
               carat: data.carat,
               pieces: data.pieces,
-              brought_by: data.broughtBy,
+              brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
               point_suggestion: data.pointSuggestion,
               work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
               date_given: data.date,
-              status: data.status,
-              progress_percentage: data.progressPercentage,
-              assigned_to: data.assignedTo || 'Unassigned',
-              source: 'Staff',
+              status: isCollection ? 'Pending' : data.status,
+              progress_percentage: isCollection ? 0 : data.progressPercentage,
+              assigned_to: isCollection ? 'Pending' : (data.assignedTo || 'Unassigned'),
+              source: isCollection ? 'Collection Staff' : 'Staff',
               created_by: user?.id || '',
               iso_date: new Date().toISOString().split('T')[0],
-              estimated_completion: 'Today, 06:00 PM',
-              notes: 'Created from Global FAB'
+              estimated_completion: isCollection ? 'Awaiting Audit' : 'Today, 06:00 PM',
+              notes: isCollection ? 'Collection intake from field.' : 'Created from Global FAB',
+              total_weight: data.totalWeight,
+              piece_categories: data.pieceCategories,
+              images: data.images
             };
             
             const { error: taskError } = await supabase.from('tasks').insert([newTask]);
