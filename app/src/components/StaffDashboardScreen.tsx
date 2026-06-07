@@ -18,6 +18,8 @@ export const StaffDashboardScreen: React.FC = () => {
   const cachedTx = getCachedData('tx_data');
   const cachedTasks = getCachedData('tasks_data');
 
+  const cachedAllocations = getCachedData('stock_allocations_all');
+
   const isSuperSa = user?.role === 'Super Admin';
   const initialLedger = cachedLedger 
     ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => e.staff_id === userId))
@@ -28,21 +30,35 @@ export const StaffDashboardScreen: React.FC = () => {
   const initialTasks = cachedTasks
     ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => t.created_by === userId))
     : [];
+  const initialAllocations = cachedAllocations
+    ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id))
+    : [];
 
   let initialPure = 0;
   let initialImpure = 0;
+  let initialPureSilver = 0;
+  let initialImpureSilver = 0;
   let initialTotalCol = 0;
   let initialCashCol = 0;
   let initialUpiCol = 0;
   let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
   let initialStats = { pending: 0, inProgress: 0, completed: 0 };
 
-  if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0) {
+  if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0 || initialAllocations.length > 0) {
+    const totalAllocatedPureGold = initialAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+    const totalAllocatedPureSilver = initialAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+
     const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
     const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
     const totalImpureRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
-    initialPure = 100 - totalPureGiven;
+    initialPure = totalAllocatedPureGold - totalPureGiven;
     initialImpure = totalImpureReceived - totalImpureRefined;
+
+    const totalPureSilverGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_silver_out) || 0), 0);
+    const totalImpureSilverReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_in) || 0), 0);
+    const totalImpureSilverRefined = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_out) || 0), 0);
+    initialPureSilver = totalAllocatedPureSilver - totalPureSilverGiven;
+    initialImpureSilver = totalImpureSilverReceived - totalImpureSilverRefined;
 
     initialTx.forEach((tx: any) => {
       if (tx.status === 'Paid') {
@@ -86,6 +102,8 @@ export const StaffDashboardScreen: React.FC = () => {
   // States for Metrics
   const [pureGoldWeight, setPureGoldWeight] = useState(initialPure);
   const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
+  const [pureSilverWeight, setPureSilverWeight] = useState(initialPureSilver);
+  const [impureSilverWeight, setImpureSilverWeight] = useState(initialImpureSilver);
   const [totalCollected, setTotalCollected] = useState(initialTotalCol);
   const [cashCollection, setCashCollection] = useState(initialCashCol);
   const [upiCollection, setUpiCollection] = useState(initialUpiCol);
@@ -152,10 +170,11 @@ export const StaffDashboardScreen: React.FC = () => {
       const cachedLedger = getCachedData('ledger_data');
       const cachedTx = getCachedData('tx_data');
       const cachedTasks = getCachedData('tasks_data');
+      const cachedAllocations = getCachedData('stock_allocations_all');
 
       const isSuperSa = user?.role === 'Super Admin';
 
-      const applyData = (ledgerData: any[] | null, txData: any[] | null, tasksData: any[] | null, branchUserIds: string[]) => {
+      const applyData = (ledgerData: any[] | null, txData: any[] | null, tasksData: any[] | null, allocationsData: any[] | null, branchUserIds: string[]) => {
         const hasBranchFilter = !isSuperSa && user?.branch_id;
 
         const filteredLedger = ledgerData 
@@ -167,13 +186,26 @@ export const StaffDashboardScreen: React.FC = () => {
         const filteredTasks = tasksData
           ? (hasBranchFilter ? tasksData.filter((t: any) => branchUserIds.includes(t.created_by)) : tasksData)
           : [];
+        const filteredAllocations = allocationsData
+          ? (hasBranchFilter ? allocationsData.filter((a: any) => a.branch_id === user?.branch_id) : allocationsData)
+          : [];
 
         // Populate metrics
+        const totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+        const totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+
         const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
         const totalImpureRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
-        setPureGoldWeight(100 - totalPureGiven); 
+        
+        const totalPureSilverGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_silver_out) || 0), 0);
+        const totalImpureSilverReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_in) || 0), 0);
+        const totalImpureSilverRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_out) || 0), 0);
+
+        setPureGoldWeight(totalAllocatedPureGold - totalPureGiven); 
         setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
+        setPureSilverWeight(totalAllocatedPureSilver - totalPureSilverGiven);
+        setImpureSilverWeight(totalImpureSilverReceived - totalImpureSilverRefined);
         
         let collected = 0, cash = 0, upi = 0;
         let revTunch = 0, revMarking = 0, revShouldering = 0;
@@ -247,8 +279,8 @@ export const StaffDashboardScreen: React.FC = () => {
         setRecentTasks(formattedRecent);
       };
 
-      if (cachedLedger && cachedTx && cachedTasks) {
-        applyData(cachedLedger, cachedTx, cachedTasks, [userId]);
+      if (cachedLedger && cachedTx && cachedTasks && cachedAllocations) {
+        applyData(cachedLedger, cachedTx, cachedTasks, cachedAllocations, [userId]);
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -270,10 +302,11 @@ export const StaffDashboardScreen: React.FC = () => {
           branchUserIds = [userId];
         }
 
-        const [ledgerRes, txRes, tasksRes] = await Promise.all([
+        const [ledgerRes, txRes, tasksRes, allocationsRes] = await Promise.all([
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
-          supabase.from('tasks').select('*')
+          supabase.from('tasks').select('*'),
+          supabase.from('stock_allocations').select('*')
         ]);
 
         const ledgerData = ledgerRes.data;
@@ -291,7 +324,12 @@ export const StaffDashboardScreen: React.FC = () => {
           setCachedData('tasks_data', tasksData);
         }
 
-        applyData(ledgerData, txData, tasksData, branchUserIds);
+        const allocationsData = allocationsRes.data;
+        if (allocationsData) {
+          setCachedData('stock_allocations_all', allocationsData);
+        }
+
+        applyData(ledgerData, txData, tasksData, allocationsData, branchUserIds);
 
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -326,17 +364,17 @@ export const StaffDashboardScreen: React.FC = () => {
           </button>
         </header>
 
-        {/* Gold Weight Summary */}
+        {/* Gold & Silver Weight Summary */}
         <section className="space-y-3 relative z-10">
-          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Gold Weight Summary</h3>
+          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Global Assets</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="luxury-card p-6 bg-white border-l-4 border-l-secondary flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-secondary">pentagon</span>
               <div className="flex justify-between items-start">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Pure Gold Weight</p>
-                <span className="material-symbols-outlined text-secondary glow-icon text-lg">payments</span>
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Pure Gold</p>
+                <span className="material-symbols-outlined text-secondary glow-icon text-lg">star</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="font-headline font-extrabold text-primary" style={fitText(pureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{pureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-secondary">gram</span>
               </div>
@@ -344,12 +382,37 @@ export const StaffDashboardScreen: React.FC = () => {
             <div className="luxury-card p-6 bg-white border-l-4 border-l-tertiary-container flex flex-col justify-between h-32 relative overflow-hidden">
               <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-tertiary-container">heap_snapshot_thumbnail</span>
               <div className="flex justify-between items-start">
-                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Impure Gold Weight</p>
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Gold</p>
                 <span className="material-symbols-outlined text-tertiary-container glow-icon text-lg">rebase</span>
               </div>
-              <div className="flex items-baseline gap-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="font-headline font-extrabold text-primary" style={fitText(impureGoldWeight.toFixed(2), 6, 1.875, 1.15)}>{impureGoldWeight.toFixed(2)}</span>
                 <span className="text-xs font-black text-tertiary-container">gram</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="luxury-card p-6 bg-white border-l-4 border-l-slate-400 flex flex-col justify-between h-32 relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-slate-400">diamond</span>
+              <div className="flex justify-between items-start">
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Pure Silver</p>
+                <span className="material-symbols-outlined text-slate-400 glow-icon text-lg">star</span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(pureSilverWeight.toFixed(2), 6, 1.875, 1.15)}>{pureSilverWeight.toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-400">gram</span>
+              </div>
+            </div>
+            <div className="luxury-card p-6 bg-white border-l-4 border-l-slate-300 flex flex-col justify-between h-32 relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-2 -top-2 text-6xl opacity-5 text-slate-300">lens_blur</span>
+              <div className="flex justify-between items-start">
+                <p className="text-[9px] font-bold text-outline uppercase tracking-[0.2em]">Total Impure Silver</p>
+                <span className="material-symbols-outlined text-slate-300 glow-icon text-lg">rebase</span>
+              </div>
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+                <span className="font-headline font-extrabold text-primary" style={fitText(impureSilverWeight.toFixed(2), 6, 1.875, 1.15)}>{impureSilverWeight.toFixed(2)}</span>
+                <span className="text-xs font-black text-slate-300">gram</span>
               </div>
             </div>
           </div>
