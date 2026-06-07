@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
+import { supabase } from '../supabaseClient';
 
 type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING';
 
@@ -48,23 +49,38 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     productType: 'Jewellery',
     logoName: '', carat: '22k', pieces: '',
     broughtBy: 'Customer', pointsUsed: '',
-    pointSuggestion: 'Gold'
+    pointSuggestion: 'Gold', totalWeight: ''
   });
+
+  const [pieceCategories, setPieceCategories] = useState<Record<string, string>>({
+    '22k': '', '18k': '', '14k': '', '9k': ''
+  });
+  
+  const [taskImages, setTaskImages] = useState<Record<number, File>>({});
+  const [isUploading, setIsUploading] = useState(false);
 
   if (!isOpen) return null;
 
   const up = (key: string, val: string) => {
     setFormData(f => ({ ...f, [key]: val }));
     if (errors[key]) setErrors(e => { const n = {...e}; delete n[key]; return n; });
+    
+    if (key === 'pieces') {
+      setPieceCategories({ '22k': '', '18k': '', '14k': '', '9k': '' });
+      setTaskImages({});
+    }
   };
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.customerName.trim()) e.customerName = 'Required';
+    const numPieces = parseInt(formData.pieces) || 0;
+    
     if (workType === 'TUNCH') {
       if (!formData.address.trim()) e.address = 'Required';
       if (!formData.phone.trim()) e.phone = 'Required';
       if (!formData.impureWeight.trim()) e.impureWeight = 'Required';
+      if (!formData.pieces.trim()) e.pieces = 'Required';
       if (!isCollection) {
         if (!formData.purity.trim()) e.purity = 'Required';
         if (!formData.pureWeight.trim()) e.pureWeight = 'Required';
@@ -73,9 +89,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     }
     if (workType === 'MARKING') {
       if (!formData.logoName.trim()) e.logoName = 'Required';
+      if (!formData.totalWeight.trim()) e.totalWeight = 'Required';
       if (!formData.pieces.trim()) e.pieces = 'Required';
+      else if (numPieces > 1) {
+        const sum = Object.values(pieceCategories).reduce((a, b) => a + (parseInt(b) || 0), 0);
+        if (sum !== numPieces) {
+           e.pieces = `Sum of categories (${sum}) must equal total pieces (${numPieces})`;
+        }
+      }
       if (!isCollection) {
         if (!formData.fee.trim()) e.fee = 'Required';
+      }
+    }
+    
+    if (numPieces > 0 && (workType === 'TUNCH' || workType === 'MARKING')) {
+      if (Object.keys(taskImages).length < numPieces) {
+         e.images = `Please upload all ${numPieces} images.`;
       }
     }
     if (workType === 'SHOULDERING') {
@@ -93,11 +122,87 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     setStep(s => s + 1);
   };
 
-  const handleFinalSubmit = () => {
-    onSuccess({ ...formData, workType, id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, date: 'Just Now', status: 'In Progress', progressPercentage: 10, assignedTo: 'Staff' });
-    setStep(1); setWorkType(null); setErrors({});
-    setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold' });
-    onClose();
+  const handleFinalSubmit = async () => {
+    setIsUploading(true);
+    let uploadedUrls: string[] = [];
+    
+    try {
+      const numPieces = parseInt(formData.pieces) || 0;
+      for (let i = 0; i < numPieces; i++) {
+        const file = taskImages[i];
+        if (file) {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error } = await supabase.storage.from('task_images').upload(fileName, file);
+          if (error) throw error;
+          const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
+          uploadedUrls.push(publicUrl);
+        }
+      }
+
+      onSuccess({ 
+        ...formData, 
+        workType, 
+        pieceCategories,
+        images: uploadedUrls,
+        id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, 
+        date: 'Just Now', 
+        status: 'In Progress', 
+        progressPercentage: 10, 
+        assignedTo: 'Staff' 
+      });
+      
+      setStep(1); setWorkType(null); setErrors({}); setTaskImages({});
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '' });
+      onClose();
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Failed to upload images. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setTaskImages(prev => ({ ...prev, [index]: file }));
+      if (errors['images']) {
+         setErrors(e => { const n = {...e}; delete n['images']; return n; });
+      }
+    }
+  };
+
+  const renderImageUploads = () => {
+    const numPieces = parseInt(formData.pieces) || 0;
+    if (numPieces <= 0) return null;
+    
+    return (
+      <div className="mt-4 bg-surface-container/30 p-4 rounded-2xl border border-outline-variant/30">
+        <label className={lbl}>Upload Images ({numPieces} needed) *</label>
+        {errMsg('images')}
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          {Array.from({ length: numPieces }).map((_, idx) => (
+            <div key={idx} className="relative aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-white overflow-hidden flex flex-col items-center justify-center hover:border-primary/40 transition-colors">
+              {taskImages[idx] ? (
+                <>
+                  <img src={URL.createObjectURL(taskImages[idx])} alt={`Piece ${idx + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => setTaskImages(p => { const n={...p}; delete n[idx]; return n; })} className="absolute top-1.5 right-1.5 w-7 h-7 bg-error/90 text-white rounded-full flex items-center justify-center backdrop-blur-sm shadow-md">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageChange(idx, e)} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <span className="material-symbols-outlined text-outline-variant text-3xl mb-1.5">add_a_photo</span>
+                  <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Piece {idx + 1}</span>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
 
@@ -265,11 +370,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       {errMsg('pureWeight')}
                     </div>
                   )}
+                  <div className="mt-3">
+                    <label className={lbl}>No. of Pieces *</label>
+                    <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                    {errMsg('pieces')}
+                  </div>
                 </SectionCard>
 
                 <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
                   <div className="space-y-2">
-                    {['Only Tunch', 'Cash (Impure/Pure at Front)', 'Cash (Gold at Back)'].map(cond => (
+                    {['Only Tunch', 'Pure Gold', 'Cash'].map(cond => (
                       <button key={cond} onClick={() => up('settlementCondition', cond)}
                         className={`w-full h-11 px-4 rounded-full text-[12px] font-semibold text-left transition-all flex items-center gap-2.5 ${formData.settlementCondition === cond ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20 hover:bg-surface-container-high'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${formData.settlementCondition === cond ? 'bg-white' : 'bg-outline-variant'}`} />
@@ -277,6 +387,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       </button>
                     ))}
                   </div>
+                  {renderImageUploads()}
                 </SectionCard>
 
                 {!isCollection && (
@@ -323,19 +434,42 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       ))}
                     </div>
                   </div>
-                  <div className={isCollection ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
+                    <div>
+                      <label className={lbl}>Total Weight (g) *</label>
+                      <input className={inp(errors.totalWeight)} placeholder="e.g. 15.2" value={formData.totalWeight} onChange={e => up('totalWeight', e.target.value)} />
+                      {errMsg('totalWeight')}
+                    </div>
                     <div>
                       <label className={lbl}>No. of Pieces *</label>
                       <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
                       {errMsg('pieces')}
                     </div>
-                    {!isCollection && (
-                      <div>
-                        <label className={lbl}>Brought By</label>
-                        <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
-                      </div>
-                    )}
                   </div>
+                  {parseInt(formData.pieces) > 1 && (
+                    <div className="mt-3 bg-surface-container/50 p-4 rounded-xl border border-outline-variant/30">
+                      <label className={lbl}>Category Breakdown (Must sum to {formData.pieces})</label>
+                      <div className="grid grid-cols-4 gap-2 mt-3">
+                        {['22k', '18k', '14k', '9k'].map(k => (
+                          <div key={k}>
+                            <label className="text-[10px] font-bold text-outline uppercase block text-center mb-1.5">{k}</label>
+                            <input 
+                              type="number" min="0"
+                              className="w-full h-10 bg-white border border-outline-variant/40 rounded-lg text-center text-sm font-bold focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                              value={pieceCategories[k]}
+                              onChange={e => setPieceCategories(p => ({...p, [k]: e.target.value}))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {!isCollection && (
+                    <div className="mt-3">
+                      <label className={lbl}>Brought By</label>
+                      <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
+                    </div>
+                  )}
+                  {renderImageUploads()}
                 </SectionCard>
 
                 {!isCollection && (
@@ -438,12 +572,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         ['Purity', `${formData.purity}%`],
                         ['Pure Wt.', `${formData.pureWeight}g`]
                       ] : []),
-                      ['Settlement', formData.settlementCondition]
+                      ['Settlement', formData.settlementCondition],
+                      ['Pieces', formData.pieces],
+                      ['Images', `${Object.keys(taskImages).length} uploaded`]
                     ] : []),
                     ...(workType === 'MARKING' ? [
                       ['Logo', formData.logoName],
                       ['Carat', formData.carat.toUpperCase()],
+                      ['Total Weight', `${formData.totalWeight}g`],
                       ['Pieces', formData.pieces],
+                      ['Images', `${Object.keys(taskImages).length} uploaded`],
                       ...(!isCollection ? [['Brought By', formData.broughtBy]] : [])
                     ] : []),
                     ...(workType === 'SHOULDERING' ? [
@@ -509,10 +647,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         {/* FOOTER */}
         {step > 1 && (
           <div className="shrink-0 px-6 pb-8 pt-4 bg-white/90 backdrop-blur-sm border-t border-outline-variant/10">
-            <button onClick={step === 4 ? handleFinalSubmit : handleNext}
-              className="w-full h-14 button-gradient text-on-primary rounded-full font-bold text-[12px] tracking-[0.15em] uppercase flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all btn-shimmer-effect shadow-[0_8px_24px_rgba(0,30,64,0.2)]">
-              {step === 2 ? 'Continue to Review' : step === 3 ? 'Proceed to Authorization' : 'Confirm & Commit Entry'}
-              <span className="material-symbols-outlined text-[18px]">{step === 4 ? 'verified' : 'arrow_forward'}</span>
+            <button onClick={step === 4 ? handleFinalSubmit : handleNext} disabled={isUploading}
+              className="w-full h-14 button-gradient text-on-primary rounded-full font-bold text-[12px] tracking-[0.15em] uppercase flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all btn-shimmer-effect shadow-[0_8px_24px_rgba(0,30,64,0.2)] disabled:opacity-70">
+              {step === 2 ? 'Continue to Review' : step === 3 ? 'Proceed to Authorization' : (isUploading ? 'Uploading & Saving...' : 'Confirm & Commit Entry')}
+              {isUploading ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined text-[18px]">{step === 4 ? 'verified' : 'arrow_forward'}</span>}
             </button>
           </div>
         )}
