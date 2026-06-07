@@ -494,8 +494,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       const allocations = [];
       const saEntries = [];
 
-      // 1. Gold + Cash (or just Cash if no silver is selected)
-      if (goldVal > 0 || (cashVal > 0 && silverVal <= 0)) {
+      // 1. Gold Allocation
+      if (goldVal > 0) {
         allocations.push({
           id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
           branch_id: allocBranchId,
@@ -503,7 +503,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           staff_id: null,
           metal: 'Gold',
           pure_weight: goldVal,
-          cash_amount: cashVal,
+          cash_amount: 0,
           allocated_by: 'SUPER-001',
           date: dateStr,
           iso_date: isoDateStr,
@@ -522,14 +522,13 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           pure_silver_change: 0,
           impure_silver_change: 0,
           calculated_pure_silver: 0,
-          cash_change: -cashVal,
-          details: `Allocated ${goldVal > 0 ? `${goldVal.toFixed(3)}g Pure Gold` : ''}${goldVal > 0 && cashVal > 0 ? ' and ' : ''}${cashVal > 0 ? `₹${cashVal.toLocaleString('en-IN')}` : ''} to ${allocBranchId}. Notes: ${allocNotes}`
+          cash_change: 0,
+          details: `Allocated ${goldVal.toFixed(3)}g Pure Gold to ${allocBranchId}. Notes: ${allocNotes}`
         });
       }
 
-      // 2. Silver
+      // 2. Silver Allocation
       if (silverVal > 0) {
-        const silverCash = (goldVal <= 0 && cashVal > 0) ? cashVal : 0;
         allocations.push({
           id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
           branch_id: allocBranchId,
@@ -537,7 +536,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           staff_id: null,
           metal: 'Silver',
           pure_weight: silverVal,
-          cash_amount: silverCash,
+          cash_amount: 0,
           allocated_by: 'SUPER-001',
           date: dateStr,
           iso_date: isoDateStr,
@@ -556,8 +555,41 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           pure_silver_change: -silverVal,
           impure_silver_change: 0,
           calculated_pure_silver: 0,
-          cash_change: -silverCash,
-          details: `Allocated ${silverVal.toFixed(3)}g Pure Silver${silverCash > 0 ? ` and ₹${silverCash.toLocaleString('en-IN')}` : ''} to ${allocBranchId}. Notes: ${allocNotes}`
+          cash_change: 0,
+          details: `Allocated ${silverVal.toFixed(3)}g Pure Silver to ${allocBranchId}. Notes: ${allocNotes}`
+        });
+      }
+
+      // 3. Cash Allocation
+      if (cashVal > 0) {
+        allocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: allocBranchId,
+          branch_name: availableBranches.find(b => b.id === allocBranchId)?.name || allocBranchId,
+          staff_id: null,
+          metal: 'Gold', // Admin UI calculates cash irrespective of metal
+          pure_weight: 0,
+          cash_amount: cashVal,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes
+        });
+        
+        saEntries.push({
+          id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: dateStr,
+          iso_date: isoDateStr,
+          type: 'Branch Allocation',
+          branch_name: 'HEAD-OFFICE',
+          pure_gold_change: 0,
+          impure_gold_change: 0,
+          calculated_pure_gold: 0,
+          pure_silver_change: 0,
+          impure_silver_change: 0,
+          calculated_pure_silver: 0,
+          cash_change: -cashVal,
+          details: `Allocated ₹${cashVal.toLocaleString('en-IN')} Cash to ${allocBranchId}. Notes: ${allocNotes}`
         });
       }
 
