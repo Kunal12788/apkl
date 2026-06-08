@@ -182,10 +182,19 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
               <p className="text-[9px] text-[#C9A646] font-bold uppercase tracking-[0.25em]">Field Operations Hub</p>
             </div>
           </div>
-          <button className="w-11 h-11 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-all premium-shadow relative group active:scale-95">
-            <span className="material-symbols-outlined text-xl text-[#003366] transition-transform group-hover:rotate-12">notifications</span>
-            <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#C9A646] rounded-full animate-pulse shadow-[0_0_8px_#C9A646]"></span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setEntryModalOpen(true)}
+              className="h-10 px-4 rounded-xl bg-[#003366] text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all border border-white/10"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              Intake Entry
+            </button>
+            <button className="w-11 h-11 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-all premium-shadow relative group active:scale-95">
+              <span className="material-symbols-outlined text-xl text-[#003366] transition-transform group-hover:rotate-12">notifications</span>
+              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#C9A646] rounded-full animate-pulse shadow-[0_0_8px_#C9A646]"></span>
+            </button>
+          </div>
         </header>
 
         {/* TOTAL DUES BANNER */}
