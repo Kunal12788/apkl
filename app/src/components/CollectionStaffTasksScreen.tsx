@@ -228,7 +228,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   
-  const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
+  const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
 
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
@@ -316,7 +316,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
         {/* Tab Filter buttons in correct order */}
         <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner">
-          {['Pending', 'In Progress', 'Completed'].map((tab) => (
+          {['In Progress', 'Pending', 'Completed'].map((tab) => (
             <button key={tab} onClick={() => setSearchParams({ tab })} className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white premium-shadow text-primary' : 'text-outline'}`}>{tab}</button>
           ))}
         </div>

@@ -387,7 +387,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Section: Staff Processing Panel */}
-          {task.status === 'In Progress' && userRole === 'Staff' && (
+          {task.status === 'Pending' && userRole === 'Staff' && (
             <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
               
@@ -431,7 +431,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   </div>
                 </>
               ) : (
-                <p className="text-[11px] font-medium text-outline">Marking/Shouldering processing verified. Ready to submit for pricing.</p>
+                <p className="text-[11px] font-medium text-outline">Marking/Shouldering processing verified. Ready to complete.</p>
               )}
             </div>
           )}
@@ -478,6 +478,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         <div className="flex gap-2 mt-4 shrink-0">
           {task.status === 'In Progress' && userRole === 'Staff' ? (
             <button 
+              onClick={() => onUpdateStatus(task, 'approve')}
+              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">thumb_up</span>
+              Approve
+            </button>
+          ) : task.status === 'Pending' && userRole === 'Staff' ? (
+            <button 
               onClick={() => {
                 if (task.workType === 'Tunch' && (!purityInput.trim() || !pureWeightInput.trim())) {
                   alert('Please enter purity and pure weight.');
@@ -487,8 +495,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               }}
               className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
-              <span className="material-symbols-outlined text-sm">send</span>
-              Submit to Admin
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              Complete Work
             </button>
           ) : task.status === 'Pending Verification' && isAdminOrSuper ? (
             <button 
@@ -505,13 +513,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               Approve & Price
             </button>
           ) : (
-            task.status !== 'Completed' && (
+            task.status !== 'Completed' && isAdminOrSuper && (
               <button 
-                onClick={() => onUpdateStatus(task)}
+                onClick={() => onUpdateStatus(task, 'approve')}
                 className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">check_circle</span>
-                {task.status === 'In Progress' ? 'Complete' : (isAdminOrSuper ? 'Start' : 'Verify')}
+                Approve
               </button>
             )
           )}
@@ -691,24 +699,57 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleProcessTask = async (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => {
     try {
+      const condition = details.settlementCondition || task.settlementCondition || '';
+      const needsCash = condition.toLowerCase().includes('cash');
+      const nextStatus = needsCash ? 'Pending Verification' : 'Completed';
+      const progress = needsCash ? 80 : 100;
+
       await supabase.from('tasks').update({
-        purity: details.purity,
-        pure_weight: details.pureWeight,
-        settlement_condition: details.settlementCondition,
-        status: 'Pending Verification',
-        progress_percentage: 80
+        purity: details.purity || task.purity,
+        pure_weight: details.pureWeight || task.pureWeight,
+        settlement_condition: condition,
+        status: nextStatus,
+        progress_percentage: progress
       }).eq('id', task.id);
 
       setTasks(prev => prev.map(t => t.id === task.id ? {
         ...t,
-        purity: details.purity,
-        pureWeight: details.pureWeight,
-        settlementCondition: details.settlementCondition,
-        status: 'Pending Verification',
-        progressPercentage: 80
+        purity: details.purity || task.purity,
+        pureWeight: details.pureWeight || task.pureWeight,
+        settlementCondition: condition,
+        status: nextStatus,
+        progressPercentage: progress
       } : t));
 
-      showToast('Task processing details submitted to Admin.');
+      if (nextStatus === 'Completed') {
+        const newTxn = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          customer_id: task.customerId || 'CUST-COL',
+          customer_name: task.customerName,
+          customer_phone: task.customerPhone || '',
+          customer_address: task.customerAddress || '',
+          type: condition || 'Service',
+          work_type: task.workType || 'Tunch',
+          amount: '0',
+          date: 'Today',
+          iso_date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Completed',
+          details: task.notes || 'Task completed without cash processing.',
+          pieces: task.pieces || '1',
+          product_type: task.productType,
+          impure_weight: task.impureWeight,
+          settlement_condition: condition,
+          logo_name: task.logoName,
+          carat: task.carat,
+          point_suggestion: task.pointSuggestion,
+          created_by: task.createdBy || ''
+        };
+        await supabase.from('transactions').insert([newTxn]);
+        showToast('Task completed directly (No cash needed).');
+      } else {
+        showToast('Task requires cash. Submitted to Admin for pricing.');
+      }
       handleCloseModal();
     } catch (e) {
       console.error(e);
@@ -755,9 +796,14 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleUpdateStatus = async (task: Task) => {
+  const handleUpdateStatus = async (task: Task, action?: string) => {
      try {
-       if (task.status === 'Pending' || task.status === 'Pending Verification') {
+       if (action === 'approve' && task.status === 'In Progress') {
+         await supabase.from('tasks').update({ status: 'Pending', progress_percentage: 40 }).eq('id', task.id);
+         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Pending', progressPercentage: 40 } : t));
+         showToast('Task approved and moved to Pending.');
+         handleCloseModal();
+       } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
           if (isAdminOrSuper) {
             await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', task.id);
             setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
@@ -767,42 +813,10 @@ export const StaffTasksScreen: React.FC = () => {
             setCurrentVerificationTask(task);
             setVerificationOpen(true);
           }
-       } else if (task.status === 'In Progress') {
-          await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', task.id);
-          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
-
-          const newTxn = {
-            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-            customer_id: task.customerId || 'CUST-COL',
-            customer_name: task.customerName,
-            customer_phone: task.customerPhone || '',
-            customer_address: task.customerAddress || '',
-            type: task.settlementCondition || 'Cash',
-            work_type: task.workType || 'Tunch',
-            amount: task.workType === 'Tunch' ? '45000' : task.workType === 'Marking' ? '12000' : '85500',
-            date: 'Today',
-            iso_date: new Date().toISOString().split('T')[0],
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'Unpaid',
-            details: task.notes || 'Collection intake verified and completed.',
-            pieces: task.pieces || '1',
-            product_type: task.productType,
-            impure_weight: task.impureWeight,
-            settlement_condition: task.settlementCondition,
-            logo_name: task.logoName,
-            carat: task.carat,
-            point_suggestion: task.pointSuggestion,
-            created_by: task.createdBy || ''
-          };
-
-          await supabase.from('transactions').insert([newTxn]);
-
-          showToast('Task marked as Completed! Billing ledger updated.');
-          handleCloseModal();
        }
-     } catch(e) {
+     } catch (e) {
        console.error(e);
-       showToast('Error updating task');
+       showToast('Error updating task status');
      }
   };
 

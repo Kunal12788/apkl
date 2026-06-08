@@ -86,7 +86,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         notes: formData.specifications || 'Collection intake from field.',
         settlement_condition: formData.paymentMode,
         point_suggestion: formData.pointSuggestion,
-        status: 'Pending',
+        status: 'In Progress',
         progress_percentage: 0,
         source: 'Collection Staff',
         created_by: user?.id || '',
