@@ -514,9 +514,14 @@ export const StaffBillingScreen: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete customer ${customerName}? This will erase ALL their tasks and transactions.`)) return;
     
     try {
-      await supabase.from('transactions').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
-      await supabase.from('tasks').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
-      await supabase.from('customers').delete().eq('id', customerId);
+      const { error: txErr } = await supabase.from('transactions').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
+      if (txErr) throw txErr;
+
+      const { error: taskErr } = await supabase.from('tasks').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
+      if (taskErr) throw taskErr;
+
+      const { error: custErr } = await supabase.from('customers').delete().eq('id', customerId);
+      if (custErr) throw custErr;
 
       setDbCustomers(prev => prev.filter(c => c.id !== customerId));
       setTransactions(prev => prev.filter(t => t.customerId !== customerId));
@@ -524,9 +529,9 @@ export const StaffBillingScreen: React.FC = () => {
       const newParams = new URLSearchParams(searchParams);
       newParams.delete('customerId');
       setSearchParams(newParams);
-    } catch(err) {
+    } catch(err: any) {
       console.error(err);
-      alert('Failed to delete customer.');
+      alert(`Failed to delete customer: ${err.message || err}`);
     }
   };
 
