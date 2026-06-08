@@ -147,25 +147,25 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
                   <p className={val}>{task.pieces}</p>
                 </div>
               )}
-              {task.settlementCondition && (
+              {task.settlementCondition && task.workType === 'Tunch' && (
                 <div>
                   <span className={lbl}>Settlement Mode</span>
                   <p className={val}>{task.settlementCondition}</p>
                 </div>
               )}
-              {task.logoName && (
+              {task.logoName && task.workType === 'Marking' && (
                 <div>
                   <span className={lbl}>Logo Markings</span>
                   <p className={val}>{task.logoName}</p>
                 </div>
               )}
-              {task.carat && (
+              {task.carat && task.workType === 'Marking' && (
                 <div>
                   <span className={lbl}>Carat</span>
                   <p className={val}>{task.carat.toUpperCase()}</p>
                 </div>
               )}
-              {task.pointSuggestion && (
+              {task.pointSuggestion && task.workType === 'Shouldering' && (
                 <div className="col-span-2">
                   <span className={lbl}>Solder Points</span>
                   <p className={val}>{task.pointSuggestion} Gold/Silver suggested</p>
