@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
+import { clearCache } from './cache';
 import { supabase } from './supabaseClient';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
@@ -181,6 +182,10 @@ function AppContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
          const newRecord = payload.new;
          const oldRecord = payload.old;
+         
+         // Invalidate any local screen caches and trigger live re-fetch
+         window.dispatchEvent(new CustomEvent('databaseSync'));
+
          if (newRecord && newRecord.status === 'Approved' && (!oldRecord || oldRecord.status !== 'Approved')) {
             if (newRecord.created_by === user.id || user.role === 'Collection Staff') {
                toast.custom((t) => (
@@ -202,6 +207,14 @@ function AppContent() {
                ), { duration: 5000, position: 'top-center' });
             }
          }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+         clearCache('tx_data');
+         window.dispatchEvent(new CustomEvent('databaseSync'));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+         clearCache('tasks_data');
+         window.dispatchEvent(new CustomEvent('databaseSync'));
       })
       .subscribe();
 

@@ -94,9 +94,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
 
     window.addEventListener('taskCreated', handleTaskCreated);
+    window.addEventListener('databaseSync', loadData);
 
     return () => {
        window.removeEventListener('taskCreated', handleTaskCreated);
+       window.removeEventListener('databaseSync', loadData);
     };
   }, [currentUser, isFullyAuthenticated]);
 

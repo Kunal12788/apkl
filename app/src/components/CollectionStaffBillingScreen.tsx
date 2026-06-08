@@ -305,7 +305,12 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     };
 
     loadTransactions();
-  }, [isFullyAuthenticated]);
+
+    window.addEventListener('databaseSync', loadTransactions);
+    return () => {
+      window.removeEventListener('databaseSync', loadTransactions);
+    };
+  }, [isFullyAuthenticated, currentUser]);
 
   // Dynamically group transactions by customer
   const dynamicCustomers: Customer[] = [];

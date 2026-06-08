@@ -52,11 +52,17 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
 
   React.useEffect(() => {
     const fetchCustomers = async () => {
+      if (!isOpen) return;
       const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
       if (data) setCustomers(data);
     };
     fetchCustomers();
-  }, []);
+
+    window.addEventListener('databaseSync', fetchCustomers);
+    return () => {
+      window.removeEventListener('databaseSync', fetchCustomers);
+    };
+  }, [isOpen]);
 
   const handleRequestCustomer = async () => {
       if (!formData.customerName || !formData.phone || !formData.address) {

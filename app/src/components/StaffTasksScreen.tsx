@@ -632,6 +632,11 @@ export const StaffTasksScreen: React.FC = () => {
     };
 
     loadTasks();
+
+    window.addEventListener('databaseSync', loadTasks);
+    return () => {
+      window.removeEventListener('databaseSync', loadTasks);
+    };
   }, [isAdminOrSuper, isFullyAuthenticated]);
 
   const selectedTask = tasks.find(t => t.id === taskId) || null;

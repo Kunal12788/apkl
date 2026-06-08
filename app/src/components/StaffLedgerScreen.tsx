@@ -190,9 +190,15 @@ export const StaffLedgerScreen: React.FC = () => {
       })
       .subscribe();
 
+    const handleSync = () => {
+      fetchEntries();
+    };
+    window.addEventListener('databaseSync', handleSync);
+
     return () => {
       supabase.removeChannel(allocationsSub);
       supabase.removeChannel(ledgerSub);
+      window.removeEventListener('databaseSync', handleSync);
     };
   }, [user?.branch_id, isSuperSa]);
 

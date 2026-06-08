@@ -310,7 +310,11 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     };
     
     window.addEventListener('taskCreated', handleTaskCreated);
-    return () => window.removeEventListener('taskCreated', handleTaskCreated);
+    window.addEventListener('databaseSync', loadTasks);
+    return () => {
+       window.removeEventListener('taskCreated', handleTaskCreated);
+       window.removeEventListener('databaseSync', loadTasks);
+    };
   }, [isFullyAuthenticated, currentUser]);
 
   const matchesSearch = (t: Task) => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase());

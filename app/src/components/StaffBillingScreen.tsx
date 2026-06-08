@@ -481,6 +481,15 @@ export const StaffBillingScreen: React.FC = () => {
 
     loadTransactions();
     loadDbCustomers();
+
+    const handleSync = () => {
+      loadTransactions();
+      loadDbCustomers();
+    };
+    window.addEventListener('databaseSync', handleSync);
+    return () => {
+      window.removeEventListener('databaseSync', handleSync);
+    };
   }, [isFullyAuthenticated]);
 
   const handleApproveCustomer = async (id: string) => {
