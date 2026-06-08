@@ -11,6 +11,6 @@ if (supabaseUrl === 'https://placeholder-url.supabase.co' || supabaseAnonKey ===
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false
+    persistSession: true
   }
 });
