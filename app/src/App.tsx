@@ -177,28 +177,29 @@ function AppContent() {
   useEffect(() => {
     if (!user || (user.role !== 'Collection Staff' && user.role !== 'Staff')) return;
 
-    const customerChannel = supabase.channel('customer_approvals_broadcast')
-      .on('broadcast', { event: 'approved' }, (payload: any) => {
+    const customerChannel = supabase.channel('customer_realtime_approvals')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
          const newRecord = payload.new;
-         if (newRecord && newRecord.status === 'Approved') {
+         const oldRecord = payload.old;
+         if (newRecord && newRecord.status === 'Approved' && (!oldRecord || oldRecord.status !== 'Approved')) {
             if (newRecord.created_by === user.id || user.role === 'Collection Staff') {
-              toast.custom((t) => (
-                <div 
-                  className={`${
-                    t.visible ? 'animate-fade-in' : 'opacity-0'
-                  } w-11/12 max-w-sm pointer-events-auto transition-opacity duration-300`}
-                  style={{ zIndex: 9999 }}
-                >
-                  <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
-                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
-                    </div>
-                    <span className="font-bold text-[13px] tracking-wide flex-1">
-                      Customer {newRecord.name} approved! You can now create tasks for them.
-                    </span>
-                  </div>
-                </div>
-              ), { duration: 5000, position: 'top-center' });
+               toast.custom((t) => (
+                 <div 
+                   className={`${
+                     t.visible ? 'animate-fade-in' : 'opacity-0'
+                   } w-11/12 max-w-sm pointer-events-auto transition-opacity duration-300`}
+                   style={{ zIndex: 9999 }}
+                 >
+                   <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
+                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                       <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
+                     </div>
+                     <span className="font-bold text-[13px] tracking-wide flex-1">
+                       Customer {newRecord.name} approved! You can now create tasks for them.
+                     </span>
+                   </div>
+                 </div>
+               ), { duration: 5000, position: 'top-center' });
             }
          }
       })
