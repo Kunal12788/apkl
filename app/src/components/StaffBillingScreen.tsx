@@ -908,92 +908,89 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </header>
             
-            <div className="flex items-center gap-4 mb-2">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-xl shadow-lg border-2 border-white">
-                {selectedCustomer.initials}
-              </div>
-              <div>
-                <h2 className="font-headline text-2xl font-extrabold text-primary leading-tight">{selectedCustomer.name}</h2>
-                <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-1">ID: {selectedCustomer.id}</p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-[0_4px_20px_rgba(0,30,64,0.03)] relative overflow-hidden luxury-card group hover:-translate-y-0.5 transition-transform">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Total Paid</p>
-                  <div className="w-8 h-8 rounded-full bg-secondary-fixed/30 flex items-center justify-center text-secondary">
-                    <span className="material-symbols-outlined text-[16px] glow-icon">payments</span>
+            {/* Customer Header card */}
+            <div className="luxury-card p-6 bg-white border border-outline-variant/15 relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 blur-xl pointer-events-none"></div>
+              <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-bold text-2xl shadow-lg border border-white/10 shrink-0" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>
+                    {selectedCustomer.initials}
                   </div>
-                </div>
-                <div className="flex items-baseline">
-                  <span className="font-headline text-2xl font-bold text-primary tracking-tight">{selectedCustomer.paid}</span>
-                </div>
-              </div>
-              
-              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-[0_4px_20px_rgba(0,30,64,0.03)] relative overflow-hidden luxury-card group hover:-translate-y-0.5 transition-transform">
-                <div className={`absolute left-0 top-0 bottom-0 w-1 ${selectedCustomer.outstanding === '₹0' ? 'bg-outline-variant' : 'bg-error'}`}></div>
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Total Dues</p>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedCustomer.outstanding === '₹0' ? 'bg-surface-container text-outline' : 'bg-error-container/30 text-error'}`}>
-                    <span className="material-symbols-outlined text-[16px] glow-icon">
-                      {selectedCustomer.outstanding === '₹0' ? 'check_circle' : 'warning'}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-baseline">
-                  <span className={`font-headline text-2xl font-bold tracking-tight ${selectedCustomer.outstanding === '₹0' ? 'text-primary' : 'text-error'}`}>{selectedCustomer.outstanding}</span>
-                </div>
-              </div>
-            </div>
-
-            {selectedCustomer.ledger.filter(t => t.status === 'Unpaid').length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>
-                  Active Dues Details
-                </h3>
-                <div className="luxury-card divide-y divide-error/10 border border-error/20 bg-error-container/5 overflow-hidden">
-                  {selectedCustomer.ledger.filter(t => t.status === 'Unpaid').map(due => (
-                    <div key={due.id} onClick={() => setSearchParams({ transactionId: due.id, customerId: selectedCustomer.id, tab: activeTab })} className="p-4 flex items-center justify-between cursor-pointer group hover:bg-error/5 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-error-container/20 text-error group-hover:bg-error-container/40 transition-colors`}>
-                          <span className="material-symbols-outlined text-sm">{getWorkIcon(due.workType)}</span>
-                        </div>
-                        <div>
-                          <p className="font-headline font-bold text-primary text-xs">{due.workType} Work</p>
-                          <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{due.date} • {due.timestamp}</p>
-                        </div>
+                  <div>
+                    <h2 className="text-xl font-extrabold text-primary">{selectedCustomer.name}</h2>
+                    <div className="flex flex-col gap-1 mt-1.5 text-xs text-outline font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">call</span>
+                        <span>{selectedCustomer.phone || 'N/A'}</span>
                       </div>
-                      <div className="text-right">
-                        <p className="font-headline text-sm font-bold text-error">{due.amount}</p>
-                        <p className="text-[8px] text-outline font-bold uppercase tracking-widest">{due.id}</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px]">location_on</span>
+                        <span className="truncate max-w-[250px]">{selectedCustomer.address || 'N/A'}</span>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                </div>
+                
+                <div className="flex gap-4 w-full md:w-auto border-t border-outline-variant/10 md:border-t-0 pt-4 md:pt-0">
+                  <div className="flex-1 md:flex-initial text-center md:text-right bg-surface-container/30 px-4 py-2.5 rounded-xl border border-outline-variant/5">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-outline">Active Jobs</p>
+                    <p className="text-sm font-extrabold text-primary mt-0.5">{selectedCustomer.activeJobs}</p>
+                  </div>
+                  <div className="flex-1 md:flex-initial text-center md:text-right bg-surface-container/30 px-4 py-2.5 rounded-xl border border-outline-variant/5">
+                    <p className="text-[8px] font-bold uppercase tracking-widest text-outline">Dues Outstanding</p>
+                    <p className={`text-sm font-black mt-0.5 ${selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0' ? 'text-error' : 'text-tertiary'}`}>{selectedCustomer.outstanding}</p>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
 
-            <div className="space-y-3">
-              <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Total Work Profile</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="luxury-card p-3 text-center border-t-2 border-t-tertiary">
-                  <span className="material-symbols-outlined text-tertiary text-lg mb-1 glow-icon">science</span>
-                  <p className="font-headline text-xl font-bold text-primary">{selectedCustomer.workBreakdown.tunch}</p>
-                  <p className="text-[8px] uppercase tracking-widest text-outline font-bold">Tunch</p>
+            {/* Total Pieces breakdowns separately */}
+            <div className="grid grid-cols-3 gap-3.5">
+              {[
+                { 
+                  label: 'Tunch Pcs', 
+                  val: selectedCustomer.workBreakdown.tunch, 
+                  icon: 'science', 
+                  iconColor: 'bg-tertiary/10 text-tertiary'
+                },
+                { 
+                  label: 'Marking Pcs', 
+                  val: selectedCustomer.workBreakdown.marking, 
+                  icon: 'verified', 
+                  iconColor: 'bg-secondary/10 text-secondary'
+                },
+                { 
+                  label: 'Shoulder Pcs', 
+                  val: selectedCustomer.workBreakdown.shouldering, 
+                  icon: 'precision_manufacturing', 
+                  iconColor: 'bg-primary/10 text-primary'
+                }
+              ].map((breakdown, idx) => (
+                <div 
+                  key={idx} 
+                  className="luxury-card p-4 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform flex flex-col items-center text-center"
+                >
+                  <div className={`w-8 h-8 rounded-lg ${breakdown.iconColor} flex items-center justify-center`}>
+                    <span className="material-symbols-outlined text-lg">{breakdown.icon}</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="font-headline text-lg font-bold text-primary">{breakdown.val}</p>
+                    <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{breakdown.label}</p>
+                  </div>
                 </div>
-                <div className="luxury-card p-3 text-center border-t-2 border-t-secondary">
-                  <span className="material-symbols-outlined text-secondary text-lg mb-1 glow-icon">verified</span>
-                  <p className="font-headline text-xl font-bold text-primary">{selectedCustomer.workBreakdown.marking}</p>
-                  <p className="text-[8px] uppercase tracking-widest text-outline font-bold">Marking</p>
-                </div>
-                <div className="luxury-card p-3 text-center border-t-2 border-t-primary">
-                  <span className="material-symbols-outlined text-primary text-lg mb-1 glow-icon">precision_manufacturing</span>
-                  <p className="font-headline text-xl font-bold text-primary">{selectedCustomer.workBreakdown.shouldering}</p>
-                  <p className="text-[8px] uppercase tracking-widest text-outline font-bold">Shouldering</p>
-                </div>
+              ))}
+            </div>
+
+            {/* Dues Status Banner */}
+            <div className={`p-4 rounded-2xl border flex items-center gap-3 ${
+              selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0'
+                ? 'bg-error/5 border-error/20 text-error' 
+                : 'bg-tertiary/5 border-tertiary/20 text-tertiary'
+            }`}>
+              <span className="material-symbols-outlined text-[20px]">{selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0' ? 'warning' : 'verified'}</span>
+              <div className="text-left">
+                <p className="text-xs font-bold">{selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0' ? 'Dues Pending Settlement' : 'Ledger Fully Settled'}</p>
+                <p className="text-[9px] opacity-75 mt-0.5">{selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0' ? 'Please complete payment collection or settlement.' : 'No outstanding balances for this client.'}</p>
               </div>
             </div>
 
