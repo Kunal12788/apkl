@@ -3,6 +3,14 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  status: string;
+}
+
 interface CollectionEntryModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -36,6 +44,41 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     pointSuggestion: 'Gold' // Gold, Silver
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  React.useEffect(() => {
+    const fetchCustomers = async () => {
+      const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
+      if (data) setCustomers(data);
+    };
+    fetchCustomers();
+  }, []);
+
+  const handleRequestCustomer = async () => {
+      if (!formData.customerName || !formData.phone) {
+         alert('Please enter both name and phone number to request a new customer.');
+         return;
+      }
+      try {
+         const newId = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+         await supabase.from('customers').insert([{
+            id: newId,
+            name: formData.customerName,
+            phone: formData.phone,
+            address: formData.address,
+            status: 'Pending',
+            created_by: user?.id
+         }]);
+         alert('Customer approval request sent to Super Admin. You cannot create tasks for this customer until approved.');
+         setShowDropdown(false);
+         setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '' }));
+      } catch (e) {
+         console.error(e);
+         alert('Failed to request customer.');
+      }
+  };
 
   if (!isOpen) return null;
 
@@ -51,6 +94,10 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   const validate = () => {
     const err: Record<string, string> = {};
     if (!formData.customerName) err.customerName = 'Required';
+    else {
+      const match = customers.find(c => c.name.toLowerCase() === formData.customerName.toLowerCase());
+      if (!match) err.customerName = 'Must select an approved customer';
+    }
     if (!formData.category) err.category = 'Please select a job category';
     if (formData.category === 'TUNCH' && !formData.phone) err.phone = 'Required';
     if (formData.category === 'MARKING' && !formData.pieces) err.pieces = 'Required';
@@ -191,9 +238,51 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                </SectionCard>
 
                <SectionCard title="Entity Profile" icon="person" color="bg-secondary/5 text-secondary">
-                  <div>
+                  <div className="relative">
                     <label className={lbl}>Entity Name *</label>
-                    <input className={inp(errors.customerName)} placeholder="Name of customer" value={formData.customerName} onChange={e => up('customerName', e.target.value)} />
+                    <input 
+                      className={inp(errors.customerName)} 
+                      placeholder="Name of customer" 
+                      value={formData.customerName} 
+                      onChange={e => {
+                        up('customerName', e.target.value);
+                        setShowDropdown(true);
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
+                    />
+                    {errors.customerName && <p className="text-[10px] text-error mt-1">{errors.customerName}</p>}
+                    
+                    {showDropdown && formData.customerName && (
+                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).map(c => (
+                             <div key={c.id} className="px-4 py-2 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10"
+                                onClick={() => {
+                                   up('customerName', c.name);
+                                   up('phone', c.phone || '');
+                                   up('address', c.address || '');
+                                   setShowDropdown(false);
+                                }}
+                             >
+                                <p className="text-sm font-bold text-primary">{c.name}</p>
+                                <p className="text-[10px] text-outline">{c.phone}</p>
+                             </div>
+                          ))}
+                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
+                             <div className="px-4 py-3 text-center">
+                                <p className="text-xs text-outline mb-2">Customer not found</p>
+                                <button 
+                                  type="button"
+                                  onClick={handleRequestCustomer}
+                                  className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
+                                >
+                                  Request Approval
+                                </button>
+                                <p className="text-[9px] text-outline mt-2">Fill phone & address first to request.</p>
+                             </div>
+                          )}
+                       </div>
+                    )}
                   </div>
                   {formData.category === 'TUNCH' && (
                     <>

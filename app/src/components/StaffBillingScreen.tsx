@@ -32,6 +32,14 @@ interface Transaction {
   details: string;
 }
 
+interface DbCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  status: string;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -289,6 +297,7 @@ export const StaffBillingScreen: React.FC = () => {
   const transactionId = searchParams.get('transactionId');
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>([]);
 
   React.useEffect(() => {
     const loadTransactions = async () => {
@@ -351,13 +360,43 @@ export const StaffBillingScreen: React.FC = () => {
       }
     };
 
+    const loadDbCustomers = async () => {
+      if (!isFullyAuthenticated) return;
+      const { data } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
+      if (data) setDbCustomers(data);
+    };
+
     loadTransactions();
+    loadDbCustomers();
   }, [isFullyAuthenticated]);
+
+  const handleApproveCustomer = async (id: string) => {
+    try {
+       await supabase.from('customers').update({ status: 'Approved' }).eq('id', id);
+       setDbCustomers(prev => prev.map(c => c.id === id ? { ...c, status: 'Approved' } : c));
+    } catch(e) { console.error(e); }
+  }
 
   // Group by customer dynamically
   const dynamicCustomers: Customer[] = [];
+
+  // First, add all dbCustomers to dynamicCustomers
+  dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+      const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+      dynamicCustomers.push({
+        id: c.id,
+        name: c.name,
+        initials: initials || 'C',
+        activeJobs: 0,
+        outstanding: '₹0',
+        paid: '₹0',
+        workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+        ledger: []
+      });
+  });
+
   transactions.forEach(t => {
-    let cust = dynamicCustomers.find(c => c.name === t.customerName);
+    let cust = dynamicCustomers.find(c => c.name.toLowerCase() === t.customerName.toLowerCase() || c.id === t.customerId);
     if (!cust) {
       const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
       cust = {
@@ -431,6 +470,7 @@ export const StaffBillingScreen: React.FC = () => {
   const filteredTransactions = transactions.filter(matchesSearch);
   const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredLedger = selectedCustomer ? selectedCustomer.ledger.filter(matchesSearch) : [];
+  const pendingCustomers = dbCustomers.filter(c => c.status === 'Pending');
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
@@ -568,6 +608,26 @@ export const StaffBillingScreen: React.FC = () => {
                 <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
               )}
             </div>
+
+            {user?.role === 'Super Admin' && pendingCustomers.length > 0 && (
+               <div className="space-y-3">
+                 <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 text-secondary flex items-center gap-2">
+                   <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                   Pending Approvals
+                 </h3>
+                 {pendingCustomers.map(pc => (
+                    <div key={pc.id} className="luxury-card p-4 flex items-center justify-between border-l-4 border-secondary bg-secondary/5">
+                       <div>
+                          <p className="font-headline font-bold text-primary text-[15px]">{pc.name}</p>
+                          <p className="text-[10px] text-outline font-bold mt-0.5">{pc.phone} {pc.address ? `• ${pc.address}` : ''}</p>
+                       </div>
+                       <div className="flex gap-2">
+                          <button onClick={() => handleApproveCustomer(pc.id)} className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors">Approve</button>
+                       </div>
+                    </div>
+                 ))}
+               </div>
+            )}
 
             <div className="space-y-3">
               {filteredCustomers.map(customer => (
