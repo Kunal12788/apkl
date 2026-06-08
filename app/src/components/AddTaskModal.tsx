@@ -422,10 +422,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </div>
               </SectionCard>
 
-              {workType === 'TUNCH' && (<>
-                {/* Client Section */}
-                <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">
-                  <div className="relative">
+              {/* Client Section - Shared across all Work Types */}
+              <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">
+                <div className="relative">
                     <label className={lbl}>Customer Name *</label>
                     <input 
                       className={inp(errors.customerName)} 
@@ -484,6 +483,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                   )}
                 </SectionCard>
 
+              {workType === 'TUNCH' && (<>
                 <SectionCard title="Product Received" icon="category" color="bg-primary/5 text-primary">
                   <div>
                     <label className={lbl}>Type of Item *</label>
@@ -560,47 +560,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
               {workType === 'MARKING' && (<>
                 <SectionCard title="Marking Details" icon="verified" color="bg-tertiary/5 text-tertiary">
-                  <div className="relative">
-                    <label className={lbl}>Customer Name *</label>
-                    <input 
-                      className={inp(errors.customerName)} 
-                      placeholder="Full name" 
-                      value={formData.customerName} 
-                      onChange={e => { up('customerName', e.target.value); setShowDropdown(true); }} 
-                      onFocus={() => setShowDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
-                    />
-                    {errMsg('customerName')}
-                    {showDropdown && formData.customerName && (
-                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).map(c => (
-                             <div key={c.id} className="px-4 py-2 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10"
-                                onClick={() => {
-                                   up('customerName', c.name);
-                                   up('phone', c.phone || '');
-                                   up('address', c.address || '');
-                                   setShowDropdown(false);
-                                }}
-                             >
-                                <p className="text-sm font-bold text-primary">{c.name}</p>
-                                <p className="text-[10px] text-outline">{c.phone}</p>
-                             </div>
-                          ))}
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
-                             <div className="px-4 py-3 text-center">
-                                <p className="text-xs text-outline mb-2">Customer not found</p>
-                                <button 
-                                  type="button"
-                                  onClick={user?.role === 'Super Admin' ? handleAddCustomerDirectly : handleRequestCustomer}
-                                  className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
-                                >
-                                  {user?.role === 'Super Admin' ? 'Add Directly' : 'Request Approval'}
-                                </button>
-                             </div>
-                          )}
-                       </div>
-                    )}
-                  </div>
                   <div>
                     <label className={lbl}>Logo Design *</label>
                     <input className={inp(errors.logoName)} placeholder="e.g. RCJ, AJ" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
@@ -679,47 +638,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
               {workType === 'SHOULDERING' && (<>
                 <SectionCard title="Shouldering Details" icon="precision_manufacturing" color="bg-error/5 text-error">
-                  <div className="relative">
-                    <label className={lbl}>Customer Name *</label>
-                    <input 
-                      className={inp(errors.customerName)} 
-                      placeholder="Full name" 
-                      value={formData.customerName} 
-                      onChange={e => { up('customerName', e.target.value); setShowDropdown(true); }} 
-                      onFocus={() => setShowDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
-                    />
-                    {errMsg('customerName')}
-                    {showDropdown && formData.customerName && (
-                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).map(c => (
-                             <div key={c.id} className="px-4 py-2 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10"
-                                onClick={() => {
-                                   up('customerName', c.name);
-                                   up('phone', c.phone || '');
-                                   up('address', c.address || '');
-                                   setShowDropdown(false);
-                                }}
-                             >
-                                <p className="text-sm font-bold text-primary">{c.name}</p>
-                                <p className="text-[10px] text-outline">{c.phone}</p>
-                             </div>
-                          ))}
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
-                             <div className="px-4 py-3 text-center">
-                                <p className="text-xs text-outline mb-2">Customer not found</p>
-                                <button 
-                                  type="button"
-                                  onClick={user?.role === 'Super Admin' ? handleAddCustomerDirectly : handleRequestCustomer}
-                                  className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
-                                >
-                                  {user?.role === 'Super Admin' ? 'Add Directly' : 'Request Approval'}
-                                </button>
-                             </div>
-                          )}
-                       </div>
-                    )}
-                  </div>
                   {!isCollection ? (
                     <>
                       <div>
