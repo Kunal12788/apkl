@@ -27,7 +27,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     phone: '',
     address: '',
     logoName: '',
-    category: 'TUNCH',
+    category: '',
     pieces: '',
     weight: '',
     specifications: '',
@@ -50,6 +50,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   const validate = () => {
     const err: Record<string, string> = {};
     if (!formData.customerName) err.customerName = 'Required';
+    if (!formData.category) err.category = 'Please select a job category';
     if (formData.category === 'TUNCH' && !formData.phone) err.phone = 'Required';
     if (formData.category === 'MARKING' && !formData.pieces) err.pieces = 'Required';
     setErrors(err);
@@ -93,7 +94,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
       }
 
      onSuccess(newEntry);
-     setFormData({ metal: 'Gold', customerName: '', phone: '', address: '', logoName: '', category: 'TUNCH', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
+     setFormData({ metal: 'Gold', customerName: '', phone: '', address: '', logoName: '', category: '', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
      setStep(1);
   };
 
@@ -172,6 +173,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                         </button>
                      ))}
                   </div>
+                  {errors.category && <p className="text-[10px] text-error mt-2 font-medium text-center">{errors.category}</p>}
                </SectionCard>
 
                <SectionCard title="Entity Profile" icon="person" color="bg-secondary/5 text-secondary">
