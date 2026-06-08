@@ -284,6 +284,70 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   );
 };
 
+interface AddCustomerModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdd: (name: string, phone: string, address: string) => Promise<void>;
+}
+
+const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, onAdd }) => {
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !phone) return alert('Name and Phone are required.');
+    setLoading(true);
+    try {
+      await onAdd(name, phone, address);
+      setName(''); setPhone(''); setAddress('');
+      onClose();
+    } catch(err) {
+      console.error(err);
+      alert('Failed to add customer');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inp = "w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 text-sm font-medium text-primary placeholder-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all";
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block ml-1";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up">
+        <h3 className="font-headline text-xl font-bold text-primary mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-secondary">person_add</span>
+          Add Customer
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className={lbl}>Name *</label>
+            <input className={inp} placeholder="Full Name" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Phone *</label>
+            <input className={inp} placeholder="Phone Number" value={phone} onChange={e => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Address</label>
+            <textarea className={inp} placeholder="Address" rows={2} value={address} onChange={e => setAddress(e.target.value)} />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-3 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-surface-variant transition-colors">Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 py-3 bg-secondary text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-secondary/90 transition-colors shadow-lg shadow-secondary/20">{loading ? 'Adding...' : 'Add'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
@@ -298,6 +362,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>([]);
+  const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
   React.useEffect(() => {
     const loadTransactions = async () => {
@@ -376,6 +441,17 @@ export const StaffBillingScreen: React.FC = () => {
        setDbCustomers(prev => prev.map(c => c.id === id ? { ...c, status: 'Approved' } : c));
     } catch(e) { console.error(e); }
   }
+
+  const handleAddDirectCustomer = async (name: string, phone: string, address: string) => {
+    const newId = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
+    const newCust = {
+       id: newId,
+       name, phone, address, status: 'Approved',
+       created_by: user?.id
+    };
+    await supabase.from('customers').insert([newCust]);
+    setDbCustomers(prev => [newCust, ...prev]);
+  };
 
   // Group by customer dynamically
   const dynamicCustomers: Customer[] = [];
@@ -609,6 +685,16 @@ export const StaffBillingScreen: React.FC = () => {
               )}
             </div>
 
+            {user?.role === 'Super Admin' && (
+              <button 
+                onClick={() => setShowAddCustomerModal(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-secondary/10 text-secondary border border-secondary/20 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-secondary/20 transition-colors mt-2"
+              >
+                <span className="material-symbols-outlined text-sm">person_add</span>
+                Add New Customer
+              </button>
+            )}
+
             {user?.role === 'Super Admin' && pendingCustomers.length > 0 && (
                <div className="space-y-3">
                  <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 text-secondary flex items-center gap-2">
@@ -813,6 +899,12 @@ export const StaffBillingScreen: React.FC = () => {
         isOpen={!!selectedTransaction}
         onClose={handleCloseModal}
         txn={selectedTransaction}
+      />
+
+      <AddCustomerModal 
+        isOpen={showAddCustomerModal}
+        onClose={() => setShowAddCustomerModal(false)}
+        onAdd={handleAddDirectCustomer}
       />
 
       {/* Bottom Nav Bar */}
