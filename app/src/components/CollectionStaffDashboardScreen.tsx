@@ -80,6 +80,23 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
 
     loadData();
+
+    // Listen for newly created tasks to instantly update the UI without waiting for a database reload
+    const handleTaskCreated = (e: any) => {
+      const newTask = e.detail;
+      if (newTask && newTask.created_by === currentUser) {
+        setTasks(prev => {
+          const mappedTask = {
+            id: newTask.id, customerName: newTask.customer_name, category: newTask.work_type, pieces: newTask.pieces, status: newTask.status, dateGiven: newTask.date_given, isoDate: newTask.iso_date
+          };
+          if (prev.some(t => t.id === mappedTask.id)) return prev;
+          return [mappedTask, ...prev];
+        });
+      }
+    };
+
+    window.addEventListener('taskCreated', handleTaskCreated);
+    return () => window.removeEventListener('taskCreated', handleTaskCreated);
   }, [currentUser, isFullyAuthenticated]);
 
   // 1. Calculate stats dynamically

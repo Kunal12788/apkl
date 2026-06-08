@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 interface CollectionEntryModalProps {
   isOpen: boolean;
@@ -89,6 +90,9 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
       
       try {
         await supabase.from('tasks').insert([newEntry]);
+        const currentCache = getCachedData('tasks_data') || [];
+        setCachedData('tasks_data', [newEntry, ...currentCache]);
+        window.dispatchEvent(new CustomEvent('taskCreated', { detail: newEntry }));
       } catch(e) {
         console.error('Failed to insert task', e);
       }

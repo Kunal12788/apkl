@@ -258,7 +258,29 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     };
 
     loadTasks();
-  }, [isFullyAuthenticated]);
+
+    // Listen for newly created tasks to instantly update the UI without waiting for a database reload
+    const handleTaskCreated = (e: any) => {
+      const newTask = e.detail;
+      if (newTask && newTask.created_by === currentUser) {
+        setTasks(prev => {
+          const mappedTask = {
+              id: newTask.id, customerName: newTask.customer_name, customerId: newTask.customer_id, customerPhone: newTask.customer_phone, customerAddress: newTask.customer_address,
+              workType: newTask.work_type, assignedTo: newTask.assigned_to, status: newTask.status, progressPercentage: newTask.progress_percentage, metal: newTask.metal || 'Gold',
+              dateGiven: newTask.date_given, isoDate: newTask.iso_date, estimatedCompletion: newTask.estimated_completion, notes: newTask.notes, broughtBy: newTask.brought_by,
+              pieces: newTask.pieces, productType: newTask.product_type, impureWeight: newTask.impure_weight, settlementCondition: newTask.settlement_condition,
+              logoName: newTask.logo_name, carat: newTask.carat, pointSuggestion: newTask.point_suggestion, createdBy: newTask.created_by
+          };
+          // Avoid duplicates if already fetched
+          if (prev.some(t => t.id === mappedTask.id)) return prev;
+          return [mappedTask, ...prev];
+        });
+      }
+    };
+    
+    window.addEventListener('taskCreated', handleTaskCreated);
+    return () => window.removeEventListener('taskCreated', handleTaskCreated);
+  }, [isFullyAuthenticated, currentUser]);
 
   const filteredTasks = tasks.filter(t => (activeTab === t.status) && (t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())));
 

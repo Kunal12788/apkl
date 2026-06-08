@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { AddTaskModal } from './AddTaskModal';
 import { useSession } from '../context/SessionContext';
+import { getCachedData, setCachedData } from '../cache';
 
 export const GlobalFAB: React.FC = () => {
   const { user, isFullyAuthenticated } = useSession();
@@ -95,8 +96,12 @@ export const GlobalFAB: React.FC = () => {
               if (txnError) console.error('Transaction Insert Error:', txnError);
             }
 
+            // Update local cache for instant UI refresh
+            const currentCache = getCachedData('tasks_data') || [];
+            setCachedData('tasks_data', [newTask, ...currentCache]);
+
             // Dispatch an event to notify other components to refresh their data without a full page reload
-            window.dispatchEvent(new Event('taskCreated'));
+            window.dispatchEvent(new CustomEvent('taskCreated', { detail: newTask }));
             
           } catch(e) {
             console.error('Failed to create global task', e);
