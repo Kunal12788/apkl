@@ -286,8 +286,13 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }))
     : [];
 
+  const cachedDbCust = getCachedData('db_customers');
+  const initialDbCust = cachedDbCust
+    ? cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by))
+    : [];
+
   const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
-  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>([]);
+  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
 
   useEffect(() => {
     const loadTransactions = async () => {
@@ -359,6 +364,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           .order('created_at', { ascending: false });
         if (error) throw error;
         if (data) {
+          setCachedData('db_customers', data);
           setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
         } else {
           setDbCustomers([]);

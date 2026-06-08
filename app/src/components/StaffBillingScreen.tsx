@@ -412,29 +412,33 @@ export const StaffBillingScreen: React.FC = () => {
   const customerId = searchParams.get('customerId');
   const transactionId = searchParams.get('transactionId');
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>([]);
+  const currentUserId = user?.id || '';
+  const isSuperSa = user?.role === 'Super Admin';
+  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUserId];
+
+  const cachedTx = getCachedData('tx_data');
+  const initialTx = cachedTx
+    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy))).map((t: any) => ({
+        metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+        date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
+        impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+        pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
+      }))
+    : [];
+
+  const cachedDbCust = getCachedData('db_customers');
+  const initialDbCust = cachedDbCust
+    ? (isSuperSa ? cachedDbCust : cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by)))
+    : [];
+
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
+  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
   React.useEffect(() => {
     const loadTransactions = async () => {
-      // 1. Instantly load from cache
-      const cachedTx = getCachedData('tx_data');
-      const isSuperSa = user?.role === 'Super Admin';
-      const currentUserId = user?.id || '';
-      const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUserId];
-
       if (cachedTx) {
-        let filteredCache = cachedTx;
-        if (!isSuperSa) {
-          filteredCache = cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy));
-        }
-        setTransactions(filteredCache.map((t: any) => ({
-          metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-          date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
-          impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-          pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
-        })));
+        // Already initialized synchronously on mount! We can skip duplicate setTransactions.
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -496,6 +500,7 @@ export const StaffBillingScreen: React.FC = () => {
 
       const { data } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
       if (data) {
+        setCachedData('db_customers', data);
         if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
           setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
         } else {
