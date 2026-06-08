@@ -268,6 +268,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [historyDateFilter, setHistoryDateFilter] = useState('');
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -487,74 +488,164 @@ export const CollectionStaffBillingScreen: React.FC = () => {
              <button onClick={() => setSearchParams({ tab: 'customer' })} className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
              </button>
-             
-             {/* Customer Header card */}
-             <div className="luxury-card p-5 bg-white border border-outline-variant/10 flex items-center justify-between">
-               <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-md border border-white/10" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>{selectedCustomer.initials}</div>
-                 <div>
-                   <h2 className="text-lg font-extrabold text-primary">{selectedCustomer.name}</h2>
-                   <p className="text-[10px] text-outline font-bold uppercase tracking-widest mt-0.5">Active Jobs: {selectedCustomer.activeJobs}</p>
-                 </div>
-               </div>
-               <div className="text-right">
-                 <p className="text-[9px] font-bold uppercase tracking-widest text-outline">Dues Outstanding</p>
-                 <p className={`text-lg font-black mt-0.5 ${selectedCustomer.outstanding !== '₹ 0' ? 'text-error' : 'text-tertiary'}`}>{selectedCustomer.outstanding}</p>
-               </div>
-             </div>
+              {/* Customer Header card */}
+              <div className="luxury-card p-6 bg-white border border-outline-variant/15 relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 blur-xl pointer-events-none"></div>
+                <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl text-white flex items-center justify-center font-bold text-2xl shadow-lg border border-white/10 shrink-0" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>
+                      {selectedCustomer.initials}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-extrabold text-primary">{selectedCustomer.name}</h2>
+                      <div className="flex flex-col gap-1 mt-1.5 text-xs text-outline font-medium">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">call</span>
+                          <span>{selectedCustomer.phone || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[14px]">location_on</span>
+                          <span className="truncate max-w-[250px]">{selectedCustomer.address || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4 w-full md:w-auto border-t border-outline-variant/10 md:border-t-0 pt-4 md:pt-0">
+                    <div className="flex-1 md:flex-initial text-center md:text-right bg-surface-container/30 px-4 py-2.5 rounded-xl border border-outline-variant/5">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-outline">Active Jobs</p>
+                      <p className="text-sm font-extrabold text-primary mt-0.5">{selectedCustomer.activeJobs}</p>
+                    </div>
+                    <div className="flex-1 md:flex-initial text-center md:text-right bg-surface-container/30 px-4 py-2.5 rounded-xl border border-outline-variant/5">
+                      <p className="text-[8px] font-bold uppercase tracking-widest text-outline">Dues Outstanding</p>
+                      <p className={`text-sm font-black mt-0.5 ${selectedCustomer.outstanding !== '₹ 0' ? 'text-error' : 'text-tertiary'}`}>{selectedCustomer.outstanding}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-             {/* Total Pieces breakdowns separately */}
-             <div className="grid grid-cols-3 gap-3">
-               {[
-                 { label: 'Tunch Pcs', val: selectedCustomer.piecesBreakdown.tunch, icon: 'science', color: 'text-tertiary bg-tertiary/5 border-tertiary/20' },
-                 { label: 'Marking Pcs', val: selectedCustomer.piecesBreakdown.marking, icon: 'verified', color: 'text-secondary bg-secondary/5 border-secondary/20' },
-                 { label: 'Shoulder Pcs', val: selectedCustomer.piecesBreakdown.shouldering, icon: 'precision_manufacturing', color: 'text-primary bg-primary/5 border-primary/20' }
-               ].map((breakdown, idx) => (
-                 <div key={idx} className={`luxury-card p-4 border flex flex-col items-center gap-2 ${breakdown.color}`}>
-                   <span className="material-symbols-outlined text-xl">{breakdown.icon}</span>
-                   <p className="text-[9px] font-bold uppercase tracking-widest text-outline/80">{breakdown.label}</p>
-                   <p className="text-base font-black text-primary">{breakdown.val}</p>
-                 </div>
-               ))}
-             </div>
+              {/* Total Pieces breakdowns separately */}
+              <div className="grid grid-cols-3 gap-3.5">
+                {[
+                  { 
+                    label: 'Tunch Pcs', 
+                    val: selectedCustomer.piecesBreakdown.tunch, 
+                    icon: 'science', 
+                    themeColor: '#d97706',
+                    gradient: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                    border: 'border-amber-200/60',
+                    iconBg: 'bg-amber-500/10 text-amber-700'
+                  },
+                  { 
+                    label: 'Marking Pcs', 
+                    val: selectedCustomer.piecesBreakdown.marking, 
+                    icon: 'verified', 
+                    themeColor: '#059669',
+                    gradient: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
+                    border: 'border-emerald-200/60',
+                    iconBg: 'bg-emerald-500/10 text-emerald-700'
+                  },
+                  { 
+                    label: 'Shoulder Pcs', 
+                    val: selectedCustomer.piecesBreakdown.shouldering, 
+                    icon: 'precision_manufacturing', 
+                    themeColor: '#3b82f6',
+                    gradient: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                    border: 'border-blue-200/60',
+                    iconBg: 'bg-blue-500/10 text-blue-700'
+                  }
+                ].map((breakdown, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`rounded-3xl p-4 border ${breakdown.border} flex flex-col items-center justify-between text-center relative overflow-hidden transition-all duration-300 hover:shadow-md active:scale-[0.98] h-28`}
+                    style={{ background: breakdown.gradient }}
+                  >
+                    <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/20 rounded-full blur-md"></div>
+                    <div className={`w-8 h-8 rounded-full ${breakdown.iconBg} flex items-center justify-center shrink-0`}>
+                      <span className="material-symbols-outlined text-sm font-bold">{breakdown.icon}</span>
+                    </div>
+                    <div className="space-y-0.5 relative z-10">
+                      <p className="text-[8px] font-black uppercase tracking-wider text-primary/70">{breakdown.label}</p>
+                      <p className="text-xl font-black text-primary leading-none">{breakdown.val}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-             {/* Dues Status Banner */}
-             <div className={`p-4 rounded-2xl border flex items-center gap-3 ${
-               selectedCustomer.outstanding !== '₹ 0' 
-                 ? 'bg-error/5 border-error/20 text-error' 
-                 : 'bg-tertiary/5 border-tertiary/20 text-tertiary'
-             }`}>
-               <span className="material-symbols-outlined text-[20px]">{selectedCustomer.outstanding !== '₹ 0' ? 'warning' : 'verified'}</span>
-               <div className="text-left">
-                 <p className="text-xs font-bold">{selectedCustomer.outstanding !== '₹ 0' ? 'Dues Pending Collection' : 'Ledger Fully Settled'}</p>
-                 <p className="text-[9px] opacity-75 mt-0.5">{selectedCustomer.outstanding !== '₹ 0' ? 'Please complete payment collection on site.' : 'No outstanding balances for this client.'}</p>
-               </div>
-             </div>
+              {/* Dues Status Banner */}
+              <div className={`p-4 rounded-2xl border flex items-center gap-3 ${
+                selectedCustomer.outstanding !== '₹ 0' 
+                  ? 'bg-error/5 border-error/20 text-error' 
+                  : 'bg-tertiary/5 border-tertiary/20 text-tertiary'
+              }`}>
+                <span className="material-symbols-outlined text-[20px]">{selectedCustomer.outstanding !== '₹ 0' ? 'warning' : 'verified'}</span>
+                <div className="text-left">
+                  <p className="text-xs font-bold">{selectedCustomer.outstanding !== '₹ 0' ? 'Dues Pending Collection' : 'Ledger Fully Settled'}</p>
+                  <p className="text-[9px] opacity-75 mt-0.5">{selectedCustomer.outstanding !== '₹ 0' ? 'Please complete payment collection on site.' : 'No outstanding balances for this client.'}</p>
+                </div>
+              </div>
 
-             {/* Ledger History List */}
-             <div className="space-y-3">
-               <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold px-1">Intake History</h3>
-               {selectedCustomer.ledger.map(txn => (
-                 <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
-                   <div className={`absolute left-0 top-0 bottom-0 w-1 ${txn.status === 'Unpaid' ? 'bg-error' : 'bg-tertiary'}`}></div>
-                   <div className="flex justify-between items-start pl-2">
-                     <div className="flex items-center gap-3">
-                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
-                         <span className="material-symbols-outlined text-xl">{getWorkIcon(txn.workType)}</span>
-                       </div>
-                       <div>
-                         <p className="font-headline font-bold text-sm text-primary">{txn.workType} Assignment</p>
-                         <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.id} • {txn.date}</p>
-                       </div>
-                     </div>
-                     <div className="text-right">
-                       <p className="font-headline text-base font-bold text-primary">₹ {txn.amount}</p>
-                       <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${txn.status === 'Unpaid' ? 'bg-error/10 text-error' : 'bg-tertiary/10 text-tertiary'}`}>{txn.status}</span>
-                     </div>
-                   </div>
-                 </div>
-               ))}
-             </div>
+              {/* Ledger History List */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center px-1">
+                  <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Intake History</h3>
+                  
+                  {/* Compact Date Filter Input */}
+                  <div className="relative flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-xl px-2.5 py-1.5 shadow-sm focus-within:border-primary transition-all">
+                    <span className="material-symbols-outlined text-outline text-[14px]">calendar_month</span>
+                    <input 
+                      type="date" 
+                      value={historyDateFilter} 
+                      onChange={e => setHistoryDateFilter(e.target.value)} 
+                      className="text-[10px] font-bold text-primary focus:outline-none bg-transparent"
+                    />
+                    {historyDateFilter && (
+                      <button 
+                        onClick={() => setHistoryDateFilter('')} 
+                        className="w-4 h-4 rounded-full bg-error/10 text-error flex items-center justify-center"
+                      >
+                        <span className="material-symbols-outlined text-[10px]">close</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {(() => {
+                  const filteredLedger = selectedCustomer.ledger.filter(txn => {
+                    if (!historyDateFilter) return true;
+                    return txn.isoDate === historyDateFilter;
+                  });
+
+                  if (filteredLedger.length === 0) {
+                    return (
+                      <div className="luxury-card p-6 text-center border border-outline-variant/10 bg-white rounded-2xl">
+                        <span className="material-symbols-outlined text-outline text-3xl mb-1.5">calendar_today</span>
+                        <p className="text-xs text-outline font-bold">No intake records on this date.</p>
+                      </div>
+                    );
+                  }
+
+                  return filteredLedger.map(txn => (
+                    <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${txn.status === 'Unpaid' ? 'bg-error' : 'bg-tertiary'}`}></div>
+                      <div className="flex justify-between items-start pl-2">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
+                            <span className="material-symbols-outlined text-xl">{getWorkIcon(txn.workType)}</span>
+                          </div>
+                          <div>
+                            <p className="font-headline font-bold text-sm text-primary">{txn.workType} Assignment</p>
+                            <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.id} • {txn.date}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-headline text-base font-bold text-primary">₹ {txn.amount}</p>
+                          <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${txn.status === 'Unpaid' ? 'bg-error/10 text-error' : 'bg-tertiary/10 text-tertiary'}`}>{txn.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
           </div>
         ) : activeTab === 'all' ? (
           <div className="space-y-4">
