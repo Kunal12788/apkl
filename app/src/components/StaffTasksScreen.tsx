@@ -151,7 +151,7 @@ interface TaskDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
-  onUpdateStatus: (task: Task) => void;
+  onUpdateStatus: (task: Task, action?: string) => void;
   onDeleteTask: (id: string) => void;
   isAdminOrSuper?: boolean;
   onProcessTask?: (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => void;
