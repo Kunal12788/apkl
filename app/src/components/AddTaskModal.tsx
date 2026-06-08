@@ -140,12 +140,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         }
       }
 
+      let serialId = '0001';
+      try {
+        const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+        if (count !== null) {
+          serialId = String(count + 1).padStart(4, '0');
+        }
+      } catch (e) {
+        console.error('Failed to get task count for serial ID', e);
+      }
+
       onSuccess({ 
         ...formData, 
         workType, 
         pieceCategories,
         images: uploadedUrls,
-        id: `TASK-${Math.floor(1000 + Math.random() * 9000)}`, 
+        id: isCollection ? `COL-${serialId}` : `TASK-${serialId}`, 
         date: 'Just Now', 
         status: 'In Progress', 
         progressPercentage: 10, 

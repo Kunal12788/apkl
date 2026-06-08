@@ -30,6 +30,7 @@ interface Task {
   carat?: string;
   pointSuggestion?: 'Gold' | 'Silver';
   createdBy?: string;
+  images?: string[];
 }
 
 const getWorkIcon = (workType: string) => {
@@ -174,6 +175,22 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
             </div>
           </div>
 
+          {/* Section: Media/Images */}
+          {task.images && task.images.length > 0 && (
+            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Attached Media</p>
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                {task.images.map((imgUrl, i) => (
+                  <a key={i} href={imgUrl} target="_blank" rel="noreferrer" className="shrink-0">
+                    <div className="w-16 h-16 rounded-xl border border-outline-variant/20 overflow-hidden bg-surface-container">
+                      <img src={imgUrl} alt={`Task attachment ${i + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Section 3: Schedule Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
@@ -222,7 +239,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
         workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
         dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
         pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
-        logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+        logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || []
       }))
     : [];
 
@@ -246,7 +263,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
               pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
-              logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+              logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || []
           })));
         } else {
           setTasks([]);
@@ -269,7 +286,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               workType: newTask.work_type, assignedTo: newTask.assigned_to, status: newTask.status, progressPercentage: newTask.progress_percentage, metal: newTask.metal || 'Gold',
               dateGiven: newTask.date_given, isoDate: newTask.iso_date, estimatedCompletion: newTask.estimated_completion, notes: newTask.notes, broughtBy: newTask.brought_by,
               pieces: newTask.pieces, productType: newTask.product_type, impureWeight: newTask.impure_weight, settlementCondition: newTask.settlement_condition,
-              logoName: newTask.logo_name, carat: newTask.carat, pointSuggestion: newTask.point_suggestion, createdBy: newTask.created_by
+              logoName: newTask.logo_name, carat: newTask.carat, pointSuggestion: newTask.point_suggestion, createdBy: newTask.created_by, images: newTask.images || []
           };
           // Avoid duplicates if already fetched
           if (prev.some(t => t.id === mappedTask.id)) return prev;

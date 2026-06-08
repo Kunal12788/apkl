@@ -63,8 +63,18 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   };
 
   const handleSubmit = async () => {
+      let serialId = '0001';
+      try {
+        const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+        if (count !== null) {
+          serialId = String(count + 1).padStart(4, '0');
+        }
+      } catch (e) {
+        console.error('Failed to get task count for serial ID', e);
+      }
+
       const newEntry = { 
-        id: `COL-${Math.floor(Math.random() * 9000) + 1000}`,
+        id: `COL-${serialId}`,
         customer_name: formData.customerName,
         customer_phone: formData.phone,
         customer_address: formData.address,
