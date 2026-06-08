@@ -50,7 +50,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
   const [formData, setFormData] = useState({
     metal: 'Gold',
-    customerName: '', address: '', phone: '',
+    customerName: '', address: '', phone: '', customerId: '',
     impureWeight: '', purity: '', pureWeight: '',
     settlementCondition: 'Only Tunch', fee: '',
     feeStatus: 'Paid',
@@ -73,8 +73,27 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   React.useEffect(() => {
     const fetchCustomers = async () => {
       if (!isOpen) return;
+
+      let branchUserIds: string[] = [];
+      const isSuperSa = user?.role === 'Super Admin';
+      if (!isSuperSa && user?.branch_id) {
+        const { data: bUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+        }
+      }
+
       const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
-      if (data) setCustomers(data);
+      if (data) {
+        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
+          setCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+        } else {
+          setCustomers(data);
+        }
+      }
     };
     fetchCustomers();
 
@@ -82,7 +101,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     return () => {
       window.removeEventListener('databaseSync', fetchCustomers);
     };
-  }, [isOpen]);
+  }, [isOpen, user?.branch_id, user?.role]);
 
   const handleRequestCustomer = async () => {
       if (!formData.customerName || !formData.phone || !formData.address) {
@@ -242,7 +261,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       });
       
       setStep(1); setWorkType(null); setErrors({}); setTaskImages({});
-      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '' });
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '' });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
@@ -412,7 +431,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       className={inp(errors.customerName)} 
                       placeholder="Full name" 
                       value={formData.customerName} 
-                      onChange={e => { up('customerName', e.target.value); setShowDropdown(true); }} 
+                      onChange={e => { up('customerName', e.target.value); up('customerId', ''); setShowDropdown(true); }} 
                       onFocus={() => setShowDropdown(true)}
                       onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
                     />
@@ -425,6 +444,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                    up('customerName', c.name);
                                    up('phone', c.phone || '');
                                    up('address', c.address || '');
+                                   up('customerId', c.id);
                                    setShowDropdown(false);
                                 }}
                              >

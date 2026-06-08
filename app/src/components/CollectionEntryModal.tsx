@@ -43,7 +43,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     weight: '',
     specifications: '',
     paymentMode: 'Tunch', // Settlement Condition: Tunch, Cash Front, Cash Back
-    pointSuggestion: 'Gold' // Gold, Silver
+    pointSuggestion: 'Gold', // Gold, Silver
+    customerId: ''
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   
@@ -53,8 +54,27 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   React.useEffect(() => {
     const fetchCustomers = async () => {
       if (!isOpen) return;
+
+      let branchUserIds: string[] = [];
+      const isSuperSa = user?.role === 'Super Admin';
+      if (!isSuperSa && user?.branch_id) {
+        const { data: bUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+        }
+      }
+
       const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
-      if (data) setCustomers(data);
+      if (data) {
+        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
+          setCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+        } else {
+          setCustomers(data);
+        }
+      }
     };
     fetchCustomers();
 
@@ -62,7 +82,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     return () => {
       window.removeEventListener('databaseSync', fetchCustomers);
     };
-  }, [isOpen]);
+  }, [isOpen, user?.branch_id, user?.role]);
 
   const handleRequestCustomer = async () => {
       if (!formData.customerName || !formData.phone || !formData.address) {
@@ -81,7 +101,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
          }]);
          alert('Customer approval request sent to Super Admin.');
          setShowDropdown(false);
-         setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '' }));
+         setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '', customerId: '' }));
          onClose(); // Close the modal
          navigate('/dashboard'); // Take back to dashboard
       } catch (e) {
@@ -135,6 +155,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         customer_name: formData.customerName,
         customer_phone: formData.phone,
         customer_address: formData.address,
+        customer_id: formData.customerId || 'CUST-COL',
         logo_name: formData.logoName,
         work_type: formData.category === 'TUNCH' ? 'Tunch' : formData.category === 'MARKING' ? 'Marking' : 'Shouldering',
         metal: formData.metal,
@@ -165,7 +186,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
       }
 
      onSuccess(newEntry);
-     setFormData({ metal: 'Gold', customerName: '', phone: '', address: '', logoName: '', category: '', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold' });
+     setFormData({ metal: 'Gold', customerName: '', phone: '', address: '', logoName: '', category: '', pieces: '', weight: '', specifications: '', paymentMode: 'Tunch', pointSuggestion: 'Gold', customerId: '' });
      setStep(1);
   };
 
@@ -259,6 +280,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                       value={formData.customerName} 
                       onChange={e => {
                         up('customerName', e.target.value);
+                        up('customerId', '');
                         setShowDropdown(true);
                       }}
                       onFocus={() => setShowDropdown(true)}
@@ -274,6 +296,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                                    up('customerName', c.name);
                                    up('phone', c.phone || '');
                                    up('address', c.address || '');
+                                   up('customerId', c.id);
                                    setShowDropdown(false);
                                 }}
                              >

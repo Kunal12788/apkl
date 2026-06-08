@@ -35,8 +35,8 @@ export const GlobalFAB: React.FC = () => {
         onSuccess={async (data) => {
           console.log('Global Task Created:', data);
           try {
-            const generatedCustomerId = `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
             const isCollection = user?.role === 'Collection Staff';
+            const generatedCustomerId = data.customerId || `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
             const newTask = {
               id: data.id,
               customer_name: data.customerName || 'Walk-in Customer',

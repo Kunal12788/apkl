@@ -11,6 +11,8 @@ interface Transaction {
   id: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
+  customerAddress?: string;
   type: 'UPI' | 'Cash';
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   amount: string;
@@ -53,6 +55,8 @@ interface Customer {
     shouldering: number;
   };
   ledger: Transaction[];
+  phone?: string;
+  address?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -418,14 +422,15 @@ export const StaffBillingScreen: React.FC = () => {
       const cachedTx = getCachedData('tx_data');
       const isSuperSa = user?.role === 'Super Admin';
       const currentUserId = user?.id || '';
+      const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUserId];
 
       if (cachedTx) {
         let filteredCache = cachedTx;
         if (!isSuperSa) {
-          filteredCache = cachedTx.filter((t: any) => t.created_by === currentUserId || t.createdBy === currentUserId);
+          filteredCache = cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy));
         }
         setTransactions(filteredCache.map((t: any) => ({
-          metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+          metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
           date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
           impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
           pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
@@ -445,6 +450,7 @@ export const StaffBillingScreen: React.FC = () => {
             .eq('branch_id', user.branch_id);
           if (!buError && bUsers) {
             branchUserIds = bUsers.map((bu: any) => bu.id);
+            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
           }
         }
         if (branchUserIds.length === 0) {
@@ -460,7 +466,7 @@ export const StaffBillingScreen: React.FC = () => {
             filtered = data.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
           }
           setTransactions(filtered.map((t: any) => ({
-            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
             date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
             impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
             pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
@@ -475,8 +481,27 @@ export const StaffBillingScreen: React.FC = () => {
 
     const loadDbCustomers = async () => {
       if (!isFullyAuthenticated) return;
+      
+      let branchUserIds: string[] = [];
+      const isSuperSa = user?.role === 'Super Admin';
+      if (!isSuperSa && user?.branch_id) {
+        const { data: bUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+        }
+      }
+
       const { data } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
-      if (data) setDbCustomers(data);
+      if (data) {
+        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
+          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+        } else {
+          setDbCustomers(data);
+        }
+      }
     };
 
     loadTransactions();
@@ -490,7 +515,7 @@ export const StaffBillingScreen: React.FC = () => {
     return () => {
       window.removeEventListener('databaseSync', handleSync);
     };
-  }, [isFullyAuthenticated]);
+  }, [isFullyAuthenticated, user?.id, user?.branch_id]);
 
   const handleApproveCustomer = async (id: string) => {
     try {
@@ -549,12 +574,32 @@ export const StaffBillingScreen: React.FC = () => {
         outstanding: '₹0',
         paid: '₹0',
         workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
-        ledger: []
+        ledger: [],
+        phone: c.phone,
+        address: c.address
       });
   });
 
   transactions.forEach(t => {
-    let cust = dynamicCustomers.find(c => c.name.toLowerCase() === t.customerName.toLowerCase() || c.id === t.customerId);
+    let cust = dynamicCustomers.find(c => {
+      if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
+        return c.id === t.customerId;
+      }
+      if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
+      
+      const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+      const cP = normPhone(c.phone);
+      const tP = normPhone(t.customerPhone);
+      if (cP && tP && cP !== tP) return false;
+      
+      const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+      const cA = normAddr(c.address);
+      const tA = normAddr(t.customerAddress);
+      if (cA && tA && cA !== tA) return false;
+      
+      return true;
+    });
+
     if (!cust) {
       const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
       cust = {
@@ -565,7 +610,9 @@ export const StaffBillingScreen: React.FC = () => {
         outstanding: '₹0',
         paid: '₹0',
         workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
-        ledger: []
+        ledger: [],
+        phone: t.customerPhone,
+        address: t.customerAddress
       };
       dynamicCustomers.push(cust);
     }

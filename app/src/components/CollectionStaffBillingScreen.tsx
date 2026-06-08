@@ -30,6 +30,14 @@ interface Transaction {
   pointSuggestion?: 'Gold' | 'Silver';
 }
 
+interface DbCustomer {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  status: string;
+}
+
 interface Customer {
   id: string;
   name: string;
@@ -43,6 +51,8 @@ interface Customer {
     marking: number;
     shouldering: number;
   };
+  phone?: string;
+  address?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -265,8 +275,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   // Load transactions from cache synchronously on mount for 0ms delay
   const cachedTx = getCachedData('tx_data');
   const currentUser = user?.id || '';
+  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUser];
   const initialTx = cachedTx
-    ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+    ? cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy)).map((t: any) => ({
         metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
         status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
@@ -275,18 +286,38 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     : [];
 
   const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
+  const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>([]);
 
   useEffect(() => {
     const loadTransactions = async () => {
       if (!isFullyAuthenticated) return;
       try {
-        const { data, error } = await supabase.from('transactions').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
+        let branchUserIds: string[] = [];
+        if (user?.branch_id) {
+          const { data: bUsers, error: buError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (!buError && bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+          }
+        }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [currentUser];
+        }
+
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .in('created_by', branchUserIds)
+          .order('created_at', { ascending: false });
         if (error) throw error;
         
         if (data) {
           // Merge transactions back into in-memory cache
           const allTx = getCachedData('tx_data') || [];
-          const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
+          const otherTx = allTx.filter((t: any) => !branchUserIds.includes(t.created_by) && !branchUserIds.includes(t.createdBy));
           setCachedData('tx_data', [...otherTx, ...data]);
 
           setTransactions(data.map(t => ({
@@ -304,18 +335,91 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
     };
 
-    loadTransactions();
+    const loadDbCustomers = async () => {
+      if (!isFullyAuthenticated) return;
+      try {
+        let branchUserIds: string[] = [];
+        if (user?.branch_id) {
+          const { data: bUsers, error: buError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (!buError && bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+          }
+        }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [currentUser];
+        }
 
-    window.addEventListener('databaseSync', loadTransactions);
-    return () => {
-      window.removeEventListener('databaseSync', loadTransactions);
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        if (data) {
+          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+        } else {
+          setDbCustomers([]);
+        }
+      } catch (err) {
+        console.error('Error fetching collection customers:', err);
+      }
     };
-  }, [isFullyAuthenticated, currentUser]);
+
+    loadTransactions();
+    loadDbCustomers();
+
+    const handleSync = () => {
+      loadTransactions();
+      loadDbCustomers();
+    };
+    window.addEventListener('databaseSync', handleSync);
+    return () => {
+      window.removeEventListener('databaseSync', handleSync);
+    };
+  }, [isFullyAuthenticated, currentUser, user?.branch_id]);
 
   // Dynamically group transactions by customer
   const dynamicCustomers: Customer[] = [];
+
+  // First, add all approved dbCustomers to dynamicCustomers
+  dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+      const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+      dynamicCustomers.push({
+        id: c.id,
+        name: c.name,
+        initials: initials || 'C',
+        activeJobs: 0,
+        outstanding: '₹ 0',
+        paid: '₹ 0',
+        piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+        ledger: [],
+        phone: c.phone,
+        address: c.address
+      });
+  });
+
   transactions.forEach(t => {
-    let cust = dynamicCustomers.find(c => c.name === t.customerName);
+    let cust = dynamicCustomers.find(c => {
+      if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
+        return c.id === t.customerId;
+      }
+      if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
+      
+      const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+      const cP = normPhone(c.phone);
+      const tP = normPhone(t.customerPhone);
+      if (cP && tP && cP !== tP) return false;
+      
+      const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+      const cA = normAddr(c.address);
+      const tA = normAddr(t.customerAddress);
+      if (cA && tA && cA !== tA) return false;
+      
+      return true;
+    });
+
     if (!cust) {
       const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
       cust = {
@@ -326,7 +430,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         outstanding: '₹ 0',
         paid: '₹ 0',
         piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
-        ledger: []
+        ledger: [],
+        phone: t.customerPhone,
+        address: t.customerAddress
       };
       dynamicCustomers.push(cust);
     }
