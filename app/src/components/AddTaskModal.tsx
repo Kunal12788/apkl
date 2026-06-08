@@ -79,8 +79,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   }, []);
 
   const handleRequestCustomer = async () => {
-      if (!formData.customerName || !formData.phone) {
-         alert('Please enter both name and phone number to request a new customer.');
+      if (!formData.customerName || !formData.phone || !formData.address) {
+         alert('Please enter name, phone number, and address to request a new customer.');
          return;
       }
       try {
@@ -93,9 +93,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
             status: 'Pending',
             created_by: user?.id
          }]);
-         alert('Customer approval request sent to Super Admin. You cannot create tasks for this customer until approved.');
+         alert('Customer approval request sent to Super Admin.');
          setShowDropdown(false);
          setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '' }));
+         onClose();
       } catch (e) {
          console.error(e);
          alert('Failed to request customer.');
@@ -103,8 +104,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   };
 
   const handleAddCustomerDirectly = async () => {
-      if (!formData.customerName || !formData.phone) {
-         alert('Please enter both name and phone number to add a customer.');
+      if (!formData.customerName || !formData.phone || !formData.address) {
+         alert('Please enter name, phone number, and address to add a customer.');
          return;
       }
       try {
@@ -427,15 +428,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                           ))}
                           {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
                              <div className="px-4 py-3 text-center">
-                                <p className="text-xs text-outline mb-2">Customer not found</p>
-                                <button 
-                                  type="button"
-                                  onClick={user?.role === 'Super Admin' ? handleAddCustomerDirectly : handleRequestCustomer}
-                                  className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
-                                >
-                                  {user?.role === 'Super Admin' ? 'Add Directly' : 'Request Approval'}
-                                </button>
-                                <p className="text-[9px] text-outline mt-2">Fill phone & address first.</p>
+                                <p className="text-xs text-outline">Customer not found</p>
                              </div>
                           )}
                        </div>
@@ -451,6 +444,18 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <input className={inp(errors.phone)} placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => up('phone', e.target.value)} />
                     {errMsg('phone')}
                   </div>
+                  {formData.customerName && !customers.some(c => c.name.toLowerCase() === formData.customerName.toLowerCase()) && (
+                     <div className="pt-2 animate-fade-in">
+                        <button 
+                          type="button"
+                          onClick={user?.role === 'Super Admin' ? handleAddCustomerDirectly : handleRequestCustomer}
+                          className="w-full h-12 bg-secondary text-white rounded-xl text-[12px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors shadow-md flex flex-col items-center justify-center gap-0.5"
+                        >
+                          <span>{user?.role === 'Super Admin' ? 'Add Customer Directly' : 'Submit Approval'}</span>
+                        </button>
+                        <p className="text-[10px] text-outline text-center mt-2">Fill name, address, and phone before submitting.</p>
+                     </div>
+                  )}
                 </SectionCard>
 
                 <SectionCard title="Product Received" icon="category" color="bg-primary/5 text-primary">
