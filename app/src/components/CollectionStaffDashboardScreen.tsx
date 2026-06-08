@@ -11,6 +11,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const { user, isFullyAuthenticated } = useSession();
   const currentUser = user?.id || '';
   const [isEntryModalOpen, setEntryModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   // Directly initialize state from cache for 0ms delay on mount
   const cachedTasks = getCachedData('tasks_data');
@@ -96,7 +97,23 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
 
     window.addEventListener('taskCreated', handleTaskCreated);
-    return () => window.removeEventListener('taskCreated', handleTaskCreated);
+
+    // Listen for customer approvals from Super Admin
+    const customerChannel = supabase.channel('customer-approvals')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'customers' }, (payload: any) => {
+         const newRecord = payload.new;
+         const oldRecord = payload.old;
+         if (newRecord.status === 'Approved' && oldRecord.status !== 'Approved' && newRecord.created_by === currentUser) {
+            setToastMessage(`Customer ${newRecord.name} approved! You can now create tasks for them.`);
+            setTimeout(() => setToastMessage(''), 5000);
+         }
+      })
+      .subscribe();
+
+    return () => {
+       window.removeEventListener('taskCreated', handleTaskCreated);
+       supabase.removeChannel(customerChannel);
+    };
   }, [currentUser, isFullyAuthenticated]);
 
   // 1. Calculate stats dynamically
@@ -293,6 +310,18 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {/* Toast Notification System */}
+      {toastMessage && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-11/12 max-w-sm">
+          <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
+            </div>
+            <span className="font-bold text-[13px] tracking-wide flex-1">{toastMessage}</span>
+          </div>
+        </div>
+      )}
 
       {/* BOTTOM NAV */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">

@@ -57,8 +57,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   }, []);
 
   const handleRequestCustomer = async () => {
-      if (!formData.customerName || !formData.phone) {
-         alert('Please enter both name and phone number to request a new customer.');
+      if (!formData.customerName || !formData.phone || !formData.address) {
+         alert('Please enter Name, Phone Number, and Address to request a new customer.');
          return;
       }
       try {
@@ -71,9 +71,10 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
             status: 'Pending',
             created_by: user?.id
          }]);
-         alert('Customer approval request sent to Super Admin. You cannot create tasks for this customer until approved.');
+         alert('Customer approval request sent to Super Admin.');
          setShowDropdown(false);
          setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '' }));
+         onClose(); // Close the modal and take back to dashboard
       } catch (e) {
          console.error(e);
          alert('Failed to request customer.');
@@ -161,6 +162,9 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium focus:outline-none focus:border-secondary transition-colors`;
   const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
+
+  const isCustomerMatched = customers.some(c => c.name.toLowerCase() === formData.customerName.toLowerCase());
+  const showApprovalButton = formData.customerName.length > 0 && !isCustomerMatched;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -270,33 +274,43 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                           ))}
                           {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
                              <div className="px-4 py-3 text-center">
-                                <p className="text-xs text-outline mb-2">Customer not found</p>
-                                <button 
-                                  type="button"
-                                  onClick={handleRequestCustomer}
-                                  className="px-4 py-2 bg-secondary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-secondary/90 transition-colors"
-                                >
-                                  Request Approval
-                                </button>
-                                <p className="text-[9px] text-outline mt-2">Fill phone & address first to request.</p>
+                                <p className="text-xs text-outline">Customer not found</p>
                              </div>
                           )}
                        </div>
                     )}
                   </div>
-                  {formData.category === 'TUNCH' && (
+                  
+                  {/* Show phone and address if category is TUNCH, OR if we need to request approval for a new customer */}
+                  {(formData.category === 'TUNCH' || showApprovalButton) && (
                     <>
                       <div>
                         <label className={lbl}>Phone Number *</label>
                         <input className={inp(errors.phone)} placeholder="+91" value={formData.phone} onChange={e => up('phone', e.target.value)} />
                       </div>
                       <div>
-                        <label className={lbl}>Address</label>
+                        <label className={lbl}>Address *</label>
                         <input className={inp()} placeholder="Location details" value={formData.address} onChange={e => up('address', e.target.value)} />
                       </div>
                     </>
                   )}
-                  {formData.category === 'MARKING' && (
+                  
+                  {/* Request Approval Button right below the details */}
+                  {showApprovalButton && (
+                     <div className="mt-4 pt-2">
+                        <button 
+                          type="button"
+                          onClick={handleRequestCustomer}
+                          className="w-full h-12 bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+                        >
+                          <span className="material-symbols-outlined text-sm">send</span>
+                          SEND APPROVAL
+                        </button>
+                        <p className="text-[9px] text-outline text-center mt-2">Submit client details to Super Admin for approval.</p>
+                     </div>
+                  )}
+
+                  {formData.category === 'MARKING' && !showApprovalButton && (
                     <div>
                       <label className={lbl}>Entity Logo</label>
                       <input className={inp()} placeholder="Brand logo mark" value={formData.logoName} onChange={e => up('logoName', e.target.value)} />
