@@ -531,42 +531,31 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                     label: 'Tunch Pcs', 
                     val: selectedCustomer.piecesBreakdown.tunch, 
                     icon: 'science', 
-                    themeColor: '#d97706',
-                    gradient: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-                    border: 'border-amber-200/60',
-                    iconBg: 'bg-amber-500/10 text-amber-700'
+                    iconColor: 'bg-tertiary/10 text-tertiary'
                   },
                   { 
                     label: 'Marking Pcs', 
                     val: selectedCustomer.piecesBreakdown.marking, 
                     icon: 'verified', 
-                    themeColor: '#059669',
-                    gradient: 'linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)',
-                    border: 'border-emerald-200/60',
-                    iconBg: 'bg-emerald-500/10 text-emerald-700'
+                    iconColor: 'bg-secondary/10 text-secondary'
                   },
                   { 
                     label: 'Shoulder Pcs', 
                     val: selectedCustomer.piecesBreakdown.shouldering, 
                     icon: 'precision_manufacturing', 
-                    themeColor: '#3b82f6',
-                    gradient: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-                    border: 'border-blue-200/60',
-                    iconBg: 'bg-blue-500/10 text-blue-700'
+                    iconColor: 'bg-primary/10 text-primary'
                   }
                 ].map((breakdown, idx) => (
                   <div 
                     key={idx} 
-                    className={`rounded-3xl p-4 border ${breakdown.border} flex flex-col items-center justify-between text-center relative overflow-hidden transition-all duration-300 hover:shadow-md active:scale-[0.98] h-28`}
-                    style={{ background: breakdown.gradient }}
+                    className="luxury-card p-4 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform flex flex-col items-center text-center"
                   >
-                    <div className="absolute -right-2 -bottom-2 w-12 h-12 bg-white/20 rounded-full blur-md"></div>
-                    <div className={`w-8 h-8 rounded-full ${breakdown.iconBg} flex items-center justify-center shrink-0`}>
-                      <span className="material-symbols-outlined text-sm font-bold">{breakdown.icon}</span>
+                    <div className={`w-8 h-8 rounded-lg ${breakdown.iconColor} flex items-center justify-center`}>
+                      <span className="material-symbols-outlined text-lg">{breakdown.icon}</span>
                     </div>
-                    <div className="space-y-0.5 relative z-10">
-                      <p className="text-[8px] font-black uppercase tracking-wider text-primary/70">{breakdown.label}</p>
-                      <p className="text-xl font-black text-primary leading-none">{breakdown.val}</p>
+                    <div className="space-y-0.5">
+                      <p className="font-headline text-lg font-bold text-primary">{breakdown.val}</p>
+                      <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{breakdown.label}</p>
                     </div>
                   </div>
                 ))}
