@@ -464,17 +464,22 @@ export const StaffBillingScreen: React.FC = () => {
         const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
         if (error) throw error;
         if (data) {
-          setCachedData('tx_data', data); // Update cache
-          let filtered = data;
-          if (!isSuperSa && user?.branch_id) {
-            filtered = data.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          const newTxHash = JSON.stringify(data);
+          const oldTxHash = getCachedData('tx_data_hash');
+          if (newTxHash !== oldTxHash) {
+            setCachedData('tx_data_hash', newTxHash);
+            setCachedData('tx_data', data); // Update cache
+            let filtered = data;
+            if (!isSuperSa && user?.branch_id) {
+              filtered = data.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+            }
+            setTransactions(filtered.map((t: any) => ({
+              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+              date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
+              impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
+            })));
           }
-          setTransactions(filtered.map((t: any) => ({
-            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-            date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
-            impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-            pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
-          })));
         } else {
           setTransactions([]);
         }
@@ -495,16 +500,22 @@ export const StaffBillingScreen: React.FC = () => {
           .eq('branch_id', user.branch_id);
         if (bUsers) {
           branchUserIds = bUsers.map((bu: any) => bu.id);
+          setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
         }
       }
 
       const { data } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
       if (data) {
-        setCachedData('db_customers', data);
-        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
-          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
-        } else {
-          setDbCustomers(data);
+        const newDbHash = JSON.stringify(data);
+        const oldDbHash = getCachedData('db_customers_hash');
+        if (newDbHash !== oldDbHash) {
+          setCachedData('db_customers_hash', newDbHash);
+          setCachedData('db_customers', data);
+          if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
+            setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+          } else {
+            setDbCustomers(data);
+          }
         }
       }
     };

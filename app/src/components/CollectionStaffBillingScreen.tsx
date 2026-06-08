@@ -321,17 +321,22 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         if (error) throw error;
         
         if (data) {
-          // Merge transactions back into in-memory cache
-          const allTx = getCachedData('tx_data') || [];
-          const otherTx = allTx.filter((t: any) => !branchUserIds.includes(t.created_by) && !branchUserIds.includes(t.createdBy));
-          setCachedData('tx_data', [...otherTx, ...data]);
+          const newTxHash = JSON.stringify(data);
+          const oldTxHash = getCachedData('col_tx_data_hash');
+          if (newTxHash !== oldTxHash) {
+            setCachedData('col_tx_data_hash', newTxHash);
+            // Merge transactions back into in-memory cache
+            const allTx = getCachedData('tx_data') || [];
+            const otherTx = allTx.filter((t: any) => !branchUserIds.includes(t.created_by) && !branchUserIds.includes(t.createdBy));
+            setCachedData('tx_data', [...otherTx, ...data]);
 
-          setTransactions(data.map(t => ({
-              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-              type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
-              status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
-              logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
-          })));
+            setTransactions(data.map(t => ({
+                metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+                type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
+                status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+                logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+            })));
+          }
         } else {
           setTransactions([]);
         }
@@ -364,8 +369,13 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           .order('created_at', { ascending: false });
         if (error) throw error;
         if (data) {
-          setCachedData('db_customers', data);
-          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+          const newDbHash = JSON.stringify(data);
+          const oldDbHash = getCachedData('col_db_customers_hash');
+          if (newDbHash !== oldDbHash) {
+            setCachedData('col_db_customers_hash', newDbHash);
+            setCachedData('db_customers', data);
+            setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+          }
         } else {
           setDbCustomers([]);
         }
