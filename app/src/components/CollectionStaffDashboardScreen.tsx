@@ -30,6 +30,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [transactions, setTransactions] = useState<any[]>(initialTx);
+  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -85,24 +86,32 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   let tunchPcs = 0;
   let markingPcs = 0;
   let shoulderPcs = 0;
-  let todaysPcs = 0;
+  let todaysMarkingPcs = 0;
+
+  const todayStr = new Date().toISOString().split('T')[0];
 
   tasks.forEach(t => {
     const pcs = parseInt(t.pieces || '1') || 1;
-    if (t.category === 'TUNCH') tunchPcs += pcs;
-    else if (t.category === 'MARKING') markingPcs += pcs;
-    else if (t.category === 'SHOULDERING') shoulderPcs += pcs;
-    
     const dateStr = t.isoDate || '';
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (dateStr === todayStr) todaysPcs += pcs;
+    
+    // Volume Analysis stats filtered by selected date
+    if (dateStr === filterDate) {
+      if (t.category === 'TUNCH') tunchPcs += pcs;
+      else if (t.category === 'MARKING') markingPcs += pcs;
+      else if (t.category === 'SHOULDERING') shoulderPcs += pcs;
+    }
+    
+    // Independent stat for Today's Marking pieces
+    if (dateStr === todayStr && t.category === 'MARKING') {
+      todaysMarkingPcs += pcs;
+    }
   });
 
   const collectionStats = [
     { label: 'Tunch Pieces', value: tunchPcs.toLocaleString(), icon: 'science', color: 'bg-tertiary/10 text-tertiary' },
     { label: 'Marking Pieces', value: markingPcs.toLocaleString(), icon: 'verified', color: 'bg-secondary/10 text-secondary' },
     { label: 'Shoulder Pieces', value: shoulderPcs.toLocaleString(), icon: 'precision_manufacturing', color: 'bg-primary/10 text-primary' },
-    { label: 'Today\'s Pieces', value: todaysPcs.toLocaleString(), icon: 'today', color: 'bg-primary-container/10 text-primary-container' },
+    { label: "Today's Marking", value: todaysMarkingPcs.toLocaleString(), icon: 'today', color: 'bg-primary-container/10 text-primary-container' },
   ];
 
   // 2. Calculate status stats dynamically
@@ -187,7 +196,12 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         <section className="space-y-4 relative z-10">
            <div className="flex justify-between items-center px-1">
              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Volume Analysis</h3>
-             <span className="text-[9px] font-bold text-tertiary uppercase tracking-wider">Live Sync</span>
+             <input 
+               type="date" 
+               value={filterDate} 
+               onChange={(e) => setFilterDate(e.target.value)} 
+               className="text-[9px] font-bold text-tertiary uppercase tracking-wider bg-transparent border-none outline-none cursor-pointer text-right"
+             />
            </div>
            <div className="grid grid-cols-2 gap-4">
              {collectionStats.map((stat, idx) => (
