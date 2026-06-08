@@ -561,81 +561,85 @@ export const StaffBillingScreen: React.FC = () => {
   };
 
   // Group by customer dynamically
-  const dynamicCustomers: Customer[] = [];
+  const dynamicCustomers = React.useMemo(() => {
+    const customers: Customer[] = [];
 
-  // First, add all dbCustomers to dynamicCustomers
-  dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
-      const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-      dynamicCustomers.push({
-        id: c.id,
-        name: c.name,
-        initials: initials || 'C',
-        activeJobs: 0,
-        outstanding: '₹0',
-        paid: '₹0',
-        workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
-        ledger: [],
-        phone: c.phone,
-        address: c.address
-      });
-  });
-
-  transactions.forEach(t => {
-    let cust = dynamicCustomers.find(c => {
-      if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
-        return c.id === t.customerId;
-      }
-      if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
-      
-      const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
-      const cP = normPhone(c.phone);
-      const tP = normPhone(t.customerPhone);
-      if (cP && tP && cP !== tP) return false;
-      
-      const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
-      const cA = normAddr(c.address);
-      const tA = normAddr(t.customerAddress);
-      if (cA && tA && cA !== tA) return false;
-      
-      return true;
+    // First, add all dbCustomers to customers
+    dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+        const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        customers.push({
+          id: c.id,
+          name: c.name,
+          initials: initials || 'C',
+          activeJobs: 0,
+          outstanding: '₹0',
+          paid: '₹0',
+          workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+          ledger: [],
+          phone: c.phone,
+          address: c.address
+        });
     });
 
-    if (!cust) {
-      const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-      cust = {
-        id: t.customerId || 'CUST-COL',
-        name: t.customerName,
-        initials: initials || 'C',
-        activeJobs: 0,
-        outstanding: '₹0',
-        paid: '₹0',
-        workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
-        ledger: [],
-        phone: t.customerPhone,
-        address: t.customerAddress
-      };
-      dynamicCustomers.push(cust);
-    }
-    
-    cust.ledger.push(t);
-    const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
-    if (t.status === 'Unpaid') {
-      cust.activeJobs += 1;
-      const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-      cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
-    } else {
-      const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
-      cust.paid = `₹${(paidNum + amtNum).toLocaleString()}`;
-    }
-    
-    if (t.workType === 'Tunch') {
-      cust.workBreakdown.tunch += 1;
-    } else if (t.workType === 'Marking') {
-      cust.workBreakdown.marking += 1;
-    } else if (t.workType === 'Shouldering') {
-      cust.workBreakdown.shouldering += 1;
-    }
-  });
+    transactions.forEach(t => {
+      let cust = customers.find(c => {
+        if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
+          return c.id === t.customerId;
+        }
+        if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
+        
+        const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+        const cP = normPhone(c.phone);
+        const tP = normPhone(t.customerPhone);
+        if (cP && tP && cP !== tP) return false;
+        
+        const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+        const cA = normAddr(c.address);
+        const tA = normAddr(t.customerAddress);
+        if (cA && tA && cA !== tA) return false;
+        
+        return true;
+      });
+
+      if (!cust) {
+        const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        cust = {
+          id: t.customerId || 'CUST-COL',
+          name: t.customerName,
+          initials: initials || 'C',
+          activeJobs: 0,
+          outstanding: '₹0',
+          paid: '₹0',
+          workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+          ledger: [],
+          phone: t.customerPhone,
+          address: t.customerAddress
+        };
+        customers.push(cust);
+      }
+      
+      cust.ledger.push(t);
+      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      if (t.status === 'Unpaid') {
+        cust.activeJobs += 1;
+        const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+        cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
+      } else {
+        const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+        cust.paid = `₹${(paidNum + amtNum).toLocaleString()}`;
+      }
+      
+      if (t.workType === 'Tunch') {
+        cust.workBreakdown.tunch += 1;
+      } else if (t.workType === 'Marking') {
+        cust.workBreakdown.marking += 1;
+      } else if (t.workType === 'Shouldering') {
+        cust.workBreakdown.shouldering += 1;
+      }
+    });
+
+    return customers;
+  }, [dbCustomers, transactions]);
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
   const selectedTransaction = transactions.find(t => t.id === transactionId) || null;
