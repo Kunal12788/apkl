@@ -177,11 +177,10 @@ function AppContent() {
   useEffect(() => {
     if (!user || (user.role !== 'Collection Staff' && user.role !== 'Staff')) return;
 
-    const customerChannel = supabase.channel('global-customer-approvals')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'customers' }, (payload: any) => {
+    const customerChannel = supabase.channel('customer_approvals_broadcast')
+      .on('broadcast', { event: 'approved' }, (payload: any) => {
          const newRecord = payload.new;
-         const oldRecord = payload.old;
-         if (newRecord.status === 'Approved' && oldRecord.status !== 'Approved') {
+         if (newRecord && newRecord.status === 'Approved') {
             if (newRecord.created_by === user.id || user.role === 'Collection Staff') {
               toast.custom((t) => (
                 <div 

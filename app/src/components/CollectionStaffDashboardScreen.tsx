@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CollectionEntryModal } from './CollectionEntryModal';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
@@ -10,7 +9,6 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
   const currentUser = user?.id || '';
-  const [isEntryModalOpen, setEntryModalOpen] = useState(false);
 
   // Directly initialize state from cache for 0ms delay on mount
   const cachedTasks = getCachedData('tasks_data');
@@ -183,13 +181,6 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setEntryModalOpen(true)}
-              className="h-10 px-4 rounded-xl bg-[#003366] text-white text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all border border-white/10"
-            >
-              <span className="material-symbols-outlined text-sm">add</span>
-              Intake Entry
-            </button>
             <button className="w-11 h-11 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-all premium-shadow relative group active:scale-95">
               <span className="material-symbols-outlined text-xl text-[#003366] transition-transform group-hover:rotate-12">notifications</span>
               <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-[#C9A646] rounded-full animate-pulse shadow-[0_0_8px_#C9A646]"></span>
@@ -328,15 +319,6 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           <span className="font-label text-[10px] uppercase tracking-widest">Profile</span>
         </a>
       </nav>
-
-      <CollectionEntryModal 
-        isOpen={isEntryModalOpen} 
-        onClose={() => setEntryModalOpen(false)} 
-        onSuccess={(data) => {
-          console.log('Collection Entry Success:', data);
-          setEntryModalOpen(false);
-        }}
-      />
     </div>
   );
 };

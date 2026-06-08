@@ -485,8 +485,23 @@ export const StaffBillingScreen: React.FC = () => {
 
   const handleApproveCustomer = async (id: string) => {
     try {
+       const customer = dbCustomers.find(cust => cust.id === id);
        await supabase.from('customers').update({ status: 'Approved' }).eq('id', id);
        setDbCustomers(prev => prev.map(c => c.id === id ? { ...c, status: 'Approved' } : c));
+       
+       if (customer) {
+         const channel = supabase.channel('customer_approvals_broadcast');
+         channel.subscribe((status) => {
+           if (status === 'SUBSCRIBED') {
+             channel.send({
+               type: 'broadcast',
+               event: 'approved',
+               payload: { new: { ...customer, status: 'Approved' } }
+             });
+             setTimeout(() => { supabase.removeChannel(channel); }, 1000);
+           }
+         });
+       }
     } catch(e) { console.error(e); }
   }
 
