@@ -241,9 +241,9 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                   {errors.category && <p className="text-[10px] text-error mt-2 font-medium text-center">{errors.category}</p>}
                </SectionCard>
 
-               <SectionCard title="Entity Profile" icon="person" color="bg-secondary/5 text-secondary">
+               <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">
                   <div className="relative">
-                    <label className={lbl}>Entity Name *</label>
+                    <label className={lbl}>Client Name *</label>
                     <input 
                       className={inp(errors.customerName)} 
                       placeholder="Name of customer" 
@@ -288,26 +288,27 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                         <label className={lbl}>Phone Number *</label>
                         <input className={inp(errors.phone)} placeholder="+91" value={formData.phone} onChange={e => up('phone', e.target.value)} />
                       </div>
+
+                      {/* Request Approval Button right below the phone number */}
+                      {showApprovalButton && (
+                         <div className="mt-2 mb-2">
+                            <button 
+                              type="button"
+                              onClick={handleRequestCustomer}
+                              className="w-full h-12 bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+                            >
+                              <span className="material-symbols-outlined text-sm">send</span>
+                              SEND APPROVAL
+                            </button>
+                            <p className="text-[9px] text-outline text-center mt-1">Submit client details to Super Admin for approval.</p>
+                         </div>
+                      )}
+
                       <div>
                         <label className={lbl}>Address *</label>
                         <input className={inp()} placeholder="Location details" value={formData.address} onChange={e => up('address', e.target.value)} />
                       </div>
                     </>
-                  )}
-                  
-                  {/* Request Approval Button right below the details */}
-                  {showApprovalButton && (
-                     <div className="mt-4 pt-2">
-                        <button 
-                          type="button"
-                          onClick={handleRequestCustomer}
-                          className="w-full h-12 bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
-                        >
-                          <span className="material-symbols-outlined text-sm">send</span>
-                          SEND APPROVAL
-                        </button>
-                        <p className="text-[9px] text-outline text-center mt-2">Submit client details to Super Admin for approval.</p>
-                     </div>
                   )}
 
                   {formData.category === 'MARKING' && !showApprovalButton && (
