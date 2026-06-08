@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
+import { supabase } from './supabaseClient';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotKeyScreen } from './components/ForgotKeyScreen';
@@ -172,6 +173,42 @@ function AppContent() {
   const { user, loading } = useSession();
   const [showSplash, setShowSplash] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
+
+  useEffect(() => {
+    if (!user || (user.role !== 'Collection Staff' && user.role !== 'Staff')) return;
+
+    const customerChannel = supabase.channel('global-customer-approvals')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'customers' }, (payload: any) => {
+         const newRecord = payload.new;
+         const oldRecord = payload.old;
+         if (newRecord.status === 'Approved' && oldRecord.status !== 'Approved') {
+            if (newRecord.created_by === user.id || user.role === 'Collection Staff') {
+              toast.custom((t) => (
+                <div 
+                  className={`${
+                    t.visible ? 'animate-fade-in' : 'opacity-0'
+                  } w-11/12 max-w-sm pointer-events-auto transition-opacity duration-300`}
+                  style={{ zIndex: 9999 }}
+                >
+                  <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
+                    </div>
+                    <span className="font-bold text-[13px] tracking-wide flex-1">
+                      Customer {newRecord.name} approved! You can now create tasks for them.
+                    </span>
+                  </div>
+                </div>
+              ), { duration: 5000, position: 'top-center' });
+            }
+         }
+      })
+      .subscribe();
+
+    return () => {
+       supabase.removeChannel(customerChannel);
+    };
+  }, [user]);
 
   const handleComplete = () => {
     setFadeOut(true);

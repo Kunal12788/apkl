@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
@@ -29,6 +30,7 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
 
 export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const { user } = useSession();
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     metal: 'Gold',
@@ -74,7 +76,8 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
          alert('Customer approval request sent to Super Admin.');
          setShowDropdown(false);
          setFormData(prev => ({ ...prev, customerName: '', phone: '', address: '' }));
-         onClose(); // Close the modal and take back to dashboard
+         onClose(); // Close the modal
+         navigate('/dashboard'); // Take back to dashboard
       } catch (e) {
          console.error(e);
          alert('Failed to request customer.');
