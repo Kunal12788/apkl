@@ -95,8 +95,8 @@ export const GlobalFAB: React.FC = () => {
               if (txnError) console.error('Transaction Insert Error:', txnError);
             }
 
-            // Refresh the page so the dashboard sees the new data
-            window.location.reload();
+            // Dispatch an event to notify other components to refresh their data without a full page reload
+            window.dispatchEvent(new Event('taskCreated'));
             
           } catch(e) {
             console.error('Failed to create global task', e);
