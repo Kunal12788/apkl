@@ -407,6 +407,7 @@ export const StaffBillingScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [historyDateFilter, setHistoryDateFilter] = useState('');
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -694,7 +695,6 @@ export const StaffBillingScreen: React.FC = () => {
 
   const filteredTransactions = transactions.filter(matchesSearch);
   const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredLedger = selectedCustomer ? selectedCustomer.ledger.filter(matchesSearch) : [];
   const pendingCustomers = dbCustomers.filter(c => c.status === 'Pending');
 
   return (
@@ -994,55 +994,75 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-4 pt-2">
+            <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
-                <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Full Ledger History</h3>
+                <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Intake History</h3>
+                
+                {/* Compact Date Filter Input */}
+                <div className="relative flex items-center gap-1.5 bg-white border border-outline-variant/30 rounded-xl px-2.5 py-1.5 shadow-sm focus-within:border-primary transition-all">
+                  <span className="material-symbols-outlined text-outline text-[14px]">calendar_month</span>
+                  <input 
+                    type="date" 
+                    value={historyDateFilter} 
+                    onChange={e => setHistoryDateFilter(e.target.value)} 
+                    className="text-[10px] font-bold text-primary focus:outline-none bg-transparent"
+                  />
+                  {historyDateFilter && (
+                    <button 
+                      onClick={() => setHistoryDateFilter('')} 
+                      className="w-4 h-4 rounded-full bg-error/10 text-error flex items-center justify-center"
+                    >
+                      <span className="material-symbols-outlined text-[10px]">close</span>
+                    </button>
+                  )}
+                </div>
               </div>
               
-              <SearchAndFilterSection 
-                placeholder="Search ledger by purity, weight, ID..." 
-                searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-                startDate={startDate} setStartDate={setStartDate}
-                endDate={endDate} setEndDate={setEndDate}
-              />
-              
-              <div className="luxury-card overflow-hidden divide-y divide-surface-container border border-outline-variant/20">
-                {filteredLedger.map(txn => {
-                  const isPending = txn.status === 'Unpaid';
-                  
+              {(() => {
+                const filteredHistoryLedger = selectedCustomer.ledger.filter(txn => {
+                  if (!historyDateFilter) return true;
+                  return txn.isoDate === historyDateFilter;
+                });
+
+                if (filteredHistoryLedger.length === 0) {
                   return (
-                    <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className={`p-4 transition-colors cursor-pointer group ${isPending ? 'bg-error/5 hover:bg-error/10' : 'hover:bg-surface-bright'}`}>
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="luxury-card p-6 text-center border border-outline-variant/10 bg-white rounded-2xl">
+                      <span className="material-symbols-outlined text-outline text-3xl mb-1.5">calendar_today</span>
+                      <p className="text-xs text-outline font-bold">No intake records on this date.</p>
+                    </div>
+                  );
+                }
+
+                return filteredHistoryLedger.map(txn => {
+                  const isPending = txn.status === 'Unpaid';
+                  return (
+                    <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPending ? 'bg-error' : 'bg-tertiary'}`}></div>
+                      <div className="flex justify-between items-start pl-2">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType)}`}>
-                            <span className="material-symbols-outlined text-sm">{getWorkIcon(txn.workType)}</span>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType)}`}>
+                            <span className="material-symbols-outlined text-[20px]">{getWorkIcon(txn.workType)}</span>
                           </div>
                           <div>
-                            <p className={`font-headline font-bold text-xs ${isPending ? 'text-error' : 'text-primary'}`}>{txn.workType} Work</p>
-                            <p className={`text-[9px] font-medium tracking-wide uppercase ${isPending ? 'text-error/70' : 'text-outline'}`}>{txn.date} • {txn.timestamp}</p>
+                            <p className={`font-headline font-bold text-[13px] ${isPending ? 'text-error' : 'text-primary'}`}>{txn.workType} Work</p>
+                            <p className="text-[10px] font-bold text-outline tracking-wider uppercase mt-0.5">{txn.date} • {txn.timestamp}</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`font-headline text-sm font-bold ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
-                          <div className="flex items-center justify-end gap-1 mt-0.5">
-                            {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
-                            <p className={`text-[8px] font-bold uppercase tracking-widest ${isPending ? 'text-error/70' : 'text-outline'}`}>{txn.id}</p>
-                          </div>
+                          <p className={`font-headline text-base font-black ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-widest mt-1 opacity-70">{txn.id}</p>
                         </div>
                       </div>
-                      <div className="pl-11 pr-2 flex justify-between items-center mt-1">
-                        <p className={`text-[10px] leading-relaxed truncate ${isPending ? 'text-error/80 font-medium' : 'text-outline/80'}`}>{txn.details}</p>
-                        {isPending && (
-                          <span className="text-[8px] font-bold uppercase tracking-widest bg-error text-white px-2 py-0.5 rounded-full">Unpaid</span>
-                        )}
+                      <div className="pl-14 pr-2 flex justify-between items-center mt-2.5">
+                        <p className={`text-[11px] font-medium leading-relaxed truncate ${isPending ? 'text-error/80' : 'text-outline'}`}>{txn.details}</p>
+                        <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-tertiary/10 text-tertiary'}`}>
+                          {txn.status}
+                        </span>
                       </div>
                     </div>
                   );
-                })}
-                {filteredLedger.length === 0 && (
-                  <div className="p-8 text-center text-outline text-sm font-medium">No ledger entries found.</div>
-                )}
-              </div>
+                });
+              })()}
             </div>
           </div>
         )}
