@@ -313,35 +313,33 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                     )}
                   </div>
                   
-                  {/* Show phone and address if category is TUNCH, OR if we need to request approval for a new customer */}
-                  {(formData.category === 'TUNCH' || showApprovalButton) && (
-                    <>
-                      <div>
-                        <label className={lbl}>Phone Number *</label>
-                        <input className={inp(errors.phone)} placeholder="+91" value={formData.phone} onChange={e => up('phone', e.target.value)} />
-                      </div>
+                  {/* Show phone and address for all categories */}
+                  <>
+                    <div>
+                      <label className={lbl}>Phone Number *</label>
+                      <input className={inp(errors.phone)} placeholder="+91" value={formData.phone} onChange={e => up('phone', e.target.value)} />
+                    </div>
 
-                      {/* Request Approval Button right below the phone number */}
-                      {showApprovalButton && (
-                         <div className="mt-2 mb-2">
-                            <button 
-                              type="button"
-                              onClick={handleRequestCustomer}
-                              className="w-full h-12 bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
-                            >
-                              <span className="material-symbols-outlined text-sm">send</span>
-                              SEND APPROVAL
-                            </button>
-                            <p className="text-[9px] text-outline text-center mt-1">Submit client details to Super Admin for approval.</p>
-                         </div>
-                      )}
+                    {/* Request Approval Button right below the phone number */}
+                    {showApprovalButton && (
+                       <div className="mt-2 mb-2">
+                          <button 
+                            type="button"
+                            onClick={handleRequestCustomer}
+                            className="w-full h-12 bg-secondary text-white rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all"
+                          >
+                            <span className="material-symbols-outlined text-sm">send</span>
+                            SEND APPROVAL
+                          </button>
+                          <p className="text-[9px] text-outline text-center mt-1">Submit client details to Super Admin for approval.</p>
+                       </div>
+                    )}
 
-                      <div>
-                        <label className={lbl}>Address *</label>
-                        <input className={inp()} placeholder="Location details" value={formData.address} onChange={e => up('address', e.target.value)} />
-                      </div>
-                    </>
-                  )}
+                    <div>
+                      <label className={lbl}>Address *</label>
+                      <input className={inp()} placeholder="Location details" value={formData.address} onChange={e => up('address', e.target.value)} />
+                    </div>
+                  </>
 
                   {formData.category === 'MARKING' && !showApprovalButton && (
                     <div>
