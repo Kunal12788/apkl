@@ -64,9 +64,10 @@ interface TaskDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   task: Task | null;
+  onDeleteTask?: (id: string) => void;
 }
 
-export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task }) => {
+export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onClose, task, onDeleteTask }) => {
   if (!isOpen || !task) return null;
 
   const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
@@ -208,13 +209,24 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
 
         </div>
 
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
-        >
-          Dismiss Details
-        </button>
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-4 shrink-0">
+          {onDeleteTask && (
+            <button 
+              onClick={() => onDeleteTask(task.id)}
+              className="px-3 py-2.5 bg-error/10 hover:bg-error/25 text-error font-bold text-xs rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center"
+              title="Request Deletion"
+            >
+              <span className="material-symbols-outlined text-sm">delete</span>
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="w-full py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+          >
+            Dismiss
+          </button>
+        </div>
 
       </div>
     </div>
@@ -244,6 +256,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     : [];
 
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
+
+  const handleCloseModal = () => setSelectedTask(null);
 
   useEffect(() => {
     const loadTasks = async () => {
@@ -299,7 +313,46 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     return () => window.removeEventListener('taskCreated', handleTaskCreated);
   }, [isFullyAuthenticated, currentUser]);
 
-  const filteredTasks = tasks.filter(t => (activeTab === t.status) && (t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase())));
+  const matchesSearch = (t: Task) => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase());
+  
+  const filteredTasks = tasks.filter(t => {
+     if (activeTab === 'Pending') {
+        return t.status === 'Pending' && matchesSearch(t);
+     }
+     return t.status === activeTab && matchesSearch(t);
+  });
+
+  const handleDeleteTask = async (id: string) => {
+    if (user?.role === 'Super Admin') {
+      if(window.confirm('Are you sure you want to permanently delete this task?')) {
+        try {
+          await supabase.from('tasks').delete().eq('id', id);
+          setTasks(tasks.filter(t => t.id !== id));
+          alert('Task successfully deleted');
+          handleCloseModal();
+        } catch(e) {
+          console.error(e);
+          alert('Error deleting task');
+        }
+      }
+    } else {
+      const reason = window.prompt("Please provide a reason for deleting this task:");
+      if (!reason) return;
+      try {
+        await supabase.from('deletion_requests').insert([{
+           item_type: 'Task',
+           item_id: id,
+           requested_by: user?.id,
+           reason: reason
+        }]);
+        alert("Deletion request sent to Super Admin.");
+        handleCloseModal();
+      } catch(e) {
+        console.error(e);
+        alert("Failed to submit request.");
+      }
+    }
+  };
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
@@ -369,11 +422,12 @@ export const CollectionStaffTasksScreen: React.FC = () => {
         </div>
       </main>
 
-      {/* Task detail bottom sheet */}
+      {/* View: Detailed Task Modal */}
       <TaskDetailsModal 
         isOpen={selectedTask !== null} 
-        onClose={() => setSelectedTask(null)} 
-        task={selectedTask} 
+        onClose={handleCloseModal} 
+        task={selectedTask}
+        onDeleteTask={handleDeleteTask}
       />
 
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">

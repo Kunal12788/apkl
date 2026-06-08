@@ -1,14 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-// Mock Data for UI presentation
-const mockAlerts: any[] = [];
+import { supabase } from '../supabaseClient';
 
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();
   const [activeFilter, setActiveFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
-  const [alerts, setAlerts] = useState(mockAlerts);
+  const [alerts, setAlerts] = useState<any[]>([]);
   
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      const { data, error } = await supabase.from('deletion_requests').select(`*, users (name)`).order('created_at', { ascending: false });
+      if (!error && data) {
+         const formattedAlerts = data.map(req => ({
+            id: req.id,
+            status: req.status === 'Pending' ? 'unresolved' : 'resolved',
+            severity: 'critical',
+            type: 'system',
+            timestamp: req.created_at,
+            title: `Deletion Request: ${req.item_type} ${req.item_id}`,
+            description: `Requested by ${req.users?.name || req.requested_by}. Reason: ${req.reason || 'None provided.'}`,
+            originalReq: req
+         }));
+         setAlerts(formattedAlerts);
+      }
+    };
+    fetchAlerts();
+  }, []);
+
   // Filter alerts based on selection
   const filteredAlerts = alerts.filter(alert => 
     activeFilter === 'all' ? true : alert.status === activeFilter
@@ -32,10 +50,36 @@ export const SuperAdminAlertsScreen: React.FC = () => {
     switch (type) {
       case 'security': return 'shield_error';
       case 'inventory': return 'inventory_2';
-      case 'system': return 'dns';
+      case 'system': return 'delete_forever';
       case 'staff': return 'badge';
       default: return 'notifications';
     }
+  };
+
+  const handleApproveDeletion = async (alert: any) => {
+     if (!window.confirm("Approve deletion? This action is irreversible.")) return;
+     try {
+       const req = alert.originalReq;
+       const tableName = req.item_type === 'Transaction' ? 'transactions' : 'tasks';
+       await supabase.from(tableName).delete().eq('id', req.item_id);
+       await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', req.id);
+       setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
+       window.alert("Deletion Approved and executed successfully.");
+     } catch(e) {
+       console.error(e);
+       window.alert("Failed to process deletion.");
+     }
+  };
+
+  const handleRejectDeletion = async (alert: any) => {
+     if (!window.confirm("Reject deletion?")) return;
+     try {
+       await supabase.from('deletion_requests').update({ status: 'Rejected' }).eq('id', alert.originalReq.id);
+       setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Rejected)' } : a));
+       window.alert("Deletion Rejected.");
+     } catch(e) {
+       console.error(e);
+     }
   };
 
   return (
@@ -163,18 +207,23 @@ export const SuperAdminAlertsScreen: React.FC = () => {
 
                   <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
                     {alert.status === 'unresolved' ? (
-                      <button 
-                        onClick={() => {
-                          setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved' } : a));
-                        }}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2">
-                        <span>Acknowledge</span>
-                        <span className="material-symbols-outlined text-[16px]">done_all</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleRejectDeletion(alert)}
+                          className="bg-surface-container hover:bg-surface-variant text-primary font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95">
+                          Reject
+                        </button>
+                        <button 
+                          onClick={() => handleApproveDeletion(alert)}
+                          className="bg-error hover:bg-error/90 text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5">
+                          <span>Approve Delete</span>
+                          <span className="material-symbols-outlined text-[14px]">delete</span>
+                        </button>
+                      </div>
                     ) : (
-                      <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
-                        <span className="material-symbols-outlined text-xl">check_circle</span>
-                        <span className="font-bold text-xs uppercase tracking-widest">Resolved</span>
+                      <div className="flex items-center gap-2 text-outline bg-surface-container/50 px-3 py-1.5 rounded-lg border border-outline-variant/20">
+                        <span className="material-symbols-outlined text-sm">history</span>
+                        <span className="font-bold text-[10px] uppercase tracking-widest">Resolved</span>
                       </div>
                     )}
                   </div>

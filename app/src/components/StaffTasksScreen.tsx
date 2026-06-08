@@ -671,15 +671,33 @@ export const StaffTasksScreen: React.FC = () => {
   });
 
   const handleDeleteTask = async (id: string) => {
-    if(window.confirm('Are you sure you want to permanently delete this task?')) {
+    if (user?.role === 'Super Admin') {
+      if(window.confirm('Are you sure you want to permanently delete this task?')) {
+        try {
+          await supabase.from('tasks').delete().eq('id', id);
+          setTasks(tasks.filter(t => t.id !== id));
+          showToast('Task successfully deleted');
+          handleCloseModal();
+        } catch(e) {
+          console.error(e);
+          showToast('Error deleting task');
+        }
+      }
+    } else {
+      const reason = window.prompt("Please provide a reason for deleting this task:");
+      if (!reason) return;
       try {
-        await supabase.from('tasks').delete().eq('id', id);
-        setTasks(tasks.filter(t => t.id !== id));
-        showToast('Task successfully deleted');
+        await supabase.from('deletion_requests').insert([{
+           item_type: 'Task',
+           item_id: id,
+           requested_by: user?.id,
+           reason: reason
+        }]);
+        showToast("Deletion request sent to Super Admin.");
         handleCloseModal();
       } catch(e) {
         console.error(e);
-        showToast('Error deleting task');
+        showToast("Failed to submit request.");
       }
     }
   };

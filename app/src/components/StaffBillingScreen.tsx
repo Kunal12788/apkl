@@ -160,7 +160,41 @@ interface BillingDetailsModalProps {
 }
 
 export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
+  const { user } = useSession();
+  const [isDeleting, setIsDeleting] = useState(false);
+
   if (!isOpen || !txn) return null;
+
+  const handleDelete = async () => {
+    if (user?.role === 'Super Admin') {
+      if (window.confirm("Are you sure you want to instantly delete this transaction?")) {
+         setIsDeleting(true);
+         try {
+           await supabase.from('transactions').delete().eq('id', txn.id);
+           alert('Deleted successfully. Refreshing...');
+           window.location.reload();
+         } catch(e) { alert('Failed to delete'); }
+         setIsDeleting(false);
+      }
+    } else {
+      const reason = window.prompt("Please provide a reason for deleting this transaction:");
+      if (!reason) return;
+      setIsDeleting(true);
+      try {
+        await supabase.from('deletion_requests').insert([{
+           item_type: 'Transaction',
+           item_id: txn.id,
+           requested_by: user?.id,
+           reason: reason
+        }]);
+        alert("Deletion request sent to Super Admin.");
+        onClose();
+      } catch(e) {
+        alert("Failed to submit request.");
+      }
+      setIsDeleting(false);
+    }
+  };
 
   const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
   const val = "text-xs font-bold text-primary truncate";
@@ -271,13 +305,27 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         </div>
 
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
-        >
-          Dismiss Receipt
-        </button>
+        {/* Action Buttons */}
+        <div className="mt-4 space-y-2">
+          <button 
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={`w-full py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] ${
+              user?.role === 'Super Admin' 
+                ? 'bg-error/10 text-error hover:bg-error/20 border border-error/20' 
+                : 'bg-error/5 text-error hover:bg-error/10 border border-error/10'
+            }`}
+          >
+            {isDeleting ? 'Processing...' : (user?.role === 'Super Admin' ? 'Delete Transaction' : 'Request Deletion')}
+          </button>
+          
+          <button 
+            onClick={onClose}
+            className="w-full py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+          >
+            Dismiss Receipt
+          </button>
+        </div>
 
       </div>
     </div>
@@ -451,6 +499,26 @@ export const StaffBillingScreen: React.FC = () => {
     };
     await supabase.from('customers').insert([newCust]);
     setDbCustomers(prev => [newCust, ...prev]);
+  };
+
+  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete customer ${customerName}? This will erase ALL their tasks and transactions.`)) return;
+    
+    try {
+      await supabase.from('transactions').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
+      await supabase.from('tasks').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
+      await supabase.from('customers').delete().eq('id', customerId);
+
+      setDbCustomers(prev => prev.filter(c => c.id !== customerId));
+      setTransactions(prev => prev.filter(t => t.customerId !== customerId));
+      alert(`Customer ${customerName} and all related data deleted successfully.`);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('customerId');
+      setSearchParams(newParams);
+    } catch(err) {
+      console.error(err);
+      alert('Failed to delete customer.');
+    }
   };
 
   // Group by customer dynamically
@@ -746,10 +814,17 @@ export const StaffBillingScreen: React.FC = () => {
               <button onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
                 <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
               </button>
-              <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-                <span className="material-symbols-outlined text-xl">notifications</span>
-                <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
-              </button>
+              <div className="flex items-center gap-3">
+                {user?.role === 'Super Admin' && (
+                  <button onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.name)} className="px-4 py-2 bg-error/10 text-error border border-error/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-error/20 transition-colors shadow-sm">
+                    Delete Customer
+                  </button>
+                )}
+                <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
+                  <span className="material-symbols-outlined text-xl">notifications</span>
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
+                </button>
+              </div>
             </header>
             
             <div className="flex items-center gap-4 mb-2">

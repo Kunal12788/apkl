@@ -71,7 +71,41 @@ interface BillingDetailsModalProps {
 }
 
 export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
+  const { user } = useSession();
+  const [isDeleting, setIsDeleting] = useState(false);
+
   if (!isOpen || !txn) return null;
+
+  const handleDelete = async () => {
+    if (user?.role === 'Super Admin') {
+      if (window.confirm("Are you sure you want to instantly delete this transaction?")) {
+         setIsDeleting(true);
+         try {
+           await supabase.from('transactions').delete().eq('id', txn.id);
+           alert('Deleted successfully. Refreshing...');
+           window.location.reload();
+         } catch(e) { alert('Failed to delete'); }
+         setIsDeleting(false);
+      }
+    } else {
+      const reason = window.prompt("Please provide a reason for deleting this transaction:");
+      if (!reason) return;
+      setIsDeleting(true);
+      try {
+        await supabase.from('deletion_requests').insert([{
+           item_type: 'Transaction',
+           item_id: txn.id,
+           requested_by: user?.id,
+           reason: reason
+        }]);
+        alert("Deletion request sent to Super Admin.");
+        onClose();
+      } catch(e) {
+        alert("Failed to submit request.");
+      }
+      setIsDeleting(false);
+    }
+  };
 
   const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block";
   const val = "text-xs font-bold text-primary truncate";
@@ -191,13 +225,27 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         </div>
 
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="w-full mt-4 py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
-        >
-          Dismiss Receipt
-        </button>
+        {/* Action Buttons */}
+        <div className="mt-4 space-y-2">
+          <button 
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className={`w-full py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] ${
+              user?.role === 'Super Admin' 
+                ? 'bg-error/10 text-error hover:bg-error/20 border border-error/20' 
+                : 'bg-error/5 text-error hover:bg-error/10 border border-error/10'
+            }`}
+          >
+            {isDeleting ? 'Processing...' : (user?.role === 'Super Admin' ? 'Delete Transaction' : 'Request Deletion')}
+          </button>
+          
+          <button 
+            onClick={onClose}
+            className="w-full py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+          >
+            Dismiss Receipt
+          </button>
+        </div>
 
       </div>
     </div>
