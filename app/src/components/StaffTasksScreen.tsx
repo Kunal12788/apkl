@@ -556,7 +556,7 @@ export const StaffTasksScreen: React.FC = () => {
   const currentUser = user?.id || '';
   const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
 
-  const activeTab = (searchParams.get('tab') as TaskStatus) || 'In Progress';
+  const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
   const [toastMessage, setToastMessage] = useState('');
   
   const [isVerificationOpen, setVerificationOpen] = useState(false);
@@ -838,16 +838,16 @@ export const StaffTasksScreen: React.FC = () => {
         {/* Tab Navigation */}
         <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-2">
           <button 
-            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'In Progress' }); }}
-            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'In Progress' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-          >
-            In Progress
-          </button>
-          <button 
             onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Pending' }); }}
             className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Pending' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
           >
             Pending
+          </button>
+          <button 
+            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'In Progress' }); }}
+            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'In Progress' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          >
+            In Progress
           </button>
           <button 
             onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Completed' }); }}
