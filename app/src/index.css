@@ -22,17 +22,25 @@
         box-shadow: 0 8px 24px rgba(0, 30, 64, 0.08); 
     } 
     .cash-luxury-card {
-        background: #f0fdf4 !important; 
-        border: 2px solid #22c55e !important; 
-        box-shadow: 0 8px 30px rgba(34, 197, 94, 0.12) !important;
-        border-radius: 1.5rem;
-        transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+        background: linear-gradient(145deg, #ffffff, #f4fbf6); 
+        border-radius: 1.5rem; 
+        box-shadow: 0 4px 20px rgba(22, 163, 74, 0.05), 0 1px 2px rgba(22, 163, 74, 0.02); 
+        border: 1px solid rgba(22, 163, 74, 0.2); 
+        transition: box-shadow 0.2s ease, transform 0.2s ease; 
+        position: relative;
+    }
+    .cash-luxury-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.08);
+        pointer-events: none;
     }
     .cash-luxury-card:hover {
-        background: #dcfce7 !important; 
-        border-color: #16a34a !important; 
-        box-shadow: 0 12px 36px rgba(22, 163, 74, 0.18) !important;
         transform: translateY(-1px);
+        box-shadow: 0 8px 24px rgba(22, 163, 74, 0.12); 
+        border-color: rgba(22, 163, 74, 0.3);
     } 
     .glass-effect { 
         background: rgba(255, 255, 255, 0.7); 

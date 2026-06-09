@@ -697,7 +697,7 @@ export const StaffDashboardScreen: React.FC = () => {
                 const badge = getWorkBadgeColors(task.workType);
                 const isCash = task.settlementCondition?.toLowerCase().includes('cash');
                 return (
-                  <div key={task.id} className={`p-4 flex items-center justify-between transition-colors ${isCash ? 'bg-[#f0fdf4] hover:bg-[#dcfce7] border-l-4 border-l-[#22c55e]' : 'hover:bg-surface-bright bg-white'}`}>
+                  <div key={task.id} className={`p-4 flex items-center justify-between transition-colors ${isCash ? 'bg-gradient-to-br from-white to-[#f4fbf6] hover:to-[#ebf8ee] border-l-4 border-l-[#16a34a]' : 'hover:bg-surface-bright bg-white'}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full ${badge.bg} flex items-center justify-center text-[10px] font-bold ${badge.text} relative overflow-hidden`}>
                         <span className="material-symbols-outlined text-[10px] absolute opacity-20">{badge.icon}</span>

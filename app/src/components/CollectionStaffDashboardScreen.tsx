@@ -270,7 +270,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
               dynamicRecentTasks.slice(0, 5).map((item, idx) => {
                 const isCash = item.settlementCondition?.toLowerCase().includes('cash');
                 return (
-                  <div key={idx} className={`p-5 flex items-center justify-between group transition-colors border-b last:border-0 border-outline-variant/10 ${isCash ? 'bg-[#f0fdf4] hover:bg-[#dcfce7] border-l-4 border-l-[#22c55e]' : 'hover:bg-surface-container-lowest bg-white'}`}>
+                  <div key={idx} className={`p-5 flex items-center justify-between group transition-colors border-b last:border-0 border-outline-variant/10 ${isCash ? 'bg-gradient-to-br from-white to-[#f4fbf6] hover:to-[#ebf8ee] border-l-4 border-l-[#16a34a]' : 'hover:bg-surface-container-lowest bg-white'}`}>
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
                         {item.category[0]}
