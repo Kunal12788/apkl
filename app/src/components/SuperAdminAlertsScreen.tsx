@@ -26,9 +26,44 @@ export const SuperAdminAlertsScreen: React.FC = () => {
 
   useEffect(() => {
     fetchAlerts();
-    window.addEventListener('databaseSync', fetchAlerts);
+    
+    const handleSync = (e: any) => {
+       const detail = e.detail;
+       if (detail && detail.table === 'deletion_requests' && detail.payload) {
+          const payload = detail.payload;
+          if (payload.eventType === 'INSERT') {
+              const newReq = payload.new;
+              setAlerts(prev => {
+                  if (prev.some(a => a.id === newReq.id)) return prev;
+                  const newAlert = {
+                      id: newReq.id,
+                      status: newReq.status === 'Pending' ? 'unresolved' : 'resolved',
+                      severity: 'critical',
+                      type: 'system',
+                      timestamp: newReq.created_at,
+                      title: `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
+                      description: `Requested by ${newReq.requested_by}. Reason: ${newReq.reason || 'None provided.'}`,
+                      originalReq: newReq
+                  };
+                  return [newAlert, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+              });
+          } else if (payload.eventType === 'UPDATE') {
+              const updatedReq = payload.new;
+              setAlerts(prev => prev.map(a => a.id === updatedReq.id ? { 
+                 ...a, 
+                 status: updatedReq.status === 'Pending' ? 'unresolved' : 'resolved' 
+              } : a));
+          } else if (payload.eventType === 'DELETE') {
+              setAlerts(prev => prev.filter(a => a.id !== payload.old.id));
+          }
+       } else {
+          fetchAlerts();
+       }
+    };
+
+    window.addEventListener('databaseSync', handleSync);
     return () => {
-      window.removeEventListener('databaseSync', fetchAlerts);
+      window.removeEventListener('databaseSync', handleSync);
     };
   }, []);
 

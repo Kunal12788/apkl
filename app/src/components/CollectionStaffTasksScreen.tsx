@@ -367,11 +367,34 @@ export const CollectionStaffTasksScreen: React.FC = () => {
       }
     };
     
+    const handleSync = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.payload && detail.table === 'tasks') {
+         const payload = detail.payload;
+         if (payload.eventType === 'DELETE') {
+            setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+         } else if (payload.eventType === 'INSERT') {
+            loadTasks();
+         } else if (payload.eventType === 'UPDATE') {
+            const t = payload.new;
+            setTasks(prev => prev.map(old => old.id === t.id ? {
+              id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+              workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
+              dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
+              pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
+              logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || []
+            } : old));
+         }
+      } else {
+         loadTasks();
+      }
+    };
+    
     window.addEventListener('taskCreated', handleTaskCreated);
-    window.addEventListener('databaseSync', loadTasks);
+    window.addEventListener('databaseSync', handleSync);
     return () => {
        window.removeEventListener('taskCreated', handleTaskCreated);
-       window.removeEventListener('databaseSync', loadTasks);
+       window.removeEventListener('databaseSync', handleSync);
     };
   }, [isFullyAuthenticated, currentUser]);
 
@@ -408,6 +431,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
            reason: reason,
            status: 'Pending'
         }]);
+        setTasks(prev => prev.filter(t => t.id !== id));
         alert("Deletion request sent to Super Admin.");
         handleCloseModal();
       } catch(e) {

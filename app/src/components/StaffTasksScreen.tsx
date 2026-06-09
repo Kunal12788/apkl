@@ -658,9 +658,32 @@ export const StaffTasksScreen: React.FC = () => {
 
     loadTasks();
 
-    window.addEventListener('databaseSync', loadTasks);
+    const handleSync = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.payload && detail.table === 'tasks') {
+         const payload = detail.payload;
+         if (payload.eventType === 'DELETE') {
+            setTasks(prev => prev.filter(t => t.id !== payload.old.id));
+         } else if (payload.eventType === 'INSERT') {
+            loadTasks(); // Insert might need joining or complex logic, fallback to fetch
+         } else if (payload.eventType === 'UPDATE') {
+            const t = payload.new;
+            setTasks(prev => prev.map(old => old.id === t.id ? {
+              id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
+              impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
+              broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+              settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
+              metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
+            } : old));
+         }
+      } else {
+         loadTasks();
+      }
+    };
+
+    window.addEventListener('databaseSync', handleSync);
     return () => {
-      window.removeEventListener('databaseSync', loadTasks);
+      window.removeEventListener('databaseSync', handleSync);
     };
   }, [isAdminOrSuper, isFullyAuthenticated]);
 
@@ -724,6 +747,7 @@ export const StaffTasksScreen: React.FC = () => {
            reason: reason,
            status: 'Pending'
         }]);
+        setTasks(prev => prev.filter(t => t.id !== id));
         showToast("Deletion request sent to Super Admin.");
         handleCloseModal();
       } catch(e) {

@@ -208,16 +208,16 @@ function AppContent() {
             }
          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload: any) => {
          clearCache('tx_data');
-         window.dispatchEvent(new CustomEvent('databaseSync'));
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'transactions', payload } }));
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload: any) => {
          clearCache('tasks_data');
-         window.dispatchEvent(new CustomEvent('databaseSync'));
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'tasks', payload } }));
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, () => {
-         window.dispatchEvent(new CustomEvent('databaseSync'));
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
       })
       .subscribe();
 

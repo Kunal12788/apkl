@@ -148,9 +148,33 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     };
     fetchData();
 
-    window.addEventListener('databaseSync', fetchData);
+    const handleSync = (e: any) => {
+      const detail = e.detail;
+      if (detail && detail.payload) {
+         const { table, payload } = detail;
+         if (table === 'deletion_requests') {
+            if (payload.eventType === 'INSERT' && payload.new.status === 'Pending') {
+               setUnresolvedAlertsCount(prev => prev + 1);
+            } else if (payload.eventType === 'UPDATE') {
+               if (payload.old.status === 'Pending' && payload.new.status !== 'Pending') {
+                  setUnresolvedAlertsCount(prev => Math.max(0, prev - 1));
+               } else if (payload.old.status !== 'Pending' && payload.new.status === 'Pending') {
+                  setUnresolvedAlertsCount(prev => prev + 1);
+               }
+            } else if (payload.eventType === 'DELETE' && payload.old.status === 'Pending') {
+               setUnresolvedAlertsCount(prev => Math.max(0, prev - 1));
+            }
+         } else {
+            fetchData();
+         }
+      } else {
+         fetchData();
+      }
+    };
+
+    window.addEventListener('databaseSync', handleSync);
     return () => {
-      window.removeEventListener('databaseSync', fetchData);
+      window.removeEventListener('databaseSync', handleSync);
     };
   }, [userId, isFullyAuthenticated]);
 
