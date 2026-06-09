@@ -967,7 +967,12 @@ export const StaffTasksScreen: React.FC = () => {
                 <div 
                   key={task.id} 
                   onClick={() => {
-                    setSearchParams({ taskId: task.id, tab: activeTab });
+                    if (task.status === 'Pending' && !isAdminOrSuper) {
+                      setCurrentVerificationTask(task);
+                      setVerificationOpen(true);
+                    } else {
+                      setSearchParams({ taskId: task.id, tab: activeTab });
+                    }
                   }} 
                   className={`p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'cash-luxury-card' : 'luxury-card border border-outline-variant/10 hover:bg-surface-bright'}`}
                 >
