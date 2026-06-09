@@ -174,7 +174,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                       </div>
                     ))}
                     <div className="relative w-20 h-20 border-2 border-dashed border-outline-variant/40 rounded-xl flex flex-col items-center justify-center shrink-0 hover:bg-surface-container/50 transition-colors cursor-pointer bg-white">
-                       <input type="file" multiple accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                       <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
                        <span className="material-symbols-outlined text-outline text-2xl mb-1">add_a_photo</span>
                        <p className="text-[8px] font-bold text-outline uppercase">Upload</p>
                     </div>
