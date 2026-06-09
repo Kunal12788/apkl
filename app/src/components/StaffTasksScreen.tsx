@@ -861,9 +861,9 @@ export const StaffTasksScreen: React.FC = () => {
   const handleUpdateStatus = async (task: Task, action?: string) => {
      try {
        if (action === 'approve' && task.status === 'In Progress') {
-         await supabase.from('tasks').update({ status: 'Pending', progress_percentage: 40 }).eq('id', task.id);
-         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Pending', progressPercentage: 40 } : t));
-         showToast('Task approved and moved to Pending.');
+         await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', task.id);
+         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+         showToast('Task approved and completed.');
          handleCloseModal();
        } else if (task.status === 'Pending') {
           if (isAdminOrSuper) {
