@@ -216,6 +216,9 @@ function AppContent() {
          clearCache('tasks_data');
          window.dispatchEvent(new CustomEvent('databaseSync'));
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, () => {
+         window.dispatchEvent(new CustomEvent('databaseSync'));
+      })
       .subscribe();
 
     return () => {

@@ -50,6 +50,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
   const [cashRemaining, setCashRemaining] = useState(initialCash);
   const [totalDues, setTotalDues] = useState(initialDues);
   const [upiCollection, setUpiCollection] = useState(initialUpi);
+  const [unresolvedAlertsCount, setUnresolvedAlertsCount] = useState(0);
 
   const getGreetingName = () => {
     if (userName) return userName;
@@ -97,10 +98,11 @@ export const SuperAdminDashboardScreen: React.FC = () => {
 
       // 2. Fetch fresh data in background in parallel
       try {
-        const [ledgerRes, txRes, saLedgerRes] = await Promise.all([
+        const [ledgerRes, txRes, saLedgerRes, alertsCountRes] = await Promise.all([
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
-          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false })
+          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
+          supabase.from('deletion_requests').select('*', { count: 'exact', head: true }).eq('status', 'Pending')
         ]);
 
         const saLedgerData = saLedgerRes.data;
@@ -134,6 +136,10 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           
           setUpiCollection(upi);
           setTotalDues(dues);
+        }
+
+        if (!alertsCountRes.error && alertsCountRes.count !== null) {
+          setUnresolvedAlertsCount(alertsCountRes.count);
         }
 
       } catch (err) {
@@ -303,11 +309,18 @@ export const SuperAdminDashboardScreen: React.FC = () => {
                     onClick={action.action}
                     className="flex flex-col items-center justify-start gap-3 group w-full active:scale-95 transition-transform"
                   >
-                    {/* Circle Icon Container with Premium Gradient & Border */}
-                    <div className={`w-[3.5rem] h-[3.5rem] rounded-full bg-gradient-to-br ${action.grad} flex items-center justify-center border ${action.border} shadow-sm ${action.glow} group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden`}>
-                      {/* Glass glare effect */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <span className={`material-symbols-outlined text-[26px] ${action.color} relative z-10`}>{action.icon}</span>
+                    <div className="relative">
+                      {/* Circle Icon Container with Premium Gradient & Border */}
+                      <div className={`w-[3.5rem] h-[3.5rem] rounded-full bg-gradient-to-br ${action.grad} flex items-center justify-center border ${action.border} shadow-sm ${action.glow} group-hover:-translate-y-1 transition-all duration-300 relative overflow-hidden`}>
+                        {/* Glass glare effect */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <span className={`material-symbols-outlined text-[26px] ${action.color} relative z-10`}>{action.icon}</span>
+                      </div>
+                      {action.id === 'complain' && unresolvedAlertsCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[10px] font-black text-white ring-2 ring-white animate-pulse z-20">
+                          {unresolvedAlertsCount}
+                        </span>
+                      )}
                     </div>
                     {/* Typography */}
                     <div className="flex flex-col items-center gap-0.5">

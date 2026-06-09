@@ -407,7 +407,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           </div>
 
           {/* Section: Staff Processing Panel */}
-          {(task.status === 'Pending' || task.status === 'In Progress') && userRole === 'Staff' && (
+          {task.status === 'In Progress' && userRole === 'Staff' && (
             <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
               
@@ -508,14 +508,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         <div className="flex gap-2 mt-4 shrink-0">
           {task.status === 'In Progress' && userRole === 'Staff' ? (
             <button 
-              onClick={() => onUpdateStatus(task, 'approve')}
-              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-sm">thumb_up</span>
-              Approve
-            </button>
-          ) : task.status === 'Pending' && userRole === 'Staff' ? (
-            <button 
               onClick={() => {
                 if (task.workType === 'Tunch' && (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim())) {
                   alert('Please enter final impure weight, purity, and pure output before completing.');
@@ -527,6 +519,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             >
               <span className="material-symbols-outlined text-sm">check_circle</span>
               Complete Work
+            </button>
+          ) : task.status === 'Pending' && userRole === 'Staff' ? (
+            <button 
+              onClick={() => onUpdateStatus(task)}
+              className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-sm">rule</span>
+              Verify Intake Data
             </button>
           ) : task.status === 'Pending' && isAdminOrSuper ? (
             <button 
@@ -721,7 +721,8 @@ export const StaffTasksScreen: React.FC = () => {
            item_type: 'Task',
            item_id: id,
            requested_by: user?.id,
-           reason: reason
+           reason: reason,
+           status: 'Pending'
         }]);
         showToast("Deletion request sent to Super Admin.");
         handleCloseModal();
@@ -949,16 +950,7 @@ export const StaffTasksScreen: React.FC = () => {
                 <div 
                   key={task.id} 
                   onClick={() => {
-                    if (task.status === 'Pending') {
-                      if (isAdminOrSuper) {
-                        handleUpdateStatus(task);
-                      } else {
-                        setCurrentVerificationTask(task);
-                        setVerificationOpen(true);
-                      }
-                    } else {
-                      setSearchParams({ taskId: task.id, tab: activeTab });
-                    }
+                    setSearchParams({ taskId: task.id, tab: activeTab });
                   }} 
                   className={`p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'cash-luxury-card' : 'luxury-card border border-outline-variant/10 hover:bg-surface-bright'}`}
                 >

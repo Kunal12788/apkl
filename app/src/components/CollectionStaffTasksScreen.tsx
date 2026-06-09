@@ -405,7 +405,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
            item_type: 'Task',
            item_id: id,
            requested_by: user?.id,
-           reason: reason
+           reason: reason,
+           status: 'Pending'
         }]);
         alert("Deletion request sent to Super Admin.");
         handleCloseModal();
