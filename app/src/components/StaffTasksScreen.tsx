@@ -959,9 +959,9 @@ export const StaffTasksScreen: React.FC = () => {
                         <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{task.id}</p>
                       </div>
                     </div>
-                    <div className={`px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
+                    <span className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
                       {task.status}
-                    </div>
+                    </span>
                   </div>
 
                   <div className="space-y-3">

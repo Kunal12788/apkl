@@ -38,7 +38,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           supabase
             .from('tasks')
             .select('*')
-            .eq('created_by', currentUser)
+            .or(`created_by.eq.${currentUser},assigned_to.eq.${currentUser}`)
             .order('created_at', { ascending: false }),
           supabase
             .from('transactions')
@@ -56,7 +56,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
           // Merge tasks back into in-memory cache
           const allTasks = getCachedData('tasks_data') || [];
-          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser && t.assigned_to !== currentUser);
           setCachedData('tasks_data', [...otherTasks, ...tasksData]);
         }
 
@@ -284,7 +284,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end gap-1.5">
-                      <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
+                      <span className={`text-[8px] whitespace-nowrap text-center px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
                         item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
                         item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
                         'bg-error/5 text-error border-error/20'

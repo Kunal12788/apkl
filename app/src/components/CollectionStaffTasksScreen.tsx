@@ -263,13 +263,13 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     const loadTasks = async () => {
       if (!isFullyAuthenticated) return;
       try {
-        const { data, error } = await supabase.from('tasks').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('tasks').select('*').or(`created_by.eq.${currentUser},assigned_to.eq.${currentUser}`).order('created_at', { ascending: false });
         if (error) throw error;
         
         if (data) {
           // Merge tasks back into in-memory cache
           const allTasks = getCachedData('tasks_data') || [];
-          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser && t.assigned_to !== currentUser);
           setCachedData('tasks_data', [...otherTasks, ...data]);
 
           setTasks(data.map(t => ({
@@ -403,7 +403,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                  <div className={`px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
+                  <div className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
                     {task.status}
                   </div>
                 </div>

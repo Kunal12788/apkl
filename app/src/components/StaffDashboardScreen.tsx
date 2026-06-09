@@ -155,18 +155,7 @@ export const StaffDashboardScreen: React.FC = () => {
     }
   };
 
-  const getRecentStatusClass = (status: string) => {
-    switch (status) {
-      case 'Completed':
-        return 'bg-tertiary-container/10 text-tertiary-container';
-      case 'In Progress':
-        return 'bg-secondary-container/10 text-secondary-container';
-      case 'Pending Verification':
-        return 'bg-secondary/10 text-secondary';
-      default:
-        return 'bg-error-container/10 text-error';
-    }
-  };
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -709,7 +698,11 @@ export const StaffDashboardScreen: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${getRecentStatusClass(task.status)}`}>
+                      <span className={`text-[8px] whitespace-nowrap text-center px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
+                        task.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
+                        task.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
+                        'bg-error/5 text-error border-error/20'
+                      }`}>
                         {task.status}
                       </span>
                     </div>
