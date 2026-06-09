@@ -76,8 +76,10 @@ export const GlobalFAB: React.FC = () => {
               return;
             }
             
-            // If there's a fee, we can also insert a transaction
-            if (data.fee) {
+            // For non-Collection Staff, insert a transaction immediately if fee is provided.
+            // For Collection Staff tasks, the billing transaction will be created by Staff
+            // when they process and complete the task — so we skip it here to avoid duplicates.
+            if (data.fee && !isCollection) {
               const newTxn = {
                 id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
                 customer_id: generatedCustomerId,
