@@ -891,7 +891,22 @@ export const StaffTasksScreen: React.FC = () => {
             
             <div className="space-y-4">
               {filteredTasks.map((task) => (
-                <div key={task.id} onClick={() => setSearchParams({ taskId: task.id, tab: activeTab })} className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors">
+                <div 
+                  key={task.id} 
+                  onClick={() => {
+                    if (task.status === 'Pending' || task.status === 'Pending Verification') {
+                      if (isAdminOrSuper) {
+                        handleUpdateStatus(task);
+                      } else {
+                        setCurrentVerificationTask(task);
+                        setVerificationOpen(true);
+                      }
+                    } else {
+                      setSearchParams({ taskId: task.id, tab: activeTab });
+                    }
+                  }} 
+                  className="luxury-card p-4 relative overflow-hidden group cursor-pointer hover:bg-surface-bright transition-colors"
+                >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
