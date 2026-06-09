@@ -947,14 +947,8 @@ export const StaffTasksScreen: React.FC = () => {
                       setSearchParams({ taskId: task.id, tab: activeTab });
                     }
                   }} 
-                  className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'border border-success/40 bg-success/5 shadow-[0_4px_20px_rgba(34,197,94,0.1)] hover:bg-success/10' : 'border border-outline-variant/10 hover:bg-surface-bright'}`}
+                  className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'border border-success/50 bg-success/10 shadow-[0_8px_30px_rgba(22,163,74,0.15)] hover:bg-success/20' : 'border border-outline-variant/10 hover:bg-surface-bright'}`}
                 >
-                  {isCash && (
-                    <div className="absolute top-0 right-0 px-3 py-1 bg-success/10 rounded-bl-xl border-b border-l border-success/20 flex items-center gap-1 z-10">
-                       <span className="material-symbols-outlined text-[10px] text-success font-bold">payments</span>
-                       <span className="text-[8px] font-black uppercase tracking-widest text-success">Cash Mode</span>
-                    </div>
-                  )}
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
