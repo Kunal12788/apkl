@@ -385,8 +385,16 @@ export const CollectionStaffTasksScreen: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {filteredTasks.map((task) => (
-              <div key={task.id} onClick={() => setSelectedTask(task)} className="luxury-card p-4 relative overflow-hidden group border border-outline-variant/10 cursor-pointer active:scale-[0.99] transition-transform bg-white bg-opacity-100">
+            {filteredTasks.map((task) => {
+              const isCash = task.settlementCondition?.toLowerCase().includes('cash');
+              return (
+              <div key={task.id} onClick={() => setSelectedTask(task)} className={`luxury-card p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform ${isCash ? 'border-success/40 bg-success/5 shadow-[0_4px_20px_rgba(34,197,94,0.1)]' : 'border-outline-variant/10 bg-white bg-opacity-100'}`}>
+                {isCash && (
+                  <div className="absolute top-0 right-0 px-3 py-1 bg-success/10 rounded-bl-xl border-b border-l border-success/20 flex items-center gap-1 z-10">
+                     <span className="material-symbols-outlined text-[10px] text-success font-bold">payments</span>
+                     <span className="text-[8px] font-black uppercase tracking-widest text-success">Cash Mode</span>
+                  </div>
+                )}
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
@@ -418,7 +426,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                     </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
             {filteredTasks.length === 0 && (
               <div className="p-8 text-center text-outline text-sm font-medium">No tasks found.</div>
             )}
