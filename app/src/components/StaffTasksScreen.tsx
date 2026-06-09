@@ -282,7 +282,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <p className={val}>{task.pieces}</p>
                   </div>
                 )}
-                {task.settlementCondition && (
+                {task.settlementCondition && !task.settlementCondition.toLowerCase().includes('cash') && (
                   <div>
                     <span className={lbl}>Settlement Mode</span>
                     <p className={val}>{task.settlementCondition}</p>

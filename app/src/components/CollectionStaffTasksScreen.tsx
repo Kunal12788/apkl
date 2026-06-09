@@ -25,6 +25,7 @@ interface Task {
   pieces?: string;
   productType?: string;
   impureWeight?: string;
+  pureWeight?: string;
   settlementCondition?: string;
   logoName?: string;
   carat?: string;
@@ -143,13 +144,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
                   <p className={val}>{task.impureWeight}g</p>
                 </div>
               )}
+              {task.pureWeight && (
+                <div>
+                  <span className={lbl}>Pure Weight</span>
+                  <p className={val}>{task.pureWeight}g</p>
+                </div>
+              )}
               {task.pieces && (
                 <div>
                   <span className={lbl}>Pieces</span>
                   <p className={val}>{task.pieces}</p>
                 </div>
               )}
-              {task.settlementCondition && task.workType === 'Tunch' && (
+              {task.settlementCondition && (
                 <div>
                   <span className={lbl}>Settlement Mode</span>
                   <p className={val}>{task.settlementCondition}</p>
@@ -250,7 +257,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
         dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
-        pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+        pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
         logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || []
       }))
     : [];
@@ -276,7 +283,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
-              pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
+              pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
               logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || []
           })));
         } else {
@@ -299,7 +306,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               id: newTask.id, customerName: newTask.customer_name, customerId: newTask.customer_id, customerPhone: newTask.customer_phone, customerAddress: newTask.customer_address,
               workType: newTask.work_type, assignedTo: newTask.assigned_to, status: newTask.status, progressPercentage: newTask.progress_percentage, metal: newTask.metal || 'Gold',
               dateGiven: newTask.date_given, isoDate: newTask.iso_date, estimatedCompletion: newTask.estimated_completion, notes: newTask.notes, broughtBy: newTask.brought_by,
-              pieces: newTask.pieces, productType: newTask.product_type, impureWeight: newTask.impure_weight, settlementCondition: newTask.settlement_condition,
+              pieces: newTask.pieces, productType: newTask.product_type, impureWeight: newTask.impure_weight, pureWeight: newTask.pure_weight, settlementCondition: newTask.settlement_condition,
               logoName: newTask.logo_name, carat: newTask.carat, pointSuggestion: newTask.point_suggestion, createdBy: newTask.created_by, images: newTask.images || []
           };
           // Avoid duplicates if already fetched
