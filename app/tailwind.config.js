@@ -39,6 +39,8 @@ export default {
         "on-error": '#ffffff',
         "error-container": '#ffdad6',
         "on-error-container": '#93000a',
+        success: '#16a34a',
+        "on-success": '#ffffff',
         "primary-fixed": '#d5e3ff',
         "primary-fixed-dim": '#a7c8ff',
         "on-primary-fixed": '#001b3c',
