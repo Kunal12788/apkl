@@ -821,8 +821,22 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleFinalizePricing = async (task: Task, finalPrice: string) => {
     try {
-      await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', task.id);
-      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
+      const updatedCondition = task.settlementCondition?.toLowerCase().includes('cash') 
+        ? `${task.settlementCondition} - ₹${finalPrice}` 
+        : `Cash - ₹${finalPrice}`;
+
+      await supabase.from('tasks').update({ 
+        status: 'Completed', 
+        progress_percentage: 100,
+        settlement_condition: updatedCondition
+      }).eq('id', task.id);
+      
+      setTasks(prev => prev.map(t => t.id === task.id ? { 
+        ...t, 
+        status: 'Completed', 
+        progressPercentage: 100,
+        settlementCondition: updatedCondition 
+      } : t));
 
       const newTxn = {
         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
