@@ -602,10 +602,8 @@ export const StaffTasksScreen: React.FC = () => {
   const cachedTasks = getCachedData('tasks_data');
   const isSuperSa = user?.role === 'Super Admin';
   const initialTasks = cachedTasks
-    ? (isAdminOrSuper 
-        ? cachedTasks.filter((t: any) => t.status === 'Pending Verification' || !t.created_by?.startsWith('COLL-'))
-        : cachedTasks
-      ).filter((t: any) => isSuperSa ? true : (t.created_by === currentUser))
+    ? cachedTasks
+      .filter((t: any) => isSuperSa ? true : (t.created_by === currentUser))
       .map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
@@ -641,9 +639,6 @@ export const StaffTasksScreen: React.FC = () => {
         if (data) {
           setCachedData('tasks_data', data);
           let filtered = data;
-          if (isAdminOrSuper) {
-            filtered = data.filter((t: any) => t.status === 'Pending Verification' || !t.created_by?.startsWith('COLL-'));
-          }
           if (!isSuperSa && user?.branch_id) {
             filtered = filtered.filter((t: any) => branchUserIds.includes(t.created_by));
           }
