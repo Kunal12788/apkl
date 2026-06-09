@@ -34,30 +34,50 @@ export const SuperAdminAlertsScreen: React.FC = () => {
           const payload = detail.payload;
           if (payload.eventType === 'INSERT') {
               const newReq = payload.new;
-              setAlerts(prev => {
-                  if (prev.some(a => a.id === newReq.id)) return prev;
-                  const newAlert = {
-                      id: newReq.id,
-                      status: newReq.status === 'Pending' ? 'unresolved' : 'resolved',
-                      severity: 'critical',
-                      type: 'system',
-                      timestamp: newReq.created_at,
-                      title: `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
-                      description: `Requested by ${newReq.requested_by}. Reason: ${newReq.reason || 'None provided.'}`,
-                      originalReq: newReq
-                  };
-                  return [newAlert, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-              });
+              
+              const fetchRequesterNameAndAddAlert = async () => {
+                 let userName = newReq.requested_by;
+                 try {
+                    const { data: userData } = await supabase
+                      .from('users')
+                      .select('name')
+                      .eq('id', newReq.requested_by)
+                      .single();
+                    if (userData && userData.name) {
+                       userName = userData.name;
+                    }
+                 } catch(err) {
+                    console.error("Error fetching user name for alert:", err);
+                 }
+                 
+                 setAlerts(prev => {
+                    if (prev.some(a => a.id === newReq.id)) return prev;
+                    const newAlert = {
+                        id: newReq.id,
+                        status: newReq.status === 'Pending' ? 'unresolved' : 'resolved',
+                        severity: 'critical',
+                        type: 'system',
+                        timestamp: newReq.created_at,
+                        title: `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
+                        description: `Requested by ${userName}. Reason: ${newReq.reason || 'None provided.'}`,
+                        originalReq: newReq
+                    };
+                    return [newAlert, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+                 });
+              };
+              
+              fetchRequesterNameAndAddAlert();
           } else if (payload.eventType === 'UPDATE') {
               const updatedReq = payload.new;
               setAlerts(prev => prev.map(a => a.id === updatedReq.id ? { 
                  ...a, 
-                 status: updatedReq.status === 'Pending' ? 'unresolved' : 'resolved' 
+                 status: updatedReq.status === 'Pending' ? 'unresolved' : 'resolved',
+                 title: updatedReq.status === 'Approved' ? a.title.replace(' (Rejected)', '').replace(' (Approved)', '') + ' (Approved)' : updatedReq.status === 'Rejected' ? a.title.replace(' (Approved)', '').replace(' (Rejected)', '') + ' (Rejected)' : a.title
               } : a));
           } else if (payload.eventType === 'DELETE') {
               setAlerts(prev => prev.filter(a => a.id !== payload.old.id));
           }
-       } else {
+       } else if (!detail || !detail.table) {
           fetchAlerts();
        }
     };
