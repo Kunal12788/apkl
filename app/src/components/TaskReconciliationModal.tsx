@@ -68,9 +68,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
       
       Promise.all(uploadTasks);
       
-      const allImages = [...(collectionTask.images || []), ...uploadedUrls];
-      
-      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString(), images: allImages });
+      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString(), audit_images: uploadedUrls });
       setIsUploading(false);
     }
   };
