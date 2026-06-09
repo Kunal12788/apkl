@@ -13,7 +13,7 @@ interface Task {
   customerId: string;
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   assignedTo: string;
-  status: TaskStatus | 'Pending Verification';
+  status: TaskStatus;
   progressPercentage: number;
   impureWeight?: string;
   pureWeight?: string;
@@ -65,7 +65,7 @@ const getStatusColor = (status: string) => {
     case 'Completed': return 'bg-tertiary-container/10 text-tertiary-container border-tertiary-container/20';
     case 'In Progress': return 'bg-secondary-container/10 text-secondary-container border-secondary-container/20';
     case 'Pending': return 'bg-error-container/50 text-error border-error/20';
-    case 'Pending Verification': return 'bg-secondary/10 text-secondary border-secondary/20 animate-pulse';
+
     default: return 'bg-surface-container text-outline border-outline/20';
   }
 };
@@ -204,7 +204,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             task.status === 'Completed' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 
             task.status === 'In Progress' ? 'bg-secondary/10 text-secondary border-secondary/20' : 
-            task.status === 'Pending Verification' ? 'bg-secondary/10 text-secondary border-secondary/20 animate-pulse' :
             'bg-error/10 text-error border-error/20'
           }`}>
             {task.status}
@@ -468,7 +467,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Section: Admin Pricing Panel */}
-          {task.status === 'Pending Verification' && isAdminOrSuper && (
+          {task.status === 'Pending' && isAdminOrSuper && (
             <div className="rounded-2xl border border-tertiary/20 p-3.5 bg-tertiary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-tertiary">Admin pricing verification</p>
               
@@ -529,7 +528,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <span className="material-symbols-outlined text-sm">check_circle</span>
               Complete Work
             </button>
-          ) : task.status === 'Pending Verification' && isAdminOrSuper ? (
+          ) : task.status === 'Pending' && isAdminOrSuper ? (
             <button 
               onClick={() => {
                 if (!finalPriceInput.trim()) {
@@ -696,7 +695,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   const filteredTasks = tasks.filter(t => {
      if (activeTab === 'Pending') {
-        return (t.status === 'Pending' || t.status === 'Pending Verification') && matchesSearch(t);
+        return t.status === 'Pending' && matchesSearch(t);
      }
      return t.status === activeTab && matchesSearch(t);
   });
@@ -762,7 +761,7 @@ export const StaffTasksScreen: React.FC = () => {
     try {
       const condition = details.settlementCondition || task.settlementCondition || '';
       const needsCash = condition.toLowerCase().includes('cash');
-      const nextStatus = needsCash ? 'Pending Verification' : 'Completed';
+      const nextStatus = needsCash ? 'Pending' : 'Completed';
       const progress = needsCash ? 80 : 100;
 
       await supabase.from('tasks').update({
@@ -866,7 +865,7 @@ export const StaffTasksScreen: React.FC = () => {
          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'Pending', progressPercentage: 40 } : t));
          showToast('Task approved and moved to Pending.');
          handleCloseModal();
-       } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
+       } else if (task.status === 'Pending') {
           if (isAdminOrSuper) {
             await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', task.id);
             setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
@@ -936,7 +935,7 @@ export const StaffTasksScreen: React.FC = () => {
                 <div 
                   key={task.id} 
                   onClick={() => {
-                    if (task.status === 'Pending' || task.status === 'Pending Verification') {
+                    if (task.status === 'Pending') {
                       if (isAdminOrSuper) {
                         handleUpdateStatus(task);
                       } else {
@@ -988,7 +987,7 @@ export const StaffTasksScreen: React.FC = () => {
                       <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
                     </div>
 
-                    {(task.status === 'Pending' || task.status === 'Pending Verification') && (
+                    {(task.status === 'Pending') && (
                       <button 
                         onClick={(e) => { 
                           e.stopPropagation(); 

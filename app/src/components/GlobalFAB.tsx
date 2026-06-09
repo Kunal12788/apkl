@@ -56,7 +56,7 @@ export const GlobalFAB: React.FC = () => {
               point_suggestion: data.pointSuggestion,
               work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
               date_given: data.date,
-              status: isCollection ? 'Pending Verification' : data.status,
+              status: isCollection ? 'Pending' : data.status,
               progress_percentage: isCollection ? 0 : data.progressPercentage,
               assigned_to: isCollection ? 'Pending' : (data.assignedTo || 'Unassigned'),
               source: isCollection ? 'Collection Staff' : 'Staff',

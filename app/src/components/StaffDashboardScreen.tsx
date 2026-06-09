@@ -95,7 +95,7 @@ export const StaffDashboardScreen: React.FC = () => {
         if (isCompleted) gDues += w;
       }
 
-      if (t.status === 'Pending Verification' || t.status === 'Pending') initialStats.pending++;
+      if (t.status === 'Pending') initialStats.pending++;
       else if (t.status === 'In Progress' || t.status === 'Working') initialStats.inProgress++;
       else if (t.status === 'Completed') initialStats.completed++;
     });
@@ -248,7 +248,7 @@ export const StaffDashboardScreen: React.FC = () => {
             inProgress++;
           } else if (task.status === 'Completed') {
             completed++;
-          } else if (task.status === 'Pending' || task.status === 'Pending Verification') {
+          } else if (task.status === 'Pending') {
             pending++;
           }
         });
