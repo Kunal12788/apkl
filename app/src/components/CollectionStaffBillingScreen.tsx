@@ -303,7 +303,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const currentUser = user?.id || '';
   const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUser];
   const initialTx = cachedTx
-    ? cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy)).map((t: any) => ({
+    ? cachedTx.filter((t: any) => !t.created_by || branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy)).map((t: any) => ({
         metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
         status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
@@ -341,7 +341,6 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         const { data, error } = await supabase
           .from('transactions')
           .select('*')
-          .in('created_by', branchUserIds)
           .order('created_at', { ascending: false });
         if (error) throw error;
         
@@ -350,12 +349,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           const oldTxHash = getCachedData('col_tx_data_hash');
           if (newTxHash !== oldTxHash) {
             setCachedData('col_tx_data_hash', newTxHash);
-            // Merge transactions back into in-memory cache
-            const allTx = getCachedData('tx_data') || [];
-            const otherTx = allTx.filter((t: any) => !branchUserIds.includes(t.created_by) && !branchUserIds.includes(t.createdBy));
-            setCachedData('tx_data', [...otherTx, ...data]);
+            setCachedData('tx_data', data);
 
-            setTransactions(data.map(t => ({
+            const filtered = data.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+
+            setTransactions(filtered.map(t => ({
                 metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
                 type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
                 status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,

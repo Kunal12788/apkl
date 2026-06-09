@@ -444,7 +444,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const cachedTx = getCachedData('tx_data');
   const initialTx = cachedTx
-    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy))).map((t: any) => ({
+    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => !t.created_by || branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy))).map((t: any) => ({
         metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
         date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
@@ -497,7 +497,7 @@ export const StaffBillingScreen: React.FC = () => {
             setCachedData('tx_data', data); // Update cache
             let filtered = data;
             if (!isSuperSa && user?.branch_id) {
-              filtered = data.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+              filtered = data.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
             }
             setTransactions(filtered.map((t: any) => ({
               metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
