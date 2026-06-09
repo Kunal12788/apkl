@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 
-type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
+type TaskStatus = 'Pending' | 'Pending Verification' | 'In Progress' | 'Completed';
 
 interface Task {
   metal: 'Gold' | 'Silver';
@@ -321,7 +321,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const filteredTasks = tasks.filter(t => {
      if (activeTab === 'Pending') {
-        return t.status === 'Pending' && matchesSearch(t);
+        return (t.status === 'Pending' || t.status === 'Pending Verification') && matchesSearch(t);
      }
      return t.status === activeTab && matchesSearch(t);
   });

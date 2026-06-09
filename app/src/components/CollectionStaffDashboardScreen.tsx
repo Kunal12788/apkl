@@ -135,7 +135,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   ];
 
   // 2. Calculate status stats dynamically
-  let pendingCount = tasks.filter(t => t.status === 'Pending').length;
+  let pendingCount = tasks.filter(t => t.status === 'Pending' || t.status === 'Pending Verification').length;
   let progressCount = tasks.filter(t => t.status === 'In Progress').length;
   let completedCount = tasks.filter(t => t.status === 'Completed').length;
 
