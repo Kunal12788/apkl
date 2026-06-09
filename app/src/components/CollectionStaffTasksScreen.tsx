@@ -144,24 +144,75 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
                   <p className={val}>{task.impureWeight}g</p>
                 </div>
               )}
-              {task.pureWeight && (
-                <div>
-                  <span className={lbl}>Pure Weight</span>
-                  <p className={val}>{task.pureWeight}g</p>
-                </div>
-              )}
               {task.pieces && (
                 <div>
                   <span className={lbl}>Pieces</span>
                   <p className={val}>{task.pieces}</p>
                 </div>
               )}
-              {task.settlementCondition && (
-                <div>
-                  <span className={lbl}>Settlement Mode</span>
-                  <p className={val}>{task.settlementCondition}</p>
-                </div>
-              )}
+              {(() => {
+                if (!task.settlementCondition) return null;
+                const lowerCond = task.settlementCondition.toLowerCase();
+                const isPureGold = lowerCond === 'tunch' || lowerCond.includes('pure gold') || lowerCond.includes('pure');
+                const isCash = lowerCond.includes('cash');
+
+                if (isPureGold) {
+                  return (
+                    <>
+                      <div>
+                        <span className={lbl}>Settlement Mode</span>
+                        <p className={val}>Pure Gold</p>
+                      </div>
+                      {task.pureWeight && (
+                        <div>
+                          <span className={lbl}>Pure Gold Weight</span>
+                          <p className={val}>{task.pureWeight}g</p>
+                        </div>
+                      )}
+                    </>
+                  );
+                }
+
+                if (isCash) {
+                  const parts = task.settlementCondition.split(' - ₹');
+                  const details = parts[0];
+                  const amount = parts.length > 1 ? parts[1] : null;
+
+                  return (
+                    <>
+                      <div>
+                        <span className={lbl}>Settlement Mode</span>
+                        <p className={val}>Cash</p>
+                      </div>
+                      {amount && (
+                        <div>
+                          <span className={lbl}>Cash Amount</span>
+                          <p className={val}>₹{amount}</p>
+                        </div>
+                      )}
+                      <div className="col-span-2">
+                        <span className={lbl}>Cash Details</span>
+                        <p className={val}>{details}</p>
+                      </div>
+                    </>
+                  );
+                }
+
+                return (
+                  <>
+                    <div>
+                      <span className={lbl}>Settlement Mode</span>
+                      <p className={val}>{task.settlementCondition}</p>
+                    </div>
+                    {task.pureWeight && (
+                      <div>
+                        <span className={lbl}>Pure Weight</span>
+                        <p className={val}>{task.pureWeight}g</p>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
               {task.logoName && task.workType === 'Marking' && (
                 <div>
                   <span className={lbl}>Logo Markings</span>
