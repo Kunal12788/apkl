@@ -709,8 +709,12 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleVerifySuccess = async (verifiedTask: any) => {
      try {
-       await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', verifiedTask.id);
-       setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
+       const updates: any = { status: 'In Progress', progress_percentage: 40 };
+       if (verifiedTask.images) {
+         updates.images = verifiedTask.images;
+       }
+       await supabase.from('tasks').update(updates).eq('id', verifiedTask.id);
+       setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { ...t, ...updates, progressPercentage: 40 } : t));
        setVerificationOpen(false);
        showToast('Audit matched! Task is now In Progress.');
        handleCloseModal();

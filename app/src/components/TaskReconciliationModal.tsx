@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
 
 interface TaskReconciliationModalProps {
   isOpen: boolean;
@@ -25,6 +26,8 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
     category: 'TUNCH',
   });
   const [result, setResult] = useState<'IDLE' | 'MATCH' | 'MISMATCH'>('IDLE');
+  const [auditImages, setAuditImages] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
 
   if (!isOpen || !collectionTask) return null;
 
@@ -41,8 +44,45 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
 
   const handleFinalize = () => {
     if (result === 'MATCH') {
-      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString() });
+      if (auditImages.length === 0) {
+        alert("Please upload at least one audit image.");
+        return;
+      }
+      setIsUploading(true);
+      
+      const uploadedUrls: string[] = [];
+      const uploadTasks: Promise<any>[] = [];
+      
+      for (const file of auditImages) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
+        uploadedUrls.push(publicUrl);
+        
+        uploadTasks.push(
+          supabase.storage.from('task_images').upload(fileName, file).catch(err => {
+            console.error("Background audit image upload failed:", err);
+          })
+        );
+      }
+      
+      Promise.all(uploadTasks);
+      
+      const allImages = [...(collectionTask.images || []), ...uploadedUrls];
+      
+      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString(), images: allImages });
+      setIsUploading(false);
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setAuditImages(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setAuditImages(prev => prev.filter((_, i) => i !== idx));
   };
 
   const inp = () => `w-full h-12 bg-white border border-outline-variant/40 rounded-DEFAULT px-4 text-sm text-primary font-medium focus:outline-none focus:border-secondary transition-colors`;
@@ -124,9 +164,20 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
               
               <div className="mt-4">
                  <label className={lbl}>Upload Audit Images *</label>
-                 <div className="border-2 border-dashed border-outline-variant/40 rounded-xl p-4 text-center cursor-pointer hover:bg-surface-container/50 transition-colors">
-                    <span className="material-symbols-outlined text-outline text-2xl mb-1">add_a_photo</span>
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Click to Upload</p>
+                 <div className="flex gap-3 overflow-x-auto py-2 hide-scrollbar">
+                    {auditImages.map((file, idx) => (
+                      <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-outline-variant/20 shadow-sm">
+                         <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" alt="audit" />
+                         <button type="button" onClick={() => removeImage(idx)} className="absolute top-1 right-1 w-6 h-6 bg-error/90 text-white rounded-full flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[14px]">close</span>
+                         </button>
+                      </div>
+                    ))}
+                    <div className="relative w-20 h-20 border-2 border-dashed border-outline-variant/40 rounded-xl flex flex-col items-center justify-center shrink-0 hover:bg-surface-container/50 transition-colors cursor-pointer bg-white">
+                       <input type="file" multiple accept="image/*" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                       <span className="material-symbols-outlined text-outline text-2xl mb-1">add_a_photo</span>
+                       <p className="text-[8px] font-bold text-outline uppercase">Upload</p>
+                    </div>
                  </div>
               </div>
            </SectionCard>
@@ -169,10 +220,11 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
            ) : (
               <button 
                 onClick={handleFinalize}
-                className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all"
+                disabled={isUploading}
+                className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
               >
-                <span className="material-symbols-outlined">check_circle</span>
-                CONFIRM & START WORK
+                {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined">check_circle</span>}
+                {isUploading ? 'SAVING...' : 'CONFIRM & START WORK'}
               </button>
            )}
         </div>
