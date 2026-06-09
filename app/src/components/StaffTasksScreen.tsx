@@ -169,6 +169,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [purityInput, setPurityInput] = useState('');
   const [pureWeightInput, setPureWeightInput] = useState('');
   const [settlementInput, setSettlementInput] = useState('Only Tunch');
+  const [serviceFeeInput, setServiceFeeInput] = useState('');
   const [finalPriceInput, setFinalPriceInput] = useState('');
 
   useEffect(() => {
@@ -177,6 +178,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setPurityInput(task.purity || '');
       setPureWeightInput(task.pureWeight || '');
       setSettlementInput(task.settlementCondition || 'Only Tunch');
+      setServiceFeeInput('');
       setFinalPriceInput('');
     }
   }, [task]);
@@ -463,6 +465,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               ) : (
                 <p className="text-[11px] font-medium text-outline">Marking/Shouldering processing verified. Ready to complete.</p>
               )}
+
+              <div className="pt-2 border-t border-secondary/10">
+                <span className={lbl}>Service Fee (₹) *</span>
+                <input 
+                  type="number" 
+                  value={serviceFeeInput} 
+                  onChange={e => setServiceFeeInput(e.target.value)}
+                  placeholder="e.g. 500" 
+                  className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                />
+              </div>
             </div>
           )}
 
@@ -513,7 +526,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   alert('Please enter final impure weight, purity, and pure output before completing.');
                   return;
                 }
-                onProcessTask?.(task, { impureWeight: impureWeightInput, purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput });
+                if (!serviceFeeInput.trim()) {
+                  alert('Please enter the service fee before completing.');
+                  return;
+                }
+                onProcessTask?.(task, { impureWeight: impureWeightInput, purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput, serviceFee: serviceFeeInput });
               }}
               className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -775,18 +792,22 @@ export const StaffTasksScreen: React.FC = () => {
      }
   };
 
-  const handleProcessTask = async (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string }) => {
+  const handleProcessTask = async (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string; serviceFee?: string }) => {
     try {
       const condition = details.settlementCondition || task.settlementCondition || '';
       const needsCash = condition.toLowerCase().includes('cash');
-      const nextStatus = needsCash ? 'Pending' : 'Completed';
-      const progress = needsCash ? 80 : 100;
+      const nextStatus = 'Completed'; // The staff confirms the service fee, so it instantly completes
+      const progress = 100;
+
+      const updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
+        ? (needsCash ? `${condition} - ₹${details.serviceFee}` : `Service Fee - ₹${details.serviceFee}`)
+        : condition;
 
       await supabase.from('tasks').update({
         impure_weight: details.impureWeight || task.impureWeight,
         purity: details.purity || task.purity,
         pure_weight: details.pureWeight || task.pureWeight,
-        settlement_condition: condition,
+        settlement_condition: updatedCondition,
         status: nextStatus,
         progress_percentage: progress
       }).eq('id', task.id);
@@ -796,40 +817,36 @@ export const StaffTasksScreen: React.FC = () => {
         impureWeight: details.impureWeight || task.impureWeight,
         purity: details.purity || task.purity,
         pureWeight: details.pureWeight || task.pureWeight,
-        settlementCondition: condition,
+        settlementCondition: updatedCondition,
         status: nextStatus,
         progressPercentage: progress
       } : t));
 
-      if (nextStatus === 'Completed') {
-        const newTxn = {
-          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-          customer_id: task.customerId || 'CUST-COL',
-          customer_name: task.customerName,
-          customer_phone: task.customerPhone || '',
-          customer_address: task.customerAddress || '',
-          type: condition || 'Service',
-          work_type: task.workType || 'Tunch',
-          amount: '0',
-          date: 'Today',
-          iso_date: new Date().toISOString().split('T')[0],
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'Completed',
-          details: task.notes || 'Task completed without cash processing.',
-          pieces: task.pieces || '1',
-          product_type: task.productType,
-          impure_weight: task.impureWeight,
-          settlement_condition: condition,
-          logo_name: task.logoName,
-          carat: task.carat,
-          point_suggestion: task.pointSuggestion,
-          created_by: task.createdBy || ''
-        };
-        await supabase.from('transactions').insert([newTxn]);
-        showToast('Task completed directly (No cash needed).');
-      } else {
-        showToast('Task requires cash. Submitted to Admin for pricing.');
-      }
+      const newTxn = {
+        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+        customer_id: task.customerId || 'CUST-COL',
+        customer_name: task.customerName,
+        customer_phone: task.customerPhone || '',
+        customer_address: task.customerAddress || '',
+        type: needsCash ? 'Cash' : 'Service Fee',
+        work_type: task.workType || 'Tunch',
+        amount: details.serviceFee || '0',
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: (details.serviceFee && Number(details.serviceFee) > 0) ? 'Unpaid' : 'Paid',
+        details: task.notes || 'Task completed with Service Fee recorded.',
+        pieces: task.pieces || '1',
+        product_type: task.productType,
+        impure_weight: task.impureWeight,
+        settlement_condition: updatedCondition,
+        logo_name: task.logoName,
+        carat: task.carat,
+        point_suggestion: task.pointSuggestion,
+        created_by: task.createdBy || ''
+      };
+      await supabase.from('transactions').insert([newTxn]);
+      showToast('Task completed & Service Fee billed successfully.');
       handleCloseModal();
     } catch (e) {
       console.error(e);

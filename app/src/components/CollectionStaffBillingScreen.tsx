@@ -83,8 +83,22 @@ interface BillingDetailsModalProps {
 export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
 
   if (!isOpen || !txn) return null;
+
+  const handleMarkPaid = async () => {
+    if (!window.confirm("Are you sure you want to mark this service fee as Paid?")) return;
+    setIsPaying(true);
+    try {
+      await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
+      alert("Successfully marked as Paid. Refreshing...");
+      window.location.reload();
+    } catch(e) {
+      alert("Failed to update status.");
+    }
+    setIsPaying(false);
+  };
 
   const handleDelete = async () => {
     if (user?.role === 'Super Admin') {
@@ -237,6 +251,17 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         {/* Action Buttons */}
         <div className="mt-4 space-y-2">
+          {txn.status === 'Unpaid' && (
+            <button 
+              onClick={handleMarkPaid}
+              disabled={isPaying}
+              className="w-full py-2.5 bg-tertiary hover:bg-tertiary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-lg shadow-tertiary/20"
+            >
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              {isPaying ? 'Processing...' : 'Mark as Paid'}
+            </button>
+          )}
+          
           <button 
             onClick={handleDelete}
             disabled={isDeleting}
