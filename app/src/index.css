@@ -22,24 +22,40 @@
         box-shadow: 0 8px 24px rgba(0, 30, 64, 0.08); 
     } 
     .cash-luxury-card {
-        background: #f0fdf4; 
+        background: linear-gradient(135deg, #ffffff 0%, #f4fbf6 50%, #e8fbee 100%);
         border-radius: 1.5rem; 
-        box-shadow: 0 4px 20px rgba(0, 30, 64, 0.04), 0 1px 2px rgba(0, 30, 64, 0.02); 
+        box-shadow: 0 4px 20px rgba(22, 163, 74, 0.03), 0 1px 2px rgba(0, 30, 64, 0.02); 
         border: 1px solid rgba(0, 30, 64, 0.03); 
-        transition: box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease; 
+        transition: box-shadow 0.3s ease, transform 0.3s ease, background 0.3s ease; 
         position: relative;
     }
+    .cash-luxury-card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        border-radius: inherit;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 0 20px rgba(22, 163, 74, 0.015);
+        pointer-events: none;
+    }
     .cash-luxury-card:hover {
-        background: #e8fbee;
-        transform: translateY(-1px);
-        box-shadow: 0 8px 24px rgba(0, 30, 64, 0.08); 
+        background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 40%, #dcfce7 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(22, 163, 74, 0.06), 0 4px 8px rgba(0, 30, 64, 0.03); 
     } 
     .cash-light-row {
-        background: #f0fdf4 !important;
-        transition: background-color 0.2s ease;
+        background: linear-gradient(90deg, #ffffff 0%, #f4fbf6 100%) !important;
+        transition: background 0.3s ease;
+        position: relative;
+    }
+    .cash-light-row::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+        pointer-events: none;
     }
     .cash-light-row:hover {
-        background: #e8fbee !important;
+        background: linear-gradient(90deg, #ffffff 0%, #f0fdf4 70%, #e8fbee 100%) !important;
     }
     .glass-effect { 
         background: rgba(255, 255, 255, 0.7); 
