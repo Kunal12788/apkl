@@ -724,36 +724,29 @@ export const StaffTasksScreen: React.FC = () => {
   });
 
   const handleDeleteTask = async (id: string) => {
-    if (user?.role === 'Super Admin') {
-      if(window.confirm('Are you sure you want to permanently delete this task?')) {
-        try {
-          await supabase.from('tasks').delete().eq('id', id);
-          setTasks(tasks.filter(t => t.id !== id));
-          showToast('Task successfully deleted');
-          handleCloseModal();
-        } catch(e) {
-          console.error(e);
-          showToast('Error deleting task');
-        }
+    const reason = window.prompt("Please provide a reason for deleting this task:");
+    if (!reason) return;
+    try {
+      await supabase.from('deletion_requests').insert([{
+         item_type: 'Task',
+         item_id: id,
+         requested_by: user?.id,
+         reason: reason,
+         status: 'Pending'
+      }]);
+      setTasks(prev => prev.filter(t => t.id !== id));
+      
+      // Update cache so switching tabs doesn't show it again before approval
+      const cached = getCachedData('tasks_data');
+      if (cached) {
+         setCachedData('tasks_data', cached.filter((t: any) => t.id !== id));
       }
-    } else {
-      const reason = window.prompt("Please provide a reason for deleting this task:");
-      if (!reason) return;
-      try {
-        await supabase.from('deletion_requests').insert([{
-           item_type: 'Task',
-           item_id: id,
-           requested_by: user?.id,
-           reason: reason,
-           status: 'Pending'
-        }]);
-        setTasks(prev => prev.filter(t => t.id !== id));
-        showToast("Deletion request sent to Super Admin.");
-        handleCloseModal();
-      } catch(e) {
-        console.error(e);
-        showToast("Failed to submit request.");
-      }
+      
+      showToast("Deletion request sent to Super Admin.");
+      handleCloseModal();
+    } catch(e) {
+      console.error(e);
+      showToast("Failed to submit request.");
     }
   };
 
