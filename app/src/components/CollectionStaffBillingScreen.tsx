@@ -329,26 +329,19 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
 
-  // Load transactions from cache synchronously on mount for 0ms delay
-  const cachedTx = getCachedData('tx_data');
   const currentUser = user?.id || '';
   const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUser];
-  const initialTx = cachedTx
-    ? cachedTx.filter((t: any) => !t.created_by || branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy)).map((t: any) => ({
-        metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-        type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
-        status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
-        logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
-      }))
-    : [];
 
+  // CollStaff billing is purely task-driven — never pre-load from transaction cache.
+  // Billing entries are derived from completed tasks only, loaded fresh from DB.
   const cachedDbCust = getCachedData('db_customers');
   const initialDbCust = cachedDbCust
     ? cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by))
     : [];
 
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
+
 
   // Helper: parse a completed task's settlement_condition to extract service fee
   const parseTaskFee = (settlementCondition: string | null): { amount: number; type: string } => {
@@ -378,13 +371,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           branchUserIds = [currentUser];
         }
 
-        // Fetch transactions
-        const { data: txData } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        // Fetch completed tasks (authoritative source of service fees)
+        // Fetch completed tasks ONLY — CollStaff billing is purely task-driven.
+        // No transactions are fetched here to prevent orphaned bills.
         const { data: tasksData } = await supabase
           .from('tasks')
           .select('*')
@@ -433,25 +421,12 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           }
         }
 
-        // Include transactions, exclude those whose amount is wrong (old task-creation-time entries)
-        let txEntries: Transaction[] = [];
-        if (txData) {
-          setCachedData('tx_data', txData);
-          const filtered = txData.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
-          txEntries = filtered.map((t: any) => ({
-            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
-            customerPhone: t.customer_phone, customerAddress: t.customer_address,
-            type: t.type, workType: t.work_type,
-            amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
-            status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight,
-            settlementCondition: t.settlement_condition, logoName: t.logo_name, carat: t.carat,
-            pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
-          }));
-        }
+        // CollStaff billing is PURELY task-driven:
+        // Only show billing entries derived from completed tasks.
+        // Never show raw transactions — this prevents orphaned bills appearing
+        // when there are no corresponding tasks.
+        setTransactions(taskBillingEntries);
 
-        // Merge: task-derived entries take priority
-        const merged = [...taskBillingEntries, ...txEntries];
-        setTransactions(merged);
 
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
