@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { getCachedData, setCachedData } from '../cache';
 
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -101,9 +102,26 @@ export const SuperAdminAlertsScreen: React.FC = () => {
      try {
        const req = alert.originalReq;
        const tableName = req.item_type === 'Transaction' ? 'transactions' : 'tasks';
+       
+       // Instant UI update
+       setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
+       
+       // Instant Cache Update so if Super Admin switches tabs immediately, the data is already gone
+       if (tableName === 'tasks') {
+          const cachedTasks = getCachedData('tasks_data');
+          if (cachedTasks) {
+             setCachedData('tasks_data', cachedTasks.filter((t: any) => t.id !== req.item_id));
+          }
+       } else if (tableName === 'transactions') {
+          const cachedTx = getCachedData('tx_data');
+          if (cachedTx) {
+             setCachedData('tx_data', cachedTx.filter((t: any) => t.id !== req.item_id));
+          }
+       }
+       
        await supabase.from(tableName).delete().eq('id', req.item_id);
        await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', req.id);
-       setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
+       
        window.alert("Deletion Approved and executed successfully.");
      } catch(e) {
        console.error(e);
