@@ -35,10 +35,11 @@ interface Task {
   carat?: string;
   pointSuggestion?: string;
   createdBy?: string;
-  metal?: string;
+  metal: 'Gold' | 'Silver';
   totalWeight?: string;
   pieceCategories?: Record<string, string>;
   images?: string[];
+  auditImages?: string[];
 }
 
 const getWorkIcon = (workType: string) => {
@@ -154,7 +155,7 @@ interface TaskDetailsModalProps {
   onUpdateStatus: (task: Task, action?: string) => void;
   onDeleteTask: (id: string) => void;
   isAdminOrSuper?: boolean;
-  onProcessTask?: (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => void;
+  onProcessTask?: (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string }) => void;
   onFinalizePricing?: (task: Task, finalPrice: string) => void;
 }
 
@@ -164,6 +165,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const { user } = useSession();
   const userRole = user?.role;
 
+  const [impureWeightInput, setImpureWeightInput] = useState('');
   const [purityInput, setPurityInput] = useState('');
   const [pureWeightInput, setPureWeightInput] = useState('');
   const [settlementInput, setSettlementInput] = useState('Only Tunch');
@@ -171,6 +173,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
   useEffect(() => {
     if (task) {
+      setImpureWeightInput(task.impureWeight || '');
       setPurityInput(task.purity || '');
       setPureWeightInput(task.pureWeight || '');
       setSettlementInput(task.settlementCondition || 'Only Tunch');
@@ -369,31 +372,59 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             )}
           </div>
 
-          {/* Mandatory Image Gallery Section */}
-          {task.images && task.images.length > 0 && (
-            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Uploaded Pieces ({task.images.length}) *</p>
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
-                {task.images.map((imgUrl, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-outline-variant/20 shrink-0 bg-surface-container shadow-sm cursor-pointer group" onClick={() => window.open(imgUrl, '_blank')}>
-                    <img src={imgUrl} alt={`Piece ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="material-symbols-outlined text-white text-sm">visibility</span>
+          {/* Image Gallery Sections */}
+          <div className="space-y-3">
+            {task.images && task.images.length > 0 && (
+              <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Collection Staff Images ({task.images.length})</p>
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
+                  {task.images.map((imgUrl, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-outline-variant/20 shrink-0 bg-surface-container shadow-sm cursor-pointer group" onClick={() => window.open(imgUrl, '_blank')}>
+                      <img src={imgUrl} alt={`Collection Piece ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="material-symbols-outlined text-white text-sm">visibility</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            
+            {task.auditImages && task.auditImages.length > 0 && (
+              <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary/5 space-y-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary mb-1">Staff Audit Images ({task.auditImages.length})</p>
+                <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1">
+                  {task.auditImages.map((imgUrl, idx) => (
+                    <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-secondary/30 shrink-0 bg-surface-container shadow-sm cursor-pointer group" onClick={() => window.open(imgUrl, '_blank')}>
+                      <img src={imgUrl} alt={`Audit Piece ${idx + 1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <span className="material-symbols-outlined text-white text-sm">visibility</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Section: Staff Processing Panel */}
-          {task.status === 'Pending' && userRole === 'Staff' && (
+          {(task.status === 'Pending' || task.status === 'In Progress') && userRole === 'Staff' && (
             <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
               
               {task.workType === 'Tunch' ? (
                 <>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="mb-3">
+                    <span className={lbl}>Final Impure Weight (g) *</span>
+                    <input 
+                      type="number" step="0.001" 
+                      value={impureWeightInput} 
+                      onChange={e => setImpureWeightInput(e.target.value)}
+                      placeholder="e.g. 12.5" 
+                      className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mb-3">
                     <div>
                       <span className={lbl}>Purity (%) *</span>
                       <input 
@@ -487,11 +518,11 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           ) : task.status === 'Pending' && userRole === 'Staff' ? (
             <button 
               onClick={() => {
-                if (task.workType === 'Tunch' && (!purityInput.trim() || !pureWeightInput.trim())) {
-                  alert('Please enter purity and pure weight.');
+                if (task.workType === 'Tunch' && (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim())) {
+                  alert('Please enter final impure weight, purity, and pure output before completing.');
                   return;
                 }
-                onProcessTask?.(task, { purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput });
+                onProcessTask?.(task, { impureWeight: impureWeightInput, purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput });
               }}
               className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -580,7 +611,7 @@ export const StaffTasksScreen: React.FC = () => {
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
         broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images
+        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
       }))
     : [];
 
@@ -621,7 +652,7 @@ export const StaffTasksScreen: React.FC = () => {
             impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
             broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
             settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images
+            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
           })));
         } else {
           setTasks([]);
@@ -724,7 +755,7 @@ export const StaffTasksScreen: React.FC = () => {
      }
   };
 
-  const handleProcessTask = async (task: Task, details: { purity: string; pureWeight: string; settlementCondition: string }) => {
+  const handleProcessTask = async (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string }) => {
     try {
       const condition = details.settlementCondition || task.settlementCondition || '';
       const needsCash = condition.toLowerCase().includes('cash');
@@ -732,6 +763,7 @@ export const StaffTasksScreen: React.FC = () => {
       const progress = needsCash ? 80 : 100;
 
       await supabase.from('tasks').update({
+        impure_weight: details.impureWeight || task.impureWeight,
         purity: details.purity || task.purity,
         pure_weight: details.pureWeight || task.pureWeight,
         settlement_condition: condition,
@@ -741,6 +773,7 @@ export const StaffTasksScreen: React.FC = () => {
 
       setTasks(prev => prev.map(t => t.id === task.id ? {
         ...t,
+        impureWeight: details.impureWeight || task.impureWeight,
         purity: details.purity || task.purity,
         pureWeight: details.pureWeight || task.pureWeight,
         settlementCondition: condition,
