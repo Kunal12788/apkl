@@ -90,7 +90,8 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: new Date().toISOString().split('T')[0],
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: data.feeStatus || 'Paid',
-                details: 'Service Fee'
+                details: 'Service Fee',
+                created_by: user?.id || ''
               };
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
               if (txnError) console.error('Transaction Insert Error:', txnError);

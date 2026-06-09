@@ -284,12 +284,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <p className={val}>{task.pieces}</p>
                   </div>
                 )}
-                {task.settlementCondition && !task.settlementCondition.toLowerCase().includes('cash') && (
-                  <div>
-                    <span className={lbl}>Settlement Mode</span>
-                    <p className={val}>{task.settlementCondition}</p>
-                  </div>
-                )}
               </div>
             )}
 
@@ -369,6 +363,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     <p className={val}>{task.pieces}</p>
                   </div>
                 )}
+              </div>
+            )}
+            {task.settlementCondition && (
+              <div className="pt-2 border-t border-outline-variant/10 mt-2">
+                <span className={lbl}>Settlement Mode / Service Fee</span>
+                <p className={val}>{task.settlementCondition}</p>
               </div>
             )}
           </div>
@@ -843,7 +843,7 @@ export const StaffTasksScreen: React.FC = () => {
         logo_name: task.logoName,
         carat: task.carat,
         point_suggestion: task.pointSuggestion,
-        created_by: task.createdBy || ''
+        created_by: task.createdBy || user?.id || ''
       };
       await supabase.from('transactions').insert([newTxn]);
       showToast('Task completed & Service Fee billed successfully.');
@@ -894,7 +894,7 @@ export const StaffTasksScreen: React.FC = () => {
         logo_name: task.logoName,
         carat: task.carat,
         point_suggestion: task.pointSuggestion,
-        created_by: task.createdBy || ''
+        created_by: task.createdBy || user?.id || ''
       };
 
       await supabase.from('transactions').insert([newTxn]);
