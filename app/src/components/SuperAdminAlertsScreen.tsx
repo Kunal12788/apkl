@@ -7,24 +7,29 @@ export const SuperAdminAlertsScreen: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'unresolved' | 'resolved'>('all');
   const [alerts, setAlerts] = useState<any[]>([]);
   
+  const fetchAlerts = async () => {
+    const { data, error } = await supabase.from('deletion_requests').select(`*, users (name)`).order('created_at', { ascending: false });
+    if (!error && data) {
+       const formattedAlerts = data.map(req => ({
+          id: req.id,
+          status: req.status === 'Pending' ? 'unresolved' : 'resolved',
+          severity: 'critical',
+          type: 'system',
+          timestamp: req.created_at,
+          title: `Deletion Request: ${req.item_type} ${req.item_id}`,
+          description: `Requested by ${req.users?.name || req.requested_by}. Reason: ${req.reason || 'None provided.'}`,
+          originalReq: req
+       }));
+       setAlerts(formattedAlerts);
+    }
+  };
+
   useEffect(() => {
-    const fetchAlerts = async () => {
-      const { data, error } = await supabase.from('deletion_requests').select(`*, users (name)`).order('created_at', { ascending: false });
-      if (!error && data) {
-         const formattedAlerts = data.map(req => ({
-            id: req.id,
-            status: req.status === 'Pending' ? 'unresolved' : 'resolved',
-            severity: 'critical',
-            type: 'system',
-            timestamp: req.created_at,
-            title: `Deletion Request: ${req.item_type} ${req.item_id}`,
-            description: `Requested by ${req.users?.name || req.requested_by}. Reason: ${req.reason || 'None provided.'}`,
-            originalReq: req
-         }));
-         setAlerts(formattedAlerts);
-      }
-    };
     fetchAlerts();
+    window.addEventListener('databaseSync', fetchAlerts);
+    return () => {
+      window.removeEventListener('databaseSync', fetchAlerts);
+    };
   }, []);
 
   // Filter alerts based on selection

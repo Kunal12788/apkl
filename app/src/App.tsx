@@ -176,9 +176,9 @@ function AppContent() {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    if (!user || (user.role !== 'Collection Staff' && user.role !== 'Staff')) return;
+    if (!user) return;
 
-    const customerChannel = supabase.channel('customer_realtime_approvals')
+    const realtimeChannel = supabase.channel('system_realtime_events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
          const newRecord = payload.new;
          const oldRecord = payload.old;
@@ -187,7 +187,7 @@ function AppContent() {
          window.dispatchEvent(new CustomEvent('databaseSync'));
 
          if (newRecord && newRecord.status === 'Approved' && (!oldRecord || oldRecord.status !== 'Approved')) {
-            if (newRecord.created_by === user.id || user.role === 'Collection Staff') {
+            if ((user.role === 'Collection Staff' || user.role === 'Staff') && (newRecord.created_by === user.id || user.role === 'Collection Staff')) {
                toast.custom((t) => (
                  <div 
                    className={`${
@@ -222,7 +222,7 @@ function AppContent() {
       .subscribe();
 
     return () => {
-       supabase.removeChannel(customerChannel);
+       supabase.removeChannel(realtimeChannel);
     };
   }, [user]);
 

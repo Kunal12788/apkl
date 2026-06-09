@@ -147,6 +147,11 @@ export const SuperAdminDashboardScreen: React.FC = () => {
       }
     };
     fetchData();
+
+    window.addEventListener('databaseSync', fetchData);
+    return () => {
+      window.removeEventListener('databaseSync', fetchData);
+    };
   }, [userId, isFullyAuthenticated]);
 
 
