@@ -29,11 +29,12 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
   if (!isOpen || !collectionTask) return null;
 
   const handleCheck = () => {
+    const taskWeight = parseFloat(collectionTask.impureWeight || collectionTask.totalWeight || collectionTask.weight || '0');
+    const taskPieces = String(collectionTask.pieces || '1');
+    
     const isMatch = 
-      formData.pieces === collectionTask.pieces &&
-      parseFloat(formData.weight) === parseFloat(collectionTask.weight) &&
-      formData.purity === collectionTask.purity &&
-      formData.category === collectionTask.category;
+      String(formData.pieces) === taskPieces &&
+      parseFloat(formData.weight || '0') === taskWeight;
     
     setResult(isMatch ? 'MATCH' : 'MISMATCH');
   };
@@ -74,9 +75,22 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                  <span className="text-[10px] font-bold text-outline uppercase">Collection ID</span>
                  <span className="text-[10px] font-bold text-primary">{collectionTask.id}</span>
               </div>
-              <div className="flex justify-between items-center">
-                 <span className="text-[10px] font-bold text-outline uppercase">Customer</span>
-                 <span className="text-sm font-bold text-primary">{collectionTask.customerName}</span>
+              <div className="flex justify-between items-start">
+                 <span className="text-[10px] font-bold text-outline uppercase mt-0.5">Customer</span>
+                 <div className="text-right">
+                   <p className="text-sm font-bold text-primary">{collectionTask.customerName}</p>
+                   {collectionTask.customerPhone && <p className="text-[10px] font-medium text-outline">{collectionTask.customerPhone}</p>}
+                 </div>
+              </div>
+              {collectionTask.customerAddress && (
+                 <div className="flex justify-between items-start mt-1">
+                    <span className="text-[10px] font-bold text-outline uppercase">Address</span>
+                    <span className="text-[11px] font-medium text-primary text-right max-w-[200px]">{collectionTask.customerAddress}</span>
+                 </div>
+              )}
+              <div className="flex justify-between items-center mt-1 pt-2 border-t border-primary/10">
+                 <span className="text-[10px] font-bold text-outline uppercase">Category</span>
+                 <span className="text-xs font-black text-secondary uppercase tracking-widest">{collectionTask.workType}</span>
               </div>
            </div>
 
@@ -107,18 +121,12 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                     <input className={inp()} placeholder="0.00" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} />
                  </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                 <div>
-                    <label className={lbl}>Purity</label>
-                    <select className={inp()} value={formData.purity} onChange={e => setFormData({...formData, purity: e.target.value})}>
-                       {['24K', '22K', '18K', '14K', '9K'].map(k => <option key={k} value={k}>{k}</option>)}
-                    </select>
-                 </div>
-                 <div>
-                    <label className={lbl}>Category</label>
-                    <select className={inp()} value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                       {['TUNCH', 'MARKING', 'SHOULDERING'].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+              
+              <div className="mt-4">
+                 <label className={lbl}>Upload Audit Images *</label>
+                 <div className="border-2 border-dashed border-outline-variant/40 rounded-xl p-4 text-center cursor-pointer hover:bg-surface-container/50 transition-colors">
+                    <span className="material-symbols-outlined text-outline text-2xl mb-1">add_a_photo</span>
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Click to Upload</p>
                  </div>
               </div>
            </SectionCard>
