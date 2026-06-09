@@ -28,6 +28,7 @@ interface Transaction {
   carat?: string;
   pieces?: string;
   pointSuggestion?: 'Gold' | 'Silver';
+  createdBy?: string;
 }
 
 interface DbCustomer {
@@ -91,10 +92,40 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     if (!window.confirm("Are you sure you want to mark this service fee as Paid?")) return;
     setIsPaying(true);
     try {
-      await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
+      if (txn.id.startsWith('BILL-')) {
+        // Task-derived billing entry: insert a new Paid transaction to record the collection
+        const taskId = txn.id.replace('BILL-', '');
+        const newTxn = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          customer_id: txn.customerId,
+          customer_name: txn.customerName,
+          customer_phone: txn.customerPhone || '',
+          customer_address: txn.customerAddress || '',
+          metal: txn.metal || 'Gold',
+          type: txn.type || 'Service Fee',
+          work_type: txn.workType || 'Tunch',
+          amount: txn.amount.replace(/[^٠-٩0-9.]/g, '').replace(/,/g, '') || '0',
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Paid',
+          details: `Service fee collected for task ${taskId}.`,
+          settlement_condition: txn.settlementCondition,
+          pieces: txn.pieces || '1',
+          created_by: txn.createdBy || user?.id || ''
+        };
+        await supabase.from('transactions').insert([newTxn]);
+        // Also update the task's settlement_condition to mark it as collected
+        await supabase.from('tasks').update({
+          settlement_condition: (txn.settlementCondition || '') + ' [COLLECTED]'
+        }).eq('id', taskId);
+      } else {
+        await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
+      }
       alert("Successfully marked as Paid. Refreshing...");
       window.location.reload();
     } catch(e) {
+      console.error(e);
       alert("Failed to update status.");
     }
     setIsPaying(false);
@@ -319,8 +350,17 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
 
+  // Helper: parse a completed task's settlement_condition to extract service fee
+  const parseTaskFee = (settlementCondition: string | null): { amount: number; type: string } => {
+    if (!settlementCondition) return { amount: 0, type: 'Service Fee' };
+    const match = settlementCondition.match(/[₹Rs\.\s]*(\d+(?:[,.]\d+)*)/);
+    const amount = match ? parseFloat(match[1].replace(/,/g, '')) : 0;
+    const type = settlementCondition.toLowerCase().includes('cash') ? 'Cash' : 'Service Fee';
+    return { amount, type };
+  };
+
   useEffect(() => {
-    const loadTransactions = async () => {
+    const loadBillingData = async () => {
       if (!isFullyAuthenticated) return;
       try {
         let branchUserIds: string[] = [];
@@ -338,34 +378,83 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           branchUserIds = [currentUser];
         }
 
-        const { data, error } = await supabase
+        // Fetch transactions
+        const { data: txData } = await supabase
           .from('transactions')
           .select('*')
           .order('created_at', { ascending: false });
-        if (error) throw error;
-        
-        if (data) {
-          const newTxHash = JSON.stringify(data);
-          const oldTxHash = getCachedData('col_tx_data_hash');
-          if (newTxHash !== oldTxHash) {
-            setCachedData('col_tx_data_hash', newTxHash);
-            setCachedData('tx_data', data);
 
-            const filtered = data.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+        // Fetch completed tasks (authoritative source of service fees)
+        const { data: tasksData } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('status', 'Completed')
+          .order('created_at', { ascending: false });
 
-            setTransactions(filtered.map(t => ({
-                metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-                type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
-                status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight, settlementCondition: t.settlement_condition,
-                logoName: t.logo_name, carat: t.carat, pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
-            })));
+        // Convert completed tasks with fees into billing entries
+        const taskBillingEntries: Transaction[] = [];
+        if (tasksData) {
+          const filteredTasks = tasksData.filter((t: any) => branchUserIds.includes(t.created_by));
+          for (const t of filteredTasks) {
+            const condition = t.settlement_condition || '';
+            // Skip tasks that have already been marked as collected (a real Paid txn was inserted)
+            if (condition.includes('[COLLECTED]')) continue;
+            const { amount, type } = parseTaskFee(condition);
+            if (amount > 0) {
+              const isoDate = t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+              const dateLabel = t.created_at
+                ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'Today';
+              taskBillingEntries.push({
+                metal: t.metal || 'Gold',
+                id: `BILL-${t.id}`,
+                customerId: t.customer_id || 'CUST-COL',
+                customerName: t.customer_name,
+                customerPhone: t.customer_phone || '',
+                customerAddress: t.customer_address || '',
+                type: type as any,
+                workType: (t.work_type as any) || 'Tunch',
+                amount: `₹${amount.toLocaleString('en-IN')}`,
+                date: dateLabel,
+                isoDate: isoDate,
+                timestamp: t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                status: 'Unpaid',
+                details: `Task ${t.id} completed. Settlement: ${condition}`,
+                settlementCondition: condition,
+                impureWeight: t.impure_weight,
+                pieces: t.pieces,
+                productType: t.product_type,
+                carat: t.carat,
+                logoName: t.logo_name,
+                pointSuggestion: t.point_suggestion,
+                createdBy: t.created_by,
+              });
+            }
           }
-        } else {
-          setTransactions([]);
         }
 
+        // Include transactions, exclude those whose amount is wrong (old task-creation-time entries)
+        let txEntries: Transaction[] = [];
+        if (txData) {
+          setCachedData('tx_data', txData);
+          const filtered = txData.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+          txEntries = filtered.map((t: any) => ({
+            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
+            customerPhone: t.customer_phone, customerAddress: t.customer_address,
+            type: t.type, workType: t.work_type,
+            amount: `₹${Number(t.amount).toLocaleString('en-IN')}`, date: t.date, isoDate: t.iso_date, timestamp: t.timestamp,
+            status: t.status, details: t.details, productType: t.product_type, impureWeight: t.impure_weight,
+            settlementCondition: t.settlement_condition, logoName: t.logo_name, carat: t.carat,
+            pieces: t.pieces, pointSuggestion: t.point_suggestion, createdBy: t.created_by
+          }));
+        }
+
+        // Merge: task-derived entries take priority
+        const merged = [...taskBillingEntries, ...txEntries];
+        setTransactions(merged);
+
       } catch (err) {
-        console.error('Error fetching collection transactions:', err);
+        console.error('Error fetching collection billing data:', err);
       }
     };
 
@@ -407,11 +496,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
     };
 
-    loadTransactions();
+    loadBillingData();
     loadDbCustomers();
 
     const handleSync = () => {
-      loadTransactions();
+      loadBillingData();
       loadDbCustomers();
     };
     window.addEventListener('databaseSync', handleSync);

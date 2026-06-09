@@ -461,16 +461,22 @@ export const StaffBillingScreen: React.FC = () => {
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
-  React.useEffect(() => {
-    const loadTransactions = async () => {
-      if (cachedTx) {
-        // Already initialized synchronously on mount! We can skip duplicate setTransactions.
-      }
+  // Helper: parse a completed task's settlement_condition to extract service fee amount
+  const parseTaskFee = (settlementCondition: string | null): { amount: number; type: string } => {
+    if (!settlementCondition) return { amount: 0, type: 'Service Fee' };
+    // Matches patterns like: "Service Fee - ₹5000", "Cash - ₹500", "Cash"
+    const match = settlementCondition.match(/[₹Rs\.\s]*(\d+(?:[,.]\d+)*)/);
+    const amount = match ? parseFloat(match[1].replace(/,/g, '')) : 0;
+    const lower = settlementCondition.toLowerCase();
+    const type = lower.includes('cash') ? 'Cash' : 'Service Fee';
+    return { amount, type };
+  };
 
+  React.useEffect(() => {
+    const loadBillingData = async () => {
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
       if (!isFullyAuthenticated) return;
 
-      // 2. Fetch fresh in background
       try {
         let branchUserIds: string[] = [];
         if (!isSuperSa && user?.branch_id) {
@@ -487,30 +493,80 @@ export const StaffBillingScreen: React.FC = () => {
           branchUserIds = [currentUserId];
         }
 
-        const { data, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-        if (error) throw error;
-        if (data) {
-          const newTxHash = JSON.stringify(data);
-          const oldTxHash = getCachedData('tx_data_hash');
-          if (newTxHash !== oldTxHash) {
-            setCachedData('tx_data_hash', newTxHash);
-            setCachedData('tx_data', data); // Update cache
-            let filtered = data;
-            if (!isSuperSa && user?.branch_id) {
-              filtered = data.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
-            }
-            setTransactions(filtered.map((t: any) => ({
-              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-              date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
-              impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
-            })));
+        // Fetch transactions
+        const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+        
+        // Fetch completed tasks (the source of truth for service fees)
+        const { data: tasksData } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('status', 'Completed')
+          .order('created_at', { ascending: false });
+
+        // Convert completed tasks with fees into billing entries
+        const taskBillingEntries: Transaction[] = [];
+        if (tasksData) {
+          let filteredTasks = tasksData;
+          if (!isSuperSa && user?.branch_id) {
+            filteredTasks = tasksData.filter((t: any) => branchUserIds.includes(t.created_by));
           }
-        } else {
-          setTransactions([]);
+          for (const t of filteredTasks) {
+            const condition = t.settlement_condition || '';
+            // Skip tasks already collected (a Paid transaction was created when CollStaff confirmed)
+            if (condition.includes('[COLLECTED]')) continue;
+            const { amount, type } = parseTaskFee(condition);
+            if (amount > 0) {
+              const isoDate = t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
+              const dateLabel = t.created_at
+                ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+                : 'Today';
+              taskBillingEntries.push({
+                metal: t.metal || 'Gold',
+                id: `BILL-${t.id}`,
+                customerId: t.customer_id || 'CUST-COL',
+                customerName: t.customer_name,
+                customerPhone: t.customer_phone || '',
+                customerAddress: t.customer_address || '',
+                type: type as any,
+                workType: (t.work_type as any) || 'Tunch',
+                amount: `₹${amount.toLocaleString('en-IN')}`,
+                date: dateLabel,
+                isoDate: isoDate,
+                timestamp: t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+                status: 'Unpaid',
+                impureWeight: t.impure_weight,
+                pureWeight: t.pure_weight,
+                purityPercentage: t.purity,
+                pieceType: t.product_type,
+                details: `Task ${t.id} completed. Settlement: ${condition}`,
+              });
+            }
+          }
         }
+
+        // Also include transactions (non-task-derived ones)
+        let txEntries: Transaction[] = [];
+        if (txData) {
+          setCachedData('tx_data', txData);
+          let filtered = txData;
+          if (!isSuperSa && user?.branch_id) {
+            filtered = txData.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+          }
+          txEntries = filtered.map((t: any) => ({
+            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
+            customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type,
+            amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+            date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
+            impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+            pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
+          }));
+        }
+
+        // Merge: task billing entries first (authoritative), then transactions
+        const merged = [...taskBillingEntries, ...txEntries];
+        setTransactions(merged);
       } catch (err) {
-        console.error('Error fetching transactions:', err);
+        console.error('Error fetching billing data:', err);
       }
     };
 
@@ -546,11 +602,11 @@ export const StaffBillingScreen: React.FC = () => {
       }
     };
 
-    loadTransactions();
+    loadBillingData();
     loadDbCustomers();
 
     const handleSync = () => {
-      loadTransactions();
+      loadBillingData();
       loadDbCustomers();
     };
     window.addEventListener('databaseSync', handleSync);
