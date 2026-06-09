@@ -223,6 +223,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const handleFinalSubmit = async () => {
     setIsUploading(true);
     let uploadedUrls: string[] = [];
+    const uploadTasks: Promise<any>[] = [];
     
     try {
       const numPieces = parseInt(formData.pieces) || 0;
@@ -231,10 +232,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         if (file) {
           const fileExt = file.name.split('.').pop();
           const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const { error } = await supabase.storage.from('task_images').upload(fileName, file);
-          if (error) throw error;
+          
           const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
           uploadedUrls.push(publicUrl);
+          
+          uploadTasks.push(
+            supabase.storage.from('task_images').upload(fileName, file).catch(err => {
+              console.error("Background image upload failed:", err);
+            })
+          );
         }
       }
 
@@ -247,6 +253,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       } catch (e) {
         console.error('Failed to get task count for serial ID', e);
       }
+
+      // Fire and forget uploads
+      Promise.all(uploadTasks);
 
       onSuccess({ 
         ...formData, 
