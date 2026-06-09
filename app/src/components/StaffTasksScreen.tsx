@@ -155,7 +155,7 @@ interface TaskDetailsModalProps {
   onUpdateStatus: (task: Task, action?: string) => void;
   onDeleteTask: (id: string) => void;
   isAdminOrSuper?: boolean;
-  onProcessTask?: (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string }) => void;
+  onProcessTask?: (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string; serviceFee?: string }) => void;
   onFinalizePricing?: (task: Task, finalPrice: string) => void;
 }
 
