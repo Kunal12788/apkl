@@ -280,7 +280,8 @@ export const StaffDashboardScreen: React.FC = () => {
           customerName: t.customer_name,
           workType: t.work_type,
           assignedTo: t.assigned_to,
-          status: t.status
+          status: t.status,
+          settlementCondition: t.sett_condition || t.settlement_condition
         }));
 
         setRecentTasks(formattedRecent);
@@ -694,8 +695,9 @@ export const StaffDashboardScreen: React.FC = () => {
             ) : (
               recentTasks.map((task) => {
                 const badge = getWorkBadgeColors(task.workType);
+                const isCash = task.settlementCondition?.toLowerCase().includes('cash');
                 return (
-                  <div key={task.id} className="p-4 flex items-center justify-between">
+                  <div key={task.id} className={`p-4 flex items-center justify-between transition-colors ${isCash ? 'bg-[#f0fdf4] hover:bg-[#dcfce7] border-l-4 border-l-[#22c55e]' : 'hover:bg-surface-bright bg-white'}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full ${badge.bg} flex items-center justify-center text-[10px] font-bold ${badge.text} relative overflow-hidden`}>
                         <span className="material-symbols-outlined text-[10px] absolute opacity-20">{badge.icon}</span>

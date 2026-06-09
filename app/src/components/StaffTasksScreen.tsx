@@ -947,7 +947,7 @@ export const StaffTasksScreen: React.FC = () => {
                       setSearchParams({ taskId: task.id, tab: activeTab });
                     }
                   }} 
-                  className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'border border-success/50 bg-success/10 shadow-[0_8px_30px_rgba(22,163,74,0.15)] hover:bg-success/20' : 'border border-outline-variant/10 hover:bg-surface-bright'}`}
+                  className={`p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'cash-luxury-card' : 'luxury-card border border-outline-variant/10 hover:bg-surface-bright'}`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">

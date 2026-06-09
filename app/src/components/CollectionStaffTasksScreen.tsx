@@ -388,7 +388,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
             {filteredTasks.map((task) => {
               const isCash = task.settlementCondition?.toLowerCase().includes('cash');
               return (
-              <div key={task.id} onClick={() => setSelectedTask(task)} className={`luxury-card p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform ${isCash ? 'border-success/50 bg-success/10 shadow-[0_8px_30px_rgba(22,163,74,0.15)]' : 'border-outline-variant/10 bg-white bg-opacity-100'}`}>
+              <div key={task.id} onClick={() => setSelectedTask(task)} className={`p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform ${isCash ? 'cash-luxury-card' : 'luxury-card border-outline-variant/10 bg-white bg-opacity-100'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>

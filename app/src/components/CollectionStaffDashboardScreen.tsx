@@ -16,7 +16,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const initialTasks = cachedTasks 
     ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
-        id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
+        id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date, settlementCondition: t.sett_condition || t.settlement_condition
       }))
     : [];
 
@@ -51,7 +51,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         const taskError = tasksRes.error;
         if (!taskError && tasksData) {
           setTasks(tasksData.map((t: any) => ({
-            id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date
+            id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date, settlementCondition: t.settlement_condition
           })));
 
           // Merge tasks back into in-memory cache
@@ -85,7 +85,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
       if (newTask && newTask.created_by === currentUser) {
         setTasks(prev => {
           const mappedTask = {
-            id: newTask.id, customerName: newTask.customer_name, category: newTask.work_type, pieces: newTask.pieces, status: newTask.status, dateGiven: newTask.date_given, isoDate: newTask.iso_date
+            id: newTask.id, customerName: newTask.customer_name, category: newTask.work_type, pieces: newTask.pieces, status: newTask.status, dateGiven: newTask.date_given, isoDate: newTask.iso_date, settlementCondition: newTask.settlement_condition
           };
           if (prev.some(t => t.id === mappedTask.id)) return prev;
           return [mappedTask, ...prev];
@@ -152,7 +152,8 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     category: t.category || 'TUNCH',
     pieces: t.pieces || '1',
     status: t.status || 'Pending',
-    time: t.dateGiven || 'Just Now'
+    time: t.dateGiven || 'Just Now',
+    settlementCondition: t.settlementCondition
   }));
 
   // 4. Calculate dues
@@ -266,32 +267,35 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           </div>
           <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10">
             {dynamicRecentTasks.length > 0 ? (
-              dynamicRecentTasks.slice(0, 5).map((item, idx) => (
-                <div key={idx} className="p-5 flex items-center justify-between group hover:bg-surface-container-lowest transition-colors border-b last:border-0 border-outline-variant/10">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
-                      {item.category[0]}
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                         <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
-                         <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
+              dynamicRecentTasks.slice(0, 5).map((item, idx) => {
+                const isCash = item.settlementCondition?.toLowerCase().includes('cash');
+                return (
+                  <div key={idx} className={`p-5 flex items-center justify-between group transition-colors border-b last:border-0 border-outline-variant/10 ${isCash ? 'bg-[#f0fdf4] hover:bg-[#dcfce7] border-l-4 border-l-[#22c55e]' : 'hover:bg-surface-container-lowest bg-white'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-black bg-primary/90 text-sm shadow-md`}>
+                        {item.category[0]}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                           <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
+                           <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right flex flex-col items-end gap-1.5">
+                      <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
+                        item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
+                        item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
+                        'bg-error/5 text-error border-error/20'
+                      }`}>
+                        {item.status}
+                      </span>
+                      <p className="text-[8px] text-outline/40 font-bold uppercase tracking-[0.1em]">{item.time}</p>
+                    </div>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-1.5">
-                    <span className={`text-[8px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border ${
-                      item.status === 'Completed' ? 'bg-tertiary/5 text-tertiary border-tertiary/20' : 
-                      item.status === 'In Progress' ? 'bg-secondary/5 text-secondary border-secondary/20' : 
-                      'bg-error/5 text-error border-error/20'
-                    }`}>
-                      {item.status}
-                    </span>
-                    <p className="text-[8px] text-outline/40 font-bold uppercase tracking-[0.1em]">{item.time}</p>
-                  </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="p-8 text-center text-outline text-xs font-medium bg-white">No recent collection assignments.</div>
             )}

@@ -31,7 +31,8 @@ export const CollectionHistoryScreen: React.FC = () => {
           weight: t.weight || t.impure_weight || '0g',
           logo: t.logo_name || t.customer_name?.charAt(0) || '?',
           type: t.product_type || 'Unknown',
-          fee: t.fee_status || 'Due'
+          fee: t.fee_status || 'Due',
+          settlementCondition: t.settlement_condition
         })));
       }
     };
@@ -62,8 +63,10 @@ export const CollectionHistoryScreen: React.FC = () => {
            <span className="text-[10px] font-bold text-outline uppercase tracking-wider">{history.length} Records Found</span>
         </div>
 
-        {history.map((item, idx) => (
-          <div key={idx} className="luxury-card p-5 bg-white border border-outline-variant/10 space-y-4">
+        {history.map((item, idx) => {
+           const isCash = item.settlementCondition?.toLowerCase().includes('cash');
+           return (
+             <div key={idx} className={`p-5 space-y-4 ${isCash ? 'cash-luxury-card' : 'luxury-card bg-white border border-outline-variant/10'}`}>
              <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
                    <div className="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center text-primary font-black text-xs">
@@ -105,7 +108,8 @@ export const CollectionHistoryScreen: React.FC = () => {
                 </button>
              </div>
           </div>
-        ))}
+           );
+         })}
       </main>
 
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
