@@ -342,9 +342,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         let filtered = txData || [];
         filtered = filtered.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
 
-        const mappedTransactions = filtered.map((t: any) => {
+        const mappedTransactions: Transaction[] = filtered.map((t: any) => {
           const details = t.details || '';
-          // Parse pieces count from the details string e.g. "Pieces: 3."
           const piecesMatch = details.match(/Pieces:\s*(\d+)/);
           const parsedPieces = piecesMatch ? piecesMatch[1] : '1';
           return {
@@ -357,9 +356,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             type: t.type || 'Service Fee',
             workType: t.work_type || 'Tunch',
             amount: Number(t.amount).toLocaleString('en-IN'),
-            date: t.date,
-            isoDate: t.iso_date,
-            timestamp: t.timestamp,
+            date: t.date || new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
+            timestamp: t.timestamp || (t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
             status: t.status || 'Unpaid',
             impureWeight: t.impure_weight,
             pureWeight: t.pure_weight,
@@ -374,11 +373,67 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           };
         });
 
-        setTransactions(mappedTransactions);
+        // Fallback: also load completed tasks that may not have a transaction record yet
+        const txTaskIds = new Set(filtered.map((t: any) => t.task_id).filter(Boolean));
+        const { data: completedTasks } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('status', 'Completed')
+          .order('created_at', { ascending: false });
+
+        const filteredTasks = (completedTasks || []).filter((task: any) => {
+          // Only include if this task's creator is in the branch
+          const byBranch = !task.created_by || branchUserIds.includes(task.created_by);
+          // Skip if we already have a real transaction for this task
+          const noTxn = !txTaskIds.has(task.id);
+          return byBranch && noTxn;
+        });
+
+        const taskEntries: Transaction[] = filteredTasks.map((task: any) => {
+          const dateStr = task.created_at
+            ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            : task.date_given || '';
+          const timeStr = task.created_at
+            ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '';
+          const settlementVal = task.settlement_condition || '';
+          const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
+          const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
+          const isPaid = settlementVal.toLowerCase().includes('[collected]') || settlementVal.toLowerCase().includes('paid');
+
+          return {
+            metal: task.metal || 'Gold',
+            id: `TASK-${task.id}`,
+            customerId: task.customer_id || 'CUST-COL',
+            customerName: task.customer_name || 'Walk-in Customer',
+            customerPhone: task.customer_phone,
+            customerAddress: task.customer_address,
+            type: 'Service Fee',
+            workType: task.work_type || 'Tunch',
+            amount: Number(amount).toLocaleString('en-IN'),
+            date: dateStr,
+            isoDate: task.created_at ? task.created_at.split('T')[0] : '',
+            timestamp: timeStr,
+            status: isPaid ? 'Paid' : 'Unpaid',
+            impureWeight: task.impure_weight || task.total_weight,
+            pureWeight: task.pure_weight,
+            purityPercentage: task.purity,
+            pieceType: task.product_type,
+            pieces: task.pieces || '1',
+            pointsCount: task.point_suggestion ? parseInt(task.point_suggestion) : undefined,
+            pointsType: task.metal === 'Silver' ? 'Silver' : 'Gold',
+            caratMarking: task.carat,
+            details: settlementVal,
+            createdBy: task.created_by
+          };
+        });
+
+        setTransactions([...mappedTransactions, ...taskEntries]);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }
     };
+
 
     const loadDbCustomers = async () => {
       if (!isFullyAuthenticated) return;
