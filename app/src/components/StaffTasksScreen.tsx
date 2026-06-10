@@ -1045,6 +1045,7 @@ export const StaffTasksScreen: React.FC = () => {
         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
         customer_id: task.customerId || 'CUST-COL',
         customer_name: task.customerName,
+        task_id: task.id,
         customer_phone: task.customerPhone || '',
         customer_address: task.customerAddress || '',
         metal: task.metal || 'Gold',
