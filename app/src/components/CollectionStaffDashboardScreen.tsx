@@ -151,11 +151,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   unifiedDashboardItems.forEach(t => {
     const pcs = parseInt(t.pieces || '1') || 1;
     const dateStr = t.isoDate || '';
-    const cat = t.category;
+    const cat = (t.category || 'TUNCH').toUpperCase();
     
     // Volume Analysis stats filtered by selected date
     if (dateStr === filterDate) {
-      if (cat === 'TUNCH') tunchPcs += pcs;
+      if (cat === 'TUNCH' || cat === 'PURE' || cat === 'CASH') tunchPcs += pcs;
       else if (cat === 'MARKING') markingPcs += pcs;
       else if (cat === 'SHOULDERING') shoulderPcs += pcs;
     }

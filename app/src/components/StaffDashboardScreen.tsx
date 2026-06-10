@@ -216,9 +216,10 @@ export const StaffDashboardScreen: React.FC = () => {
             if (tx.type === 'Cash') cash += amt;
             if (tx.type === 'UPI') upi += amt;
 
-            if (tx.work_type === 'Tunch') revTunch += amt;
-            if (tx.work_type === 'Marking') revMarking += amt;
-            if (tx.work_type === 'Shouldering') revShouldering += amt;
+            const wt = (tx.work_type || 'Tunch').toUpperCase();
+            if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') revTunch += amt;
+            else if (wt === 'MARKING') revMarking += amt;
+            else if (wt === 'SHOULDERING') revShouldering += amt;
           }
         });
         setCashCollection(cash);
@@ -237,9 +238,10 @@ export const StaffDashboardScreen: React.FC = () => {
 
         filteredTasks.forEach(task => {
           const isDone = task.status === 'Completed';
-          if (task.work_type === 'Tunch') { isDone ? tunch.processed++ : tunch.pending++; }
-          if (task.work_type === 'Marking') { isDone ? marking.processed++ : marking.pending++; }
-          if (task.work_type === 'Shouldering') { isDone ? shouldering.processed++ : shouldering.pending++; }
+          const taskWt = (task.work_type || 'Tunch').toUpperCase();
+          if (taskWt === 'TUNCH' || taskWt === 'PURE' || taskWt === 'CASH') { isDone ? tunch.processed++ : tunch.pending++; }
+          else if (taskWt === 'MARKING') { isDone ? marking.processed++ : marking.pending++; }
+          else if (taskWt === 'SHOULDERING') { isDone ? shouldering.processed++ : shouldering.pending++; }
           
           if (task.source === 'Customer') source.customers++;
           else if (task.source === 'Admin') source.admin++;
