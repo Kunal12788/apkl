@@ -81,6 +81,99 @@ const getWorkColor = (workType: string) => {
   }
 };
 
+const FilterChip = ({ label, icon, value, searchQuery, setSearchQuery }: { label: string, icon: string, value: string, searchQuery: string, setSearchQuery: (val: string) => void }) => {
+  const isActive = searchQuery.toLowerCase() === value.toLowerCase();
+  return (
+    <div onClick={() => setSearchQuery(isActive ? '' : value)} className={`flex items-center gap-1.5 border rounded-full px-4 py-2 flex-shrink-0 premium-shadow cursor-pointer transition-colors ${isActive ? 'bg-primary border-primary text-white' : 'bg-white border-outline-variant/30 text-primary hover:bg-surface-bright'}`}>
+      <span className="material-symbols-outlined text-[16px]">{icon}</span>
+      <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+    </div>
+  );
+};
+
+const SearchAndFilterSection = ({ 
+  placeholder = "Search...", 
+  searchQuery, setSearchQuery,
+  startDate, setStartDate,
+  endDate, setEndDate
+}: { 
+  placeholder?: string,
+  searchQuery: string, setSearchQuery: (v: string) => void,
+  startDate: string, setStartDate: (v: string) => void,
+  endDate: string, setEndDate: (v: string) => void
+}) => (
+  <div className="space-y-4 mb-4">
+    <div className="relative">
+      <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+      <input 
+        type="text" 
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
+      />
+      {searchQuery && (
+        <span onClick={() => setSearchQuery('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
+      )}
+    </div>
+    
+    <div className="flex items-center gap-2">
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">From Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            onClick={(e) => {
+              try {
+                if ('showPicker' in HTMLInputElement.prototype) {
+                  (e.target as HTMLInputElement).showPicker();
+                }
+              } catch (err) {}
+            }}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
+      </div>
+      <div className="flex-1 relative mt-1 group">
+        <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">To Date</span>
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+          <input 
+            type="date" 
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            onClick={(e) => {
+              try {
+                if ('showPicker' in HTMLInputElement.prototype) {
+                  (e.target as HTMLInputElement).showPicker();
+                }
+              } catch (err) {}
+            }}
+            className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+          />
+        </div>
+      </div>
+      {(startDate || endDate) && (
+        <button onClick={() => { setStartDate(''); setEndDate(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0 border border-error/20 active:scale-95 transition-transform">
+          <span className="material-symbols-outlined text-sm">close</span>
+        </button>
+      )}
+    </div>
+    
+    <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2">
+      <FilterChip label="Unpaid" icon="warning" value="Unpaid" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Paid" icon="check_circle" value="Paid" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Cash" icon="payments" value="Cash" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="UPI" icon="qr_code_2" value="UPI" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Tunch" icon="science" value="Tunch" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Marking" icon="verified" value="Marking" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+    </div>
+  </div>
+);
+
 // Sleek bottom sheet details modal
 interface BillingDetailsModalProps {
   isOpen: boolean;
@@ -317,8 +410,10 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const { user, isFullyAuthenticated } = useSession();
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
+  const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -614,7 +709,34 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
   const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
-  const filteredTransactions = transactions.filter(t => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  
+  const matchesSearch = (txn: Transaction) => {
+    let matchesText = true;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      matchesText = Boolean(
+        txn.customerName.toLowerCase().includes(q) ||
+        txn.id.toLowerCase().includes(q) ||
+        txn.amount.toLowerCase().includes(q) ||
+        txn.status.toLowerCase().includes(q) ||
+        txn.type.toLowerCase().includes(q) ||
+        txn.workType.toLowerCase().includes(q) ||
+        (txn.impureWeight?.toLowerCase().includes(q)) ||
+        (txn.pureWeight?.toLowerCase().includes(q)) ||
+        (txn.purityPercentage?.toLowerCase().includes(q)) ||
+        (txn.pieceType?.toLowerCase().includes(q)) ||
+        (txn.caratMarking?.toLowerCase().includes(q))
+      );
+    }
+
+    let matchesDate = true;
+    if (startDate && txn.isoDate < startDate) matchesDate = false;
+    if (endDate && txn.isoDate > endDate) matchesDate = false;
+
+    return matchesText && matchesDate;
+  };
+
+  const filteredTransactions = transactions.filter(matchesSearch);
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
@@ -794,33 +916,84 @@ export const CollectionStaffBillingScreen: React.FC = () => {
               </div>
           </div>
         ) : activeTab === 'all' ? (
-          <div className="space-y-4">
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search transactions..." className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary luxury-card focus:outline-none" />
-            </div>
+          <div className="space-y-4 animate-fade-in">
+            <SearchAndFilterSection 
+              placeholder="Search by weight, purity, ID..." 
+              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+              startDate={startDate} setStartDate={setStartDate}
+              endDate={endDate} setEndDate={setEndDate}
+            />
 
+            <div className="flex justify-between items-center px-1 mt-2">
+              <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold">Transaction Ledger</h3>
+            </div>
+            
             <div className="space-y-3">
-              {filteredTransactions.map(txn => (
-                <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
-                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${txn.status === 'Unpaid' ? 'bg-error' : 'bg-tertiary'}`}></div>
-                  <div className="flex justify-between items-start pl-2">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
-                        <span className="material-symbols-outlined text-xl">{getWorkIcon(txn.workType)}</span>
+              {filteredTransactions.map((txn) => {
+                const isPending = txn.status === 'Unpaid';
+                
+                return (
+                  <div key={txn.id} onClick={() => setSelectedTxn(txn)} className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-0.5 border ${isPending ? 'border-error/20 bg-error/5' : 'border-[#003366]/5 bg-white'}`}>
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5 ${isPending ? 'bg-error' : 'bg-secondary'}`}></div>
+                    
+                    <div className="flex justify-between items-start mb-3 pl-1">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPending ? 'bg-error-container/30 text-error' : getWorkColor(txn.workType)}`}>
+                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType)}</span>
+                        </div>
+                        <div>
+                          <p className={`font-headline font-bold text-sm ${isPending ? 'text-error' : 'text-primary'}`}>{txn.customerName}</p>
+                          <p className="text-[9px] text-outline font-medium tracking-wide uppercase mt-0.5">{txn.id} • {txn.date}, {txn.timestamp}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-headline font-bold text-sm text-primary">{txn.customerName}</p>
-                        <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.id} • {txn.date}</p>
+                      <div className="text-right">
+                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>₹ {txn.amount.replace(/₹/g, '').trim()}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1">
+                          {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-tertiary/10 text-tertiary' : 'bg-error/10 text-error'
+                          }`}>
+                            {txn.status}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-headline text-base font-bold text-primary">₹ {txn.amount}</p>
-                      <span className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${txn.status === 'Unpaid' ? 'bg-error/10 text-error' : 'bg-tertiary/10 text-tertiary'}`}>{txn.status}</span>
+                  
+                    <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">build</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
+                      </div>
+                      
+                      {txn.workType === 'Tunch' && txn.impureWeight && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
+                        </div>
+                      )}
+                      {txn.workType === 'Marking' && txn.caratMarking && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">verified</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.caratMarking}</span>
+                        </div>
+                      )}
+                      {txn.workType === 'Shouldering' && txn.pointsCount && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">join_inner</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pointsCount} pts</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+              {filteredTransactions.length === 0 && (
+                <div className="p-8 text-center text-outline text-sm font-medium">No transactions found.</div>
+              )}
             </div>
           </div>
         ) : (
