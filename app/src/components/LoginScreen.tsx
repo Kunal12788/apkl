@@ -6,22 +6,8 @@ import { sendActivityNotification } from '../services/notificationService';
 import { triggerAppleToast } from './AppleToast';
 import { requestOSNotificationPermission, sendOSNotification } from '../utils/osNotifications';
 
-const guessRoleFromEmail = (email: string) => {
-  const emailLower = email.toLowerCase().trim();
-  if (emailLower === 'ssrcreations41@gmail.com' || emailLower.includes('super') || emailLower.includes('director')) {
-    return { id: 'SUPER-temp', name: 'Chief Super Admin', role: 'Super Admin' };
-  }
-  if (emailLower === 'vikram@auroradivine.com' || emailLower.includes('coll') || emailLower.includes('courier')) {
-    return { id: 'COLL-temp', name: 'Collection Staff', role: 'Collection Staff' };
-  }
-  if (emailLower === 'k9836282432@gmail.com' || emailLower.includes('admin')) {
-    return { id: 'ADMIN-temp', name: 'Branch Admin', role: 'Admin' };
-  }
-  return { id: 'STAFF-temp', name: 'Staff Member', role: 'Staff' };
-};
-
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
-  const { login, logout, authError } = useSession();
+  const { login, authError } = useSession();
   const [showPassword, setShowPassword] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -42,7 +28,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     requestOSNotificationPermission();
   }, []);
 
-  const handleInitialize = () => {
+  const handleInitialize = async () => {
     if (isAuthenticating) return;
     
     const emailLower = email.toLowerCase().trim();
@@ -55,137 +41,119 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     setIsAuthenticating(true);
     setHasError(false);
     
-    // 1. Instantly guess the role and log in optimistically (isFullyAuthenticated = false)
-    const guessed = guessRoleFromEmail(emailLower);
-    login({
-      id: guessed.id,
-      name: guessed.name,
-      role: guessed.role,
-      email: emailLower,
-      phone: '',
-      branch_id: null
-    }, false);
+    try {
+      const { data: authData, error: authErrorRes } = await supabase.auth.signInWithPassword({
+        email: emailLower,
+        password: passkey,
+      });
 
-    // 2. Instantly transition to the Dashboard (0ms delay)
-    onLogin();
-
-    // 3. Authenticate and query fresh data in the background
-    const startTime = Date.now();
-    (async () => {
-      try {
-        const { data: authData, error: authErrorRes } = await supabase.auth.signInWithPassword({
-          email: emailLower,
-          password: passkey,
-        });
-
-        if (authErrorRes || !authData.user) {
-          logout("Invalid email address or encryption passkey.");
-          return;
-        }
-
-        // Fetch actual profile, ledger, transactions, tasks, super admin ledger, refining transfers, and login settings in parallel
-        const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes, settingsRes] = await Promise.all([
-          supabase
-            .from('users')
-            .select('*')
-            .eq('email', emailLower)
-            .maybeSingle(),
-          supabase.from('ledger_entries').select('*'),
-          supabase.from('transactions').select('*'),
-          supabase.from('tasks').select('*'),
-          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
-          supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false }),
-          supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle()
-        ]);
-
-        const userData = profileRes.data;
-        const userError = profileRes.error;
-
-        if (userError || !userData) {
-          logout("Vault connection error: user profile not found.");
-          return;
-        }
-
-        // Check login switch restriction (non-Super Admin roles)
-        const isLoginAllowed = settingsRes.data ? settingsRes.data.value : true;
-        if (userData.role !== 'Super Admin' && !isLoginAllowed) {
-          await supabase.auth.signOut();
-          logout("Account didn't exist.");
-          return;
-        }
-
-        // Insert login activity log
-        await supabase.from('staff_logs').insert({
-          user_id: userData.id,
-          email: userData.email || emailLower,
-          name: userData.name,
-          role: userData.role,
-          action: 'login'
-        });
-
-        // Warm up in-memory cache so all dashboard and ledger views render instantly
-        if (ledgerRes.data) {
-          setCachedData('ledger_data', ledgerRes.data);
-          setCachedData('ledger_entries_all', ledgerRes.data);
-        }
-        if (txRes.data) setCachedData('tx_data', txRes.data);
-        if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
-        if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
-        if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
-
-        // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
-        if (txRes.data && tasksRes.data) {
-          try {
-            const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
-            let filteredTx = txRes.data;
-            let filteredTasks = tasksRes.data;
-            
-            const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
-            setCachedData('colstaff_billing_tx', colStaffAllTx);
-
-            const staffAllTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
-            setCachedData('staff_billing_tx', staffAllTx);
-          } catch (err) {
-            console.error(err);
-          }
-        }
-
-        // Guarantee exactly 2 seconds of loading time for smooth transition and full cache pre-warming
-        const elapsed = Date.now() - startTime;
-        const remaining = 2000 - elapsed;
-        if (remaining > 0) {
-          await new Promise(resolve => setTimeout(resolve, remaining));
-        }
-
-        // Trigger In-App Apple Toast
-        triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');
-
-        // Trigger OS System Notification
-        sendOSNotification(
-          'AURORA Security Alert', 
-          `Welcome back ${userData.name}. Connection secured.`
-        );
-
-        // Fire login notification quietly in the background
-        sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);
-
-        // Promote in-memory session to fully authenticated
-        login({
-          id: userData.id,
-          name: userData.name,
-          role: userData.role,
-          email: userData.email || emailLower,
-          phone: userData.phone || '',
-          branch_id: userData.branch_id || null
-        }, true);
-
-      } catch (err) {
-        console.error("Background authentication failed:", err);
-        logout("An unexpected validation error occurred.");
-      } finally {
+      if (authErrorRes || !authData.user) {
+        setHasError(true);
+        setErrorMessage("Invalid email address or encryption passkey.");
         setIsAuthenticating(false);
+        return;
       }
-    })();
+
+      // Fetch actual profile, ledger, transactions, tasks, super admin ledger, refining transfers, and login settings in parallel
+      const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes, settingsRes] = await Promise.all([
+        supabase
+          .from('users')
+          .select('*')
+          .eq('email', emailLower)
+          .maybeSingle(),
+        supabase.from('ledger_entries').select('*'),
+        supabase.from('transactions').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
+        supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false }),
+        supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle()
+      ]);
+
+      const userData = profileRes.data;
+      const userError = profileRes.error;
+
+      if (userError || !userData) {
+        setHasError(true);
+        setErrorMessage("Vault connection error: user profile not found.");
+        setIsAuthenticating(false);
+        return;
+      }
+
+      // Check login switch restriction (non-Super Admin roles)
+      const isLoginAllowed = settingsRes.data ? settingsRes.data.value : true;
+      if (userData.role !== 'Super Admin' && !isLoginAllowed) {
+        await supabase.auth.signOut();
+        setHasError(true);
+        setErrorMessage("Account didn't exist.");
+        setIsAuthenticating(false);
+        return;
+      }
+
+      // Insert login activity log
+      await supabase.from('staff_logs').insert({
+        user_id: userData.id,
+        email: userData.email || emailLower,
+        name: userData.name,
+        role: userData.role,
+        action: 'login'
+      });
+
+      // Warm up in-memory cache so all dashboard and ledger views render instantly
+      if (ledgerRes.data) {
+        setCachedData('ledger_data', ledgerRes.data);
+        setCachedData('ledger_entries_all', ledgerRes.data);
+      }
+      if (txRes.data) setCachedData('tx_data', txRes.data);
+      if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+      if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
+      if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
+
+      // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
+      if (txRes.data && tasksRes.data) {
+        try {
+          const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
+          const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
+          setCachedData('colstaff_billing_tx', colStaffAllTx);
+
+          const staffAllTx = computeStaffBillingTransactions(txRes.data, tasksRes.data);
+          setCachedData('staff_billing_tx', staffAllTx);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      // Trigger In-App Apple Toast
+      triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');
+
+      // Trigger OS System Notification
+      sendOSNotification(
+        'AURORA Security Alert', 
+        `Welcome back ${userData.name}. Connection secured.`
+      );
+
+      // Fire login notification quietly in the background
+      sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);
+
+      // Promote in-memory session to fully authenticated
+      login({
+        id: userData.id,
+        name: userData.name,
+        role: userData.role,
+        email: userData.email || emailLower,
+        phone: userData.phone || '',
+        branch_id: userData.branch_id || null
+      }, true);
+
+      // Transition to Dashboard
+      onLogin();
+
+    } catch (err) {
+      console.error("Background authentication failed:", err);
+      setHasError(true);
+      setErrorMessage("An unexpected validation error occurred.");
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
   return (
@@ -253,8 +221,22 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             
             <div className="flex flex-col gap-4 relative z-10">
               <button disabled={isAuthenticating} onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out disabled:opacity-50`}>
-                {hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
-                <span className="material-symbols-outlined text-[16px]">{hasError ? 'warning' : 'arrow_forward'}</span>
+                {isAuthenticating ? (
+                  <>
+                    AUTHENTICATING...
+                    <span className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin"></span>
+                  </>
+                ) : hasError ? (
+                  <>
+                    ACCESS DENIED
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                  </>
+                ) : (
+                  <>
+                    INITIALIZE SESSION
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </>
+                )}
               </button>
               <div className="flex justify-between items-center px-2">
                 <a onClick={(e) => { e.preventDefault(); onForgotKey(); }} className="font-label-caps text-[10px] font-semibold text-secondary hover:text-primary transition-all uppercase tracking-wider ease-in-out cursor-pointer">Forgot Key</a>

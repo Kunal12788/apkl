@@ -326,7 +326,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
                         {item.category[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
+                        <p className="text-sm font-bold text-primary tracking-tight">{item.customerName}</p>
                         <div className="flex items-center gap-2 mt-1">
                            <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
                            <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>

@@ -94,7 +94,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async (errorMsg?: string, isSilent = false) => {
     clearCache();
-    if (user) {
+    const currentUser = user;
+    
+    // Set UI state immediately for instant feedback
+    setUser(null);
+    setFullyAuthenticated(false);
+    setAuthError(isSilent ? null : (errorMsg || null));
+
+    if (currentUser) {
       if (!isSilent) {
         // Trigger In-App Apple Toast
         triggerAppleToast('Security Alert', 'Session Terminated Securely', 'logout');
@@ -102,26 +109,33 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Trigger OS System Notification
         sendOSNotification(
           'AURORA Security Alert', 
-          `Logged out successfully. Goodbye ${user.name}.`
+          `Logged out successfully. Goodbye ${currentUser.name}.`
         );
 
         // Fire and forget logout notification quietly in the background
-        sendActivityNotification('logout', user.email, user.name, user.role);
+        sendActivityNotification('logout', currentUser.email, currentUser.name, currentUser.role);
       }
 
-      // Log logout event in database (always log for audit logs)
-      await supabase.from('staff_logs').insert({
-        user_id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        action: 'logout'
-      });
+      // Perform DB log and Supabase auth signout asynchronously in background
+      (async () => {
+        try {
+          await Promise.all([
+            supabase.from('staff_logs').insert({
+              user_id: currentUser.id,
+              email: currentUser.email,
+              name: currentUser.name,
+              role: currentUser.role,
+              action: 'logout'
+            }),
+            supabase.auth.signOut()
+          ]);
+        } catch (err) {
+          console.error("Background logout operations failed:", err);
+        }
+      })();
+    } else {
+      supabase.auth.signOut().catch(err => console.error("Background signout failed:", err));
     }
-    setUser(null);
-    setFullyAuthenticated(false);
-    setAuthError(isSilent ? null : (errorMsg || null));
-    await supabase.auth.signOut();
   };
 
   // Background polling to instantly sync profile changes (role, branch) and enforce access rules
