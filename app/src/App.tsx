@@ -233,24 +233,21 @@ function AppContent() {
     }, 500); 
   };
 
-  if (loading) {
-    return (
-      <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center text-primary font-body-md">
-        <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4"></div>
-        <p className="font-label-caps text-[10px] tracking-widest text-outline">SECURING CONNECTION...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full min-h-screen relative bg-background overflow-hidden">
       {showSplash && (
-        <div className={`absolute inset-0 z-50 transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`absolute inset-0 z-[100] transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
           <SplashScreen onComplete={handleComplete} />
         </div>
       )}
 
-      <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
+      {loading ? (
+        <div className="absolute inset-0 z-0 flex flex-col items-center justify-center bg-background text-primary font-body-md">
+          <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4"></div>
+          <p className="font-label-caps text-[10px] tracking-widest text-outline">SECURING CONNECTION...</p>
+        </div>
+      ) : (
+        <div className="absolute inset-0 z-0 overflow-y-auto hide-scrollbar">
         <Toaster 
           position="top-center" 
           toastOptions={{
@@ -298,7 +295,8 @@ function AppContent() {
           </Routes>
           {user && <GlobalFAB />}
         </HashRouter>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

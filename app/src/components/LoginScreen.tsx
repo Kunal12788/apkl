@@ -108,7 +108,18 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // 4. Fetch the data needed to warm up the cache for this specific role in parallel (blocking but optimized)
+        // --- PROMOTE TO FULLY AUTHENTICATED HERE, BEFORE HEAVY DATA FETCH ---
+        // This instantly removes the 'massive delay' by unblocking the Dashboard UI
+        login({
+          id: userData.id,
+          name: userData.name,
+          role: userData.role,
+          email: userData.email || emailLower,
+          phone: userData.phone || '',
+          branch_id: userData.branch_id || null
+        }, true);
+
+        // 4. Fetch the data needed to warm up the cache for this specific role in the background
         const fetchPromises: any[] = [
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
@@ -181,16 +192,6 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
 
         // Fire login notification quietly in the background
         sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);
-
-        // Promote in-memory session to fully authenticated instantly (0ms delay)
-        login({
-          id: userData.id,
-          name: userData.name,
-          role: userData.role,
-          email: userData.email || emailLower,
-          phone: userData.phone || '',
-          branch_id: userData.branch_id || null
-        }, true);
 
       } catch (err) {
         console.error("Background authentication failed:", err);
