@@ -263,7 +263,14 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
                  <input 
                    type="date" 
                    value={filterDate} 
-                   onChange={(e) => setFilterDate(e.target.value)} 
+                   onChange={(e) => setFilterDate(e.target.value)}
+                   onClick={(e) => {
+                     try {
+                       if ('showPicker' in HTMLInputElement.prototype) {
+                         (e.target as HTMLInputElement).showPicker();
+                       }
+                     } catch (err) {}
+                   }}
                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                  />
                </div>
