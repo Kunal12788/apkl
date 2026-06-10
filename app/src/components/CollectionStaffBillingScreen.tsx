@@ -333,7 +333,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     ? cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by))
     : [];
 
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const cachedColStaffTx = getCachedData('colstaff_billing_tx') || [];
+  const [transactions, setTransactions] = useState<Transaction[]>(cachedColStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
 
 
@@ -469,7 +470,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           };
         });
 
-        setTransactions([...mappedTransactions, ...taskEntries]);
+        const allTx = [...mappedTransactions, ...taskEntries];
+        setCachedData('colstaff_billing_tx', allTx);
+        setTransactions(allTx);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }

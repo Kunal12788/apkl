@@ -467,22 +467,13 @@ export const StaffBillingScreen: React.FC = () => {
   const isSuperSa = user?.role === 'Super Admin';
   const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUserId];
 
-  const cachedTx = getCachedData('tx_data');
-  const initialTx = cachedTx
-    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => !t.created_by || branchUserIdsCache.includes(t.created_by) || branchUserIdsCache.includes(t.createdBy))).map((t: any) => ({
-        metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name, customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type, workType: t.work_type, amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-        date: t.date, isoDate: t.iso_date, timestamp: t.timestamp, status: t.status,
-        impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-        pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details
-      }))
-    : [];
-
   const cachedDbCust = getCachedData('db_customers');
   const initialDbCust = cachedDbCust
     ? (isSuperSa ? cachedDbCust : cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by)))
     : [];
 
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTx);
+  const cachedStaffTx = getCachedData('staff_billing_tx') || [];
+  const [transactions, setTransactions] = useState<Transaction[]>(cachedStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
 
@@ -602,7 +593,9 @@ export const StaffBillingScreen: React.FC = () => {
           };
         });
 
-        setTransactions([...txEntries, ...taskEntries]);
+        const allTx = [...txEntries, ...taskEntries];
+        setCachedData('staff_billing_tx', allTx);
+        setTransactions(allTx);
       } catch (err) {
         console.error('Error fetching billing data:', err);
       }
