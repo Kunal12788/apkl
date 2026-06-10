@@ -326,6 +326,19 @@ export const StaffDashboardScreen: React.FC = () => {
           setCachedData('stock_allocations_all', allocationsData);
         }
 
+        // --- NEW: Precompute Billing screen transactions to ensure zero-delay ---
+        import('../utils/billingUtils').then(({ computeStaffBillingTransactions }) => {
+          let filteredTx = txData || [];
+          let filteredTasks = tasksData || [];
+          if (!isSuperSa && user?.branch_id) {
+            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+          }
+          const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+          setCachedData('staff_billing_tx', allTx);
+        });
+        // ------------------------------------------------------------------------
+
         applyData(ledgerData, txData, tasksData, allocationsData, branchUserIds);
 
       } catch (err) {

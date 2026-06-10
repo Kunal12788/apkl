@@ -72,6 +72,15 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
           setCachedData('tx_data', [...otherTx, ...txData]);
         }
+
+        // --- NEW: Precompute Billing screen transactions to ensure zero-delay ---
+        import('../utils/billingUtils').then(({ computeCollectionStaffBillingTransactions }) => {
+          let filteredTx = txRes.data || [];
+          let filteredTasks = tasksRes.data || [];
+          const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
+          setCachedData('colstaff_billing_tx', allTx);
+        });
+        // ------------------------------------------------------------------------
       } catch (err) {
         console.error('Error fetching collection staff data:', err);
       }
