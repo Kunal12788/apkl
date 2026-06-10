@@ -28,7 +28,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [transactions, setTransactions] = useState<any[]>(initialTx);
-  const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
+  const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
     const loadData = async () => {
@@ -154,7 +154,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     const cat = (t.category || 'TUNCH').toUpperCase();
     
     // Volume Analysis stats filtered by selected date
-    if (dateStr === filterDate) {
+    if (!filterDate || dateStr === filterDate) {
       if (cat === 'TUNCH' || cat === 'PURE' || cat === 'CASH') tunchPcs += pcs;
       else if (cat === 'MARKING') markingPcs += pcs;
       else if (cat === 'SHOULDERING') shoulderPcs += pcs;
@@ -249,12 +249,25 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         <section className="space-y-4 relative z-10">
            <div className="flex justify-between items-center px-1">
              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Volume Analysis</h3>
-             <input 
-               type="date" 
-               value={filterDate} 
-               onChange={(e) => setFilterDate(e.target.value)} 
-               className="text-[9px] font-bold text-tertiary uppercase tracking-wider bg-transparent border-none outline-none cursor-pointer text-right"
-             />
+             <div className="flex items-center gap-2">
+               {filterDate && (
+                 <button onClick={() => setFilterDate('')} className="text-[9px] text-error uppercase font-bold tracking-widest hover:bg-error/10 px-2 py-1 rounded-full transition-colors flex items-center">
+                   Clear
+                 </button>
+               )}
+               <div className="relative flex items-center group cursor-pointer bg-surface-container hover:bg-surface-container-high px-3 py-1.5 rounded-full transition-colors">
+                 <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-sm mr-1.5">calendar_month</span>
+                 <span className="text-[9px] font-bold text-primary uppercase tracking-wider min-w-[55px] text-center">
+                   {filterDate ? new Date(filterDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'ALL TIME'}
+                 </span>
+                 <input 
+                   type="date" 
+                   value={filterDate} 
+                   onChange={(e) => setFilterDate(e.target.value)} 
+                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                 />
+               </div>
+             </div>
            </div>
            <div className="grid grid-cols-2 gap-4">
              {collectionStats.map((stat, idx) => (
