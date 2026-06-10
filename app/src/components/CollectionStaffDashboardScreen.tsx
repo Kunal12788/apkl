@@ -16,7 +16,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const initialTasks = cachedTasks 
     ? cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser).map((t: any) => ({
-        id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date, settlementCondition: t.sett_condition || t.settlement_condition
+        id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''), settlementCondition: t.sett_condition || t.settlement_condition
       }))
     : [];
 
@@ -51,7 +51,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         const taskError = tasksRes.error;
         if (!taskError && tasksData) {
           setTasks(tasksData.map((t: any) => ({
-            id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date, settlementCondition: t.settlement_condition
+            id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''), settlementCondition: t.settlement_condition
           })));
 
           // Merge tasks back into in-memory cache
