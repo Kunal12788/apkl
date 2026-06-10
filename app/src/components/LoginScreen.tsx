@@ -82,18 +82,13 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Fetch actual profile, ledger, transactions, tasks, super admin ledger, refining transfers, and login settings in parallel
-        const [profileRes, ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes, settingsRes] = await Promise.all([
+        // Fetch only profile and login settings to verify authorization (very fast, minimal network load)
+        const [profileRes, settingsRes] = await Promise.all([
           supabase
             .from('users')
             .select('*')
             .eq('email', emailLower)
             .maybeSingle(),
-          supabase.from('ledger_entries').select('*'),
-          supabase.from('transactions').select('*'),
-          supabase.from('tasks').select('*'),
-          supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
-          supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false }),
           supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle()
         ]);
 
@@ -113,43 +108,51 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Insert login activity log
-        await supabase.from('staff_logs').insert({
-          user_id: userData.id,
-          email: userData.email || emailLower,
-          name: userData.name,
-          role: userData.role,
-          action: 'login'
-        });
-
-        // Warm up in-memory cache so all dashboard and ledger views render instantly
-        if (ledgerRes.data) {
-          setCachedData('ledger_data', ledgerRes.data);
-          setCachedData('ledger_entries_all', ledgerRes.data);
-        }
-        if (txRes.data) setCachedData('tx_data', txRes.data);
-        if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
-        if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
-        if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
-
-        // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
-        if (txRes.data && tasksRes.data) {
+        // Log activity and warm up cache in the background (fire-and-forget, non-blocking)
+        (async () => {
           try {
-            const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
-            let filteredTx = txRes.data;
-            let filteredTasks = tasksRes.data;
-            
-            const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
-            setCachedData('colstaff_billing_tx', colStaffAllTx);
-
-            const staffAllTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
-            setCachedData('staff_billing_tx', staffAllTx);
+            await supabase.from('staff_logs').insert({
+              user_id: userData.id,
+              email: userData.email || emailLower,
+              name: userData.name,
+              role: userData.role,
+              action: 'login'
+            });
           } catch (err) {
-            console.error(err);
+            console.error("Failed to insert login log:", err);
           }
-        }
 
+          try {
+            const [ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes] = await Promise.all([
+              supabase.from('ledger_entries').select('*'),
+              supabase.from('transactions').select('*'),
+              supabase.from('tasks').select('*'),
+              supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
+              supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
+            ]);
 
+            if (ledgerRes.data) {
+              setCachedData('ledger_data', ledgerRes.data);
+              setCachedData('ledger_entries_all', ledgerRes.data);
+            }
+            if (txRes.data) setCachedData('tx_data', txRes.data);
+            if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+            if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
+            if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
+
+            // Precompute billing data in background
+            if (txRes.data && tasksRes.data) {
+              const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
+              const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
+              setCachedData('colstaff_billing_tx', colStaffAllTx);
+
+              const staffAllTx = computeStaffBillingTransactions(txRes.data, tasksRes.data);
+              setCachedData('staff_billing_tx', staffAllTx);
+            }
+          } catch (err) {
+            console.error("Background cache warming error:", err);
+          }
+        })();
 
         // Trigger In-App Apple Toast
         triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');
@@ -163,7 +166,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         // Fire login notification quietly in the background
         sendActivityNotification('login', userData.email || emailLower, userData.name, userData.role);
 
-        // Promote in-memory session to fully authenticated
+        // Promote in-memory session to fully authenticated instantly (0ms delay)
         login({
           id: userData.id,
           name: userData.name,
