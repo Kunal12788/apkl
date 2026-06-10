@@ -111,6 +111,35 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     };
   }, [currentUser, isFullyAuthenticated]);
 
+  // 4. Calculate dues using billing data cache directly to ensure it perfectly matches the Billing Screen instantly
+  const cachedBillingTx = getCachedData('colstaff_billing_tx') || [];
+  const billingTransactions = transactions.length > 0 && cachedBillingTx.length === 0 ? transactions : cachedBillingTx;
+
+  // Combine active tasks with billed/completed transactions for a holistic dashboard view
+  const pendingTasks = tasks.filter((t: any) => t.status !== 'Completed').map((t: any) => ({
+    id: t.id,
+    customerName: t.customerName,
+    category: t.category,
+    pieces: t.pieces,
+    status: t.status,
+    isoDate: t.isoDate,
+    time: t.dateGiven || t.isoDate,
+    settlementCondition: t.settlementCondition
+  }));
+
+  const billedItems = billingTransactions.map((t: any) => ({
+    id: t.id,
+    customerName: t.customerName || t.customer_name,
+    category: (t.workType || t.work_type || 'TUNCH').toUpperCase(),
+    pieces: t.pieces || '1',
+    status: 'Completed',
+    isoDate: t.isoDate || t.iso_date,
+    time: t.timestamp || t.date || 'Just Now',
+    settlementCondition: t.details || ''
+  }));
+
+  const unifiedDashboardItems = [...pendingTasks, ...billedItems];
+
   // 1. Calculate stats dynamically
   let tunchPcs = 0;
   let markingPcs = 0;
@@ -119,19 +148,20 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  tasks.forEach(t => {
+  unifiedDashboardItems.forEach(t => {
     const pcs = parseInt(t.pieces || '1') || 1;
     const dateStr = t.isoDate || '';
+    const cat = t.category;
     
     // Volume Analysis stats filtered by selected date
     if (dateStr === filterDate) {
-      if (t.category === 'TUNCH') tunchPcs += pcs;
-      else if (t.category === 'MARKING') markingPcs += pcs;
-      else if (t.category === 'SHOULDERING') shoulderPcs += pcs;
+      if (cat === 'TUNCH') tunchPcs += pcs;
+      else if (cat === 'MARKING') markingPcs += pcs;
+      else if (cat === 'SHOULDERING') shoulderPcs += pcs;
     }
     
     // Independent stat for Today's Marking pieces
-    if (dateStr === todayStr && t.category === 'MARKING') {
+    if (dateStr === todayStr && cat === 'MARKING') {
       todaysMarkingPcs += pcs;
     }
   });
@@ -144,9 +174,9 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   ];
 
   // 2. Calculate status stats dynamically
-  let pendingCount = tasks.filter(t => t.status === 'Pending').length;
-  let progressCount = tasks.filter(t => t.status === 'In Progress').length;
-  let completedCount = tasks.filter(t => t.status === 'Completed').length;
+  let pendingCount = unifiedDashboardItems.filter(t => t.status === 'Pending').length;
+  let progressCount = unifiedDashboardItems.filter(t => t.status === 'In Progress').length;
+  let completedCount = unifiedDashboardItems.filter(t => t.status === 'Completed').length;
 
   const statusStats = [
     { label: 'Pending', value: pendingCount.toString(), color: 'bg-error/10 text-error' },
@@ -155,20 +185,8 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   ];
 
   // 3. Dynamic recent tasks
-  const dynamicRecentTasks = tasks.map(t => ({
-    id: t.id,
-    customer: t.customerName,
-    category: t.category || 'TUNCH',
-    pieces: t.pieces || '1',
-    status: t.status || 'Pending',
-    time: t.dateGiven || 'Just Now',
-    settlementCondition: t.settlementCondition
-  }));
+  const dynamicRecentTasks = unifiedDashboardItems;
 
-  // 4. Calculate dues using billing data cache directly to ensure it perfectly matches the Billing Screen instantly
-  const cachedBillingTx = getCachedData('colstaff_billing_tx') || [];
-  const billingTransactions = transactions.length > 0 && cachedBillingTx.length === 0 ? transactions : cachedBillingTx;
-  
   let totalDues = 0;
   billingTransactions.forEach((t: any) => {
     if (t.status === 'Unpaid') {
