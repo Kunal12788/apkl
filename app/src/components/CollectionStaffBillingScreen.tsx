@@ -11,23 +11,28 @@ interface Transaction {
   id: string;
   customerId: string;
   customerName: string;
-  customerPhone: string;
-  customerAddress: string;
-  type: 'UPI' | 'Cash' | 'Tunch';
+  customerPhone?: string;
+  customerAddress?: string;
+  type: 'UPI' | 'Cash' | 'Service Fee';
   workType: 'Tunch' | 'Marking' | 'Shouldering';
   amount: string;
   date: string;
   isoDate: string;
   timestamp: string;
   status: 'Paid' | 'Unpaid';
-  details: string;
-  productType?: string;
+  
   impureWeight?: string;
-  settlementCondition?: string;
-  logoName?: string;
-  carat?: string;
+  pureWeight?: string;
+  purityPercentage?: string;
+  pieceType?: string;
   pieces?: string;
-  pointSuggestion?: 'Gold' | 'Silver';
+  
+  pointsCount?: number;
+  pointsType?: 'Gold' | 'Silver';
+  
+  caratMarking?: string;
+  
+  details: string;
   createdBy?: string;
 }
 
@@ -89,39 +94,10 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   if (!isOpen || !txn) return null;
 
   const handleMarkPaid = async () => {
-    if (!window.confirm("Are you sure you want to mark this service fee as Paid?")) return;
+    if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
     setIsPaying(true);
     try {
-      if (txn.id.startsWith('BILL-')) {
-        // Task-derived billing entry: insert a new Paid transaction to record the collection
-        const taskId = txn.id.replace('BILL-', '');
-        const newTxn = {
-          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-          customer_id: txn.customerId,
-          customer_name: txn.customerName,
-          customer_phone: txn.customerPhone || '',
-          customer_address: txn.customerAddress || '',
-          metal: txn.metal || 'Gold',
-          type: txn.type || 'Service Fee',
-          work_type: txn.workType || 'Tunch',
-          amount: txn.amount.replace(/[^٠-٩0-9.]/g, '').replace(/,/g, '') || '0',
-          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          iso_date: new Date().toISOString().split('T')[0],
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          status: 'Paid',
-          details: `Service fee collected for task ${taskId}.`,
-          settlement_condition: txn.settlementCondition,
-          pieces: txn.pieces || '1',
-          created_by: txn.createdBy || user?.id || ''
-        };
-        await supabase.from('transactions').insert([newTxn]);
-        // Also update the task's settlement_condition to mark it as collected
-        await supabase.from('tasks').update({
-          settlement_condition: (txn.settlementCondition || '') + ' [COLLECTED]'
-        }).eq('id', taskId);
-      } else {
-        await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
-      }
+      await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
       alert("Successfully marked as Paid. Refreshing...");
       window.location.reload();
     } catch(e) {
@@ -216,10 +192,16 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                 <span className={lbl}>Work Type</span>
                 <p className={`${val} uppercase text-secondary`}>{txn.workType}</p>
               </div>
-              {txn.productType && (
+              {txn.pieceType && (
                 <div>
-                  <span className={lbl}>Category</span>
-                  <p className={val}>{txn.productType}</p>
+                  <span className={lbl}>Piece Type</span>
+                  <p className={val}>{txn.pieceType}</p>
+                </div>
+              )}
+              {txn.purityPercentage && (
+                <div>
+                  <span className={lbl}>Purity</span>
+                  <p className={val}>{txn.purityPercentage}</p>
                 </div>
               )}
               {txn.impureWeight && (
@@ -228,34 +210,22 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                   <p className={val}>{txn.impureWeight}g</p>
                 </div>
               )}
-              {txn.pieces && (
+              {txn.pureWeight && (
                 <div>
-                  <span className={lbl}>Pieces</span>
-                  <p className={val}>{txn.pieces}</p>
+                  <span className={lbl}>Pure Weight</span>
+                  <p className={val}>{txn.pureWeight}g</p>
                 </div>
               )}
-              {txn.settlementCondition && (
+              {txn.caratMarking && (
                 <div>
-                  <span className={lbl}>Settlement Mode</span>
-                  <p className={val}>{txn.settlementCondition}</p>
+                  <span className={lbl}>Carat Marking</span>
+                  <p className={val}>{txn.caratMarking}</p>
                 </div>
               )}
-              {txn.logoName && (
-                <div>
-                  <span className={lbl}>Logo Design</span>
-                  <p className={val}>{txn.logoName}</p>
-                </div>
-              )}
-              {txn.carat && (
-                <div>
-                  <span className={lbl}>Carat</span>
-                  <p className={val}>{txn.carat}</p>
-                </div>
-              )}
-              {txn.pointSuggestion && (
+              {txn.pointsCount !== undefined && txn.pointsCount !== null && (
                 <div className="col-span-2">
                   <span className={lbl}>Solder Points</span>
-                  <p className={val}>{txn.pointSuggestion} Gold/Silver suggested</p>
+                  <p className={val}>{txn.pointsCount} ({txn.pointsType || 'Gold'})</p>
                 </div>
               )}
             </div>
@@ -343,14 +313,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
 
 
-  // Helper: parse a completed task's settlement_condition to extract service fee
-  const parseTaskFee = (settlementCondition: string | null): { amount: number; type: string } => {
-    if (!settlementCondition) return { amount: 0, type: 'Service Fee' };
-    const match = settlementCondition.match(/[₹Rs\.\s]*(\d+(?:[,.]\d+)*)/);
-    const amount = match ? parseFloat(match[1].replace(/,/g, '')) : 0;
-    const type = settlementCondition.toLowerCase().includes('cash') ? 'Cash' : 'Service Fee';
-    return { amount, type };
-  };
+
 
   useEffect(() => {
     const loadBillingData = async () => {
@@ -371,63 +334,47 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           branchUserIds = [currentUser];
         }
 
-        // Fetch completed tasks ONLY — CollStaff billing is purely task-driven.
-        // No transactions are fetched here to prevent orphaned bills.
-        const { data: tasksData } = await supabase
-          .from('tasks')
+        const { data: txData } = await supabase
+          .from('transactions')
           .select('*')
-          .eq('status', 'Completed')
           .order('created_at', { ascending: false });
 
-        // Convert completed tasks with fees into billing entries
-        const taskBillingEntries: Transaction[] = [];
-        if (tasksData) {
-          const filteredTasks = tasksData.filter((t: any) => branchUserIds.includes(t.created_by));
-          for (const t of filteredTasks) {
-            const condition = t.settlement_condition || '';
-            // Skip tasks that have already been marked as collected (a real Paid txn was inserted)
-            if (condition.includes('[COLLECTED]')) continue;
-            const { amount, type } = parseTaskFee(condition);
-            if (amount > 0) {
-              const isoDate = t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0];
-              const dateLabel = t.created_at
-                ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-                : 'Today';
-              taskBillingEntries.push({
-                metal: t.metal || 'Gold',
-                id: `BILL-${t.id}`,
-                customerId: t.customer_id || 'CUST-COL',
-                customerName: t.customer_name,
-                customerPhone: t.customer_phone || '',
-                customerAddress: t.customer_address || '',
-                type: type as any,
-                workType: (t.work_type as any) || 'Tunch',
-                amount: `₹${amount.toLocaleString('en-IN')}`,
-                date: dateLabel,
-                isoDate: isoDate,
-                timestamp: t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-                status: 'Unpaid',
-                details: `Task ${t.id} completed. Settlement: ${condition}`,
-                settlementCondition: condition,
-                impureWeight: t.impure_weight,
-                pieces: t.pieces,
-                productType: t.product_type,
-                carat: t.carat,
-                logoName: t.logo_name,
-                pointSuggestion: t.point_suggestion,
-                createdBy: t.created_by,
-              });
-            }
-          }
-        }
+        let filtered = txData || [];
+        filtered = filtered.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
 
-        // CollStaff billing is PURELY task-driven:
-        // Only show billing entries derived from completed tasks.
-        // Never show raw transactions — this prevents orphaned bills appearing
-        // when there are no corresponding tasks.
-        setTransactions(taskBillingEntries);
+        const mappedTransactions = filtered.map((t: any) => {
+          const details = t.details || '';
+          // Parse pieces count from the details string e.g. "Pieces: 3."
+          const piecesMatch = details.match(/Pieces:\s*(\d+)/);
+          const parsedPieces = piecesMatch ? piecesMatch[1] : '1';
+          return {
+            metal: t.metal || 'Gold',
+            id: t.id,
+            customerId: t.customer_id || 'CUST-COL',
+            customerName: t.customer_name || 'Walk-in Customer',
+            customerPhone: t.customer_phone,
+            customerAddress: t.customer_address,
+            type: t.type || 'Service Fee',
+            workType: t.work_type || 'Tunch',
+            amount: Number(t.amount).toLocaleString('en-IN'),
+            date: t.date,
+            isoDate: t.iso_date,
+            timestamp: t.timestamp,
+            status: t.status || 'Unpaid',
+            impureWeight: t.impure_weight,
+            pureWeight: t.pure_weight,
+            purityPercentage: t.purity_percentage,
+            pieceType: t.piece_type,
+            pieces: parsedPieces,
+            pointsCount: t.points_count,
+            pointsType: t.points_type,
+            caratMarking: t.carat_marking,
+            details,
+            createdBy: t.created_by
+          };
+        });
 
-
+        setTransactions(mappedTransactions);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }

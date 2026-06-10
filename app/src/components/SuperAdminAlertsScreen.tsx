@@ -11,16 +11,19 @@ export const SuperAdminAlertsScreen: React.FC = () => {
   const fetchAlerts = async () => {
     const { data, error } = await supabase.from('deletion_requests').select(`*, users (name)`).order('created_at', { ascending: false });
     if (!error && data) {
-       const formattedAlerts = data.map(req => ({
-          id: req.id,
-          status: req.status === 'Pending' ? 'unresolved' : 'resolved',
-          severity: 'critical',
-          type: 'system',
-          timestamp: req.created_at,
-          title: `Deletion Request: ${req.item_type} ${req.item_id}`,
-          description: `Requested by ${req.users?.name || req.requested_by}. Reason: ${req.reason || 'None provided.'}`,
-          originalReq: req
-       }));
+       const formattedAlerts = data.map(req => {
+          const isMismatch = req.item_type === 'Mismatch';
+          return {
+            id: req.id,
+            status: req.status === 'Pending' ? 'unresolved' : 'resolved',
+            severity: isMismatch ? 'high' : 'critical',
+            type: isMismatch ? 'staff' : 'system',
+            timestamp: req.created_at,
+            title: isMismatch ? `Intake Mismatch: Task ${req.item_id}` : `Deletion Request: ${req.item_type} ${req.item_id}`,
+            description: `Requested by ${req.users?.name || req.requested_by}. ${req.reason || 'No description provided.'}`,
+            originalReq: req
+          };
+       });
        setAlerts(formattedAlerts);
     }
   };
@@ -52,14 +55,15 @@ export const SuperAdminAlertsScreen: React.FC = () => {
                  
                  setAlerts(prev => {
                     if (prev.some(a => a.id === newReq.id)) return prev;
+                    const isMismatch = newReq.item_type === 'Mismatch';
                     const newAlert = {
                         id: newReq.id,
                         status: newReq.status === 'Pending' ? 'unresolved' : 'resolved',
-                        severity: 'critical',
-                        type: 'system',
+                        severity: isMismatch ? 'high' : 'critical',
+                        type: isMismatch ? 'staff' : 'system',
                         timestamp: newReq.created_at,
-                        title: `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
-                        description: `Requested by ${userName}. Reason: ${newReq.reason || 'None provided.'}`,
+                        title: isMismatch ? `Intake Mismatch: Task ${newReq.item_id}` : `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
+                        description: `Requested by ${userName}. ${newReq.reason || 'No description provided.'}`,
                         originalReq: newReq
                     };
                     return [newAlert, ...prev].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -150,14 +154,30 @@ export const SuperAdminAlertsScreen: React.FC = () => {
   };
 
   const handleRejectDeletion = async (alert: any) => {
-     if (!window.confirm("Reject deletion?")) return;
-     try {
-       await supabase.from('deletion_requests').update({ status: 'Rejected' }).eq('id', alert.originalReq.id);
-       setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Rejected)' } : a));
-       window.alert("Deletion Rejected.");
-     } catch(e) {
-       console.error(e);
-     }
+      if (!window.confirm("Reject deletion?")) return;
+      try {
+        await supabase.from('deletion_requests').update({ status: 'Rejected' }).eq('id', alert.originalReq.id);
+        setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Rejected)' } : a));
+        window.alert("Deletion Rejected.");
+      } catch(e) {
+        console.error(e);
+      }
+  };
+
+  const handleDismissMismatch = async (alert: any) => {
+    if (!window.confirm("Dismiss this mismatch alert?")) return;
+    try {
+      await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', alert.originalReq.id);
+      setAlerts(prev => prev.map(a => a.id === alert.id ? { 
+        ...a, 
+        status: 'resolved', 
+        title: a.title + ' (Dismissed)' 
+      } : a));
+      window.alert("Alert dismissed.");
+    } catch(e) {
+      console.error(e);
+      window.alert("Failed to dismiss alert.");
+    }
   };
 
   return (
@@ -285,19 +305,29 @@ export const SuperAdminAlertsScreen: React.FC = () => {
 
                   <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
                     {alert.status === 'unresolved' ? (
-                      <div className="flex items-center gap-2">
+                      alert.originalReq.item_type === 'Mismatch' ? (
                         <button 
-                          onClick={() => handleRejectDeletion(alert)}
-                          className="bg-surface-container hover:bg-surface-variant text-primary font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95">
-                          Reject
+                          onClick={() => handleDismissMismatch(alert)}
+                          className="bg-[#003366] hover:bg-[#002244] text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
+                        >
+                          <span>Dismiss Alert</span>
+                          <span className="material-symbols-outlined text-[14px]">done</span>
                         </button>
-                        <button 
-                          onClick={() => handleApproveDeletion(alert)}
-                          className="bg-error hover:bg-error/90 text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5">
-                          <span>Approve Delete</span>
-                          <span className="material-symbols-outlined text-[14px]">delete</span>
-                        </button>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleRejectDeletion(alert)}
+                            className="bg-surface-container hover:bg-surface-variant text-primary font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95">
+                            Reject
+                          </button>
+                          <button 
+                            onClick={() => handleApproveDeletion(alert)}
+                            className="bg-error hover:bg-error/90 text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5">
+                            <span>Approve Delete</span>
+                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                          </button>
+                        </div>
+                      )
                     ) : (
                       <div className="flex items-center gap-2 text-outline bg-surface-container/50 px-3 py-1.5 rounded-lg border border-outline-variant/20">
                         <span className="material-symbols-outlined text-sm">history</span>

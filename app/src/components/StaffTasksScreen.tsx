@@ -155,7 +155,20 @@ interface TaskDetailsModalProps {
   onUpdateStatus: (task: Task, action?: string) => void;
   onDeleteTask: (id: string) => void;
   isAdminOrSuper?: boolean;
-  onProcessTask?: (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string; serviceFee?: string }) => void;
+  onProcessTask?: (task: Task, details: { 
+    impureWeight?: string; 
+    purity?: string; 
+    pureWeight?: string; 
+    settlementCondition?: string; 
+    serviceFee?: string;
+    totalWeight?: string;
+    pieces?: string;
+    carat?: string;
+    logoName?: string;
+    pointsCount?: string;
+    pointsType?: string;
+    broughtBy?: string;
+  }) => void;
   onFinalizePricing?: (task: Task, finalPrice: string) => void;
 }
 
@@ -172,6 +185,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [serviceFeeInput, setServiceFeeInput] = useState('');
   const [finalPriceInput, setFinalPriceInput] = useState('');
 
+  const [piecesInput, setPiecesInput] = useState('');
+  const [totalWeightInput, setTotalWeightInput] = useState('');
+  const [caratInput, setCaratInput] = useState('22k');
+  const [logoNameInput, setLogoNameInput] = useState('');
+  const [pointsCountInput, setPointsCountInput] = useState('');
+  const [pointsTypeInput, setPointsTypeInput] = useState('Gold');
+  const [broughtByInput, setBroughtByInput] = useState('Customer');
+
   useEffect(() => {
     if (task) {
       setImpureWeightInput(task.impureWeight || '');
@@ -180,6 +201,14 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setSettlementInput(task.settlementCondition || 'Only Tunch');
       setServiceFeeInput('');
       setFinalPriceInput('');
+
+      setPiecesInput(task.pieces || '');
+      setTotalWeightInput(task.totalWeight || task.weight || '');
+      setCaratInput(task.carat || '22k');
+      setLogoNameInput(task.logoName || '');
+      setPointsCountInput(task.pointSuggestion && !isNaN(Number(task.pointSuggestion.split(' ')[0])) ? task.pointSuggestion.split(' ')[0] : '');
+      setPointsTypeInput(task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold'));
+      setBroughtByInput(task.broughtBy || 'Customer');
     }
   }, [task]);
 
@@ -413,7 +442,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
               
-              {task.workType === 'Tunch' ? (
+              {task.workType === 'Tunch' && (
                 <>
                   <div className="mb-3">
                     <span className={lbl}>Final Impure Weight (g) *</span>
@@ -462,8 +491,102 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     </div>
                   </div>
                 </>
-              ) : (
-                <p className="text-[11px] font-medium text-outline">Marking/Shouldering processing verified. Ready to complete.</p>
+              )}
+
+              {task.workType === 'Marking' && (
+                <>
+                  <div>
+                    <span className={lbl}>Final Total Weight (g) *</span>
+                    <input 
+                      type="number" step="0.001" 
+                      value={totalWeightInput} 
+                      onChange={e => setTotalWeightInput(e.target.value)}
+                      placeholder="e.g. 15.2" 
+                      className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className={lbl}>Final Pieces *</span>
+                      <input 
+                        type="number" 
+                        value={piecesInput} 
+                        onChange={e => setPiecesInput(e.target.value)}
+                        placeholder="Qty" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+                    <div>
+                      <span className={lbl}>Logo Markings *</span>
+                      <input 
+                        type="text" 
+                        value={logoNameInput} 
+                        onChange={e => setLogoNameInput(e.target.value)}
+                        placeholder="Logo" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <span className={lbl}>Carat Marking *</span>
+                    <div className="flex gap-2 mt-1">
+                      {['22k', '18k', '14k', '9k'].map(k => (
+                        <button 
+                          key={k} type="button" 
+                          onClick={() => caratInput !== k && setCaratInput(k)}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${caratInput === k ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                        >
+                          {k.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {task.workType === 'Shouldering' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className={lbl}>Points Used *</span>
+                      <input 
+                        type="number" 
+                        value={pointsCountInput} 
+                        onChange={e => setPointsCountInput(e.target.value)}
+                        placeholder="Solder points" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+                    <div>
+                      <span className={lbl}>Points Type *</span>
+                      <div className="flex gap-2 mt-1">
+                        {['Gold', 'Silver'].map(pt => (
+                          <button 
+                            key={pt} type="button" 
+                            onClick={() => pointsTypeInput !== pt && setPointsTypeInput(pt)}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${pointsTypeInput === pt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            {pt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <span className={lbl}>Material Brought By *</span>
+                    <div className="flex gap-2 mt-1">
+                      {['Customer', 'Staff Member'].map(bb => (
+                        <button 
+                          key={bb} type="button" 
+                          onClick={() => broughtByInput !== bb && setBroughtByInput(bb)}
+                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${broughtByInput === bb ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                        >
+                          {bb}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
               )}
 
               <div className="pt-2 border-t border-secondary/10">
@@ -522,15 +645,46 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           {task.status === 'In Progress' && userRole === 'Staff' ? (
             <button 
               onClick={() => {
-                if (task.workType === 'Tunch' && (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim())) {
-                  alert('Please enter final impure weight, purity, and pure output before completing.');
+                if (!serviceFeeInput.trim() || isNaN(Number(serviceFeeInput)) || Number(serviceFeeInput) <= 0) {
+                  alert('Please enter a valid service fee (> 0) before completing.');
                   return;
                 }
-                if (!serviceFeeInput.trim()) {
-                  alert('Please enter the service fee before completing.');
-                  return;
+                if (task.workType === 'Tunch') {
+                  if (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim()) {
+                    alert('Please enter final impure weight, purity, and pure output before completing.');
+                    return;
+                  }
+                  onProcessTask?.(task, { 
+                    impureWeight: impureWeightInput, 
+                    purity: purityInput, 
+                    pureWeight: pureWeightInput, 
+                    settlementCondition: settlementInput, 
+                    serviceFee: serviceFeeInput 
+                  });
+                } else if (task.workType === 'Marking') {
+                  if (!totalWeightInput.trim() || !piecesInput.trim() || !logoNameInput.trim()) {
+                    alert('Please enter final weight, pieces, and logo design before completing.');
+                    return;
+                  }
+                  onProcessTask?.(task, {
+                    totalWeight: totalWeightInput,
+                    pieces: piecesInput,
+                    carat: caratInput,
+                    logoName: logoNameInput,
+                    serviceFee: serviceFeeInput
+                  });
+                } else if (task.workType === 'Shouldering') {
+                  if (!pointsCountInput.trim()) {
+                    alert('Please enter points used before completing.');
+                    return;
+                  }
+                  onProcessTask?.(task, {
+                    pointsCount: pointsCountInput,
+                    pointsType: pointsTypeInput,
+                    broughtBy: broughtByInput,
+                    serviceFee: serviceFeeInput
+                  });
                 }
-                onProcessTask?.(task, { impureWeight: impureWeightInput, purity: purityInput, pureWeight: pureWeightInput, settlementCondition: settlementInput, serviceFee: serviceFeeInput });
               }}
               className="flex-1 py-2.5 bg-secondary hover:bg-secondary/90 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -767,7 +921,7 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleVerifySuccess = async (verifiedTask: any) => {
+  const handleVerifySuccess = async (verifiedTask: any, isMismatch?: boolean, verifiedDetails?: { pieces: string; weight: string }) => {
      try {
        const updates: any = { status: 'In Progress', progress_percentage: 40 };
        if (verifiedTask.images) {
@@ -776,15 +930,40 @@ export const StaffTasksScreen: React.FC = () => {
        if (verifiedTask.audit_images) {
          updates.audit_images = verifiedTask.audit_images;
        }
+       
+       if (isMismatch && verifiedDetails) {
+         updates.pieces = verifiedDetails.pieces;
+         if (verifiedTask.workType === 'Tunch') {
+           updates.impure_weight = verifiedDetails.weight;
+         } else {
+           updates.total_weight = verifiedDetails.weight;
+         }
+
+         const intakeWeight = verifiedTask.impureWeight || verifiedTask.totalWeight || verifiedTask.weight || '0';
+         const intakePieces = verifiedTask.pieces || '1';
+         
+         await supabase.from('deletion_requests').insert([{
+           item_type: 'Mismatch',
+           item_id: verifiedTask.id,
+           requested_by: user?.id,
+           reason: `Reconciliation Mismatch Override: Staff verified pieces = ${verifiedDetails.pieces} (Intake was ${intakePieces}), weight = ${verifiedDetails.weight}g (Intake was ${intakeWeight}g).`,
+           status: 'Pending'
+         }]);
+       }
+
        await supabase.from('tasks').update(updates).eq('id', verifiedTask.id);
+       
        setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { 
          ...t, 
          ...updates, 
+         impureWeight: updates.impure_weight || t.impureWeight,
+         totalWeight: updates.total_weight || t.totalWeight,
+         pieces: updates.pieces || t.pieces,
          auditImages: verifiedTask.audit_images,
          progressPercentage: 40 
        } : t));
        setVerificationOpen(false);
-       showToast('Audit matched! Task is now In Progress.');
+       showToast(isMismatch ? 'Mismatch reported! Task is now In Progress.' : 'Audit matched! Task is now In Progress.');
        handleCloseModal();
      } catch(e) {
        console.error(e);
@@ -792,31 +971,71 @@ export const StaffTasksScreen: React.FC = () => {
      }
   };
 
-  const handleProcessTask = async (task: Task, details: { impureWeight: string; purity: string; pureWeight: string; settlementCondition: string; serviceFee?: string }) => {
+  const handleProcessTask = async (task: Task, details: { 
+    impureWeight?: string; 
+    purity?: string; 
+    pureWeight?: string; 
+    settlementCondition?: string; 
+    serviceFee?: string;
+    totalWeight?: string;
+    pieces?: string;
+    carat?: string;
+    logoName?: string;
+    pointsCount?: string;
+    pointsType?: string;
+    broughtBy?: string;
+  }) => {
     try {
-      const condition = details.settlementCondition || task.settlementCondition || '';
-      const needsCash = condition.toLowerCase().includes('cash');
-      const nextStatus = 'Completed'; // The staff confirms the service fee, so it instantly completes
+      let updatedCondition = task.settlementCondition || '';
+      if (task.workType === 'Tunch') {
+        const condition = details.settlementCondition || task.settlementCondition || 'Only Tunch';
+        const needsCash = condition.toLowerCase().includes('cash');
+        updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
+          ? (needsCash ? `${condition} - ₹${details.serviceFee}` : `Service Fee - ₹${details.serviceFee}`)
+          : condition;
+      } else {
+        updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
+          ? `Service Fee - ₹${details.serviceFee}` 
+          : 'Service Fee';
+      }
+
+      const nextStatus = 'Completed'; 
       const progress = 100;
 
-      const updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
-        ? (needsCash ? `${condition} - ₹${details.serviceFee}` : `Service Fee - ₹${details.serviceFee}`)
-        : condition;
-
-      await supabase.from('tasks').update({
-        impure_weight: details.impureWeight || task.impureWeight,
-        purity: details.purity || task.purity,
-        pure_weight: details.pureWeight || task.pureWeight,
-        settlement_condition: updatedCondition,
+      const taskUpdates: any = {
         status: nextStatus,
-        progress_percentage: progress
-      }).eq('id', task.id);
+        progress_percentage: progress,
+        settlement_condition: updatedCondition
+      };
+
+      if (task.workType === 'Tunch') {
+        taskUpdates.impure_weight = details.impureWeight || task.impureWeight;
+        taskUpdates.purity = details.purity || task.purity;
+        taskUpdates.pure_weight = details.pureWeight || task.pureWeight;
+      } else if (task.workType === 'Marking') {
+        taskUpdates.total_weight = details.totalWeight || task.totalWeight;
+        taskUpdates.pieces = details.pieces || task.pieces;
+        taskUpdates.carat = details.carat || task.carat;
+        taskUpdates.logo_name = details.logoName || task.logoName;
+      } else if (task.workType === 'Shouldering') {
+        taskUpdates.point_suggestion = details.pointsCount ? `${details.pointsCount} ${details.pointsType || 'Gold'} Points` : task.pointSuggestion;
+        taskUpdates.brought_by = details.broughtBy || task.broughtBy;
+      }
+
+      await supabase.from('tasks').update(taskUpdates).eq('id', task.id);
 
       setTasks(prev => prev.map(t => t.id === task.id ? {
         ...t,
-        impureWeight: details.impureWeight || task.impureWeight,
-        purity: details.purity || task.purity,
-        pureWeight: details.pureWeight || task.pureWeight,
+        ...taskUpdates,
+        impureWeight: taskUpdates.impure_weight || t.impureWeight,
+        purity: taskUpdates.purity || t.purity,
+        pureWeight: taskUpdates.pure_weight || t.pureWeight,
+        totalWeight: taskUpdates.total_weight || t.totalWeight,
+        pieces: taskUpdates.pieces || t.pieces,
+        carat: taskUpdates.carat || t.carat,
+        logoName: taskUpdates.logo_name || t.logoName,
+        pointSuggestion: taskUpdates.point_suggestion || t.pointSuggestion,
+        broughtBy: taskUpdates.brought_by || t.broughtBy,
         settlementCondition: updatedCondition,
         status: nextStatus,
         progressPercentage: progress
@@ -829,23 +1048,29 @@ export const StaffTasksScreen: React.FC = () => {
         customer_phone: task.customerPhone || '',
         customer_address: task.customerAddress || '',
         metal: task.metal || 'Gold',
-        type: needsCash ? 'Cash' : 'Service Fee',
+        type: (task.workType === 'Tunch' && updatedCondition.toLowerCase().includes('cash')) ? 'Cash' : 'Service Fee',
         work_type: task.workType || 'Tunch',
         amount: String(Number(details.serviceFee) || 0),
         date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         iso_date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         status: (details.serviceFee && Number(details.serviceFee) > 0) ? 'Unpaid' : 'Paid',
-        details: task.notes || 'Task completed with Service Fee recorded.',
-        pieces: task.pieces || '1',
-        product_type: task.productType,
-        impure_weight: details.impureWeight || task.impureWeight,
-        settlement_condition: updatedCondition,
-        logo_name: task.logoName,
-        carat: task.carat,
-        point_suggestion: task.pointSuggestion,
+        
+        details: `${task.workType} task completed. Pieces: ${taskUpdates.pieces || task.pieces || '1'}. ${task.logoName || details.logoName ? 'Logo: ' + (details.logoName || task.logoName) + '.' : ''} Settlement: ${updatedCondition}. ${task.notes || ''}`.trim(),
+        
+        piece_type: task.productType || '',
+        impure_weight: taskUpdates.impure_weight || task.impureWeight || taskUpdates.total_weight || task.totalWeight || '',
+        pure_weight: taskUpdates.pure_weight || task.pureWeight || '',
+        purity_percentage: taskUpdates.purity || task.purity || '',
+        
+        points_count: details.pointsCount ? parseInt(details.pointsCount) : (task.pointSuggestion && !isNaN(parseInt(task.pointSuggestion)) ? parseInt(task.pointSuggestion) : null),
+        points_type: details.pointsType || (task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold')),
+        
+        carat_marking: taskUpdates.carat || task.carat || '',
+        
         created_by: task.createdBy || user?.id || ''
       };
+      
       await supabase.from('transactions').insert([newTxn]);
       showToast('Task completed & Service Fee billed successfully.');
       handleCloseModal();

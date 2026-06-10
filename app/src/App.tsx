@@ -141,7 +141,7 @@ const AlertsWrapper = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!isFullyAuthenticated) return <SessionInitializationScreen />;
 
-  if (user.role === 'Super Admin') {
+  if (user.role === 'Super Admin' || user.role === 'Admin') {
     return <SuperAdminAlertsScreen />;
   }
   return <Navigate to="/dashboard" replace />;

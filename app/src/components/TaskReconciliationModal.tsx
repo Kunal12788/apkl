@@ -5,7 +5,7 @@ interface TaskReconciliationModalProps {
   isOpen: boolean;
   onClose: () => void;
   collectionTask: any;
-  onVerified: (task: any) => void;
+  onVerified: (task: any, isMismatch?: boolean, verifiedDetails?: { pieces: string; weight: string }) => void;
 }
 
 const SectionCard = ({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) => (
@@ -42,14 +42,14 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
     setResult(isMatch ? 'MATCH' : 'MISMATCH');
   };
 
-  const handleFinalize = () => {
-    if (result === 'MATCH') {
-      if (auditImages.length === 0) {
-        alert("Please upload at least one audit image.");
-        return;
-      }
-      setIsUploading(true);
-      
+  const handleFinalize = async () => {
+    if (auditImages.length === 0) {
+      alert("Please upload at least one audit image.");
+      return;
+    }
+    setIsUploading(true);
+    
+    try {
       const uploadedUrls: string[] = [];
       const uploadTasks: Promise<any>[] = [];
       
@@ -66,9 +66,23 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
         );
       }
       
-      Promise.all(uploadTasks);
+      await Promise.all(uploadTasks);
       
-      onVerified({ ...collectionTask, status: 'In Progress', verifiedBy: 'Staff Member', verifiedAt: new Date().toISOString(), audit_images: uploadedUrls });
+      onVerified(
+        { 
+          ...collectionTask, 
+          status: 'In Progress', 
+          verifiedBy: 'Staff Member', 
+          verifiedAt: new Date().toISOString(), 
+          audit_images: uploadedUrls 
+        },
+        result === 'MISMATCH',
+        result === 'MISMATCH' ? { pieces: formData.pieces, weight: formData.weight } : undefined
+      );
+    } catch (err) {
+      console.error("Failed to finalize reconciliation:", err);
+      alert("Reconciliation failed. Please try again.");
+    } finally {
       setIsUploading(false);
     }
   };
@@ -206,26 +220,43 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
         </div>
 
         {/* FOOTER */}
-        <div className="shrink-0 p-6 bg-white border-t border-outline-variant/10 flex gap-3">
-           {result === 'IDLE' || result === 'MISMATCH' ? (
-             <button 
-               onClick={handleCheck}
-               className="w-full h-14 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all"
-             >
-               <span className="material-symbols-outlined text-sm">rule</span>
-               CHECK AUDIT DATA
-             </button>
-           ) : (
+         <div className="shrink-0 p-6 bg-white border-t border-outline-variant/10 flex flex-col gap-3">
+            {result === 'IDLE' ? (
               <button 
-                onClick={handleFinalize}
-                disabled={isUploading}
-                className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
+                onClick={handleCheck}
+                className="w-full h-14 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all"
               >
-                {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined">check_circle</span>}
-                {isUploading ? 'SAVING...' : 'CONFIRM & START WORK'}
+                <span className="material-symbols-outlined text-sm">rule</span>
+                CHECK AUDIT DATA
               </button>
-           )}
-        </div>
+            ) : result === 'MATCH' ? (
+               <button 
+                 onClick={handleFinalize}
+                 disabled={isUploading}
+                 className="w-full h-14 bg-tertiary text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
+               >
+                 {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined">check_circle</span>}
+                 {isUploading ? 'SAVING...' : 'CONFIRM & START WORK'}
+               </button>
+            ) : (
+               <div className="flex flex-col w-full gap-2.5">
+                 <button 
+                   onClick={handleFinalize}
+                   disabled={isUploading}
+                   className="w-full h-14 bg-error text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
+                 >
+                   {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined">report_problem</span>}
+                   {isUploading ? 'REPORTING & STARTING...' : 'REPORT MISMATCH & START WORK'}
+                 </button>
+                 <button 
+                   onClick={() => setResult('IDLE')}
+                   className="w-full h-11 bg-surface-container hover:bg-surface-variant text-primary rounded-xl font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all"
+                 >
+                   Re-Check Input
+                 </button>
+               </div>
+            )}
+         </div>
       </div>
     </div>
   );
