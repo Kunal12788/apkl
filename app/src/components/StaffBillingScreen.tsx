@@ -175,8 +175,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     setIsPaying(true);
     try {
       await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
-      alert("Successfully marked as Paid. Refreshing...");
-      window.location.reload();
+      window.dispatchEvent(new Event('databaseSync'));
+      onClose();
     } catch(e) {
       alert("Failed to update status.");
     }
@@ -189,8 +189,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
          setIsDeleting(true);
          try {
            await supabase.from('transactions').delete().eq('id', txn.id);
-           alert('Deleted successfully. Refreshing...');
-           window.location.reload();
+           window.dispatchEvent(new Event('databaseSync'));
+           onClose();
          } catch(e) { alert('Failed to delete'); }
          setIsDeleting(false);
       }
