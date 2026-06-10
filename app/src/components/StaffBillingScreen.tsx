@@ -178,7 +178,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     try {
       const updates: any = { staff_paid: true };
       if (txn.colStaffPaid) {
-        updates.status = 'Paid';
+        updates.status = 'Fully Paid';
       }
       if (!txn.id.startsWith('TASK-')) {
         await supabase.from('transactions').update(updates).eq('id', txn.id);
@@ -242,7 +242,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
           </div>
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
-            txn.status === 'Paid' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 'bg-error/10 text-error border-error/20'
+            txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 'bg-error/10 text-error border-error/20'
           }`}>
             {txn.status}
           </span>
@@ -335,7 +335,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         {/* Action Buttons */}
         <div className="mt-4 space-y-2">
-          {txn.status !== 'Paid' && !txn.staffPaid && (
+          {txn.status !== 'Fully Paid' && txn.status !== 'Paid' && !txn.staffPaid && (
             <button 
               onClick={handleMarkPaid}
               disabled={isPaying}
@@ -506,7 +506,7 @@ export const StaffBillingScreen: React.FC = () => {
           txTaskIds = new Set(filtered.map((t: any) => t.task_id).filter(Boolean));
           txEntries = filtered.map((t: any) => {
             let computedStatus = 'Unpaid';
-            if (t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Paid';
+            if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Fully Paid';
             else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
             else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
 
@@ -565,7 +565,7 @@ export const StaffBillingScreen: React.FC = () => {
             date: dateStr,
             isoDate: task.created_at ? task.created_at.split('T')[0] : '',
             timestamp: timeStr,
-            status: isPaid ? 'Paid' : 'Unpaid',
+            status: isPaid ? 'Fully Paid' : 'Unpaid',
             colStaffPaid: isPaid,
             staffPaid: isPaid,
             impureWeight: task.impure_weight || task.total_weight,
@@ -865,9 +865,11 @@ export const StaffBillingScreen: React.FC = () => {
                         <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
-                          <p className={`text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block ${isPending ? 'bg-error/10 text-error' : 'bg-secondary/10 text-secondary'}`}>
+                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-tertiary/10 text-tertiary' : 'bg-error/10 text-error'
+                          }`}>
                             {txn.status}
-                          </p>
+                          </span>
                         </div>
                       </div>
                     </div>
