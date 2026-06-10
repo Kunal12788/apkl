@@ -135,23 +135,19 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
 
         // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
         if (txRes.data && tasksRes.data) {
-          import('../utils/billingUtils').then(({ computeCollectionStaffBillingTransactions, computeStaffBillingTransactions }) => {
-            const isSuperSa = userData.role === 'Super Admin';
-            
-            // Use branch filter if applicable for Staff
+          try {
+            const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
             let filteredTx = txRes.data;
             let filteredTasks = tasksRes.data;
-            if (!isSuperSa && userData.branch_id) {
-              // We don't have branchUserIds array here yet, but the dashboard will refine it.
-              // We just seed it with the raw data to give the UI something immediate to render.
-            }
             
             const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
             setCachedData('colstaff_billing_tx', colStaffAllTx);
 
             const staffAllTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
             setCachedData('staff_billing_tx', staffAllTx);
-          }).catch(console.error);
+          } catch (err) {
+            console.error(err);
+          }
         }
 
         // Guarantee exactly 2 seconds of loading time for smooth transition and full cache pre-warming
