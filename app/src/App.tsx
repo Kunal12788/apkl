@@ -245,7 +245,7 @@ function AppContent() {
   return (
     <div className="w-full min-h-screen relative bg-background overflow-hidden">
       {showSplash && (
-        <div className={`absolute inset-0 z-50 transition-opacity duration-300 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`absolute inset-0 z-50 transition-opacity duration-1000 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
           <SplashScreen onComplete={handleComplete} />
         </div>
       )}

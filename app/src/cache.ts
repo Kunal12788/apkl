@@ -11,12 +11,17 @@ try {
   console.error('Failed to load cache from localStorage', e);
 }
 
+let saveTimeout: any = null;
 const saveCacheToStorage = () => {
-  try {
-    localStorage.setItem('aurora_app_cache', JSON.stringify(appCache));
-  } catch (e) {
-    console.error('Failed to save cache to localStorage', e);
-  }
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    try {
+      localStorage.setItem('aurora_app_cache', JSON.stringify(appCache));
+    } catch (e) {
+      console.error('Failed to save cache to localStorage', e);
+    }
+    saveTimeout = null;
+  }, 50);
 };
 
 export const getCachedData = (key: string, maxAgeMs = 300000) => {

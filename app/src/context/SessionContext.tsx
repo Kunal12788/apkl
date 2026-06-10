@@ -95,8 +95,8 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = async (errorMsg?: string, isSilent = false) => {
     clearCache();
     const currentUser = user;
-    
-    // Set UI state immediately for instant feedback
+
+    // Immediately clear local state to redirect instantly
     setUser(null);
     setFullyAuthenticated(false);
     setAuthError(isSilent ? null : (errorMsg || null));
@@ -116,25 +116,27 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sendActivityNotification('logout', currentUser.email, currentUser.name, currentUser.role);
       }
 
-      // Perform DB log and Supabase auth signout asynchronously in background
+      // Perform DB logging and Supabase signOut in the background asynchronously
       (async () => {
         try {
-          await Promise.all([
-            supabase.from('staff_logs').insert({
-              user_id: currentUser.id,
-              email: currentUser.email,
-              name: currentUser.name,
-              role: currentUser.role,
-              action: 'logout'
-            }),
-            supabase.auth.signOut()
-          ]);
+          await supabase.from('staff_logs').insert({
+            user_id: currentUser.id,
+            email: currentUser.email,
+            name: currentUser.name,
+            role: currentUser.role,
+            action: 'logout'
+          });
         } catch (err) {
-          console.error("Background logout operations failed:", err);
+          console.error("Failed to insert staff log on logout:", err);
+        }
+        try {
+          await supabase.auth.signOut();
+        } catch (err) {
+          console.error("Failed to sign out on logout:", err);
         }
       })();
     } else {
-      supabase.auth.signOut().catch(err => console.error("Background signout failed:", err));
+      supabase.auth.signOut().catch(err => console.error("Failed to sign out on logout:", err));
     }
   };
 

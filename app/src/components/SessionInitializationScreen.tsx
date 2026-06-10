@@ -8,16 +8,16 @@ export const SessionInitializationScreen: React.FC = () => {
     // Start progress bar animation
     const timer = setTimeout(() => {
       setProgressWidth('100%');
-    }, 50);
+    }, 10);
 
-    // Update status text dynamically during the 2 seconds
+    // Update status text dynamically during transition
     const stepTimer1 = setTimeout(() => {
       setStepText('Decrypting vault keymaps...');
-    }, 700);
+    }, 100);
 
     const stepTimer2 = setTimeout(() => {
       setStepText('Warming session sandbox...');
-    }, 1400);
+    }, 200);
 
     return () => {
       clearTimeout(timer);
@@ -68,7 +68,7 @@ export const SessionInitializationScreen: React.FC = () => {
                   className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
                   style={{ 
                     width: progressWidth,
-                    transitionDuration: '2000ms'
+                    transitionDuration: '300ms'
                   }}
                 ></div>
               </div>
