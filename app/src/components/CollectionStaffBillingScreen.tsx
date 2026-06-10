@@ -19,7 +19,9 @@ interface Transaction {
   date: string;
   isoDate: string;
   timestamp: string;
-  status: 'Paid' | 'Unpaid';
+  status: string;
+  colStaffPaid?: boolean;
+  staffPaid?: boolean;
   
   impureWeight?: string;
   pureWeight?: string;
@@ -97,9 +99,17 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
     setIsPaying(true);
     try {
-      await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
-      window.dispatchEvent(new Event('databaseSync'));
-      onClose();
+      const updates: any = { col_staff_paid: true };
+      if (txn.staffPaid) {
+        updates.status = 'Paid';
+      }
+      if (!txn.id.startsWith('TASK-')) {
+        await supabase.from('transactions').update(updates).eq('id', txn.id);
+        window.dispatchEvent(new Event('databaseSync'));
+        onClose();
+      } else {
+        alert("This is a legacy task entry and cannot be updated this way.");
+      }
     } catch(e) {
       console.error(e);
       alert("Failed to update status.");
@@ -250,9 +260,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         </div>
 
-        {/* Action Buttons */}
         <div className="mt-4 space-y-2">
-          {txn.status === 'Unpaid' && (
+          {txn.status !== 'Paid' && !txn.colStaffPaid && (
             <button 
               onClick={handleMarkPaid}
               disabled={isPaying}
@@ -346,6 +355,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           const details = t.details || '';
           const piecesMatch = details.match(/Pieces:\s*(\d+)/);
           const parsedPieces = piecesMatch ? piecesMatch[1] : '1';
+          let computedStatus = 'Unpaid';
+          if (t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Paid';
+          else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
+          else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
+
           return {
             metal: t.metal || 'Gold',
             id: t.id,
@@ -359,7 +373,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             date: t.date || new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
             isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
             timestamp: t.timestamp || (t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
-            status: t.status || 'Unpaid',
+            status: computedStatus,
+            colStaffPaid: !!t.col_staff_paid,
+            staffPaid: !!t.staff_paid,
             impureWeight: t.impure_weight,
             pureWeight: t.pure_weight,
             purityPercentage: t.purity_percentage,
@@ -415,6 +431,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             isoDate: task.created_at ? task.created_at.split('T')[0] : '',
             timestamp: timeStr,
             status: isPaid ? 'Paid' : 'Unpaid',
+            colStaffPaid: isPaid,
+            staffPaid: isPaid,
             impureWeight: task.impure_weight || task.total_weight,
             pureWeight: task.pure_weight,
             purityPercentage: task.purity,

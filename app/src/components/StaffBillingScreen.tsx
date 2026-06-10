@@ -19,7 +19,9 @@ interface Transaction {
   date: string;
   isoDate: string;
   timestamp: string;
-  status: 'Paid' | 'Unpaid';
+  status: string;
+  colStaffPaid?: boolean;
+  staffPaid?: boolean;
   
   impureWeight?: string;
   pureWeight?: string;
@@ -174,9 +176,17 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
     setIsPaying(true);
     try {
-      await supabase.from('transactions').update({ status: 'Paid' }).eq('id', txn.id);
-      window.dispatchEvent(new Event('databaseSync'));
-      onClose();
+      const updates: any = { staff_paid: true };
+      if (txn.colStaffPaid) {
+        updates.status = 'Paid';
+      }
+      if (!txn.id.startsWith('TASK-')) {
+        await supabase.from('transactions').update(updates).eq('id', txn.id);
+        window.dispatchEvent(new Event('databaseSync'));
+        onClose();
+      } else {
+        alert("This is a legacy task entry and cannot be updated this way.");
+      }
     } catch(e) {
       alert("Failed to update status.");
     }
@@ -325,7 +335,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         {/* Action Buttons */}
         <div className="mt-4 space-y-2">
-          {txn.status === 'Unpaid' && (
+          {txn.status !== 'Paid' && !txn.staffPaid && (
             <button 
               onClick={handleMarkPaid}
               disabled={isPaying}
@@ -494,17 +504,26 @@ export const StaffBillingScreen: React.FC = () => {
             filtered = txData.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
           }
           txTaskIds = new Set(filtered.map((t: any) => t.task_id).filter(Boolean));
-          txEntries = filtered.map((t: any) => ({
-            metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
-            customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee', workType: t.work_type,
-            amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-            date: t.date || (t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-            isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
-            timestamp: t.timestamp || (t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
-            status: t.status,
-            impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-            pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || ''
-          }));
+          txEntries = filtered.map((t: any) => {
+            let computedStatus = 'Unpaid';
+            if (t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Paid';
+            else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
+            else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
+
+            return {
+              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
+              customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee', workType: t.work_type,
+              amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
+              date: t.date || (t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+              isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
+              timestamp: t.timestamp || (t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
+              status: computedStatus,
+              colStaffPaid: !!t.col_staff_paid,
+              staffPaid: !!t.staff_paid,
+              impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || ''
+            };
+          });
         }
 
         // Fallback: load completed tasks that have no real transaction record yet
@@ -546,7 +565,9 @@ export const StaffBillingScreen: React.FC = () => {
             date: dateStr,
             isoDate: task.created_at ? task.created_at.split('T')[0] : '',
             timestamp: timeStr,
-            status: (isPaid ? 'Paid' : 'Unpaid') as 'Paid' | 'Unpaid',
+            status: isPaid ? 'Paid' : 'Unpaid',
+            colStaffPaid: isPaid,
+            staffPaid: isPaid,
             impureWeight: task.impure_weight || task.total_weight,
             pureWeight: task.pure_weight,
             purityPercentage: task.purity,
