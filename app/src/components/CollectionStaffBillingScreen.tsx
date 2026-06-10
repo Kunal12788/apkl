@@ -108,7 +108,14 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
         window.dispatchEvent(new Event('databaseSync'));
         onClose();
       } else {
-        alert("This is a legacy task entry and cannot be updated this way.");
+        const taskId = txn.id.replace('TASK-', '');
+        const taskUpdates: any = {
+          col_staff_paid: true,
+          staff_paid: !!txn.staffPaid
+        };
+        await supabase.from('tasks').update(taskUpdates).eq('id', taskId);
+        window.dispatchEvent(new Event('databaseSync'));
+        onClose();
       }
     } catch(e) {
       console.error(e);
@@ -417,6 +424,14 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
           const isPaid = settlementVal.toLowerCase().includes('[collected]') || settlementVal.toLowerCase().includes('paid');
 
+          const colStaffPaidVal = task.col_staff_paid !== null && task.col_staff_paid !== undefined ? !!task.col_staff_paid : isPaid;
+          const staffPaidVal = task.staff_paid !== null && task.staff_paid !== undefined ? !!task.staff_paid : isPaid;
+
+          let computedStatus = 'Unpaid';
+          if (colStaffPaidVal && staffPaidVal) computedStatus = 'Fully Paid';
+          else if (colStaffPaidVal && !staffPaidVal) computedStatus = 'Awaiting Staff';
+          else if (!colStaffPaidVal && staffPaidVal) computedStatus = 'Awaiting Collection Staff';
+
           return {
             metal: task.metal || 'Gold',
             id: `TASK-${task.id}`,
@@ -430,9 +445,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             date: dateStr,
             isoDate: task.created_at ? task.created_at.split('T')[0] : '',
             timestamp: timeStr,
-            status: isPaid ? 'Fully Paid' : 'Unpaid',
-            colStaffPaid: isPaid,
-            staffPaid: isPaid,
+            status: computedStatus,
+            colStaffPaid: colStaffPaidVal,
+            staffPaid: staffPaidVal,
             impureWeight: task.impure_weight || task.total_weight,
             pureWeight: task.pure_weight,
             purityPercentage: task.purity,
