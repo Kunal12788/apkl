@@ -21,14 +21,17 @@ export const StaffDashboardScreen: React.FC = () => {
   const cachedAllocations = getCachedData('stock_allocations_all');
 
   const isSuperSa = user?.role === 'Super Admin';
+  const cachedBranchUsers = user?.branch_id ? getCachedData(`branch_users_${user.branch_id}`) : null;
+  const branchUserIds = cachedBranchUsers || [userId];
+
   const initialLedger = cachedLedger 
-    ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => e.staff_id === userId))
+    ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => branchUserIds.includes(e.staff_id)))
     : [];
   const initialTx = cachedTx
-    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => t.created_by === userId || t.createdBy === userId))
+    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy)))
     : [];
   const initialTasks = cachedTasks
-    ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => t.created_by === userId))
+    ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => branchUserIds.includes(t.created_by)))
     : [];
   const initialAllocations = cachedAllocations
     ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id))

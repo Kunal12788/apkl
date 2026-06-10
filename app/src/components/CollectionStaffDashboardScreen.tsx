@@ -15,7 +15,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const cachedTx = getCachedData('tx_data');
 
   const initialTasks = cachedTasks 
-    ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+    ? cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser).map((t: any) => ({
         id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date, settlementCondition: t.sett_condition || t.settlement_condition
       }))
     : [];
@@ -165,16 +165,19 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     settlementCondition: t.settlementCondition
   }));
 
-  // 4. Calculate dues
+  // 4. Calculate dues using billing data cache directly to ensure it perfectly matches the Billing Screen instantly
+  const cachedBillingTx = getCachedData('colstaff_billing_tx') || [];
+  const billingTransactions = transactions.length > 0 && cachedBillingTx.length === 0 ? transactions : cachedBillingTx;
+  
   let totalDues = 0;
-  transactions.forEach(t => {
+  billingTransactions.forEach((t: any) => {
     if (t.status === 'Unpaid') {
-      const amt = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const amt = parseFloat(String(t.amount || '0').replace(/[^\d.]/g, '')) || 0;
       totalDues += amt;
     }
   });
 
-  const uniqueCustomersCount = new Set(transactions.filter(t => t.status === 'Unpaid').map(t => t.customerName)).size;
+  const uniqueCustomersCount = new Set(billingTransactions.filter((t: any) => t.status === 'Unpaid').map((t: any) => t.customerName || t.customer_name)).size;
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
