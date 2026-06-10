@@ -86,9 +86,10 @@ interface BillingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   txn: Transaction | null;
+  onOptimisticUpdate?: (id: string, updates: Partial<Transaction>) => void;
 }
 
-export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn }) => {
+export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn, onOptimisticUpdate }) => {
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
@@ -97,31 +98,38 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
   const handleMarkPaid = async () => {
     if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
+    
+    // Apply optimistic update instantly
+    if (onOptimisticUpdate) {
+      onOptimisticUpdate(txn.id, { colStaffPaid: true, status: txn.staffPaid ? 'Fully Paid' : 'Awaiting Staff' });
+    }
+    
     setIsPaying(true);
+    onClose(); // Close instantly for better UX
+
     try {
       const updates: any = { col_staff_paid: true };
       if (txn.staffPaid) {
         updates.status = 'Fully Paid';
       }
       if (!txn.id.startsWith('TASK-')) {
-        await supabase.from('transactions').update(updates).eq('id', txn.id);
-        window.dispatchEvent(new Event('databaseSync'));
-        onClose();
+        supabase.from('transactions').update(updates).eq('id', txn.id).then(() => {
+          window.dispatchEvent(new Event('databaseSync'));
+        });
       } else {
         const taskId = txn.id.replace('TASK-', '');
         const taskUpdates: any = {
           col_staff_paid: true,
           staff_paid: !!txn.staffPaid
         };
-        await supabase.from('tasks').update(taskUpdates).eq('id', taskId);
-        window.dispatchEvent(new Event('databaseSync'));
-        onClose();
+        supabase.from('tasks').update(taskUpdates).eq('id', taskId).then(() => {
+          window.dispatchEvent(new Event('databaseSync'));
+        });
       }
     } catch(e) {
       console.error(e);
       alert("Failed to update status.");
     }
-    setIsPaying(false);
   };
 
   const handleDelete = async () => {
@@ -841,6 +849,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         isOpen={selectedTxn !== null} 
         onClose={() => setSelectedTxn(null)} 
         txn={selectedTxn} 
+        onOptimisticUpdate={(id, updates) => {
+          setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+        }}
       />
 
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
