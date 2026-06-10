@@ -230,7 +230,7 @@ function AppContent() {
     setFadeOut(true);
     setTimeout(() => {
       setShowSplash(false);
-    }, 300); 
+    }, 500); 
   };
 
   if (loading) {

@@ -108,7 +108,30 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // Log activity and warm up cache in the background (fire-and-forget, non-blocking)
+        // 4. Fetch the data needed to warm up the cache for this specific role in parallel (blocking but optimized)
+        const fetchPromises: any[] = [
+          supabase.from('ledger_entries').select('*'),
+          supabase.from('transactions').select('*'),
+          supabase.from('tasks').select('*')
+        ];
+
+        // Only fetch Super Admin specific logs/tables if the user is a Super Admin
+        const isSuperAdmin = userData.role === 'Super Admin';
+        if (isSuperAdmin) {
+          fetchPromises.push(
+            supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
+            supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
+          );
+        }
+
+        const fetchResults = await Promise.all(fetchPromises);
+        const ledgerRes = fetchResults[0];
+        const txRes = fetchResults[1];
+        const tasksRes = fetchResults[2];
+        const saLedgerRes = isSuperAdmin ? fetchResults[3] : null;
+        const transfersRes = isSuperAdmin ? fetchResults[4] : null;
+
+        // Log the login activity asynchronously in the background
         (async () => {
           try {
             await supabase.from('staff_logs').insert({
@@ -121,38 +144,31 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           } catch (err) {
             console.error("Failed to insert login log:", err);
           }
-
-          try {
-            const [ledgerRes, txRes, tasksRes, saLedgerRes, transfersRes] = await Promise.all([
-              supabase.from('ledger_entries').select('*'),
-              supabase.from('transactions').select('*'),
-              supabase.from('tasks').select('*'),
-              supabase.from('super_admin_ledger').select('*').order('created_at', { ascending: false }),
-              supabase.from('refining_transfers').select('*').eq('status', 'Pending').order('created_at', { ascending: false })
-            ]);
-
-            if (ledgerRes.data) {
-              setCachedData('ledger_data', ledgerRes.data);
-              setCachedData('ledger_entries_all', ledgerRes.data);
-            }
-            if (txRes.data) setCachedData('tx_data', txRes.data);
-            if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
-            if (saLedgerRes.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
-            if (transfersRes.data) setCachedData('refining_transfers_pending', transfersRes.data);
-
-            // Precompute billing data in background
-            if (txRes.data && tasksRes.data) {
-              const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
-              const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
-              setCachedData('colstaff_billing_tx', colStaffAllTx);
-
-              const staffAllTx = computeStaffBillingTransactions(txRes.data, tasksRes.data);
-              setCachedData('staff_billing_tx', staffAllTx);
-            }
-          } catch (err) {
-            console.error("Background cache warming error:", err);
-          }
         })();
+
+        // Warm up in-memory cache so all dashboard views render instantly with 100% data visible on mount
+        if (ledgerRes.data) {
+          setCachedData('ledger_data', ledgerRes.data);
+          setCachedData('ledger_entries_all', ledgerRes.data);
+        }
+        if (txRes.data) setCachedData('tx_data', txRes.data);
+        if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+        if (isSuperAdmin && saLedgerRes?.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
+        if (isSuperAdmin && transfersRes?.data) setCachedData('refining_transfers_pending', transfersRes.data);
+
+        // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
+        if (txRes.data && tasksRes.data) {
+          try {
+            const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
+            const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
+            setCachedData('colstaff_billing_tx', colStaffAllTx);
+
+            const staffAllTx = computeStaffBillingTransactions(txRes.data, tasksRes.data);
+            setCachedData('staff_billing_tx', staffAllTx);
+          } catch (err) {
+            console.error(err);
+          }
+        }
 
         // Trigger In-App Apple Toast
         triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');

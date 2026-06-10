@@ -4,7 +4,7 @@ export const SplashScreen: React.FC<{ onComplete: () => void }> = ({ onComplete 
   useEffect(() => {
     const timer = setTimeout(() => {
       onComplete();
-    }, 500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, [onComplete]);
 
