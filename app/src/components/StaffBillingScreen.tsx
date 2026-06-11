@@ -257,9 +257,9 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
           </div>
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
-            txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-tertiary/10 text-tertiary border-tertiary/20' : 'bg-error/10 text-error border-error/20'
+            txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'
           }`}>
-            {txn.status}
+            {txn.status === 'Fully Paid' ? 'Paid' : txn.status}
           </span>
         </div>
 
@@ -882,9 +882,9 @@ export const StaffBillingScreen: React.FC = () => {
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                            (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-tertiary/10 text-tertiary' : 'bg-error/10 text-error'
+                            (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                           }`}>
-                            {txn.status}
+                            {txn.status === 'Fully Paid' ? 'Paid' : txn.status}
                           </span>
                         </div>
                       </div>
