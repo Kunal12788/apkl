@@ -34,6 +34,7 @@ interface Transaction {
   caratMarking?: string;
   
   details: string;
+  createdBy?: string;
 }
 
 interface DbCustomer {
@@ -164,14 +165,23 @@ interface BillingDetailsModalProps {
   onClose: () => void;
   txn: Transaction | null;
   onOptimisticUpdate?: (id: string, updates: Partial<Transaction>) => void;
+  usersMap?: Record<string, { name: string; role: string }>;
 }
 
-export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn, onOptimisticUpdate }) => {
+export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn, onOptimisticUpdate, usersMap = {} }) => {
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
 
   if (!isOpen || !txn) return null;
+
+  const creator = txn.createdBy ? usersMap[txn.createdBy] : null;
+  const broughtByText = (() => {
+    if (!creator) return 'Customer';
+    if (creator.role === 'Collection Staff') return creator.name;
+    if (['Staff', 'Admin', 'Super Admin'].includes(creator.role)) return creator.role;
+    return 'Customer';
+  })();
 
   const handleMarkPaid = async () => {
     if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
@@ -255,6 +265,10 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
               {txn.id} Receipt
             </h3>
             <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
+            <p className="text-[9px] text-secondary font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px] text-secondary/70">person</span>
+              Brought By: <span className="text-primary font-black">{broughtByText}</span>
+            </p>
           </div>
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'
@@ -476,6 +490,9 @@ export const StaffBillingScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(cachedStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
+    getCachedData('users_map') || {}
+  );
 
   React.useEffect(() => {
     const loadBillingData = async () => {
@@ -483,6 +500,19 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
+        // Fetch all users to map created_by to name and role
+        const { data: allUsers } = await supabase
+          .from('users')
+          .select('id, name, role');
+        if (allUsers) {
+          const uMap: Record<string, { name: string; role: string }> = {};
+          allUsers.forEach((u: any) => {
+            uMap[u.id] = { name: u.name, role: u.role };
+          });
+          setUsersMap(uMap);
+          setCachedData('users_map', uMap);
+        }
+
         let branchUserIds: string[] = [];
         if (!isSuperSa && user?.branch_id) {
           const { data: bUsers, error: buError } = await supabase
@@ -527,7 +557,8 @@ export const StaffBillingScreen: React.FC = () => {
               colStaffPaid: !!t.col_staff_paid,
               staffPaid: !!t.staff_paid,
               impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || ''
+              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
+              createdBy: t.created_by
             };
           });
         }
@@ -589,7 +620,8 @@ export const StaffBillingScreen: React.FC = () => {
             pointsCount: task.point_suggestion ? parseInt(task.point_suggestion) : undefined,
             pointsType: (task.metal === 'Silver' ? 'Silver' : 'Gold') as 'Gold' | 'Silver',
             caratMarking: task.carat,
-            details: settlementVal
+            details: settlementVal,
+            createdBy: task.created_by
           };
         });
 
@@ -1186,6 +1218,7 @@ export const StaffBillingScreen: React.FC = () => {
         isOpen={!!selectedTransaction}
         onClose={handleCloseModal}
         txn={selectedTransaction}
+        usersMap={usersMap}
         onOptimisticUpdate={(id, updates) => {
           setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         }}

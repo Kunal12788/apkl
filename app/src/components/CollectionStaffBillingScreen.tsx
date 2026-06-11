@@ -174,20 +174,28 @@ const SearchAndFilterSection = ({
   </div>
 );
 
-// Sleek bottom sheet details modal
 interface BillingDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   txn: Transaction | null;
   onOptimisticUpdate?: (id: string, updates: Partial<Transaction>) => void;
+  usersMap?: Record<string, { name: string; role: string }>;
 }
 
-export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn, onOptimisticUpdate }) => {
+export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen, onClose, txn, onOptimisticUpdate, usersMap = {} }) => {
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
 
   if (!isOpen || !txn) return null;
+
+  const creator = txn.createdBy ? usersMap[txn.createdBy] : null;
+  const broughtByText = (() => {
+    if (!creator) return 'Customer';
+    if (creator.role === 'Collection Staff') return creator.name;
+    if (['Staff', 'Admin', 'Super Admin'].includes(creator.role)) return creator.role;
+    return 'Customer';
+  })();
 
   const handleMarkPaid = async () => {
     if (!window.confirm("Are you sure you want to mark this transaction as Paid?")) return;
@@ -272,6 +280,10 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
               {txn.id} Receipt
             </h3>
             <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">{txn.date} • {txn.timestamp}</p>
+            <p className="text-[9px] text-secondary font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px] text-secondary/70">person</span>
+              Brought By: <span className="text-primary font-black">{broughtByText}</span>
+            </p>
           </div>
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'
@@ -414,6 +426,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
+  const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
+    getCachedData('users_map') || {}
+  );
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -439,6 +454,19 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     const loadBillingData = async () => {
       if (!isFullyAuthenticated) return;
       try {
+        // Fetch all users to map created_by to name and role
+        const { data: allUsers } = await supabase
+          .from('users')
+          .select('id, name, role');
+        if (allUsers) {
+          const uMap: Record<string, { name: string; role: string }> = {};
+          allUsers.forEach((u: any) => {
+            uMap[u.id] = { name: u.name, role: u.role };
+          });
+          setUsersMap(uMap);
+          setCachedData('users_map', uMap);
+        }
+
         let branchUserIds: string[] = [];
         if (user?.branch_id) {
           const { data: bUsers, error: buError } = await supabase
@@ -1025,6 +1053,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         isOpen={selectedTxn !== null} 
         onClose={() => setSelectedTxn(null)} 
         txn={selectedTxn} 
+        usersMap={usersMap}
         onOptimisticUpdate={(id, updates) => {
           setTransactions(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
         }}
