@@ -1,31 +1,31 @@
 import React, { useState, useEffect } from 'react';
 
 export const SessionInitializationScreen: React.FC = () => {
-  const [progressWidth, setProgressWidth] = useState('0%');
+  const [progressState, setProgressState] = useState({ width: '0%', duration: '0ms' });
   const [stepText, setStepText] = useState('Authenticating credentials...');
 
   useEffect(() => {
-    // Start progress bar animation: move quickly to 40%
+    // Start progress bar animation: move smoothly to 40% over 500ms
     const timer1 = setTimeout(() => {
-      setProgressWidth('40%');
+      setProgressState({ width: '40%', duration: '500ms' });
     }, 10);
 
-    // Then move to 85% and wait for the actual data to finish loading
+    // Then continue smoothly to 85% over 1500ms without stopping
     const timer2 = setTimeout(() => {
-      setProgressWidth('85%');
-    }, 500);
+      setProgressState({ width: '85%', duration: '1500ms' });
+    }, 510);
 
     // Update status text dynamically during transition
     const stepTimer1 = setTimeout(() => {
       setStepText('Decrypting vault keymaps...');
-    }, 400);
+    }, 500);
 
     const stepTimer2 = setTimeout(() => {
       setStepText('Warming session sandbox...');
-    }, 800);
+    }, 1200);
 
     const handleComplete = () => {
-      setProgressWidth('100%');
+      setProgressState({ width: '100%', duration: '400ms' });
       setStepText('Access Granted.');
     };
 
@@ -81,8 +81,8 @@ export const SessionInitializationScreen: React.FC = () => {
                 <div 
                   className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
                   style={{ 
-                    width: progressWidth,
-                    transitionDuration: '400ms'
+                    width: progressState.width,
+                    transitionDuration: progressState.duration
                   }}
                 ></div>
               </div>
