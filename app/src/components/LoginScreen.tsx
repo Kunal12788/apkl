@@ -108,22 +108,13 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           return;
         }
 
-        // --- PROMOTE TO FULLY AUTHENTICATED HERE, BEFORE HEAVY DATA FETCH ---
-        // This instantly removes the 'massive delay' by unblocking the Dashboard UI
-        login({
-          id: userData.id,
-          name: userData.name,
-          role: userData.role,
-          email: userData.email || emailLower,
-          phone: userData.phone || '',
-          branch_id: userData.branch_id || null
-        }, true);
-
-        // 4. Fetch the data needed to warm up the cache for this specific role in the background
+        // 4. Fetch the data needed to warm up the cache for this specific role
         const fetchPromises: any[] = [
           supabase.from('ledger_entries').select('*'),
           supabase.from('transactions').select('*'),
-          supabase.from('tasks').select('*')
+          supabase.from('tasks').select('*'),
+          supabase.from('customers').select('*'),
+          supabase.from('stock_allocations').select('*')
         ];
 
         // Only fetch Super Admin specific logs/tables if the user is a Super Admin
@@ -139,23 +130,10 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         const ledgerRes = fetchResults[0];
         const txRes = fetchResults[1];
         const tasksRes = fetchResults[2];
-        const saLedgerRes = isSuperAdmin ? fetchResults[3] : null;
-        const transfersRes = isSuperAdmin ? fetchResults[4] : null;
-
-        // Log the login activity asynchronously in the background
-        (async () => {
-          try {
-            await supabase.from('staff_logs').insert({
-              user_id: userData.id,
-              email: userData.email || emailLower,
-              name: userData.name,
-              role: userData.role,
-              action: 'login'
-            });
-          } catch (err) {
-            console.error("Failed to insert login log:", err);
-          }
-        })();
+        const customersRes = fetchResults[3];
+        const allocationsRes = fetchResults[4];
+        const saLedgerRes = isSuperAdmin ? fetchResults[5] : null;
+        const transfersRes = isSuperAdmin ? fetchResults[6] : null;
 
         // Warm up in-memory cache so all dashboard views render instantly with 100% data visible on mount
         if (ledgerRes.data) {
@@ -164,6 +142,12 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         }
         if (txRes.data) setCachedData('tx_data', txRes.data);
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
+        if (customersRes.data) {
+          setCachedData('db_customers', customersRes.data);
+          setCachedData('col_db_customers_hash', JSON.stringify(customersRes.data));
+          setCachedData('db_customers_hash', JSON.stringify(customersRes.data));
+        }
+        if (allocationsRes.data) setCachedData('stock_allocations_all', allocationsRes.data);
         if (isSuperAdmin && saLedgerRes?.data) setCachedData('super_admin_ledger_all', saLedgerRes.data);
         if (isSuperAdmin && transfersRes?.data) setCachedData('refining_transfers_pending', transfersRes.data);
 
@@ -180,6 +164,32 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             console.error(err);
           }
         }
+
+        // --- PROMOTE TO FULLY AUTHENTICATED HERE, AFTER HEAVY DATA FETCH IS FULLY CACHED ---
+        // This ensures the dashboard mounts with 100% warm cache and has zero delay rendering
+        login({
+          id: userData.id,
+          name: userData.name,
+          role: userData.role,
+          email: userData.email || emailLower,
+          phone: userData.phone || '',
+          branch_id: userData.branch_id || null
+        }, true);
+
+        // Log the login activity asynchronously in the background
+        (async () => {
+          try {
+            await supabase.from('staff_logs').insert({
+              user_id: userData.id,
+              email: userData.email || emailLower,
+              name: userData.name,
+              role: userData.role,
+              action: 'login'
+            });
+          } catch (err) {
+            console.error("Failed to insert login log:", err);
+          }
+        })();
 
         // Trigger In-App Apple Toast
         triggerAppleToast('Security Alert', 'Secure Connection Established', 'login');
