@@ -5,32 +5,29 @@ export const SessionInitializationScreen: React.FC = () => {
   const [stepText, setStepText] = useState('Authenticating credentials...');
 
   useEffect(() => {
-    // Start progress bar animation: move smoothly to 80% over 1500ms
+    // One smooth, continuous animation from 0% to 100% over exactly 2500ms
     const timer1 = setTimeout(() => {
-      setProgressState({ width: '80%', duration: '1500ms' });
+      setProgressState({ width: '100%', duration: '2500ms' });
     }, 10);
 
     // Update status text dynamically during transition
     const stepTimer1 = setTimeout(() => {
       setStepText('Decrypting vault keymaps...');
-    }, 500);
+    }, 800);
 
     const stepTimer2 = setTimeout(() => {
       setStepText('Warming session sandbox...');
-    }, 1000);
+    }, 1600);
 
-    const handleComplete = () => {
-      setProgressState({ width: '100%', duration: '400ms' });
+    const stepTimer3 = setTimeout(() => {
       setStepText('Access Granted.');
-    };
-
-    window.addEventListener('sessionInitComplete', handleComplete);
+    }, 2400);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
-      window.removeEventListener('sessionInitComplete', handleComplete);
+      clearTimeout(stepTimer3);
     };
   }, []);
 
@@ -73,7 +70,7 @@ export const SessionInitializationScreen: React.FC = () => {
             <div className="flex flex-col gap-2 relative z-10 w-full">
               <div className="w-full h-1.5 bg-outline-variant/20 rounded-full overflow-hidden relative">
                 <div 
-                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-out" 
+                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
                   style={{ 
                     width: progressState.width,
                     transitionDuration: progressState.duration
