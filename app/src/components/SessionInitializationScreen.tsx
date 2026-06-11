@@ -5,24 +5,38 @@ export const SessionInitializationScreen: React.FC = () => {
   const [stepText, setStepText] = useState('Authenticating credentials...');
 
   useEffect(() => {
-    // Start progress bar animation
-    const timer = setTimeout(() => {
-      setProgressWidth('100%');
+    // Start progress bar animation: move quickly to 40%
+    const timer1 = setTimeout(() => {
+      setProgressWidth('40%');
     }, 10);
+
+    // Then move to 85% and wait for the actual data to finish loading
+    const timer2 = setTimeout(() => {
+      setProgressWidth('85%');
+    }, 500);
 
     // Update status text dynamically during transition
     const stepTimer1 = setTimeout(() => {
       setStepText('Decrypting vault keymaps...');
-    }, 100);
+    }, 400);
 
     const stepTimer2 = setTimeout(() => {
       setStepText('Warming session sandbox...');
-    }, 200);
+    }, 800);
+
+    const handleComplete = () => {
+      setProgressWidth('100%');
+      setStepText('Access Granted.');
+    };
+
+    window.addEventListener('sessionInitComplete', handleComplete);
 
     return () => {
-      clearTimeout(timer);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
+      window.removeEventListener('sessionInitComplete', handleComplete);
     };
   }, []);
 
@@ -68,7 +82,7 @@ export const SessionInitializationScreen: React.FC = () => {
                   className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
                   style={{ 
                     width: progressWidth,
-                    transitionDuration: '300ms'
+                    transitionDuration: '400ms'
                   }}
                 ></div>
               </div>

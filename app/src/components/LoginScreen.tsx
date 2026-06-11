@@ -165,6 +165,12 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           }
         }
 
+        // 5. Notify the SessionInitializationScreen that background data load is done
+        window.dispatchEvent(new CustomEvent('sessionInitComplete'));
+        
+        // 6. Wait for the progress bar to animate to 100% (450ms) before snapping into the dashboard
+        await new Promise(resolve => setTimeout(resolve, 450));
+
         // --- PROMOTE TO FULLY AUTHENTICATED HERE, AFTER HEAVY DATA FETCH IS FULLY CACHED ---
         // This ensures the dashboard mounts with 100% warm cache and has zero delay rendering
         login({
