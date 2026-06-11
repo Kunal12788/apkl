@@ -23,7 +23,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [billingTransactions, setBillingTransactions] = useState<any[]>([]);
-  const [filterDate, setFilterDate] = useState('');
+  const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -179,15 +179,23 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   // 3. Dynamic recent tasks
   const dynamicRecentTasks = unifiedDashboardItems;
 
-  let totalDues = 0;
+  let totalCollected = 0;
   activeBillingTx.forEach((t: any) => {
-    if (t.status === 'Unpaid') {
-      const amt = parseFloat(String(t.amount || '0').replace(/[^\d.]/g, '')) || 0;
-      totalDues += amt;
+    const isCollected = t.status === 'Fully Paid' || t.status === 'Paid' || t.status === 'Awaiting Staff' || t.colStaffPaid;
+    if (isCollected) {
+      if (!filterDate || t.isoDate === filterDate || t.iso_date === filterDate) {
+        const amt = parseFloat(String(t.amount || '0').replace(/[^\d.]/g, '')) || 0;
+        totalCollected += amt;
+      }
     }
   });
 
-  const uniqueCustomersCount = new Set(activeBillingTx.filter((t: any) => t.status === 'Unpaid').map((t: any) => t.customerName || t.customer_name)).size;
+  const uniqueCustomersCount = new Set(activeBillingTx.filter((t: any) => {
+    const isCollected = t.status === 'Fully Paid' || t.status === 'Paid' || t.status === 'Awaiting Staff' || t.colStaffPaid;
+    if (!isCollected) return false;
+    if (filterDate && t.isoDate !== filterDate && t.iso_date !== filterDate) return false;
+    return true;
+  }).map((t: any) => t.customerName || t.customer_name)).size;
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
@@ -213,25 +221,25 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           </div>
         </header>
 
-        {/* TOTAL DUES BANNER */}
+        {/* TOTAL COLLECTED BANNER */}
         <section className="relative z-10 animate-fade-in">
           <div className="text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden group border border-white/10" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)' }}>
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-8 -mt-8 blur-2xl"></div>
-            <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-[#C9A646]/10 rounded-full blur-3xl"></div>
+            <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-[#34d399]/10 rounded-full blur-3xl"></div>
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50">Total Outstanding Dues</p>
-                <h2 className="font-headline font-black mt-2 text-white drop-shadow-md" style={fitText(`₹ ${totalDues.toLocaleString()}`, 10, 1.875, 1.25)}>₹ {totalDues.toLocaleString()}</h2>
+                <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/50">Total Amount Collected</p>
+                <h2 className="font-headline font-black mt-2 text-white drop-shadow-md" style={fitText(`₹ ${totalCollected.toLocaleString()}`, 10, 1.875, 1.25)}>₹ {totalCollected.toLocaleString()}</h2>
               </div>
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
-                <span className="material-symbols-outlined text-white text-xl">payments</span>
+                <span className="material-symbols-outlined text-white text-xl">account_balance_wallet</span>
               </div>
             </div>
             <div className="mt-5 pt-4 border-t border-white/10 flex justify-between items-center text-[9px] font-bold">
-              <span className="text-white/40 uppercase tracking-wider">Active Customers: {uniqueCustomersCount}</span>
-              <span className="text-[#C9A646] uppercase tracking-widest flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#C9A646] animate-ping"></span>
-                Collection Due
+              <span className="text-white/40 uppercase tracking-wider">Collected From: {uniqueCustomersCount} Customers</span>
+              <span className="text-[#34d399] uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[#34d399] animate-ping"></span>
+                Amount Collected
               </span>
             </div>
           </div>
