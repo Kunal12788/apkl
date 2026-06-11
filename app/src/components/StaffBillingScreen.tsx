@@ -316,9 +316,11 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                   <p className={val}>{txn.purityPercentage}</p>
                 </div>
               )}
-              {txn.impureWeight && (
+              {txn.impureWeight && txn.workType !== 'Shouldering' && (
                 <div>
-                  <span className={lbl}>Impure Weight</span>
+                  <span className={lbl}>
+                    {txn.workType === 'Marking' ? 'Weight' : 'Impure Weight'}
+                  </span>
                   <p className={val}>{txn.impureWeight}</p>
                 </div>
               )}
@@ -328,13 +330,13 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                   <p className={val}>{txn.pureWeight}</p>
                 </div>
               )}
-              {txn.pointsCount !== undefined && txn.pointsCount !== null && (
+              {txn.pointsCount !== undefined && txn.pointsCount !== null && txn.workType !== 'Tunch' && txn.workType !== 'Marking' && (
                 <div>
                   <span className={lbl}>Solder Points</span>
                   <p className={val}>{txn.pointsCount} ({txn.pointsType || 'Gold'})</p>
                 </div>
               )}
-              {txn.caratMarking && (
+              {txn.caratMarking && txn.workType !== 'Tunch' && txn.workType !== 'Shouldering' && (
                 <div>
                   <span className={lbl}>Carat Marking</span>
                   <p className={val}>{txn.caratMarking}</p>
