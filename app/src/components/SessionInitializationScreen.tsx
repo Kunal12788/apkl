@@ -5,15 +5,10 @@ export const SessionInitializationScreen: React.FC = () => {
   const [stepText, setStepText] = useState('Authenticating credentials...');
 
   useEffect(() => {
-    // Start progress bar animation: move smoothly to 40% over 500ms
+    // Start progress bar animation: move smoothly to 80% over 1500ms
     const timer1 = setTimeout(() => {
-      setProgressState({ width: '40%', duration: '500ms' });
+      setProgressState({ width: '80%', duration: '1500ms' });
     }, 10);
-
-    // Then continue smoothly to 85% over 1500ms without stopping
-    const timer2 = setTimeout(() => {
-      setProgressState({ width: '85%', duration: '1500ms' });
-    }, 510);
 
     // Update status text dynamically during transition
     const stepTimer1 = setTimeout(() => {
@@ -22,7 +17,7 @@ export const SessionInitializationScreen: React.FC = () => {
 
     const stepTimer2 = setTimeout(() => {
       setStepText('Warming session sandbox...');
-    }, 1200);
+    }, 1000);
 
     const handleComplete = () => {
       setProgressState({ width: '100%', duration: '400ms' });
@@ -33,7 +28,6 @@ export const SessionInitializationScreen: React.FC = () => {
 
     return () => {
       clearTimeout(timer1);
-      clearTimeout(timer2);
       clearTimeout(stepTimer1);
       clearTimeout(stepTimer2);
       window.removeEventListener('sessionInitComplete', handleComplete);
@@ -79,7 +73,7 @@ export const SessionInitializationScreen: React.FC = () => {
             <div className="flex flex-col gap-2 relative z-10 w-full">
               <div className="w-full h-1.5 bg-outline-variant/20 rounded-full overflow-hidden relative">
                 <div 
-                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-linear" 
+                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-secondary to-primary rounded-full transition-all ease-out" 
                   style={{ 
                     width: progressState.width,
                     transitionDuration: progressState.duration

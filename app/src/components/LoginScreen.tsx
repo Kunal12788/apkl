@@ -45,6 +45,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
   const handleInitialize = () => {
     if (isAuthenticating) return;
     
+    const initStartTime = Date.now();
     const emailLower = email.toLowerCase().trim();
     if (!emailLower || !passkey) {
       setHasError(true);
@@ -163,6 +164,11 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           } catch (err) {
             console.error(err);
           }
+        }
+
+        const elapsed = Date.now() - initStartTime;
+        if (elapsed < 1500) {
+          await new Promise(resolve => setTimeout(resolve, 1500 - elapsed));
         }
 
         // 5. Notify the SessionInitializationScreen that background data load is done
