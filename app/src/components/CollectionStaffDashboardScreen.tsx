@@ -12,7 +12,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   // Directly initialize state from cache for 0ms delay on mount
   const cachedTasks = getCachedData('tasks_data');
-  const cachedTx = getCachedData('tx_data');
+
 
   const initialTasks = cachedTasks 
     ? cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser).map((t: any) => ({
@@ -20,14 +20,9 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
       }))
     : [];
 
-  const initialTx = cachedTx
-    ? cachedTx.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
-        status: t.status, amount: t.amount, customerName: t.customer_name
-      }))
-    : [];
 
   const [tasks, setTasks] = useState<any[]>(initialTasks);
-  const [transactions, setTransactions] = useState<any[]>(initialTx);
+  const [billingTransactions, setBillingTransactions] = useState<any[]>([]);
   const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
@@ -63,22 +58,19 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         const txData = txRes.data;
         const txError = txRes.error;
         if (!txError && txData) {
-          setTransactions(txData.map((t: any) => ({
-             status: t.status, amount: t.amount, customerName: t.customer_name
-          })));
-
           // Merge transactions back into in-memory cache
           const allTx = getCachedData('tx_data') || [];
           const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
           setCachedData('tx_data', [...otherTx, ...txData]);
         }
 
-        // --- NEW: Precompute Billing screen transactions to ensure zero-delay ---
+        // --- Precompute Billing screen transactions and update state to trigger re-render ---
         import('../utils/billingUtils').then(({ computeCollectionStaffBillingTransactions }) => {
           let filteredTx = txRes.data || [];
           let filteredTasks = tasksRes.data || [];
           const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
           setCachedData('colstaff_billing_tx', allTx);
+          setBillingTransactions(allTx);
         });
         // ------------------------------------------------------------------------
       } catch (err) {
@@ -113,7 +105,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
   // 4. Calculate dues using billing data cache directly to ensure it perfectly matches the Billing Screen instantly
   const cachedBillingTx = getCachedData('colstaff_billing_tx') || [];
-  const billingTransactions = transactions.length > 0 && cachedBillingTx.length === 0 ? transactions : cachedBillingTx;
+  const activeBillingTx = billingTransactions.length > 0 ? billingTransactions : cachedBillingTx;
 
   // Combine active tasks with billed/completed transactions for a holistic dashboard view
   const pendingTasks = tasks.filter((t: any) => t.status !== 'Completed').map((t: any) => ({
@@ -127,7 +119,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     settlementCondition: t.settlementCondition
   }));
 
-  const billedItems = billingTransactions.map((t: any) => ({
+  const billedItems = activeBillingTx.map((t: any) => ({
     id: t.id,
     customerName: t.customerName || t.customer_name,
     category: (t.workType || t.work_type || 'TUNCH').toUpperCase(),
@@ -188,14 +180,14 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const dynamicRecentTasks = unifiedDashboardItems;
 
   let totalDues = 0;
-  billingTransactions.forEach((t: any) => {
+  activeBillingTx.forEach((t: any) => {
     if (t.status === 'Unpaid') {
       const amt = parseFloat(String(t.amount || '0').replace(/[^\d.]/g, '')) || 0;
       totalDues += amt;
     }
   });
 
-  const uniqueCustomersCount = new Set(billingTransactions.filter((t: any) => t.status === 'Unpaid').map((t: any) => t.customerName || t.customer_name)).size;
+  const uniqueCustomersCount = new Set(activeBillingTx.filter((t: any) => t.status === 'Unpaid').map((t: any) => t.customerName || t.customer_name)).size;
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative overflow-y-auto overflow-x-hidden hide-scrollbar">
@@ -326,7 +318,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
                         {item.category[0]}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-primary tracking-tight">{item.customer}</p>
+                        <p className="text-sm font-bold text-primary tracking-tight">{item.customerName || item.customer}</p>
                         <div className="flex items-center gap-2 mt-1">
                            <span className="text-[9px] font-black text-secondary tracking-widest uppercase">{item.category}</span>
                            <span className="text-[10px] font-medium text-outline/60">{item.pieces} Pieces</span>
