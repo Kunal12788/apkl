@@ -284,7 +284,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
             <div className="flex justify-between items-start relative z-10">
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Intake Date</p>
-                <p className="font-headline text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>{task.dateGiven}</p>
+                {task.dateGiven && task.dateGiven !== 'Just Now' && (
+                  <p className="font-headline text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>{task.dateGiven}</p>
+                )}
                 {task.createdAt && (
                   <p className="text-[9px] mt-1.5 opacity-85 font-medium flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                     <span className="material-symbols-outlined text-[10px]">schedule</span>
@@ -294,8 +296,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
               </div>
               <div className="text-right flex flex-col items-end">
                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>Est. Completion</p>
-                <p className="text-xs mt-0.5 font-bold" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{task.estimatedCompletion}</p>
-                <p className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-2.5 ${
+                {task.estimatedCompletion && task.estimatedCompletion !== 'Awaiting Audit' && (
+                  <p className="text-xs mt-0.5 font-bold mb-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{task.estimatedCompletion}</p>
+                )}
+                <p className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-1.5 ${
                   task.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-300' :
                   task.status === 'In Progress' ? 'bg-amber-500/20 text-amber-300' :
                   'bg-rose-500/20 text-rose-300'
@@ -309,19 +313,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-2 mt-4 shrink-0">
+        <div className="flex gap-3 mt-5 shrink-0 items-center">
           {onDeleteTask && (
             <button 
               onClick={() => onDeleteTask(task.id)}
-              className="px-3 py-2.5 bg-error/10 hover:bg-error/25 text-error font-bold text-xs rounded-xl transition-colors active:scale-[0.98] flex items-center justify-center"
+              className="w-12 h-12 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold rounded-2xl transition-all duration-300 active:scale-[0.95] flex items-center justify-center shrink-0 shadow-sm"
               title="Request Deletion"
             >
-              <span className="material-symbols-outlined text-sm">delete</span>
+              <span className="material-symbols-outlined text-[18px]">delete</span>
             </button>
           )}
           <button 
             onClick={onClose}
-            className="w-full py-2.5 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
+            className="flex-1 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/50 font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 active:scale-[0.98] shadow-sm"
           >
             Dismiss
           </button>
