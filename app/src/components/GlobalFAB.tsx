@@ -61,6 +61,7 @@ export const GlobalFAB: React.FC = () => {
               assigned_to: isCollection ? 'Pending' : (data.assignedTo || 'Unassigned'),
               source: isCollection ? 'Collection Staff' : 'Staff',
               created_by: user?.id || '',
+              created_at: new Date().toISOString(),
               iso_date: new Date().toISOString().split('T')[0],
               estimated_completion: isCollection ? 'Awaiting Audit' : 'Today, 06:00 PM',
               notes: isCollection ? 'Collection intake from field.' : 'Created from Global FAB',

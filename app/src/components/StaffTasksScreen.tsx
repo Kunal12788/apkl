@@ -40,6 +40,7 @@ interface Task {
   pieceCategories?: Record<string, string>;
   images?: string[];
   auditImages?: string[];
+  createdAt?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -177,6 +178,17 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 }) => {
   const { user } = useSession();
   const userRole = user?.role;
+
+  const formatTimestamp = (isoString?: string) => {
+    if (!isoString) return '';
+    try {
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch (e) {
+      return '';
+    }
+  };
 
   const [impureWeightInput, setImpureWeightInput] = useState('');
   const [purityInput, setPurityInput] = useState('');
@@ -626,14 +638,27 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           {/* Section 3: Schedule Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
-            <div className="flex justify-between items-center relative z-10">
+            <div className="flex justify-between items-start relative z-10">
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Intake Date</p>
                 <p className="font-headline text-xs font-bold mt-0.5" style={{ color: '#ffffff' }}>{task.dateGiven}</p>
+                {task.createdAt && (
+                  <p className="text-[9px] mt-1.5 opacity-85 font-medium flex items-center gap-1" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                    <span className="material-symbols-outlined text-[10px]">schedule</span>
+                    {formatTimestamp(task.createdAt)}
+                  </p>
+                )}
               </div>
-              <div className="text-right">
+              <div className="text-right flex flex-col items-end">
                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>Est. Completion</p>
                 <p className="text-xs mt-0.5 font-bold" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>{task.estimatedCompletion}</p>
+                <p className={`inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mt-2.5 ${
+                  task.status === 'Completed' ? 'bg-emerald-500/20 text-emerald-300' :
+                  task.status === 'In Progress' ? 'bg-amber-500/20 text-amber-300' :
+                  'bg-rose-500/20 text-rose-300'
+                }`}>
+                  {task.status}
+                </p>
               </div>
             </div>
           </div>
@@ -779,7 +804,7 @@ export const StaffTasksScreen: React.FC = () => {
         impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
         broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
+        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
       }))
     : [];
 
@@ -817,7 +842,7 @@ export const StaffTasksScreen: React.FC = () => {
             impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
             broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
             settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
+            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
           })));
         } else {
           setTasks([]);
@@ -844,7 +869,7 @@ export const StaffTasksScreen: React.FC = () => {
               impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
               broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-              metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images
+              metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
             } : old));
          }
       } else {
