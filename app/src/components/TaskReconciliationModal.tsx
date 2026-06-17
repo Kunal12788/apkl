@@ -43,9 +43,17 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
   };
 
   const handleFinalize = async () => {
-    if (auditImages.length === 0) {
-      alert("Please upload at least one audit image.");
-      return;
+    const taskPiecesCount = parseInt(collectionTask.pieces || '1', 10) || 1;
+    if (taskPiecesCount > 1) {
+      if (auditImages.length < taskPiecesCount) {
+        alert(`This task has ${taskPiecesCount} pieces. Please upload all ${taskPiecesCount} audit images (one per piece) before starting work.`);
+        return;
+      }
+    } else {
+      if (auditImages.length === 0) {
+        alert("Please upload at least one audit image.");
+        return;
+      }
     }
     setIsUploading(true);
     
@@ -103,7 +111,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[#001e40]/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md flex flex-col rounded-[2.5rem] overflow-hidden border border-white/30 shadow-2xl bg-background animate-modalUp"
+      <div className="relative w-full max-w-md flex flex-col rounded-[2.5rem] overflow-hidden shadow-2xl bg-background animate-modalUp"
         style={{ minHeight: '85svh', maxHeight: '92svh' }}>
         
         {/* HEADER */}
@@ -163,19 +171,31 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
            )}
 
            <SectionCard title="Staff Independent Audit" icon="app_registration" color="bg-secondary/5 text-secondary">
-              <div className="grid grid-cols-2 gap-3">
-                 <div>
+              <div className="flex gap-4 items-start">
+                 <div className="flex-1 min-w-0">
                     <label className={lbl}>Verified Pieces</label>
                     <input className={inp()} placeholder="Qty" value={formData.pieces} onChange={e => setFormData({...formData, pieces: e.target.value})} />
                  </div>
-                 <div>
+                 <div className="flex-1 min-w-0">
                     <label className={lbl}>Verified Weight (g)</label>
                     <input className={inp()} placeholder="0.00" value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} />
                  </div>
               </div>
               
-              <div className="mt-4">
-                 <label className={lbl}>Upload Audit Images *</label>
+              <div className="mt-4 pt-1">
+                 <div className="flex justify-between items-center mb-1.5">
+                    <label className={lbl}>Upload Audit Images *</label>
+                    {parseInt(collectionTask.pieces || '1', 10) > 1 && (
+                       <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${auditImages.length >= parseInt(collectionTask.pieces || '1', 10) ? 'bg-emerald-500/10 text-emerald-600' : 'bg-red-500/10 text-red-600 animate-pulse'}`}>
+                          {auditImages.length} of {collectionTask.pieces} Uploaded
+                       </span>
+                    )}
+                 </div>
+                 {parseInt(collectionTask.pieces || '1', 10) > 1 && auditImages.length < parseInt(collectionTask.pieces || '1', 10) && (
+                    <p className="text-[10px] text-red-600 font-semibold mb-2.5">
+                       * Intake has {collectionTask.pieces} pieces. Please upload {collectionTask.pieces} separate audit images (one per piece) to proceed.
+                    </p>
+                 )}
                  <div className="flex gap-3 overflow-x-auto py-2 hide-scrollbar">
                     {auditImages.map((file, idx) => (
                       <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 border border-outline-variant/20 shadow-sm">
@@ -195,26 +215,55 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
            </SectionCard>
 
            {result === 'MATCH' && (
-             <div className="p-5 rounded-2xl bg-tertiary/10 border border-tertiary/30 flex items-center gap-4 animate-fade-in">
-                <div className="w-12 h-12 rounded-full bg-tertiary flex items-center justify-center text-white shrink-0 shadow-lg shadow-tertiary/20">
-                   <span className="material-symbols-outlined text-2xl">done_all</span>
+             <div className="p-5 rounded-3xl bg-emerald-50/95 border border-emerald-200/60 shadow-md flex items-center gap-4 animate-fade-in">
+                <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-emerald-500/20">
+                   <span className="material-symbols-outlined text-[20px]">done_all</span>
                 </div>
                 <div>
-                   <p className="text-sm font-bold text-tertiary">Data Reconciliation Successful</p>
-                   <p className="text-[11px] text-tertiary/80 font-medium">Internal values match collection intake. Proceed to commit.</p>
+                   <p className="text-xs font-black text-emerald-950 uppercase tracking-wider">Reconciliation Successful</p>
+                   <p className="text-[10px] text-emerald-800/80 font-medium leading-normal">Physical count and weight match intake records perfectly. You can proceed to start the work.</p>
                 </div>
              </div>
            )}
 
            {result === 'MISMATCH' && (
-             <div className="p-5 rounded-2xl bg-error/5 border border-error/20 flex items-center gap-4 animate-shake">
-                <div className="w-12 h-12 rounded-full bg-error flex items-center justify-center text-white shrink-0 shadow-lg shadow-error/20">
-                   <span className="material-symbols-outlined text-2xl">warning</span>
+             <div className="p-5 rounded-3xl bg-red-50/95 border border-red-200/60 shadow-md flex flex-col gap-4 animate-shake">
+                <div className="flex items-center gap-3.5">
+                   <div className="w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white shrink-0 shadow-md shadow-red-500/20">
+                      <span className="material-symbols-outlined text-[20px]">warning</span>
+                   </div>
+                   <div>
+                      <p className="text-xs font-black text-red-950 uppercase tracking-wider">Audit Mismatch Detected</p>
+                      <p className="text-[10px] text-red-800/80 font-bold uppercase tracking-wide">Verification does not match intake records</p>
+                   </div>
                 </div>
-                <div>
-                   <p className="text-sm font-bold text-error">Audit Mismatch Detected</p>
-                   <p className="text-[11px] text-error/80 font-medium">Physical verification does not match intake records. Re-check items.</p>
+
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                   <div className="bg-white/80 rounded-2xl p-3 border border-red-100/50 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-red-800/60 uppercase">Pieces Intake vs Audit</span>
+                      <div className="flex items-baseline gap-1.5">
+                         <span className="text-xs font-bold text-red-800 line-through opacity-50">{collectionTask.pieces || '1'}</span>
+                         <span className="material-symbols-outlined text-[10px] text-red-600 font-bold">arrow_forward</span>
+                         <span className="text-sm font-extrabold text-red-600">{formData.pieces || '0'}</span>
+                      </div>
+                   </div>
+                   <div className="bg-white/80 rounded-2xl p-3 border border-red-100/50 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold text-red-800/60 uppercase">Weight Intake vs Audit</span>
+                      <div className="flex items-baseline gap-1.5">
+                         <span className="text-xs font-bold text-red-800 line-through opacity-50">
+                            {parseFloat(collectionTask.impureWeight || collectionTask.totalWeight || collectionTask.weight || '0').toFixed(2)}g
+                         </span>
+                         <span className="material-symbols-outlined text-[10px] text-red-600 font-bold">arrow_forward</span>
+                         <span className="text-sm font-extrabold text-red-600">
+                            {parseFloat(formData.weight || '0').toFixed(2)}g
+                         </span>
+                      </div>
+                   </div>
                 </div>
+
+                <p className="text-[10px] text-red-700 font-medium leading-relaxed bg-red-100/40 p-2.5 rounded-xl border border-red-200/30">
+                   If you submit this, an automatic discrepancy report will be logged with this task. Please verify you didn't make a typing mistake before confirming.
+                </p>
              </div>
            )}
         </div>
