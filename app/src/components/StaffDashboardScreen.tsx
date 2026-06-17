@@ -103,8 +103,8 @@ export const StaffDashboardScreen: React.FC = () => {
   const [impureSilverWeight, setImpureSilverWeight] = useState(initialImpureSilver);
   const [cashCollection, setCashCollection] = useState(initialCashCol);
   const [upiCollection, setUpiCollection] = useState(initialUpiCol);
-  const [dateFilter, setDateFilter] = useState('');
-  const [monthFilter, setMonthFilter] = useState('');
+  const [dateFilter] = useState('');
+  const [monthFilter] = useState('');
   const [billingTransactions, setBillingTransactions] = useState<any[]>(getCachedData('staff_billing_tx') || []);
   
   const [revenue, setRevenue] = useState(initialRev);
@@ -432,38 +432,7 @@ export const StaffDashboardScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* Analytics Filter */}
-        <section className="flex gap-2 relative z-10 mb-4">
-          <div className="flex-1 relative group">
-            <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">Date</span>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_today</span>
-              <input 
-                type="date" 
-                value={dateFilter}
-                onChange={(e) => { setDateFilter(e.target.value); setMonthFilter(''); }}
-                className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
-              />
-            </div>
-          </div>
-          <div className="flex-1 relative group">
-            <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">Month</span>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
-              <input 
-                type="month" 
-                value={monthFilter}
-                onChange={(e) => { setMonthFilter(e.target.value); setDateFilter(''); }}
-                className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
-              />
-            </div>
-          </div>
-          {(dateFilter || monthFilter) && (
-            <button onClick={() => { setDateFilter(''); setMonthFilter(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0 border border-error/20 active:scale-95 transition-transform">
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
-          )}
-        </section>
+
 
         {/* 1. Top Section: Total Cash Collected hero card */}
         <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
