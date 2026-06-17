@@ -106,7 +106,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
   };
 
   const inp = () => `w-full h-12 bg-white border border-outline-variant/40 rounded-DEFAULT px-4 text-sm text-primary font-medium focus:outline-none focus:border-secondary transition-colors`;
-  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
+  const lbl = "text-[10px] font-bold uppercase tracking-[0.05em] text-outline mb-1 block whitespace-nowrap";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -115,7 +115,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
         style={{ minHeight: '85svh', maxHeight: '92svh' }}>
         
         {/* HEADER */}
-        <div className="shrink-0 bg-gradient-to-br from-secondary to-[#003366] px-6 pt-8 pb-6 relative overflow-hidden">
+        <div className="shrink-0 bg-gradient-to-br from-secondary to-[#003366] px-6 pt-8 pb-6 relative overflow-hidden rounded-t-[2.5rem]">
            <div className="relative z-10 flex justify-between items-center text-white">
               <div>
                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] opacity-70 mb-1">Audit Protocol</p>
@@ -171,7 +171,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
            )}
 
            <SectionCard title="Staff Independent Audit" icon="app_registration" color="bg-secondary/5 text-secondary">
-              <div className="flex gap-4 items-start">
+               <div className="flex gap-4 items-end">
                  <div className="flex-1 min-w-0">
                     <label className={lbl}>Verified Pieces</label>
                     <input className={inp()} placeholder="Qty" value={formData.pieces} onChange={e => setFormData({...formData, pieces: e.target.value})} />
@@ -288,22 +288,26 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                  {isUploading ? 'SAVING...' : 'CONFIRM & START WORK'}
                </button>
             ) : (
-               <div className="flex flex-col w-full gap-2.5">
-                 <button 
-                   onClick={handleFinalize}
-                   disabled={isUploading}
-                   className="w-full h-14 bg-error text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg active:scale-[0.98] transition-all disabled:opacity-70"
-                 >
-                   {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined">report_problem</span>}
-                   {isUploading ? 'REPORTING & STARTING...' : 'REPORT MISMATCH & START WORK'}
-                 </button>
-                 <button 
-                   onClick={() => setResult('IDLE')}
-                   className="w-full h-11 bg-surface-container hover:bg-surface-variant text-primary rounded-xl font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all"
-                 >
-                   Re-Check Input
-                 </button>
-               </div>
+                <div className="flex flex-col w-full gap-3 p-4 bg-red-50/50 rounded-2xl border border-red-100/50 mt-1">
+                   <div className="flex items-center gap-2 mb-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span>
+                      <span className="text-[9px] font-black text-red-700 uppercase tracking-widest">Action Required: Discrepancy Action</span>
+                   </div>
+                   <button 
+                     onClick={handleFinalize}
+                     disabled={isUploading}
+                     className="w-full h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2.5 shadow-md shadow-red-600/10 active:scale-[0.98] transition-all disabled:opacity-70"
+                   >
+                     {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined text-[20px]">report_gmailerrorred</span>}
+                     {isUploading ? 'REPORTING & STARTING...' : 'REPORT MISMATCH & START WORK'}
+                   </button>
+                   <button 
+                     onClick={() => setResult('IDLE')}
+                     className="w-full h-11 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-lg font-bold text-xs uppercase tracking-widest active:scale-[0.98] transition-all"
+                   >
+                     Re-Check Input
+                   </button>
+                </div>
             )}
          </div>
       </div>
