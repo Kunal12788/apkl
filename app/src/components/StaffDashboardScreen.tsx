@@ -41,7 +41,7 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialImpure = 0;
   let initialPureSilver = 0;
   let initialImpureSilver = 0;
-  let initialCashRemaining = 0;
+
   let initialCashCol = 0;
   let initialUpiCol = 0;
   let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
@@ -50,7 +50,7 @@ export const StaffDashboardScreen: React.FC = () => {
   if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0 || initialAllocations.length > 0) {
     const totalAllocatedPureGold = initialAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
     const totalAllocatedPureSilver = initialAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
-    const totalAllocatedCash = initialAllocations.reduce((s: any, a: any) => s + Number(a.cash_amount || 0), 0);
+
 
     const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
     const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
@@ -64,17 +64,7 @@ export const StaffDashboardScreen: React.FC = () => {
     initialPureSilver = totalAllocatedPureSilver - totalPureSilverGiven;
     initialImpureSilver = totalImpureSilverReceived - totalImpureSilverRefined;
 
-    const totalCashReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.cash_received) || 0), 0);
-    const totalCashPaid = initialLedger.reduce((s: any, e: any) => s + (Number(e.cash_paid) || 0), 0);
-    initialCashRemaining = totalAllocatedCash + totalCashReceived - totalCashPaid;
 
-    initialTx.forEach((tx: any) => {
-      if (tx.status === 'Paid') {
-        const amt = Number(tx.amount) || 0;
-        if (tx.type === 'Cash') initialCashCol += amt;
-        if (tx.type === 'UPI') initialUpiCol += amt;
-      }
-    });
 
     let revTunch = 0, revMark = 0, revShoulder = 0;
     let volTunch = 0, volMark = 0, volShoulder = 0;
@@ -111,9 +101,11 @@ export const StaffDashboardScreen: React.FC = () => {
   const [impureGoldWeight, setImpureGoldWeight] = useState(initialImpure);
   const [pureSilverWeight, setPureSilverWeight] = useState(initialPureSilver);
   const [impureSilverWeight, setImpureSilverWeight] = useState(initialImpureSilver);
-  const [cashRemaining, setCashRemaining] = useState(initialCashRemaining);
   const [cashCollection, setCashCollection] = useState(initialCashCol);
   const [upiCollection, setUpiCollection] = useState(initialUpiCol);
+  const [dateFilter, setDateFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [billingTransactions, setBillingTransactions] = useState<any[]>(getCachedData('staff_billing_tx') || []);
   
   const [revenue, setRevenue] = useState(initialRev);
   const [globalStats, setGlobalStats] = useState(initialStats);
@@ -164,21 +156,19 @@ export const StaffDashboardScreen: React.FC = () => {
     const fetchData = async () => {
       // 1. Instantly load from cache
       const cachedLedger = getCachedData('ledger_data');
-      const cachedTx = getCachedData('tx_data');
+
       const cachedTasks = getCachedData('tasks_data');
       const cachedAllocations = getCachedData('stock_allocations_all');
 
       const isSuperSa = user?.role === 'Super Admin';
 
-      const applyData = (ledgerData: any[] | null, txData: any[] | null, tasksData: any[] | null, allocationsData: any[] | null, branchUserIds: string[]) => {
+      const applyData = (ledgerData: any[] | null, tasksData: any[] | null, allocationsData: any[] | null, branchUserIds: string[]) => {
         const hasBranchFilter = !isSuperSa && user?.branch_id;
 
         const filteredLedger = ledgerData 
           ? (hasBranchFilter ? ledgerData.filter((e: any) => branchUserIds.includes(e.staff_id)) : ledgerData)
           : [];
-        const filteredTx = txData
-          ? (hasBranchFilter ? txData.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy)) : txData)
-          : [];
+
         const filteredTasks = tasksData
           ? (hasBranchFilter ? tasksData.filter((t: any) => branchUserIds.includes(t.created_by)) : tasksData)
           : [];
@@ -189,7 +179,7 @@ export const StaffDashboardScreen: React.FC = () => {
         // Populate metrics
         const totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
         const totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
-        const totalAllocatedCash = filteredAllocations.reduce((s: any, a: any) => s + Number(a.cash_amount || 0), 0);
+
 
         const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
@@ -199,32 +189,13 @@ export const StaffDashboardScreen: React.FC = () => {
         const totalImpureSilverReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_in) || 0), 0);
         const totalImpureSilverRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_silver_out) || 0), 0);
 
-        const totalCashReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.cash_received) || 0), 0);
-        const totalCashPaid = filteredLedger.reduce((s: any, e: any) => s + (Number(e.cash_paid) || 0), 0);
+
 
         setPureGoldWeight(totalAllocatedPureGold - totalPureGiven); 
         setImpureGoldWeight(totalImpureReceived - totalImpureRefined);
         setPureSilverWeight(totalAllocatedPureSilver - totalPureSilverGiven);
         setImpureSilverWeight(totalImpureSilverReceived - totalImpureSilverRefined);
-        setCashRemaining(totalAllocatedCash + totalCashReceived - totalCashPaid);
-        
-        let cash = 0, upi = 0;
-        let revTunch = 0, revMarking = 0, revShouldering = 0;
-        filteredTx.forEach((tx: any) => {
-          if (tx.status === 'Paid') {
-            const amt = Number(tx.amount) || 0;
-            if (tx.type === 'Cash') cash += amt;
-            if (tx.type === 'UPI') upi += amt;
-
-            const wt = (tx.work_type || 'Tunch').toUpperCase();
-            if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') revTunch += amt;
-            else if (wt === 'MARKING') revMarking += amt;
-            else if (wt === 'SHOULDERING') revShouldering += amt;
-          }
-        });
-        setCashCollection(cash);
-        setUpiCollection(upi);
-        setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
+        // Removed old cash remaining and revenue logic from here. It is handled by the new useEffect on billingTransactions.
 
         // Tasks stats
         let tunch = { processed: 0, pending: 0 };
@@ -281,8 +252,8 @@ export const StaffDashboardScreen: React.FC = () => {
         setRecentTasks(formattedRecent);
       };
 
-      if (cachedLedger && cachedTx && cachedTasks && cachedAllocations) {
-        applyData(cachedLedger, cachedTx, cachedTasks, cachedAllocations, [userId]);
+      if (cachedLedger && cachedTasks && cachedAllocations) {
+        applyData(cachedLedger, cachedTasks, cachedAllocations, [userId]);
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -341,10 +312,11 @@ export const StaffDashboardScreen: React.FC = () => {
           }
           const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
           setCachedData('staff_billing_tx', allTx);
+          setBillingTransactions(allTx);
         });
         // ------------------------------------------------------------------------
 
-        applyData(ledgerData, txData, tasksData, allocationsData, branchUserIds);
+        applyData(ledgerData, tasksData, allocationsData, branchUserIds);
 
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -352,6 +324,33 @@ export const StaffDashboardScreen: React.FC = () => {
     };
     fetchData();
   }, [userId, isFullyAuthenticated]);
+
+  useEffect(() => {
+    let cash = 0, upi = 0;
+    let revTunch = 0, revMarking = 0, revShouldering = 0;
+
+    billingTransactions.forEach((tx: any) => {
+      if (dateFilter && tx.isoDate !== dateFilter) return;
+      if (monthFilter && !tx.isoDate?.startsWith(monthFilter)) return;
+
+      if (tx.status === 'Paid' || tx.status === 'Fully Paid') {
+        const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+        const amt = Number(amtStr) || 0;
+        
+        if (tx.type === 'Cash') cash += amt;
+        if (tx.type === 'UPI') upi += amt;
+
+        const wt = (tx.workType || 'Tunch').toUpperCase();
+        if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') revTunch += amt;
+        else if (wt === 'MARKING') revMarking += amt;
+        else if (wt === 'SHOULDERING') revShouldering += amt;
+      }
+    });
+
+    setCashCollection(cash);
+    setUpiCollection(upi);
+    setRevenue({ tunch: revTunch, marking: revMarking, shouldering: revShouldering });
+  }, [billingTransactions, dateFilter, monthFilter]);
 
 
 
@@ -433,21 +432,54 @@ export const StaffDashboardScreen: React.FC = () => {
           </div>
         </section>
 
-        {/* 1. Top Section: Total Cash Remaining hero card */}
+        {/* Analytics Filter */}
+        <section className="flex gap-2 relative z-10 mb-4">
+          <div className="flex-1 relative group">
+            <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">Date</span>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_today</span>
+              <input 
+                type="date" 
+                value={dateFilter}
+                onChange={(e) => { setDateFilter(e.target.value); setMonthFilter(''); }}
+                className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+              />
+            </div>
+          </div>
+          <div className="flex-1 relative group">
+            <span className="text-[8px] absolute -top-2 left-3 bg-background px-1.5 text-outline font-bold uppercase tracking-widest z-10 rounded-sm">Month</span>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline/50 text-[16px] pointer-events-none group-focus-within:text-primary transition-colors">calendar_month</span>
+              <input 
+                type="month" 
+                value={monthFilter}
+                onChange={(e) => { setMonthFilter(e.target.value); setDateFilter(''); }}
+                className="w-full bg-white border border-outline-variant/50 rounded-xl py-3 pl-9 pr-3 text-xs font-bold text-primary focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 premium-shadow transition-all" 
+              />
+            </div>
+          </div>
+          {(dateFilter || monthFilter) && (
+            <button onClick={() => { setDateFilter(''); setMonthFilter(''); }} className="w-10 h-10 mt-1 rounded-xl bg-error/10 text-error flex items-center justify-center shrink-0 border border-error/20 active:scale-95 transition-transform">
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          )}
+        </section>
+
+        {/* 1. Top Section: Total Cash Collected hero card */}
         <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
           <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
           <div className="flex justify-between items-start relative z-10">
             <div>
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Remaining</h3>
+              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Collected</h3>
               <div className="flex items-baseline gap-2">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(cashRemaining.toLocaleString('en-IN'), 9, 3.0, 1.75)}>{cashRemaining.toLocaleString('en-IN')}</span>
+                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>
               </div>
             </div>
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
-              <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">account_balance_wallet</span>
-              <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance</span>
+              <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">payments</span>
+              <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance_wallet</span>
             </div>
           </div>
         </section>
