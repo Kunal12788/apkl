@@ -299,7 +299,7 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                      className="w-full h-14 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold flex items-center justify-center gap-2.5 shadow-md shadow-red-600/10 active:scale-[0.98] transition-all disabled:opacity-70"
                    >
                      {isUploading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined text-[20px]">report_gmailerrorred</span>}
-                     {isUploading ? 'REPORTING & STARTING...' : 'REPORT MISMATCH & START WORK'}
+                     {isUploading ? 'REPORTING...' : 'REPORT MISMATCH'}
                    </button>
                    <button 
                      onClick={() => setResult('IDLE')}
