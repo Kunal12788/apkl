@@ -481,19 +481,19 @@ export const StaffBillingScreen: React.FC = () => {
 
   const currentUserId = user?.id || '';
   const isSuperSa = user?.role === 'Super Admin';
-  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUserId];
+  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`, Infinity) || [currentUserId];
 
-  const cachedDbCust = getCachedData('db_customers');
+  const cachedDbCust = getCachedData('db_customers', Infinity);
   const initialDbCust = cachedDbCust
     ? (isSuperSa ? cachedDbCust : cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by)))
     : [];
 
-  const cachedStaffTx = getCachedData('staff_billing_tx') || [];
+  const cachedStaffTx = getCachedData('staff_billing_tx', Infinity) || [];
   const [transactions, setTransactions] = useState<Transaction[]>(cachedStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
-    getCachedData('users_map') || {}
+    getCachedData('users_map', Infinity) || {}
   );
 
   React.useEffect(() => {

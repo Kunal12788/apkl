@@ -429,23 +429,23 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const [historyDateFilter, setHistoryDateFilter] = useState('');
   const [selectedTxn, setSelectedTxn] = useState<Transaction | null>(null);
   const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
-    getCachedData('users_map') || {}
+    getCachedData('users_map', Infinity) || {}
   );
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
 
   const currentUser = user?.id || '';
-  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`) || [currentUser];
+  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`, Infinity) || [currentUser];
 
   // CollStaff billing is purely task-driven — never pre-load from transaction cache.
   // Billing entries are derived from completed tasks only, loaded fresh from DB.
-  const cachedDbCust = getCachedData('db_customers');
+  const cachedDbCust = getCachedData('db_customers', Infinity);
   const initialDbCust = cachedDbCust
     ? cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by))
     : [];
 
-  const cachedColStaffTx = getCachedData('colstaff_billing_tx') || [];
+  const cachedColStaffTx = getCachedData('colstaff_billing_tx', Infinity) || [];
   const [transactions, setTransactions] = useState<Transaction[]>(cachedColStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
 

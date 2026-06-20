@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
+import { computeStaffBillingTransactions } from '../utils/billingUtils';
 
 interface LedgerEntry {
   pureSilverOut: number;
@@ -81,10 +82,10 @@ export const StaffLedgerScreen: React.FC = () => {
   const cacheKeyAllocations = isSuperSa ? 'stock_allocations_superadmin' : `stock_allocations_branch_${user?.branch_id || userId}`;
   const cacheKeyBranchUsers = `branch_users_${user?.branch_id || 'unknown'}`;
 
-  const cachedEntries = getCachedData(cacheKeyEntries);
+  const cachedEntries = getCachedData(cacheKeyEntries, Infinity);
   const initialEntries = cachedEntries ? cachedEntries.map(mapDbToEntry) : [];
 
-  const cachedAllocations = getCachedData(cacheKeyAllocations);
+  const cachedAllocations = getCachedData(cacheKeyAllocations, Infinity);
   const initialAllocations = cachedAllocations || [];
 
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
@@ -94,7 +95,28 @@ export const StaffLedgerScreen: React.FC = () => {
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   
-  const cachedBillingTx = getCachedData('staff_billing_tx') || [];
+  // Load derived billing transactions cache, or calculate it immediately from raw cache
+  let cachedBillingTx = getCachedData('staff_billing_tx', Infinity);
+  if (!cachedBillingTx) {
+    const cachedTx = getCachedData('tx_data', Infinity);
+    const cachedTasks = getCachedData('tasks_data', Infinity);
+    if (cachedTx && cachedTasks) {
+      const cachedBranchUsers = getCachedData(cacheKeyBranchUsers, Infinity) || [];
+      const branchUserIds = cachedBranchUsers.length > 0 ? cachedBranchUsers : [userId];
+
+      let filteredTx = cachedTx || [];
+      let filteredTasks = cachedTasks || [];
+      if (!isSuperSa && user?.branch_id) {
+        filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+        filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+      }
+      cachedBillingTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+    }
+  }
+  if (!cachedBillingTx) {
+    cachedBillingTx = [];
+  }
+
   let initialBillingCash = 0;
   cachedBillingTx.forEach((tx: any) => {
     const type = tx.type?.trim().toLowerCase() || '';
@@ -185,6 +207,13 @@ export const StaffLedgerScreen: React.FC = () => {
         setAllocations([]);
       }
 
+      if (txRes.data) {
+        setCachedData('tx_data', txRes.data);
+      }
+      if (tasksRes.data) {
+        setCachedData('tasks_data', tasksRes.data);
+      }
+
       if (txRes.data || tasksRes.data) {
         let filteredTx = txRes.data || [];
         let filteredTasks = tasksRes.data || [];
@@ -193,18 +222,17 @@ export const StaffLedgerScreen: React.FC = () => {
           filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
         }
 
-        import('../utils/billingUtils').then(({ computeStaffBillingTransactions }) => {
-          const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
-          let cash = 0;
-          allTx.forEach((tx: any) => {
-            const type = tx.type?.trim().toLowerCase() || '';
-            if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-              const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-              cash += Number(amtStr) || 0;
-            }
-          });
-          setBillingCash(cash);
+        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+        setCachedData('staff_billing_tx', allTx);
+        let cash = 0;
+        allTx.forEach((tx: any) => {
+          const type = tx.type?.trim().toLowerCase() || '';
+          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+            cash += Number(amtStr) || 0;
+          }
         });
+        setBillingCash(cash);
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);

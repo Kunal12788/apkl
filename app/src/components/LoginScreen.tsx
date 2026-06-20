@@ -5,6 +5,7 @@ import { setCachedData } from '../cache';
 import { sendActivityNotification } from '../services/notificationService';
 import { triggerAppleToast } from './AppleToast';
 import { requestOSNotificationPermission, sendOSNotification } from '../utils/osNotifications';
+import { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } from '../utils/billingUtils';
 
 const guessRoleFromEmail = (email: string) => {
   const emailLower = email.toLowerCase().trim();
@@ -155,7 +156,6 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         // Precompute Billing transactions to guarantee exactly zero delay on Dashboard elements
         if (txRes.data && tasksRes.data) {
           try {
-            const { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } = await import('../utils/billingUtils');
             const colStaffAllTx = computeCollectionStaffBillingTransactions(txRes.data, tasksRes.data);
             setCachedData('colstaff_billing_tx', colStaffAllTx);
 

@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { fitText } from '../utils';
+import { computeCollectionStaffBillingTransactions } from '../utils/billingUtils';
 
 export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -11,8 +12,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const currentUser = user?.id || '';
 
   // Directly initialize state from cache for 0ms delay on mount
-  const cachedTasks = getCachedData('tasks_data');
-
+  const cachedTasks = getCachedData('tasks_data', Infinity);
 
   const initialTasks = cachedTasks 
     ? cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser).map((t: any) => ({
@@ -20,9 +20,22 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
       }))
     : [];
 
+  // Load derived billing transactions cache, or calculate it immediately from raw cache
+  let cachedBillingTx = getCachedData('colstaff_billing_tx', Infinity);
+  if (!cachedBillingTx) {
+    const cachedTx = getCachedData('tx_data', Infinity);
+    if (cachedTx && cachedTasks) {
+      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser);
+      let filteredTasks = cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser);
+      cachedBillingTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
+    }
+  }
+  if (!cachedBillingTx) {
+    cachedBillingTx = [];
+  }
 
   const [tasks, setTasks] = useState<any[]>(initialTasks);
-  const [billingTransactions, setBillingTransactions] = useState<any[]>([]);
+  const [billingTransactions, setBillingTransactions] = useState<any[]>(cachedBillingTx);
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
@@ -65,13 +78,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         }
 
         // --- Precompute Billing screen transactions and update state to trigger re-render ---
-        import('../utils/billingUtils').then(({ computeCollectionStaffBillingTransactions }) => {
-          let filteredTx = txRes.data || [];
-          let filteredTasks = tasksRes.data || [];
-          const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
-          setCachedData('colstaff_billing_tx', allTx);
-          setBillingTransactions(allTx);
-        });
+        let filteredTx = txRes.data || [];
+        let filteredTasks = tasksRes.data || [];
+        const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
+        setCachedData('colstaff_billing_tx', allTx);
+        setBillingTransactions(allTx);
         // ------------------------------------------------------------------------
       } catch (err) {
         console.error('Error fetching collection staff data:', err);
@@ -104,7 +115,6 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   }, [currentUser, isFullyAuthenticated]);
 
   // 4. Calculate dues using billing data cache directly to ensure it perfectly matches the Billing Screen instantly
-  const cachedBillingTx = getCachedData('colstaff_billing_tx') || [];
   const activeBillingTx = billingTransactions.length > 0 ? billingTransactions : cachedBillingTx;
 
   // Combine active tasks with billed/completed transactions for a holistic dashboard view

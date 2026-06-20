@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { fitText } from '../utils';
+import { computeStaffBillingTransactions } from '../utils/billingUtils';
 
 export const StaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -14,14 +15,14 @@ export const StaffDashboardScreen: React.FC = () => {
   const userName = user?.name || '';
   
   // Directly initialize state from cache for 0ms delay on mount
-  const cachedLedger = getCachedData('ledger_data');
-  const cachedTx = getCachedData('tx_data');
-  const cachedTasks = getCachedData('tasks_data');
+  const cachedLedger = getCachedData('ledger_data', Infinity);
+  const cachedTx = getCachedData('tx_data', Infinity);
+  const cachedTasks = getCachedData('tasks_data', Infinity);
 
-  const cachedAllocations = getCachedData('stock_allocations_all');
+  const cachedAllocations = getCachedData('stock_allocations_all', Infinity);
 
   const isSuperSa = user?.role === 'Super Admin';
-  const cachedBranchUsers = user?.branch_id ? getCachedData(`branch_users_${user.branch_id}`) : null;
+  const cachedBranchUsers = user?.branch_id ? getCachedData(`branch_users_${user.branch_id}`, Infinity) : null;
   const branchUserIds = cachedBranchUsers || [userId];
 
   const initialLedger = cachedLedger 
@@ -42,7 +43,20 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialPureSilver = 0;
   let initialImpureSilver = 0;
 
-  const cachedBillingTx = getCachedData('staff_billing_tx') || [];
+  // Load derived billing transactions cache, or calculate it immediately from raw cache if needed
+  let cachedBillingTx = getCachedData('staff_billing_tx', Infinity);
+  if (!cachedBillingTx && cachedTx && cachedTasks) {
+    let filteredTx = cachedTx || [];
+    let filteredTasks = cachedTasks || [];
+    if (!isSuperSa && user?.branch_id) {
+      filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+      filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+    }
+    cachedBillingTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+  }
+  if (!cachedBillingTx) {
+    cachedBillingTx = [];
+  }
   
   let initialCashCol = 0;
   let initialUpiCol = 0;
@@ -297,17 +311,15 @@ export const StaffDashboardScreen: React.FC = () => {
         }
 
         // --- NEW: Precompute Billing screen transactions to ensure zero-delay ---
-        import('../utils/billingUtils').then(({ computeStaffBillingTransactions }) => {
-          let filteredTx = txData || [];
-          let filteredTasks = tasksData || [];
-          if (!isSuperSa && user?.branch_id) {
-            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
-            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
-          }
-          const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
-          setCachedData('staff_billing_tx', allTx);
-          setBillingTransactions(allTx);
-        });
+        let filteredTx = txData || [];
+        let filteredTasks = tasksData || [];
+        if (!isSuperSa && user?.branch_id) {
+          filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+        }
+        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+        setCachedData('staff_billing_tx', allTx);
+        setBillingTransactions(allTx);
         // ------------------------------------------------------------------------
 
         applyData(ledgerData, tasksData, allocationsData, branchUserIds);
