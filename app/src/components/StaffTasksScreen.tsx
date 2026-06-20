@@ -1301,31 +1301,34 @@ export const StaffTasksScreen: React.FC = () => {
         </header>
 
         {/* Tab Navigation */}
-        <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-2">
-          <button 
-            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Pending' }); }}
-            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Pending' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-          >
-            Pending
-          </button>
-          <button 
-            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'In Progress' }); }}
-            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'In Progress' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-          >
-            In Progress
-          </button>
-          <button 
-            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Completed' }); }}
-            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Completed' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-          >
-            Completed
-          </button>
-          <button 
-            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Settlement' }); }}
-            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Settlement' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
-          >
-            Settlement
-          </button>
+        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2 mb-4 shrink-0">
+          {[
+            { id: 'Pending', label: 'Pending', icon: 'pending_actions' },
+            { id: 'In Progress', label: 'In Progress', icon: 'play_arrow' },
+            { id: 'Completed', label: 'Completed', icon: 'check_circle' },
+            { id: 'Settlement', label: 'Settlement', icon: 'swap_horiz' }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { 
+                  setSearchQuery(''); 
+                  setStartDate(''); 
+                  setEndDate(''); 
+                  setSearchParams({ tab: tab.id }); 
+                }}
+                className={`flex items-center gap-2 border rounded-full px-5 py-3 flex-shrink-0 premium-shadow cursor-pointer transition-all duration-300 ${
+                  isActive 
+                    ? 'bg-primary border-primary text-white scale-[1.02]' 
+                    : 'bg-white border-outline-variant/20 text-primary hover:bg-surface-bright active:scale-95'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* View: All Tasks */}
