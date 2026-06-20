@@ -54,6 +54,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     impureWeight: '', purity: '', pureWeight: '',
     settlementCondition: 'Only Tunch', fee: '',
     feeStatus: 'Paid',
+    feePaymentMode: 'Cash',
     productType: 'Jewellery',
     logoName: '', carat: '22k', pieces: '',
     broughtBy: 'Customer', pointsUsed: '',
@@ -270,7 +271,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       });
       
       setStep(1); setWorkType(null); setErrors({}); setTaskImages({});
-      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '' });
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '' });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
@@ -563,6 +564,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       <label className={lbl}>Payment Status</label>
                       <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
                     </div>
+                    <div>
+                      <label className={lbl}>Payment Mode</label>
+                      <ToggleBtn options={['Cash', 'UPI']} value={formData.feePaymentMode} onChange={v => up('feePaymentMode', v)} />
+                    </div>
                   </SectionCard>
                 )}
               </>)}
@@ -641,6 +646,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       <label className={lbl}>Payment Status</label>
                       <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
                     </div>
+                    <div>
+                      <label className={lbl}>Payment Mode</label>
+                      <ToggleBtn options={['Cash', 'UPI']} value={formData.feePaymentMode} onChange={v => up('feePaymentMode', v)} />
+                    </div>
                   </SectionCard>
                 )}
               </>)}
@@ -688,6 +697,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <div>
                       <label className={lbl}>Payment Status</label>
                       <ToggleBtn options={['Paid', 'Due']} value={formData.feeStatus} onChange={v => up('feeStatus', v)} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Payment Mode</label>
+                      <ToggleBtn options={['Cash', 'UPI']} value={formData.feePaymentMode} onChange={v => up('feePaymentMode', v)} />
                     </div>
                   </SectionCard>
                 )}
@@ -750,7 +763,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                   ))}
                   {!isCollection && (
                     <div className="pt-2 flex justify-between items-center">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee</p>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee ({formData.feePaymentMode})</p>
                       <p className="font-headline text-2xl font-bold text-tertiary">₹ {formData.fee}</p>
                     </div>
                   )}
@@ -785,7 +798,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Client</span><span className="text-[13px] font-semibold text-primary">{formData.customerName}</span></div>
                 {!isCollection && (
                   <div className="pt-3 border-t border-[#C9A646]/20 flex justify-between items-center mt-2">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Authorized Fee</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Authorized Fee ({formData.feePaymentMode})</p>
                     <p className="font-headline text-[22px] font-bold text-tertiary">₹ {formData.fee}</p>
                   </div>
                 )}

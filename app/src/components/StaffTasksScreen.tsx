@@ -162,6 +162,7 @@ interface TaskDetailsModalProps {
     pureWeight?: string; 
     settlementCondition?: string; 
     serviceFee?: string;
+    paymentMode?: 'Cash' | 'UPI';
     totalWeight?: string;
     pieces?: string;
     carat?: string;
@@ -170,7 +171,7 @@ interface TaskDetailsModalProps {
     pointsType?: string;
     broughtBy?: string;
   }) => void;
-  onFinalizePricing?: (task: Task, finalPrice: string) => void;
+  onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI') => void;
 }
 
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ 
@@ -196,6 +197,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [settlementInput, setSettlementInput] = useState('Only Tunch');
   const [serviceFeeInput, setServiceFeeInput] = useState('');
   const [finalPriceInput, setFinalPriceInput] = useState('');
+  const [paymentModeInput, setPaymentModeInput] = useState<'Cash' | 'UPI'>('Cash');
 
   const [piecesInput, setPiecesInput] = useState('');
   const [totalWeightInput, setTotalWeightInput] = useState('');
@@ -213,6 +215,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setSettlementInput(task.settlementCondition || 'Only Tunch');
       setServiceFeeInput('');
       setFinalPriceInput('');
+      setPaymentModeInput('Cash');
 
       setPiecesInput(task.pieces || '');
       setTotalWeightInput(task.totalWeight || task.weight || '');
@@ -601,15 +604,31 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </>
               )}
 
-              <div className="pt-2 border-t border-secondary/10">
-                <span className={lbl}>Service Fee (₹) *</span>
-                <input 
-                  type="number" 
-                  value={serviceFeeInput} 
-                  onChange={e => setServiceFeeInput(e.target.value)}
-                  placeholder="e.g. 500" 
-                  className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                />
+              <div className="pt-2 border-t border-secondary/10 space-y-2">
+                <div>
+                  <span className={lbl}>Service Fee (₹) *</span>
+                  <input 
+                    type="number" 
+                    value={serviceFeeInput} 
+                    onChange={e => setServiceFeeInput(e.target.value)}
+                    placeholder="e.g. 500" 
+                    className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                  />
+                </div>
+                <div>
+                  <span className={lbl}>Payment Mode *</span>
+                  <div className="flex gap-2">
+                    {['Cash', 'UPI'].map(mode => (
+                      <button 
+                        key={mode} type="button" 
+                        onClick={() => setPaymentModeInput(mode as 'Cash' | 'UPI')}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${paymentModeInput === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -630,6 +649,21 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     placeholder="e.g. 500" 
                     className="w-full h-10 pl-7 pr-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
                   />
+                </div>
+              </div>
+
+              <div>
+                <span className={lbl}>Payment Mode *</span>
+                <div className="flex gap-2 mt-1">
+                  {['Cash', 'UPI'].map(mode => (
+                    <button 
+                      key={mode} type="button" 
+                      onClick={() => setPaymentModeInput(mode as 'Cash' | 'UPI')}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${paymentModeInput === mode ? 'bg-tertiary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-tertiary/40'}`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
@@ -688,7 +722,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     purity: purityInput, 
                     pureWeight: pureWeightInput, 
                     settlementCondition: settlementInput, 
-                    serviceFee: serviceFeeInput 
+                    serviceFee: serviceFeeInput,
+                    paymentMode: paymentModeInput
                   });
                 } else if (task.workType === 'Marking') {
                   if (!totalWeightInput.trim() || !piecesInput.trim() || !logoNameInput.trim()) {
@@ -700,7 +735,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     pieces: piecesInput,
                     carat: caratInput,
                     logoName: logoNameInput,
-                    serviceFee: serviceFeeInput
+                    serviceFee: serviceFeeInput,
+                    paymentMode: paymentModeInput
                   });
                 } else if (task.workType === 'Shouldering') {
                   if (!pointsCountInput.trim()) {
@@ -711,7 +747,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     pointsCount: pointsCountInput,
                     pointsType: pointsTypeInput,
                     broughtBy: broughtByInput,
-                    serviceFee: serviceFeeInput
+                    serviceFee: serviceFeeInput,
+                    paymentMode: paymentModeInput
                   });
                 }
               }}
@@ -735,7 +772,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   alert('Please enter the service price/fee.');
                   return;
                 }
-                onFinalizePricing?.(task, finalPriceInput);
+                onFinalizePricing?.(task, finalPriceInput, paymentModeInput);
               }}
               className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -1006,6 +1043,7 @@ export const StaffTasksScreen: React.FC = () => {
     pureWeight?: string; 
     settlementCondition?: string; 
     serviceFee?: string;
+    paymentMode?: 'Cash' | 'UPI';
     totalWeight?: string;
     pieces?: string;
     carat?: string;
@@ -1016,15 +1054,15 @@ export const StaffTasksScreen: React.FC = () => {
   }) => {
     try {
       let updatedCondition = task.settlementCondition || '';
+      const modeStr = details.paymentMode || 'Cash';
       if (task.workType === 'Tunch') {
         const condition = details.settlementCondition || task.settlementCondition || 'Only Tunch';
-        const needsCash = condition.toLowerCase().includes('cash');
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
-          ? (needsCash ? `${condition} - ₹${details.serviceFee}` : `Service Fee - ₹${details.serviceFee}`)
+          ? `${condition} - [Collected] ${modeStr} ₹${details.serviceFee}` 
           : condition;
       } else {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
-          ? `Service Fee - ₹${details.serviceFee}` 
+          ? `[Collected] ${modeStr} - ₹${details.serviceFee}` 
           : 'Service Fee';
       }
 
@@ -1078,7 +1116,7 @@ export const StaffTasksScreen: React.FC = () => {
         customer_phone: task.customerPhone || '',
         customer_address: task.customerAddress || '',
         metal: task.metal || 'Gold',
-        type: (task.workType === 'Tunch' && updatedCondition.toLowerCase().includes('cash')) ? 'Cash' : 'Service Fee',
+        type: details.paymentMode || 'Cash',
         work_type: task.workType || 'Tunch',
         amount: String(Number(details.serviceFee) || 0),
         date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -1110,11 +1148,12 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleFinalizePricing = async (task: Task, finalPrice: string) => {
+  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI') => {
     try {
+      const modeStr = paymentMode || 'Cash';
       const updatedCondition = task.settlementCondition?.toLowerCase().includes('cash') 
-        ? `${task.settlementCondition} - ₹${finalPrice}` 
-        : `Cash - ₹${finalPrice}`;
+        ? `${task.settlementCondition} - [Collected] ${modeStr} ₹${finalPrice}` 
+        : `[Collected] ${modeStr} - ₹${finalPrice}`;
 
       await supabase.from('tasks').update({ 
         status: 'Completed', 
@@ -1135,7 +1174,7 @@ export const StaffTasksScreen: React.FC = () => {
         customer_name: task.customerName,
         customer_phone: task.customerPhone || '',
         customer_address: task.customerAddress || '',
-        type: task.settlementCondition || 'Cash',
+        type: paymentMode || 'Cash',
         work_type: task.workType || 'Tunch',
         amount: finalPrice,
         date: 'Today',
@@ -1146,7 +1185,7 @@ export const StaffTasksScreen: React.FC = () => {
         pieces: task.pieces || '1',
         product_type: task.productType,
         impure_weight: task.impureWeight,
-        settlement_condition: task.settlementCondition,
+        settlement_condition: updatedCondition,
         logo_name: task.logoName,
         carat: task.carat,
         point_suggestion: task.pointSuggestion,

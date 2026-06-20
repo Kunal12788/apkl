@@ -86,7 +86,7 @@ export const GlobalFAB: React.FC = () => {
                 customer_id: generatedCustomerId,
                 customer_name: data.customerName || 'Walk-in Customer',
                 metal: data.metal || 'Gold',
-                type: 'Cash',
+                type: data.feePaymentMode || 'Cash',
                 work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
                 amount: String(data.fee),
                 date: 'Today',
