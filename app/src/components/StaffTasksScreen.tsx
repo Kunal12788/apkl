@@ -1301,7 +1301,15 @@ export const StaffTasksScreen: React.FC = () => {
         </header>
 
         {/* Tab Navigation */}
-        <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-4 w-full justify-between items-center shrink-0">
+        <div className="relative flex bg-surface-container rounded-full p-1.5 shadow-inner mb-4 w-full justify-between items-center shrink-0 overflow-hidden">
+          {/* Active Tab Highlight Indicator */}
+          <div 
+            className="absolute top-1.5 bottom-1.5 left-1.5 bg-white rounded-full premium-shadow transition-transform duration-300 ease-out z-0"
+            style={{
+              width: 'calc(25% - 3px)',
+              transform: `translateX(${['Pending', 'In Progress', 'Completed', 'Settlement'].indexOf(activeTab) * 100}%)`,
+            }}
+          />
           {[
             { id: 'Pending', label: 'Pending' },
             { id: 'In Progress', label: 'In Progress' },
@@ -1318,9 +1326,9 @@ export const StaffTasksScreen: React.FC = () => {
                   setEndDate(''); 
                   setSearchParams({ tab: tab.id }); 
                 }}
-                className={`flex-1 rounded-full py-2.5 text-center text-[9px] min-[370px]:text-[10px] sm:text-xs font-black uppercase tracking-normal transition-all duration-300 whitespace-nowrap px-1 ${
+                className={`relative flex-1 rounded-full py-2.5 text-center text-[9px] min-[370px]:text-[10px] sm:text-xs font-black uppercase tracking-normal transition-all duration-300 whitespace-nowrap px-1 z-10 ${
                   isActive 
-                    ? 'bg-white text-primary premium-shadow font-extrabold' 
+                    ? 'text-primary font-extrabold' 
                     : 'text-outline hover:text-primary'
                 }`}
               >
