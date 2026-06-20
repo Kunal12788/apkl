@@ -1301,12 +1301,12 @@ export const StaffTasksScreen: React.FC = () => {
         </header>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-2 pt-1 -mx-2 px-2 mb-4 shrink-0">
+        <div className="flex bg-surface-container rounded-full p-1.5 shadow-inner mb-4 w-full justify-between items-center shrink-0">
           {[
-            { id: 'Pending', label: 'Pending', icon: 'pending_actions' },
-            { id: 'In Progress', label: 'In Progress', icon: 'play_arrow' },
-            { id: 'Completed', label: 'Completed', icon: 'check_circle' },
-            { id: 'Settlement', label: 'Settlement', icon: 'swap_horiz' }
+            { id: 'Pending', label: 'Pending' },
+            { id: 'In Progress', label: 'In Progress' },
+            { id: 'Completed', label: 'Completed' },
+            { id: 'Settlement', label: 'Settlement' }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -1318,14 +1318,13 @@ export const StaffTasksScreen: React.FC = () => {
                   setEndDate(''); 
                   setSearchParams({ tab: tab.id }); 
                 }}
-                className={`flex items-center gap-2 border rounded-full px-5 py-3 flex-shrink-0 premium-shadow cursor-pointer transition-all duration-300 ${
+                className={`flex-1 rounded-full py-2.5 text-center text-[9px] min-[370px]:text-[10px] sm:text-xs font-black uppercase tracking-normal transition-all duration-300 whitespace-nowrap px-1 ${
                   isActive 
-                    ? 'bg-primary border-primary text-white scale-[1.02]' 
-                    : 'bg-white border-outline-variant/20 text-primary hover:bg-surface-bright active:scale-95'
+                    ? 'bg-white text-primary premium-shadow font-extrabold' 
+                    : 'text-outline hover:text-primary'
                 }`}
               >
-                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">{tab.label}</span>
+                {tab.label}
               </button>
             );
           })}
