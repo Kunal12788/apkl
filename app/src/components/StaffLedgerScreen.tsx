@@ -93,6 +93,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
+  const [billingCash, setBillingCash] = useState(0);
 
   const [branchName, setBranchName] = useState('Delhi Branch');
 
@@ -141,15 +142,19 @@ export const StaffLedgerScreen: React.FC = () => {
 
       let entriesQuery = supabase.from('ledger_entries').select('*').order('created_at', { ascending: false });
       let allocationsQuery = supabase.from('stock_allocations').select('*');
+      let txQuery = supabase.from('transactions').select('*');
+      let tasksQuery = supabase.from('tasks').select('*');
 
       if (!isSuperSa && user?.branch_id) {
         entriesQuery = entriesQuery.in('staff_id', branchUserIds);
         allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
       }
 
-      const [entriesRes, allocationsRes] = await Promise.all([
+      const [entriesRes, allocationsRes, txRes, tasksRes] = await Promise.all([
         entriesQuery,
-        allocationsQuery
+        allocationsQuery,
+        txQuery,
+        tasksQuery
       ]);
 
       if (entriesRes.error) throw entriesRes.error;
@@ -167,6 +172,27 @@ export const StaffLedgerScreen: React.FC = () => {
         setAllocations(allocationsRes.data);
       } else {
         setAllocations([]);
+      }
+
+      if (txRes.data || tasksRes.data) {
+        let filteredTx = txRes.data || [];
+        let filteredTasks = tasksRes.data || [];
+        if (!isSuperSa && user?.branch_id) {
+          filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+        }
+
+        import('../utils/billingUtils').then(({ computeStaffBillingTransactions }) => {
+          const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+          let cash = 0;
+          allTx.forEach((tx: any) => {
+            if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && tx.type === 'Cash') {
+              const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+              cash += Number(amtStr) || 0;
+            }
+          });
+          setBillingCash(cash);
+        });
       }
     } catch (err) {
       console.error('Error fetching ledger entries:', err);
@@ -190,6 +216,18 @@ export const StaffLedgerScreen: React.FC = () => {
       })
       .subscribe();
 
+    const txSub = supabase.channel('public:transactions_ledger')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
+    const tasksSub = supabase.channel('public:tasks_ledger')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => {
+        fetchEntries();
+      })
+      .subscribe();
+
     const handleSync = () => {
       fetchEntries();
     };
@@ -198,24 +236,25 @@ export const StaffLedgerScreen: React.FC = () => {
     return () => {
       supabase.removeChannel(allocationsSub);
       supabase.removeChannel(ledgerSub);
+      supabase.removeChannel(txSub);
+      supabase.removeChannel(tasksSub);
       window.removeEventListener('databaseSync', handleSync);
     };
   }, [user?.branch_id, isSuperSa]);
 
   const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
   const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
-  const totalAllocatedCash = React.useMemo(() => allocations.reduce((s, a) => s + Number(a.cash_amount), 0), [allocations]);
+
 
   const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
   const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
   const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
   
-  const totalCashReceived = React.useMemo(() => entries.reduce((s, e) => s + e.cashReceived, 0), [entries]);
-  const totalCashPaid = React.useMemo(() => entries.reduce((s, e) => s + e.cashPaid, 0), [entries]);
+
 
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
-  const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
+  const currentCashStock = billingCash;
   
   const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
 
@@ -630,7 +669,7 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                     <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>
                     <div className="flex justify-between items-center mt-1">
-                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Allocated: {fmt(totalAllocatedCash)}</p>
+                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">From Billings</p>
                     </div>
                   </div>
                 </div>
