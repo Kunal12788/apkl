@@ -490,14 +490,31 @@ export const StaffLedgerScreen: React.FC = () => {
   const handleApproveSettlement = async () => {
     if (!selectedEntry) return;
     try {
+      const updates: any = { status: 'Completed' };
+      if (selectedEntry.pureGoldDue > 0) {
+        updates.pure_gold_out = selectedEntry.pureGoldDue;
+        updates.pure_gold_due = 0;
+      }
+      if (selectedEntry.pureSilverDue > 0) {
+        updates.pure_silver_out = selectedEntry.pureSilverDue;
+        updates.pure_silver_due = 0;
+      }
+
       const { error } = await supabase
         .from('ledger_entries')
-        .update({ status: 'Completed' })
+        .update(updates)
         .eq('id', selectedEntry.id);
       
       if (error) throw error;
       
-      setSelectedEntry({ ...selectedEntry, status: 'Completed' });
+      setSelectedEntry({ 
+        ...selectedEntry, 
+        status: 'Completed',
+        pureGoldOut: updates.pure_gold_out || selectedEntry.pureGoldOut,
+        pureGoldDue: 0,
+        pureSilverOut: updates.pure_silver_out || selectedEntry.pureSilverOut,
+        pureSilverDue: 0
+      });
       fetchEntries();
     } catch (err) {
       console.error('Error approving settlement:', err);
@@ -638,14 +655,16 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {isAdmin && selectedEntry.status.includes('Pending') && (
+                {isAdmin && (selectedEntry.status.includes('Pending') || selectedEntry.status === 'Pending Pure') && (
                   <div className="pt-2 flex gap-3">
                     <button 
                       onClick={handleApproveSettlement}
-                      className="flex-1 py-3 bg-[#003366] hover:bg-[#001e40] text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors shadow-md flex justify-center items-center gap-1.5"
+                      className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors shadow-md flex justify-center items-center gap-1.5"
                     >
-                      <span className="material-symbols-outlined text-sm">check_circle</span>
-                      Approve Settlement
+                      <span className="material-symbols-outlined text-sm">workspace_premium</span>
+                      {selectedEntry.status === 'Pending Pure' 
+                        ? (selectedEntry.pureGoldDue > 0 ? 'Allocate & Give Pure Gold' : 'Allocate & Give Pure Silver')
+                        : 'Approve Settlement'}
                     </button>
                   </div>
                 )}

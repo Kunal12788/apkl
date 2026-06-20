@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 
-type TaskStatus = 'In Progress' | 'Pending' | 'Completed';
+type TaskStatus = 'In Progress' | 'Pending' | 'Completed' | 'Settlement';
 
 interface Task {
   id: string;
@@ -174,6 +174,18 @@ interface TaskDetailsModalProps {
   onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI') => void;
 }
 
+const extractFee = (settlementCondition?: string) => {
+  if (!settlementCondition) return '';
+  const match = settlementCondition.match(/₹(\d+)/);
+  return match ? match[1] : '';
+};
+
+const extractPaymentMode = (settlementCondition?: string): 'Cash' | 'UPI' => {
+  if (!settlementCondition) return 'Cash';
+  if (settlementCondition.toUpperCase().includes('UPI')) return 'UPI';
+  return 'Cash';
+};
+
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ 
   isOpen, onClose, task, onUpdateStatus, onDeleteTask, isAdminOrSuper = false, onProcessTask, onFinalizePricing 
 }) => {
@@ -214,9 +226,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setPureWeightInput(task.pureWeight || '');
       setSettlementInput(task.settlementCondition || 'Only Tunch');
       setServiceFeeInput('');
-      setFinalPriceInput('');
-      setPaymentModeInput('Cash');
-
+      setFinalPriceInput(extractFee(task.settlementCondition) || '');
+      setPaymentModeInput(extractPaymentMode(task.settlementCondition));
+      
       setPiecesInput(task.pieces || '');
       setTotalWeightInput(task.totalWeight || task.weight || '');
       setCaratInput(task.carat || '22k');
@@ -494,7 +506,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   <div>
                     <span className={lbl}>Settlement Condition *</span>
                     <div className="flex gap-2 mt-1">
-                      {['Only Tunch', 'Pure Gold', 'Cash'].map(opt => (
+                      {(task.metal === 'Silver' ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash']).map(opt => (
                         <button 
                           key={opt} type="button" 
                           onClick={() => setSettlementInput(opt)}
@@ -829,6 +841,35 @@ export const StaffTasksScreen: React.FC = () => {
   const [isVerificationOpen, setVerificationOpen] = useState(false);
   const [currentVerificationTask, setCurrentVerificationTask] = useState<any>(null);
 
+  const [unsettledEntries, setUnsettledEntries] = useState<any[]>([]);
+  const [settlementSearch, setSettlementSearch] = useState('');
+  const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
+  const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash'>('Pure Gold');
+  const [cashAmountInput, setCashAmountInput] = useState('');
+  const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
+
+  const fetchUnsettledEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('ledger_entries')
+        .select('*')
+        .eq('transaction_type', 'Tunch Only')
+        .eq('status', 'No Settlement')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        setUnsettledEntries(data);
+      }
+    } catch (e) {
+      console.error('Error fetching unsettled entries:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Settlement') {
+      fetchUnsettledEntries();
+    }
+  }, [activeTab]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3000);
@@ -954,8 +995,15 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
+     const isCash = t.settlementCondition?.toLowerCase().includes('cash');
      if (activeTab === 'Pending') {
-        return t.status === 'Pending' && matchesSearch(t);
+        return (t.status === 'Pending' || (t.status === 'In Progress' && !isCash)) && matchesSearch(t);
+     }
+     if (activeTab === 'In Progress') {
+        return (t.status === 'In Progress' && isCash) && matchesSearch(t);
+     }
+     if (activeTab === 'Settlement') {
+        return false;
      }
      return t.status === activeTab && matchesSearch(t);
   });
@@ -1066,8 +1114,8 @@ export const StaffTasksScreen: React.FC = () => {
           : 'Service Fee';
       }
 
-      const nextStatus = 'Completed'; 
-      const progress = 100;
+      const nextStatus = 'Pending'; 
+      const progress = 90;
 
       const taskUpdates: any = {
         status: nextStatus,
@@ -1108,39 +1156,48 @@ export const StaffTasksScreen: React.FC = () => {
         progressPercentage: progress
       } : t));
 
-      const newTxn = {
-        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-        customer_id: task.customerId || 'CUST-COL',
-        customer_name: task.customerName,
-        task_id: task.id,
-        customer_phone: task.customerPhone || '',
-        customer_address: task.customerAddress || '',
-        metal: task.metal || 'Gold',
-        type: details.paymentMode || 'Cash',
-        work_type: task.workType || 'Tunch',
-        amount: String(Number(details.serviceFee) || 0),
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        iso_date: new Date().toISOString().split('T')[0],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: (details.serviceFee && Number(details.serviceFee) > 0) ? 'Unpaid' : 'Paid',
-        
-        details: `${task.workType} task completed. Pieces: ${taskUpdates.pieces || task.pieces || '1'}. ${task.logoName || details.logoName ? 'Logo: ' + (details.logoName || task.logoName) + '.' : ''} Settlement: ${updatedCondition}. ${task.notes || ''}`.trim(),
-        
-        piece_type: task.productType || '',
-        impure_weight: taskUpdates.impure_weight || task.impureWeight || taskUpdates.total_weight || task.totalWeight || '',
-        pure_weight: taskUpdates.pure_weight || task.pureWeight || '',
-        purity_percentage: taskUpdates.purity || task.purity || '',
-        
-        points_count: details.pointsCount ? parseInt(details.pointsCount) : (task.pointSuggestion && !isNaN(parseInt(task.pointSuggestion)) ? parseInt(task.pointSuggestion) : null),
-        points_type: details.pointsType || (task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold')),
-        
-        carat_marking: taskUpdates.carat || task.carat || '',
-        
-        created_by: task.createdBy || user?.id || ''
-      };
-      
-      await supabase.from('transactions').insert([newTxn]);
-      showToast('Task completed & Service Fee billed successfully.');
+      // Handle Ledger Entry if Tunch Work has settlement modes Only Tunch, Pure Gold or Pure Silver
+      if (task.workType === 'Tunch') {
+        const condition = details.settlementCondition || task.settlementCondition || 'Only Tunch';
+        const finalImpure = Number(details.impureWeight || task.impureWeight) || 0;
+        const finalPure = Number(details.pureWeight || task.pureWeight) || 0;
+
+        const newLedgerEntry: any = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          customer_name: task.customerName,
+          purity: details.purity || task.purity || '',
+          staff_id: user?.id || task.createdBy || '',
+          created_at: new Date().toISOString()
+        };
+
+        if (condition === 'Only Tunch') {
+          newLedgerEntry.transaction_type = 'Tunch Only';
+          newLedgerEntry.status = 'No Settlement';
+          if (task.metal === 'Silver') {
+            newLedgerEntry.impure_silver_in = finalImpure;
+          } else {
+            newLedgerEntry.impure_gold_in = finalImpure;
+          }
+        } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
+          newLedgerEntry.transaction_type = 'Exchange';
+          newLedgerEntry.status = 'Pending Pure';
+          if (task.metal === 'Silver') {
+            newLedgerEntry.impure_silver_in = finalImpure;
+            newLedgerEntry.pure_silver_due = finalPure;
+          } else {
+            newLedgerEntry.impure_gold_in = finalImpure;
+            newLedgerEntry.pure_gold_due = finalPure;
+          }
+        }
+
+        if (newLedgerEntry.transaction_type) {
+          await supabase.from('ledger_entries').insert([newLedgerEntry]);
+        }
+      }
+
+      showToast('Task submitted to Admin for pricing & approval.');
       handleCloseModal();
     } catch (e) {
       console.error(e);
@@ -1172,23 +1229,25 @@ export const StaffTasksScreen: React.FC = () => {
         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
         customer_id: task.customerId || 'CUST-COL',
         customer_name: task.customerName,
+        task_id: task.id,
         customer_phone: task.customerPhone || '',
         customer_address: task.customerAddress || '',
+        metal: task.metal || 'Gold',
         type: paymentMode || 'Cash',
         work_type: task.workType || 'Tunch',
         amount: finalPrice,
-        date: 'Today',
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
         iso_date: new Date().toISOString().split('T')[0],
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: 'Unpaid',
-        details: task.notes || 'Collection intake verified, processed and completed.',
-        pieces: task.pieces || '1',
-        product_type: task.productType,
-        impure_weight: task.impureWeight,
-        settlement_condition: updatedCondition,
-        logo_name: task.logoName,
-        carat: task.carat,
-        point_suggestion: task.pointSuggestion,
+        status: (Number(finalPrice) > 0) ? 'Unpaid' : 'Paid',
+        details: `${task.workType} task completed. Pieces: ${task.pieces || '1'}. ${task.logoName ? 'Logo: ' + task.logoName + '.' : ''} Settlement: ${updatedCondition}. ${task.notes || ''}`.trim(),
+        piece_type: task.productType || '',
+        impure_weight: task.impureWeight || task.totalWeight || task.weight || '',
+        pure_weight: task.pureWeight || '',
+        purity_percentage: task.purity || '',
+        points_count: task.pointSuggestion && !isNaN(parseInt(task.pointSuggestion)) ? parseInt(task.pointSuggestion) : null,
+        points_type: task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold'),
+        carat_marking: task.carat || '',
         created_by: task.createdBy || user?.id || ''
       };
 
@@ -1261,111 +1320,211 @@ export const StaffTasksScreen: React.FC = () => {
           >
             Completed
           </button>
+          <button 
+            onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); setSearchParams({ tab: 'Settlement' }); }}
+            className={`flex-1 rounded-full py-2.5 text-[10px] font-bold uppercase tracking-widest transition-all duration-300 ${activeTab === 'Settlement' ? 'bg-white premium-shadow text-primary' : 'text-outline hover:text-primary'}`}
+          >
+            Settlement
+          </button>
         </div>
 
         {/* View: All Tasks */}
-        <div className="space-y-4 animate-fade-in">
-            <SearchAndFilterSection 
-              placeholder="Search tasks, staff, customer..." 
-              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-              startDate={startDate} setStartDate={setStartDate}
-              endDate={endDate} setEndDate={setEndDate}
-            />
-            
-            <div className="space-y-4">
-              {filteredTasks.map((task) => {
-                const isCash = task.settlementCondition?.toLowerCase().includes('cash');
-                return (
-                <div 
-                  key={task.id} 
-                  onClick={() => {
-                    if (task.status === 'Pending' && !isAdminOrSuper) {
-                      setCurrentVerificationTask(task);
-                      setVerificationOpen(true);
-                    } else {
-                      setSearchParams({ taskId: task.id, tab: activeTab });
-                    }
-                  }} 
-                  className={`p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'cash-luxury-card' : 'luxury-card border border-outline-variant/10 hover:bg-surface-bright'}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
-                        <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(task.workType)}</span>
-                      </div>
-                      <div>
-                        <p className="font-headline font-bold text-primary text-[15px]">{task.workType} Work</p>
-                        <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{task.id}</p>
-                      </div>
-                    </div>
-                    <span className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
-                      {task.status}
-                    </span>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center bg-surface-container/50 rounded-xl p-3 border border-outline-variant/10">
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-outline text-sm">groups</span>
+        {activeTab !== 'Settlement' ? (
+          <div className="space-y-4 animate-fade-in">
+              <SearchAndFilterSection 
+                placeholder="Search tasks, staff, customer..." 
+                searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+                startDate={startDate} setStartDate={setStartDate}
+                endDate={endDate} setEndDate={setEndDate}
+              />
+              
+              <div className="space-y-4">
+                {filteredTasks.map((task) => {
+                  const isCash = task.settlementCondition?.toLowerCase().includes('cash');
+                  return (
+                  <div 
+                    key={task.id} 
+                    onClick={() => {
+                      if (task.status === 'Pending' && !isAdminOrSuper) {
+                        setCurrentVerificationTask(task);
+                        setVerificationOpen(true);
+                      } else {
+                        setSearchParams({ taskId: task.id, tab: activeTab });
+                      }
+                    }} 
+                    className={`p-4 relative overflow-hidden group cursor-pointer transition-colors ${isCash ? 'cash-luxury-card' : 'luxury-card border border-outline-variant/10 hover:bg-surface-bright'}`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
+                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(task.workType)}</span>
+                        </div>
                         <div>
-                          <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Client</p>
-                          <p className="text-xs font-bold text-primary truncate max-w-[120px]">{task.customerName}</p>
+                          <p className="font-headline font-bold text-primary text-[15px]">{task.workType} Work</p>
+                          <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{task.id}</p>
                         </div>
                       </div>
-                      <div className="h-6 w-px bg-outline-variant/30"></div>
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-outline text-sm">badge</span>
-                        <div>
-                          <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Assigned</p>
-                          <p className="text-xs font-bold text-primary">{task.assignedTo}</p>
+                      <span className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
+                        {task.status}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-surface-container/50 rounded-xl p-3 border border-outline-variant/10">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-sm">groups</span>
+                          <div>
+                            <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Client</p>
+                            <p className="text-xs font-bold text-primary truncate max-w-[120px]">{task.customerName}</p>
+                          </div>
+                        </div>
+                        <div className="h-6 w-px bg-outline-variant/30"></div>
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-sm">badge</span>
+                          <div>
+                            <p className="text-[9px] text-outline font-bold uppercase tracking-widest">Assigned</p>
+                            <p className="text-xs font-bold text-primary">{task.assignedTo}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 px-1 text-[11px] font-medium text-outline">
+                        <span className="material-symbols-outlined text-[14px]">directions_walk</span>
+                        <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
+                      </div>
+
+                      {(task.status === 'Pending') && (
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            if (isAdminOrSuper) {
+                              handleUpdateStatus(task);
+                            } else {
+                              setCurrentVerificationTask(task); 
+                              setVerificationOpen(true); 
+                            }
+                          }}
+                          className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
+                        >
+                           <span className="material-symbols-outlined text-sm">{isAdminOrSuper ? 'play_arrow' : 'rule'}</span>
+                           {isAdminOrSuper ? 'START TASK WORK' : 'VERIFY INTAKE DATA'}
+                        </button>
+                      )}
+
+                      <div className="px-1 pt-1">
+                        <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5">
+                          <span>Progress</span>
+                          <span className="text-primary">{task.progressPercentage}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full transition-all duration-1000 ease-out" 
+                            style={{ width: `${task.progressPercentage}%` }}
+                          ></div>
                         </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 px-1 text-[11px] font-medium text-outline">
-                      <span className="material-symbols-outlined text-[14px]">directions_walk</span>
-                      <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
-                    </div>
-
-                    {(task.status === 'Pending') && (
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          if (isAdminOrSuper) {
-                            handleUpdateStatus(task);
-                          } else {
-                            setCurrentVerificationTask(task); 
-                            setVerificationOpen(true); 
-                          }
-                        }}
-                        className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
-                      >
-                         <span className="material-symbols-outlined text-sm">{isAdminOrSuper ? 'play_arrow' : 'rule'}</span>
-                         {isAdminOrSuper ? 'START TASK WORK' : 'VERIFY INTAKE DATA'}
-                      </button>
-                    )}
-
-                    <div className="px-1 pt-1">
-                      <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5">
-                        <span>Progress</span>
-                        <span className="text-primary">{task.progressPercentage}%</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary rounded-full transition-all duration-1000 ease-out" 
-                          style={{ width: `${task.progressPercentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              );
-              })}
-              {filteredTasks.length === 0 && (
-                <div className="p-8 text-center text-outline text-sm font-medium">No tasks found.</div>
+                );
+                })}
+                {filteredTasks.length === 0 && (
+                  <div className="p-8 text-center text-outline text-sm font-medium">No tasks found.</div>
+                )}
+              </div>
+            </div>
+        ) : (
+          <div className="space-y-4 animate-fade-in">
+            {/* Search Input */}
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
+              <input 
+                type="text" 
+                value={settlementSearch}
+                onChange={(e) => setSettlementSearch(e.target.value)}
+                placeholder="Search returning customer by name, phone..." 
+                className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
+              />
+              {settlementSearch && (
+                <span onClick={() => setSettlementSearch('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
               )}
             </div>
+
+            {/* List of unsettled entries */}
+            <div className="space-y-4">
+              {(() => {
+                const matched = unsettledEntries.filter(entry => {
+                  if (!settlementSearch) return true;
+                  const q = settlementSearch.toLowerCase();
+                  return (
+                    entry.customer_name?.toLowerCase().includes(q) ||
+                    entry.id?.toLowerCase().includes(q) ||
+                    entry.purity?.toLowerCase().includes(q)
+                  );
+                });
+                
+                return (
+                  <>
+                    {matched.map((entry) => {
+                      const isSilver = Number(entry.impure_silver_in || 0) > 0;
+                      const impureWeight = isSilver ? Number(entry.impure_silver_in) : Number(entry.impure_gold_in);
+                      const metalName = isSilver ? 'Silver' : 'Gold';
+                      
+                      return (
+                        <div 
+                          key={entry.id} 
+                          onClick={() => {
+                            setSelectedSettlement(entry);
+                            setNewSettlementMode(isSilver ? 'Pure Silver' : 'Pure Gold');
+                            setCashAmountInput('');
+                          }} 
+                          className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
+                        >
+                          <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-11 h-11 rounded-full flex items-center justify-center text-secondary bg-secondary-fixed/30">
+                                <span className="material-symbols-outlined text-xl glow-icon">hourglass_empty</span>
+                              </div>
+                              <div>
+                                <p className="font-headline font-bold text-primary text-[15px]">{entry.customer_name}</p>
+                                <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{entry.id} • {entry.date}</p>
+                              </div>
+                            </div>
+                            <span className="whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-600 border-amber-500/20">
+                              Unsettled Tunch
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10 mb-3">
+                            <div className="flex-1 flex flex-col items-center gap-0.5">
+                              <p className="text-[11px] font-black text-primary">{impureWeight.toFixed(3)}g</p>
+                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure {metalName}</p>
+                            </div>
+                            <div className="w-px h-4 bg-outline-variant/20"></div>
+                            <div className="flex-1 flex flex-col items-center gap-0.5">
+                              <p className="text-[11px] font-black text-secondary">{entry.purity || 'N/A'}%</p>
+                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Purity</p>
+                            </div>
+                          </div>
+
+                          <button 
+                            className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                            PERFORM SETTLEMENT
+                          </button>
+                        </div>
+                      );
+                    })}
+
+                    {matched.length === 0 && (
+                      <div className="p-8 text-center text-outline text-sm font-medium">No unsettled Tunch entries found.</div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
+        )}
 
         <TaskReconciliationModal 
            isOpen={isVerificationOpen}
@@ -1385,6 +1544,195 @@ export const StaffTasksScreen: React.FC = () => {
         onProcessTask={handleProcessTask}
         onFinalizePricing={handleFinalizePricing}
       />
+
+      {/* View: Perform Settlement Modal */}
+      {selectedSettlement && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+          <div className="absolute inset-0" onClick={() => setSelectedSettlement(null)} />
+          <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden"
+            style={{ maxHeight: '92svh' }}>
+            
+            {/* Header */}
+            <div className="flex justify-between items-center mb-4 shrink-0">
+              <div>
+                <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-lg text-secondary">swap_horiz</span>
+                  Tunch Settlement
+                </h3>
+                <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">Customer: {selectedSettlement.customer_name}</p>
+              </div>
+              <button onClick={() => setSelectedSettlement(null)} className="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline hover:text-primary active:scale-90 transition-transform">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-4 flex-grow overflow-y-auto hide-scrollbar pb-4 pr-1">
+              {/* Original Tunch Params */}
+              <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
+                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Intake Parameters</p>
+                <div className="grid grid-cols-2 gap-2 text-left">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Metal</span>
+                    <p className="text-xs font-bold text-primary truncate">{Number(selectedSettlement.impure_silver_in || 0) > 0 ? 'Silver' : 'Gold'}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Intake Date</span>
+                    <p className="text-xs font-bold text-primary truncate">{selectedSettlement.date}</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Impure Weight</span>
+                    <p className="text-xs font-bold text-primary truncate">{Number(selectedSettlement.impure_silver_in || selectedSettlement.impure_gold_in || 0).toFixed(3)}g</p>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Purity</span>
+                    <p className="text-xs font-bold text-primary truncate">{selectedSettlement.purity || 'N/A'}%</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Settlement Form */}
+              <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
+                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Choose Settlement Mode</p>
+                
+                <div className="flex gap-2">
+                  {(Number(selectedSettlement.impure_silver_in || 0) > 0 ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']).map(mode => (
+                    <button 
+                      key={mode} type="button" 
+                      onClick={() => setNewSettlementMode(mode as any)}
+                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-colors ${newSettlementMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+
+                {newSettlementMode === 'Cash' ? (
+                  <div className="text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Amount Paid to Customer (₹) *</span>
+                    <input 
+                      type="number" 
+                      value={cashAmountInput} 
+                      onChange={e => setCashAmountInput(e.target.value)}
+                      placeholder="e.g. 15000" 
+                      className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Calculated Pure Metal Yield</span>
+                    <p className="text-sm font-black text-secondary">
+                      {(() => {
+                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0;
+                        const impure = isSilver ? Number(selectedSettlement.impure_silver_in) : Number(selectedSettlement.impure_gold_in);
+                        const purity = parseFloat(selectedSettlement.purity) || 0;
+                        const yieldWeight = impure * (purity / 100);
+                        return `${yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
+                      })()}
+                    </p>
+                    <p className="text-[8.5px] text-outline font-medium mt-1">This will create a liability for Admin allocation from Live Pure Stock.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex gap-3 mt-4 shrink-0">
+              <button 
+                onClick={() => setSelectedSettlement(null)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/50 font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all"
+              >
+                Dismiss
+              </button>
+              <button 
+                onClick={async () => {
+                  if (newSettlementMode === 'Cash' && (!cashAmountInput.trim() || isNaN(Number(cashAmountInput)) || Number(cashAmountInput) <= 0)) {
+                    alert('Please enter a valid cash amount paid.');
+                    return;
+                  }
+                  
+                  setIsSubmittingSettlement(true);
+                  try {
+                    const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0;
+                    const impure = isSilver ? Number(selectedSettlement.impure_silver_in) : Number(selectedSettlement.impure_gold_in);
+                    const purity = parseFloat(selectedSettlement.purity) || 0;
+                    const calculatedPure = impure * (purity / 100);
+
+                    const ledgerUpdates: any = {
+                      transaction_type: 'Exchange'
+                    };
+
+                    if (newSettlementMode === 'Cash') {
+                      ledgerUpdates.status = 'Completed';
+                      ledgerUpdates.cash_paid = Number(cashAmountInput);
+                      
+                      // Also create a billing transaction
+                      const newTxn = {
+                        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                        customer_id: 'CUST-COL',
+                        customer_name: selectedSettlement.customer_name,
+                        metal: isSilver ? 'Silver' : 'Gold',
+                        type: 'Cash',
+                        work_type: 'Tunch',
+                        amount: String(cashAmountInput),
+                        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                        iso_date: new Date().toISOString().split('T')[0],
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        status: 'Paid',
+                        details: `Cash settlement for completed Tunch gold. Original Entry ID: ${selectedSettlement.id}`,
+                        piece_type: 'Jewellery',
+                        impure_weight: String(impure),
+                        pure_weight: String(calculatedPure),
+                        purity_percentage: String(purity),
+                        created_by: user?.id || ''
+                      };
+                      await supabase.from('transactions').insert([newTxn]);
+                    } else {
+                      // Pure metal due
+                      ledgerUpdates.status = 'Pending Pure';
+                      if (isSilver) {
+                        ledgerUpdates.pure_silver_due = calculatedPure;
+                        ledgerUpdates.pure_silver_out = 0;
+                      } else {
+                        ledgerUpdates.pure_gold_due = calculatedPure;
+                        ledgerUpdates.pure_gold_out = 0;
+                      }
+                    }
+
+                    const { error } = await supabase
+                      .from('ledger_entries')
+                      .update(ledgerUpdates)
+                      .eq('id', selectedSettlement.id);
+
+                    if (error) throw error;
+                    
+                    showToast(newSettlementMode === 'Cash' ? 'Cash settlement completed & billed successfully.' : 'Pure metal exchange settlement registered. Pending Admin allocation.');
+                    setSelectedSettlement(null);
+                    fetchUnsettledEntries();
+                  } catch (e) {
+                    console.error(e);
+                    alert('Failed to submit settlement.');
+                  } finally {
+                    setIsSubmittingSettlement(false);
+                  }
+                }}
+                disabled={isSubmittingSettlement}
+                className="flex-grow flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5"
+              >
+                {isSubmittingSettlement ? (
+                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                    Confirm Settlement
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
         
         {/* Toast Notification System */}
         {toastMessage && (
