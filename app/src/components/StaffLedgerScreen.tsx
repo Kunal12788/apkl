@@ -186,7 +186,8 @@ export const StaffLedgerScreen: React.FC = () => {
           const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
           let cash = 0;
           allTx.forEach((tx: any) => {
-            if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && tx.type === 'Cash') {
+            const type = tx.type?.trim().toLowerCase() || '';
+            if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
               const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
               cash += Number(amtStr) || 0;
             }

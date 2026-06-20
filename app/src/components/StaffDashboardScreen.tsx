@@ -307,8 +307,8 @@ export const StaffDashboardScreen: React.FC = () => {
           let filteredTx = txData || [];
           let filteredTasks = tasksData || [];
           if (!isSuperSa && user?.branch_id) {
-            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
-            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
           }
           const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
           setCachedData('staff_billing_tx', allTx);
@@ -337,8 +337,9 @@ export const StaffDashboardScreen: React.FC = () => {
         const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
         const amt = Number(amtStr) || 0;
         
-        if (tx.type === 'Cash') cash += amt;
-        if (tx.type === 'UPI') upi += amt;
+        const type = tx.type?.trim().toLowerCase() || '';
+        if (type === 'cash') cash += amt;
+        if (type === 'upi') upi += amt;
 
         const wt = (tx.workType || 'Tunch').toUpperCase();
         if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') revTunch += amt;
