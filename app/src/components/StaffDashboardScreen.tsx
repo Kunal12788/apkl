@@ -42,9 +42,28 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialPureSilver = 0;
   let initialImpureSilver = 0;
 
+  const cachedBillingTx = getCachedData('staff_billing_tx') || [];
+  
   let initialCashCol = 0;
   let initialUpiCol = 0;
   let initialRev = { tunch: 0, marking: 0, shouldering: 0 };
+  
+  cachedBillingTx.forEach((tx: any) => {
+    if (tx.status === 'Paid' || tx.status === 'Fully Paid') {
+      const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+      const amt = Number(amtStr) || 0;
+      
+      const type = tx.type?.trim().toLowerCase() || '';
+      if (type === 'cash') initialCashCol += amt;
+      if (type === 'upi') initialUpiCol += amt;
+
+      const wt = (tx.workType || 'Tunch').toUpperCase();
+      if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') initialRev.tunch += amt;
+      else if (wt === 'MARKING') initialRev.marking += amt;
+      else if (wt === 'SHOULDERING') initialRev.shouldering += amt;
+    }
+  });
+
   let initialStats = { pending: 0, inProgress: 0, completed: 0 };
 
   if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0 || initialAllocations.length > 0) {
@@ -64,36 +83,11 @@ export const StaffDashboardScreen: React.FC = () => {
     initialPureSilver = totalAllocatedPureSilver - totalPureSilverGiven;
     initialImpureSilver = totalImpureSilverReceived - totalImpureSilverRefined;
 
-
-
-    let revTunch = 0, revMark = 0, revShoulder = 0;
-    let volTunch = 0, volMark = 0, volShoulder = 0;
-    let cDues = 0, gDues = 0;
-
     initialTasks.forEach((t: any) => {
-      const isCompleted = t.status === 'Completed';
-      const w = Number(t.weight_grams) || 0;
-      const amt = Number(t.bill_amount) || 0;
-
-      if (t.task_type === 'Tunch') {
-        if (isCompleted) { revTunch += amt; volTunch += w; }
-      } else if (t.task_type === 'Marking') {
-        if (isCompleted) { revMark += amt; volMark += w; }
-      } else if (t.task_type === 'Shouldering') {
-        if (isCompleted) { revShoulder += amt; volShoulder += w; }
-      }
-
-      if (t.payment_status === 'Unpaid') {
-        cDues += amt;
-        if (isCompleted) gDues += w;
-      }
-
       if (t.status === 'Pending') initialStats.pending++;
       else if (t.status === 'In Progress' || t.status === 'Working') initialStats.inProgress++;
       else if (t.status === 'Completed') initialStats.completed++;
     });
-
-    initialRev = { tunch: revTunch, marking: revMark, shouldering: revShoulder };
   }
 
   // States for Metrics
@@ -105,7 +99,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const [upiCollection, setUpiCollection] = useState(initialUpiCol);
   const [dateFilter] = useState('');
   const [monthFilter] = useState('');
-  const [billingTransactions, setBillingTransactions] = useState<any[]>(getCachedData('staff_billing_tx') || []);
+  const [billingTransactions, setBillingTransactions] = useState<any[]>(cachedBillingTx);
   
   const [revenue, setRevenue] = useState(initialRev);
   const [globalStats, setGlobalStats] = useState(initialStats);

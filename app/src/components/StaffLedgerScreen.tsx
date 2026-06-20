@@ -93,7 +93,18 @@ export const StaffLedgerScreen: React.FC = () => {
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
-  const [billingCash, setBillingCash] = useState(0);
+  
+  const cachedBillingTx = getCachedData('staff_billing_tx') || [];
+  let initialBillingCash = 0;
+  cachedBillingTx.forEach((tx: any) => {
+    const type = tx.type?.trim().toLowerCase() || '';
+    if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+      const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+      initialBillingCash += Number(amtStr) || 0;
+    }
+  });
+
+  const [billingCash, setBillingCash] = useState(initialBillingCash);
 
   const [branchName, setBranchName] = useState('Delhi Branch');
 
