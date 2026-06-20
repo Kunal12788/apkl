@@ -18,7 +18,9 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       colStaffPaid: !!t.col_staff_paid,
       staffPaid: !!t.staff_paid,
       impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-      pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || ''
+      pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
+      createdBy: t.created_by,
+      createdAt: t.created_at
     };
   });
 
@@ -61,11 +63,19 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       pointsCount: task.point_suggestion ? parseInt(task.point_suggestion) : undefined,
       pointsType: task.metal === 'Silver' ? 'Silver' : 'Gold',
       caratMarking: task.carat,
-      details: settlementVal
+      details: settlementVal,
+      createdBy: task.created_by,
+      createdAt: task.created_at
     };
   });
 
-  return [...txEntries, ...taskEntries];
+  const merged = [...txEntries, ...taskEntries];
+  merged.sort((a: any, b: any) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+  return merged;
 };
 
 export const computeCollectionStaffBillingTransactions = (txData: any[], tasksData: any[]): any[] => {
@@ -90,7 +100,8 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
       pieces: t.pieces || '1',
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
-      createdBy: t.created_by
+      createdBy: t.created_by,
+      createdAt: t.created_at
     };
   });
 
@@ -135,9 +146,16 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       pointsType: task.metal === 'Silver' ? 'Silver' : 'Gold',
       caratMarking: task.carat,
       details: settlementVal,
-      createdBy: task.created_by
+      createdBy: task.created_by,
+      createdAt: task.created_at
     };
   });
 
-  return [...txEntries, ...taskEntries];
+  const merged = [...txEntries, ...taskEntries];
+  merged.sort((a: any, b: any) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+  return merged;
 };

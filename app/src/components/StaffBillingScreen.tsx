@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
+import { computeStaffBillingTransactions } from '../utils/billingUtils';
 
 type TabView = 'all' | 'customer';
 
@@ -502,10 +503,16 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
-        // Fetch all users to map created_by to name and role
-        const { data: allUsers } = await supabase
-          .from('users')
-          .select('id, name, role');
+        const [usersRes, branchUsersRes, txRes, tasksRes] = await Promise.all([
+          supabase.from('users').select('id, name, role'),
+          (!isSuperSa && user?.branch_id)
+            ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
+            : Promise.resolve({ data: null, error: null }),
+          supabase.from('transactions').select('*').order('created_at', { ascending: false }),
+          supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false })
+        ]);
+
+        const allUsers = usersRes.data;
         if (allUsers) {
           const uMap: Record<string, { name: string; role: string }> = {};
           allUsers.forEach((u: any) => {
@@ -516,118 +523,28 @@ export const StaffBillingScreen: React.FC = () => {
         }
 
         let branchUserIds: string[] = [];
-        if (!isSuperSa && user?.branch_id) {
-          const { data: bUsers, error: buError } = await supabase
-            .from('users')
-            .select('id')
-            .eq('branch_id', user.branch_id);
-          if (!buError && bUsers) {
-            branchUserIds = bUsers.map((bu: any) => bu.id);
-            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
-          }
+        const bUsers = branchUsersRes.data;
+        if (!isSuperSa && user?.branch_id && bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+          setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
         }
         if (branchUserIds.length === 0) {
           branchUserIds = [currentUserId];
         }
 
-        // Fetch transactions
-        const { data: txData } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
-        
-        let txEntries: Transaction[] = [];
-        let txTaskIds = new Set<string>();
-        if (txData) {
-          setCachedData('tx_data', txData);
-          let filtered = txData;
-          if (!isSuperSa && user?.branch_id) {
-            filtered = txData.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
-          }
-          txTaskIds = new Set(filtered.map((t: any) => t.task_id).filter(Boolean));
-          txEntries = filtered.map((t: any) => {
-            let computedStatus = 'Unpaid';
-            if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Fully Paid';
-            else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
-            else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
+        let filteredTx = txRes.data || [];
+        let filteredTasks = tasksRes.data || [];
 
-            return {
-              metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
-              customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee', workType: t.work_type,
-              amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
-              date: t.date || (t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-              isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
-              timestamp: t.timestamp || (t.created_at ? new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''),
-              status: computedStatus,
-              colStaffPaid: !!t.col_staff_paid,
-              staffPaid: !!t.staff_paid,
-              impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
-              pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
-              createdBy: t.created_by
-            };
-          });
-        }
+        // Save tx_data and tasks_data to cache
+        if (txRes.data) setCachedData('tx_data', txRes.data);
+        if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
 
-        // Fallback: load completed tasks that have no real transaction record yet
-        const { data: completedTasks } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('status', 'Completed')
-          .order('created_at', { ascending: false });
-
-        let filteredTasks = completedTasks || [];
         if (!isSuperSa && user?.branch_id) {
+          filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
           filteredTasks = filteredTasks.filter((task: any) => !task.created_by || branchUserIds.includes(task.created_by));
         }
-        // Remove tasks that already have a real transaction
-        filteredTasks = filteredTasks.filter((task: any) => !txTaskIds.has(task.id));
 
-        const taskEntries: Transaction[] = filteredTasks.map((task: any) => {
-          const dateStr = task.created_at
-            ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-            : task.date_given || '';
-          const timeStr = task.created_at
-            ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            : '';
-          const settlementVal = task.settlement_condition || '';
-          const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
-          const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
-          const isPaid = settlementVal.toLowerCase().includes('[collected]') || settlementVal.toLowerCase().includes('paid');
-
-          const colStaffPaidVal = task.col_staff_paid !== null && task.col_staff_paid !== undefined ? !!task.col_staff_paid : isPaid;
-          const staffPaidVal = task.staff_paid !== null && task.staff_paid !== undefined ? !!task.staff_paid : isPaid;
-
-          let computedStatus = 'Unpaid';
-          if (colStaffPaidVal && staffPaidVal) computedStatus = 'Fully Paid';
-          else if (colStaffPaidVal && !staffPaidVal) computedStatus = 'Awaiting Staff';
-          else if (!colStaffPaidVal && staffPaidVal) computedStatus = 'Awaiting Collection Staff';
-
-          return {
-            metal: task.metal || 'Gold',
-            id: `TASK-${task.id}`,
-            customerId: task.customer_id || 'CUST-COL',
-            customerName: task.customer_name || 'Walk-in Customer',
-            customerPhone: task.customer_phone,
-            customerAddress: task.customer_address,
-            type: 'Service Fee' as const,
-            workType: task.work_type || 'Tunch',
-            amount: `₹${Number(amount).toLocaleString('en-IN')}`,
-            date: dateStr,
-            isoDate: task.created_at ? task.created_at.split('T')[0] : '',
-            timestamp: timeStr,
-            status: computedStatus,
-            colStaffPaid: colStaffPaidVal,
-            staffPaid: staffPaidVal,
-            impureWeight: task.impure_weight || task.total_weight,
-            pureWeight: task.pure_weight,
-            purityPercentage: task.purity,
-            pieceType: task.product_type,
-            pointsCount: task.point_suggestion ? parseInt(task.point_suggestion) : undefined,
-            pointsType: (task.metal === 'Silver' ? 'Silver' : 'Gold') as 'Gold' | 'Silver',
-            caratMarking: task.carat,
-            details: settlementVal,
-            createdBy: task.created_by
-          };
-        });
-
-        const allTx = [...txEntries, ...taskEntries];
+        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
         setCachedData('staff_billing_tx', allTx);
         setTransactions(allTx);
       } catch (err) {
