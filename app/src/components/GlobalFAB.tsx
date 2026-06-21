@@ -68,7 +68,9 @@ export const GlobalFAB: React.FC = () => {
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: data.feeStatus || 'Paid',
                 details: `${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} Completed. Pieces: ${data.pieces || '1'}. ${data.logoName ? 'Logo: ' + data.logoName + '.' : ''}`,
-                created_by: user?.id || ''
+                created_by: user?.id || '',
+                pending_pure_liability: !!data.pendingPureLiability,
+                pending_cash_liability: !!data.pendingCashLiability
               };
 
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
@@ -94,7 +96,9 @@ export const GlobalFAB: React.FC = () => {
                 purity: data.purity || '',
                 staff_id: user?.id || '',
                 pure_gold_out: 0,
-                pure_silver_out: 0
+                pure_silver_out: 0,
+                pending_pure_liability: !!data.pendingPureLiability,
+                pending_cash_liability: !!data.pendingCashLiability
               };
 
               if (isSilver) {
@@ -164,7 +168,9 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 estimated_completion: 'Today, 06:00 PM',
                 notes: data.notes || 'Created Tunch Only task',
-                images: data.images
+                images: data.images,
+                pending_pure_liability: !!data.pendingPureLiability,
+                pending_cash_liability: !!data.pendingCashLiability
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -184,7 +190,9 @@ export const GlobalFAB: React.FC = () => {
                 pure_gold_out: 0,
                 pure_silver_out: 0,
                 pure_gold_due: 0,
-                pure_silver_due: 0
+                pure_silver_due: 0,
+                pending_pure_liability: !!data.pendingPureLiability,
+                pending_cash_liability: !!data.pendingCashLiability
               };
 
               if (isSilver) {
@@ -252,7 +260,9 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 estimated_completion: 'Today, 06:00 PM',
                 notes: data.notes || 'Created Tunch Cash task. Awaiting pricing.',
-                images: data.images
+                images: data.images,
+                pending_pure_liability: !!data.pendingPureLiability,
+                pending_cash_liability: !!data.pendingCashLiability
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);

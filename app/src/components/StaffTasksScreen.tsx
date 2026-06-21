@@ -41,7 +41,57 @@ interface Task {
   images?: string[];
   auditImages?: string[];
   createdAt?: string;
+  cashHandlingMode?: 'Front' | 'Back';
+  cashRatePerGram?: number;
+  cashAmount?: number;
+  pendingPureLiability?: boolean;
+  pendingCashLiability?: boolean;
+  staffSubmittedAt?: string;
+  adminSubmittedAt?: string;
 }
+
+const mapDbToTask = (t: any): Task => ({
+  id: t.id,
+  customerName: t.customer_name,
+  customerId: t.customer_id,
+  workType: t.work_type,
+  assignedTo: t.assigned_to,
+  status: t.status,
+  progressPercentage: t.progress_percentage,
+  impureWeight: t.impure_weight,
+  pureWeight: t.pure_weight,
+  dateGiven: t.date_given,
+  isoDate: t.iso_date,
+  estimatedCompletion: t.estimated_completion,
+  notes: t.notes,
+  broughtBy: t.brought_by,
+  source: t.source,
+  pieces: t.pieces,
+  weight: t.weight,
+  purity: t.purity,
+  category: t.category,
+  customerPhone: t.customer_phone,
+  customerAddress: t.customer_address,
+  settlementCondition: t.settlement_condition,
+  productType: t.product_type,
+  logoName: t.logo_name,
+  carat: t.carat,
+  pointSuggestion: t.point_suggestion,
+  createdBy: t.created_by,
+  metal: t.metal,
+  totalWeight: t.total_weight,
+  pieceCategories: t.piece_categories,
+  images: t.images,
+  auditImages: t.audit_images,
+  createdAt: t.created_at,
+  cashHandlingMode: t.cash_handling_mode,
+  cashRatePerGram: t.cash_rate_per_gram,
+  cashAmount: t.cash_amount,
+  pendingPureLiability: t.pending_pure_liability,
+  pendingCashLiability: t.pending_cash_liability,
+  staffSubmittedAt: t.staff_submitted_at,
+  adminSubmittedAt: t.admin_submitted_at
+});
 
 const getWorkIcon = (workType: string) => {
   switch(workType) {
@@ -170,8 +220,9 @@ interface TaskDetailsModalProps {
     pointsCount?: string;
     pointsType?: string;
     broughtBy?: string;
+    cashHandlingMode?: 'Front' | 'Back';
   }) => void;
-  onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI') => void;
+  onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string) => void;
 }
 
 const extractFee = (settlementCondition?: string) => {
@@ -210,6 +261,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [serviceFeeInput, setServiceFeeInput] = useState('');
   const [finalPriceInput, setFinalPriceInput] = useState('');
   const [paymentModeInput, setPaymentModeInput] = useState<'Cash' | 'UPI'>('Cash');
+  const [cashHandlingMode, setCashHandlingMode] = useState<'Front' | 'Back'>('Front');
+  const [cashRateInput, setCashRateInput] = useState('');
+  const [cashAmountInputState, setCashAmountInputState] = useState('');
 
   const [piecesInput, setPiecesInput] = useState('');
   const [totalWeightInput, setTotalWeightInput] = useState('');
@@ -228,6 +282,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setServiceFeeInput('');
       setFinalPriceInput(extractFee(task.settlementCondition) || '');
       setPaymentModeInput(extractPaymentMode(task.settlementCondition));
+      setCashHandlingMode(task.cashHandlingMode || 'Front');
+      setCashRateInput(task.cashRatePerGram ? String(task.cashRatePerGram) : '');
+      setCashAmountInputState(task.cashAmount ? String(task.cashAmount) : '');
       
       setPiecesInput(task.pieces || '');
       setTotalWeightInput(task.totalWeight || task.weight || '');
@@ -421,12 +478,40 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 )}
               </div>
             )}
-            {task.settlementCondition && (
-              <div className="pt-2 border-t border-outline-variant/10 mt-2">
-                <span className={lbl}>Settlement Mode / Service Fee</span>
-                <p className={val}>{task.settlementCondition}</p>
-              </div>
-            )}
+            {task.settlementCondition && (() => {
+                // Staff Cash Blindness: mask cash amounts in settlement condition for non-admin
+                const rawCondition = task.settlementCondition;
+                const staffBlindCondition = !isAdminOrSuper
+                  ? rawCondition.replace(/\[Collected\]\s*(Cash|UPI)\s*₹[\d,]+/gi, '[Settled]').replace(/₹[\d,]+/g, '₹***')
+                  : rawCondition;
+                return (
+                  <div className="pt-2 border-t border-outline-variant/10 mt-2 space-y-1">
+                    <div>
+                      <span className={lbl}>Settlement Mode</span>
+                      <p className={val}>{staffBlindCondition}</p>
+                    </div>
+                    {task.cashHandlingMode && (
+                      <div>
+                        <span className={lbl}>Cash Handling Mode</span>
+                        <p className={val}>{task.cashHandlingMode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}</p>
+                      </div>
+                    )}
+                    {task.settlementCondition === 'Cash' && isAdminOrSuper && (
+                      <div className="grid grid-cols-2 gap-2 mt-1 pt-1 border-t border-outline-variant/5">
+                        <div>
+                          <span className={lbl}>Cash Rate / Gram</span>
+                          <p className={val}>₹{task.cashRatePerGram || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <span className={lbl}>Total Cash Amount</span>
+                          <p className={val}>₹{task.cashAmount || 'N/A'}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            }
           </div>
 
           {/* Image Gallery Sections */}
@@ -517,6 +602,23 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       ))}
                     </div>
                   </div>
+
+                  {settlementInput === 'Cash' && (
+                    <div className="mt-3">
+                      <span className={lbl}>Cash Handling Mode *</span>
+                      <div className="flex gap-2 mt-1">
+                        {['Front', 'Back'].map(mode => (
+                          <button 
+                            key={mode} type="button" 
+                            onClick={() => setCashHandlingMode(mode as 'Front' | 'Back')}
+                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${cashHandlingMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            {mode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -664,6 +766,39 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </div>
               </div>
 
+              {(task.settlementCondition === 'Cash' || settlementInput === 'Cash') && (
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <span className={lbl}>Cash Rate / Gram (₹) *</span>
+                    <input 
+                      type="number" 
+                      value={cashRateInput} 
+                      onChange={e => {
+                        setCashRateInput(e.target.value);
+                        // Auto-calculate cash amount based on pure weight or impure weight
+                        const wtStr = task.pureWeight || pureWeightInput || task.impureWeight || impureWeightInput || '0';
+                        const wt = Number(wtStr);
+                        if (wt > 0 && e.target.value) {
+                          setCashAmountInputState(String(Math.round(wt * Number(e.target.value))));
+                        }
+                      }}
+                      placeholder="e.g. 7200" 
+                      className="w-full h-10 px-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
+                    />
+                  </div>
+                  <div>
+                    <span className={lbl}>Total Cash Amount (₹) *</span>
+                    <input 
+                      type="number" 
+                      value={cashAmountInputState} 
+                      onChange={e => setCashAmountInputState(e.target.value)}
+                      placeholder="e.g. 50000" 
+                      className="w-full h-10 px-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <span className={lbl}>Payment Mode *</span>
                 <div className="flex gap-2 mt-1">
@@ -735,7 +870,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     pureWeight: pureWeightInput, 
                     settlementCondition: settlementInput, 
                     serviceFee: serviceFeeInput,
-                    paymentMode: paymentModeInput
+                    paymentMode: paymentModeInput,
+                    cashHandlingMode: cashHandlingMode
                   });
                 } else if (task.workType === 'Marking') {
                   if (!totalWeightInput.trim() || !piecesInput.trim() || !logoNameInput.trim()) {
@@ -784,7 +920,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   alert('Please enter the service price/fee.');
                   return;
                 }
-                onFinalizePricing?.(task, finalPriceInput, paymentModeInput);
+                if (task.settlementCondition === 'Cash') {
+                  if (!cashRateInput.trim() || !cashAmountInputState.trim()) {
+                    alert('Please enter cash rate and total cash amount.');
+                    return;
+                  }
+                }
+                onFinalizePricing?.(task, finalPriceInput, paymentModeInput, cashRateInput, cashAmountInputState);
               }}
               className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -880,14 +1022,8 @@ export const StaffTasksScreen: React.FC = () => {
   const isSuperSa = user?.role === 'Super Admin';
   const initialTasks = cachedTasks
     ? cachedTasks
-      .filter((t: any) => isSuperSa ? true : (t.created_by === currentUser))
-      .map((t: any) => ({
-        id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
-        impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
-        broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-        settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-        metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
-      }))
+      .filter((t: any) => isSuperSa ? true : (t.created_by === currentUser || t.assigned_to === currentUser))
+      .map(mapDbToTask)
     : [];
 
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -919,13 +1055,7 @@ export const StaffTasksScreen: React.FC = () => {
           if (!isSuperSa && user?.branch_id) {
             filtered = filtered.filter((t: any) => branchUserIds.includes(t.created_by));
           }
-          setTasks(filtered.map((t: any) => ({
-            id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
-            impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
-            broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-            settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-            metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
-          })));
+          setTasks(filtered.map(mapDbToTask));
         } else {
           setTasks([]);
         }
@@ -946,13 +1076,7 @@ export const StaffTasksScreen: React.FC = () => {
             loadTasks(); // Insert might need joining or complex logic, fallback to fetch
          } else if (payload.eventType === 'UPDATE') {
             const t = payload.new;
-            setTasks(prev => prev.map(old => old.id === t.id ? {
-              id: t.id, customerName: t.customer_name, customerId: t.customer_id, workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage,
-              impureWeight: t.impure_weight, pureWeight: t.pure_weight, dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes,
-              broughtBy: t.brought_by, source: t.source, pieces: t.pieces, weight: t.weight, purity: t.purity, category: t.category, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-              settlementCondition: t.settlement_condition, productType: t.product_type, logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by,
-              metal: t.metal, totalWeight: t.total_weight, pieceCategories: t.piece_categories, images: t.images, auditImages: t.audit_images, createdAt: t.created_at
-            } : old));
+            setTasks(prev => prev.map(old => old.id === t.id ? mapDbToTask(t) : old));
          }
       } else {
          loadTasks();
@@ -1099,6 +1223,7 @@ export const StaffTasksScreen: React.FC = () => {
     pointsCount?: string;
     pointsType?: string;
     broughtBy?: string;
+    cashHandlingMode?: 'Front' | 'Back';
   }) => {
     try {
       let updatedCondition = task.settlementCondition || '';
@@ -1156,11 +1281,12 @@ export const StaffTasksScreen: React.FC = () => {
         progressPercentage: progress
       } : t));
 
-      // Handle Ledger Entry if Tunch Work has settlement modes Only Tunch, Pure Gold or Pure Silver
+      // Handle Ledger Entry if Tunch Work
       if (task.workType === 'Tunch') {
         const condition = details.settlementCondition || task.settlementCondition || 'Only Tunch';
         const finalImpure = Number(details.impureWeight || task.impureWeight) || 0;
         const finalPure = Number(details.pureWeight || task.pureWeight) || 0;
+        const handlingMode = details.cashHandlingMode || 'Front';
 
         const newLedgerEntry: any = {
           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -1169,7 +1295,8 @@ export const StaffTasksScreen: React.FC = () => {
           customer_name: task.customerName,
           purity: details.purity || task.purity || '',
           staff_id: user?.id || task.createdBy || '',
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          cash_handling_mode: condition === 'Cash' ? handlingMode : null
         };
 
         if (condition === 'Only Tunch') {
@@ -1180,6 +1307,7 @@ export const StaffTasksScreen: React.FC = () => {
           } else {
             newLedgerEntry.impure_gold_in = finalImpure;
           }
+          await supabase.from('ledger_entries').insert([newLedgerEntry]);
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
           newLedgerEntry.status = 'Pending Pure';
@@ -1190,10 +1318,30 @@ export const StaffTasksScreen: React.FC = () => {
             newLedgerEntry.impure_gold_in = finalImpure;
             newLedgerEntry.pure_gold_due = finalPure;
           }
+          await supabase.from('ledger_entries').insert([newLedgerEntry]);
+        } else if (condition === 'Cash') {
+          // Cash handling: Front = metal goes in Staff's ledger (pending cash),
+          //               Back  = nothing in Staff's ledger; Admin handles everything
+          if (handlingMode === 'Front') {
+            newLedgerEntry.transaction_type = 'Exchange';
+            newLedgerEntry.status = 'Pending Cash';
+            newLedgerEntry.pending_cash_liability = true;
+            if (task.metal === 'Silver') {
+              newLedgerEntry.impure_silver_in = finalImpure;
+              newLedgerEntry.pure_silver_in = finalPure;
+            } else {
+              newLedgerEntry.impure_gold_in = finalImpure;
+              newLedgerEntry.pure_gold_in = finalPure;
+            }
+            await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          }
+          // Back mode: no staff ledger entry; Admin will create the entry on finalize
         }
 
-        if (newLedgerEntry.transaction_type) {
-          await supabase.from('ledger_entries').insert([newLedgerEntry]);
+        // Also persist the cash_handling_mode on the task for Admin finalization reference
+        if (condition === 'Cash') {
+          await supabase.from('tasks').update({ cash_handling_mode: handlingMode }).eq('id', task.id);
+          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, cashHandlingMode: handlingMode } : t));
         }
       }
 
@@ -1205,7 +1353,7 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI') => {
+  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string) => {
     try {
       const modeStr = paymentMode || 'Cash';
       const isSilver = task.metal === 'Silver';
@@ -1277,34 +1425,82 @@ export const StaffTasksScreen: React.FC = () => {
         settlementCondition: updatedCondition 
       } : t));
 
-      // 2. Insert cash transaction in ledger ONLY under the Admin's name
+      // 2. Insert ledger entries based on cash handling mode
+      const handlingMode = task.cashHandlingMode || 'Front';
+      const isCashSettlement = task.settlementCondition?.toLowerCase().includes('cash');
+      const finalCashAmount = cashAmount ? Number(cashAmount) : cashAmountToPay;
+      const finalCashRate = cashRate ? Number(cashRate) : 0;
       const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
-      const ledgerEntry: any = {
-        id: entryId,
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        iso_date: isoDateStr,
-        customer_name: task.customerName,
-        transaction_type: 'Exchange',
-        status: 'Completed',
-        purity: task.purity || '',
-        cash_paid: modeStr === 'Cash' ? cashAmountToPay : 0,
-        cash_received: modeStr === 'UPI' ? cashAmountToPay : 0,
-        staff_id: user?.id || '',
-        pure_gold_out: 0,
-        pure_silver_out: 0,
-        pure_gold_due: 0,
-        pure_silver_due: 0
-      };
 
-      if (isSilver) {
-        ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
-        ledgerEntry.impure_gold_in = 0;
+      if (isCashSettlement && handlingMode === 'Front') {
+        // Front mode: Update the Staff's existing Pending Cash ledger entry with rate & amount
+        // Then create an Admin ledger entry for the cash payout
+        const { data: staffEntries } = await supabase
+          .from('ledger_entries')
+          .select('id')
+          .eq('customer_name', task.customerName)
+          .eq('status', 'Pending Cash')
+          .eq('pending_cash_liability', true)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (staffEntries && staffEntries.length > 0) {
+          await supabase.from('ledger_entries').update({
+            status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+            cash_rate_per_gram: finalCashRate,
+            cash_amount: finalCashAmount,
+            pending_cash_liability: !!task.pendingCashLiability
+          }).eq('id', staffEntries[0].id);
+        }
+
+        // Admin entry: records the cash disbursement
+        const adminEntry: any = {
+          id: entryId,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: isoDateStr,
+          customer_name: task.customerName,
+          transaction_type: 'Exchange',
+          status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+          purity: task.purity || '',
+          cash_paid: task.pendingCashLiability ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
+          cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+          cash_rate_per_gram: finalCashRate,
+          cash_amount: finalCashAmount,
+          staff_id: user?.id || '',
+          pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+          impure_gold_in: 0, impure_silver_in: 0,
+          pending_cash_liability: !!task.pendingCashLiability
+        };
+        await supabase.from('ledger_entries').insert([adminEntry]);
+
       } else {
-        ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
-        ledgerEntry.impure_silver_in = 0;
-      }
+        // Back mode or non-cash: Single Admin entry with everything
+        const ledgerEntry: any = {
+          id: entryId,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: isoDateStr,
+          customer_name: task.customerName,
+          transaction_type: 'Exchange',
+          status: (isCashSettlement && task.pendingCashLiability) ? 'Pending Cash' : 'Completed',
+          purity: task.purity || '',
+          cash_paid: (isCashSettlement && task.pendingCashLiability) ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
+          cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+          cash_rate_per_gram: finalCashRate,
+          cash_amount: finalCashAmount,
+          staff_id: user?.id || '',
+          pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+          pending_cash_liability: isCashSettlement ? !!task.pendingCashLiability : false
+        };
 
-      await supabase.from('ledger_entries').insert([ledgerEntry]);
+        if (isSilver) {
+          ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
+          ledgerEntry.impure_gold_in = 0;
+        } else {
+          ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
+          ledgerEntry.impure_silver_in = 0;
+        }
+        await supabase.from('ledger_entries').insert([ledgerEntry]);
+      }
 
       // 3. Create billing transaction
       const newTxn = {
@@ -1965,7 +2161,8 @@ export const StaffTasksScreen: React.FC = () => {
                         impure_weight: String(impure),
                         pure_weight: String(calculatedPure),
                         purity_percentage: String(purity),
-                        created_by: user?.id || ''
+                        created_by: user?.id || '',
+                        is_cash_exchange: true
                       };
                       await supabase.from('transactions').insert([newTxn]);
                     } else {

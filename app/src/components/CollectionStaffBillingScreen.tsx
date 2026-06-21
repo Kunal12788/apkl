@@ -9,6 +9,9 @@ type TabView = 'all' | 'customer';
 
 interface Transaction {
   metal: 'Gold' | 'Silver';
+  staffSubmittedAt?: string | null;
+  adminSubmittedAt?: string | null;
+  isCashExchange?: boolean;
   id: string;
   customerId: string;
   customerName: string;
@@ -576,7 +579,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         });
     });
 
+    const hasDateSearch = startDate || endDate;
     transactions.forEach(t => {
+      if (!hasDateSearch && t.staffSubmittedAt) {
+        return;
+      }
       let cust = customers.find(c => {
         if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
           return c.id === t.customerId;
@@ -663,7 +670,12 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     if (startDate && txn.isoDate < startDate) matchesDate = false;
     if (endDate && txn.isoDate > endDate) matchesDate = false;
 
-    return matchesText && matchesDate;
+    let matchesSubmission = true;
+    if (!startDate && !endDate) {
+      matchesSubmission = !txn.staffSubmittedAt;
+    }
+
+    return matchesText && matchesDate && matchesSubmission;
   };
 
   const filteredTransactions = transactions.filter(matchesSearch);
@@ -805,8 +817,10 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                 </div>
                 {(() => {
                   const filteredLedger = selectedCustomer.ledger.filter(txn => {
-                    if (!historyDateFilter) return true;
-                    return txn.isoDate === historyDateFilter;
+                    if (historyDateFilter) {
+                      return txn.isoDate === historyDateFilter;
+                    }
+                    return !txn.staffSubmittedAt;
                   });
 
                   if (filteredLedger.length === 0) {

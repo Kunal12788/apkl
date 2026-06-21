@@ -10,12 +10,14 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
   const currentUser = user?.id || '';
+  
+
 
   // Directly initialize state from cache for 0ms delay on mount
   const cachedTasks = getCachedData('tasks_data', Infinity);
 
   const initialTasks = cachedTasks 
-    ? cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser).map((t: any) => ({
+    ? cachedTasks.filter((t: any) => (t.created_by === currentUser || t.assigned_to === currentUser) && !t.staff_submitted_at).map((t: any) => ({
         id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''), settlementCondition: t.sett_condition || t.settlement_condition
       }))
     : [];
@@ -25,8 +27,8 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   if (!cachedBillingTx) {
     const cachedTx = getCachedData('tx_data', Infinity);
     if (cachedTx && cachedTasks) {
-      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser);
-      let filteredTasks = cachedTasks.filter((t: any) => t.created_by === currentUser || t.assigned_to === currentUser);
+      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser && !t.staff_submitted_at);
+      let filteredTasks = cachedTasks.filter((t: any) => (t.created_by === currentUser || t.assigned_to === currentUser) && !t.staff_submitted_at);
       cachedBillingTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
     }
   }
@@ -37,6 +39,14 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const [tasks, setTasks] = useState<any[]>(initialTasks);
   const [billingTransactions, setBillingTransactions] = useState<any[]>(cachedBillingTx);
   const [filterDate, setFilterDate] = useState(() => new Date().toISOString().split('T')[0]);
+  
+  const todayStr = new Date().toISOString().split('T')[0];
+  // If filterDate is set and is in the past, show submitted entries; otherwise hide them
+  const showSubmitted = filterDate && filterDate < todayStr;
+  const filterBySubmission = (item: any) => {
+    if (showSubmitted) return true;
+    return !item.staff_submitted_at && !item.staffSubmittedAt;
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -58,7 +68,8 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         const tasksData = tasksRes.data;
         const taskError = tasksRes.error;
         if (!taskError && tasksData) {
-          setTasks(tasksData.map((t: any) => ({
+          const activeTasks = tasksData.filter((t: any) => filterBySubmission(t));
+          setTasks(activeTasks.map((t: any) => ({
             id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''), settlementCondition: t.settlement_condition
           })));
 
@@ -80,7 +91,9 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
         // --- Precompute Billing screen transactions and update state to trigger re-render ---
         let filteredTx = txRes.data || [];
         let filteredTasks = tasksRes.data || [];
-        const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
+        const activeTx = filteredTx.filter((t: any) => filterBySubmission(t));
+        const activeTasksForBilling = filteredTasks.filter((t: any) => filterBySubmission(t));
+        const allTx = computeCollectionStaffBillingTransactions(activeTx, activeTasksForBilling);
         setCachedData('colstaff_billing_tx', allTx);
         setBillingTransactions(allTx);
         // ------------------------------------------------------------------------
@@ -140,15 +153,19 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     settlementCondition: t.details || ''
   }));
 
-  const unifiedDashboardItems = [...pendingTasks, ...billedItems];
+  const unifiedDashboardItems = [...pendingTasks, ...billedItems].filter((item: any) => {
+    // If the item is completed (or billed), filter by submission
+    if (item.status === 'Completed' || item.staff_submitted_at) {
+      return filterBySubmission(item);
+    }
+    return true;
+  });
 
   // 1. Calculate stats dynamically
   let tunchPcs = 0;
   let markingPcs = 0;
   let shoulderPcs = 0;
   let todaysMarkingPcs = 0;
-
-  const todayStr = new Date().toISOString().split('T')[0];
 
   unifiedDashboardItems.forEach(t => {
     const pcs = parseInt(t.pieces || '1') || 1;

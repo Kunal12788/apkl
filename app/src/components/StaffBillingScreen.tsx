@@ -9,6 +9,9 @@ type TabView = 'all' | 'customer';
 
 interface Transaction {
   metal: 'Gold' | 'Silver';
+  staffSubmittedAt?: string | null;
+  adminSubmittedAt?: string | null;
+  isCashExchange?: boolean;
   id: string;
   customerId: string;
   customerName: string;
@@ -173,6 +176,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  
+  const isNonAdmin = user?.role === 'Staff' || user?.role === 'Collection Staff';
 
   if (!isOpen || !txn) return null;
 
@@ -352,7 +357,9 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             <div className="flex justify-between items-center relative z-10">
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
-                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>{txn.amount}</p>
+                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
+                  {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
@@ -475,6 +482,14 @@ export const StaffBillingScreen: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('');
+  
+  const role = user?.role;
+  const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
+  const filterBySubmission = (item: any) => {
+    if (role === 'Super Admin') return true;
+    if (role === 'Admin') return !item.adminSubmittedAt && !item.admin_submitted_at;
+    return !item.staffSubmittedAt && !item.staff_submitted_at;
+  };
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';
   const customerId = searchParams.get('customerId');
@@ -661,7 +676,11 @@ export const StaffBillingScreen: React.FC = () => {
         });
     });
 
+    const hasDateSearch = startDate || endDate;
     transactions.forEach(t => {
+      if (!hasDateSearch && !filterBySubmission(t)) {
+        return;
+      }
       let cust = customers.find(c => {
         if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
           return c.id === t.customerId;
@@ -699,9 +718,11 @@ export const StaffBillingScreen: React.FC = () => {
       }
       
       cust.ledger.push(t);
-      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const amtNum = (isNonAdmin && t.isCashExchange) ? 0 : (parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0);
       if (t.status === 'Unpaid') {
-        cust.activeJobs += 1;
+        if (!(isNonAdmin && t.isCashExchange)) {
+          cust.activeJobs += 1;
+        }
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
         cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
       } else {
@@ -753,7 +774,12 @@ export const StaffBillingScreen: React.FC = () => {
     if (startDate && txn.isoDate < startDate) matchesDate = false;
     if (endDate && txn.isoDate > endDate) matchesDate = false;
 
-    return matchesText && matchesDate;
+    let matchesSubmission = true;
+    if (!startDate && !endDate) {
+      matchesSubmission = filterBySubmission(txn);
+    }
+
+    return matchesText && matchesDate && matchesSubmission;
   };
 
   const filteredTransactions = transactions.filter(matchesSearch);
@@ -829,7 +855,9 @@ export const StaffBillingScreen: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
+                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>
+                          {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                        </p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
@@ -1085,8 +1113,10 @@ export const StaffBillingScreen: React.FC = () => {
               
               {(() => {
                 const filteredHistoryLedger = selectedCustomer.ledger.filter(txn => {
-                  if (!historyDateFilter) return true;
-                  return txn.isoDate === historyDateFilter;
+                  if (historyDateFilter) {
+                    return txn.isoDate === historyDateFilter;
+                  }
+                  return filterBySubmission(txn);
                 });
 
                 if (filteredHistoryLedger.length === 0) {
@@ -1114,12 +1144,16 @@ export const StaffBillingScreen: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className={`font-headline text-base font-black ${isPending ? 'text-error' : 'text-primary'}`}>{txn.amount}</p>
+                          <p className={`font-headline text-base font-black ${isPending ? 'text-error' : 'text-primary'}`}>
+                            {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                          </p>
                           <p className="text-[8px] font-bold text-outline uppercase tracking-widest mt-1 opacity-70">{txn.id}</p>
                         </div>
                       </div>
                       <div className="pl-14 pr-2 flex justify-between items-center mt-2.5">
-                        <p className={`text-[11px] font-medium leading-relaxed truncate ${isPending ? 'text-error/80' : 'text-outline'}`}>{txn.details}</p>
+                        <p className={`text-[11px] font-medium leading-relaxed truncate ${isPending ? 'text-error/80' : 'text-outline'}`}>
+                          {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.details}
+                        </p>
                         <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-tertiary/10 text-tertiary'}`}>
                           {txn.status}
                         </span>

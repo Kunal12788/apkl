@@ -14,6 +14,13 @@ export const StaffDashboardScreen: React.FC = () => {
   
   const userName = user?.name || '';
   
+  const role = user?.role;
+  const filterBySubmission = (item: any) => {
+    if (role === 'Super Admin') return true;
+    if (role === 'Admin') return !item.admin_submitted_at;
+    return !item.staff_submitted_at;
+  };
+  
   // Directly initialize state from cache for 0ms delay on mount
   const cachedLedger = getCachedData('ledger_data', Infinity);
   const cachedTx = getCachedData('tx_data', Infinity);
@@ -26,13 +33,13 @@ export const StaffDashboardScreen: React.FC = () => {
   const branchUserIds = cachedBranchUsers || [userId];
 
   const initialLedger = cachedLedger 
-    ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => branchUserIds.includes(e.staff_id)))
+    ? (isSuperSa ? cachedLedger : cachedLedger.filter((e: any) => branchUserIds.includes(e.staff_id) && filterBySubmission(e)))
     : [];
   const initialTx = cachedTx
-    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy)))
+    ? (isSuperSa ? cachedTx : cachedTx.filter((t: any) => (branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy)) && filterBySubmission(t)))
     : [];
   const initialTasks = cachedTasks
-    ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => branchUserIds.includes(t.created_by)))
+    ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => branchUserIds.includes(t.created_by) && filterBySubmission(t)))
     : [];
   const initialAllocations = cachedAllocations
     ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id))
@@ -52,7 +59,9 @@ export const StaffDashboardScreen: React.FC = () => {
       filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
       filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
     }
-    cachedBillingTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+    const activeTx = filteredTx.filter(filterBySubmission);
+    const activeTasksForBilling = filteredTasks.filter(filterBySubmission);
+    cachedBillingTx = computeStaffBillingTransactions(activeTx, activeTasksForBilling);
   }
   if (!cachedBillingTx) {
     cachedBillingTx = [];
@@ -250,14 +259,23 @@ export const StaffDashboardScreen: React.FC = () => {
           return dateB - dateA;
         });
 
-        const formattedRecent = sortedTasks.slice(0, 5).map((t: any) => ({
-          id: t.id,
-          customerName: t.customer_name,
-          workType: t.work_type,
-          assignedTo: t.assigned_to,
-          status: t.status,
-          settlementCondition: t.sett_condition || t.settlement_condition
-        }));
+        const filteredRecentTasks = sortedTasks.filter(filterBySubmission);
+
+        const formattedRecent = filteredRecentTasks.slice(0, 5).map((t: any) => {
+          const isCash = t.sett_condition?.toLowerCase().includes('cash') || t.settlement_condition?.toLowerCase().includes('cash');
+          let settlementCondition = t.sett_condition || t.settlement_condition;
+          if (!isAdminOrSuper && isCash) {
+            settlementCondition = 'Cash [Restricted]';
+          }
+          return {
+            id: t.id,
+            customerName: t.customer_name,
+            workType: t.work_type,
+            assignedTo: t.assigned_to,
+            status: t.status,
+            settlementCondition
+          };
+        });
 
         setRecentTasks(formattedRecent);
       };
@@ -319,7 +337,9 @@ export const StaffDashboardScreen: React.FC = () => {
           filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
           filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
         }
-        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+        const activeTx = filteredTx.filter(filterBySubmission);
+        const activeTasksForBilling = filteredTasks.filter(filterBySubmission);
+        const allTx = computeStaffBillingTransactions(activeTx, activeTasksForBilling);
         setCachedData('staff_billing_tx', allTx);
         setBillingTransactions(allTx);
         // ------------------------------------------------------------------------
@@ -443,50 +463,54 @@ export const StaffDashboardScreen: React.FC = () => {
 
 
 
-        {/* 1. Top Section: Total Cash Collected hero card */}
-        <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
-          <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Collected</h3>
-              <div className="flex items-baseline gap-2">
-                <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>
+        {isAdminOrSuper && (
+          <>
+            {/* 1. Top Section: Total Cash Collected hero card */}
+            <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
+              <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
+              <div className="flex justify-between items-start relative z-10">
+                <div>
+                  <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Collected</h3>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
+                    <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
+                  <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">payments</span>
+                  <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance_wallet</span>
+                </div>
               </div>
-            </div>
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
-              <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">payments</span>
-              <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance_wallet</span>
-            </div>
-          </div>
-        </section>
+            </section>
 
-        {/* 2. Second Section: Side-by-side breakdown of Cash and UPI */}
-        <section className="grid grid-cols-2 gap-4 relative z-10">
-          <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F6C358]"></div>
-            <div className="flex justify-between items-start mb-1.5">
-              <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Cash Collection</p>
-              <span className="material-symbols-outlined text-sm text-[#F6C358] opacity-60">payments</span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-bold text-[#F6C358]">₹</span>
-              <span className="font-headline font-bold text-primary" style={fitText(cashCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{cashCollection.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
-            <div className="flex justify-between items-start mb-1.5">
-              <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">UPI Collection</p>
-              <span className="material-symbols-outlined text-sm text-secondary opacity-60">qr_code_2</span>
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-xs font-bold text-secondary">₹</span>
-              <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
-            </div>
-          </div>
-        </section>
+            {/* 2. Second Section: Side-by-side breakdown of Cash and UPI */}
+            <section className="grid grid-cols-2 gap-4 relative z-10">
+              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F6C358]"></div>
+                <div className="flex justify-between items-start mb-1.5">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Cash Collection</p>
+                  <span className="material-symbols-outlined text-sm text-[#F6C358] opacity-60">payments</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-[#F6C358]">₹</span>
+                  <span className="font-headline font-bold text-primary" style={fitText(cashCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{cashCollection.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+                <div className="flex justify-between items-start mb-1.5">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">UPI Collection</p>
+                  <span className="material-symbols-outlined text-sm text-secondary opacity-60">qr_code_2</span>
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xs font-bold text-secondary">₹</span>
+                  <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
 
         {/* 3. Third Section: Job Revenue Analytics */}
         <section className="space-y-3 relative z-10">
@@ -712,7 +736,7 @@ export const StaffDashboardScreen: React.FC = () => {
             ) : (
               recentTasks.map((task) => {
                 const badge = getWorkBadgeColors(task.workType);
-                const isCash = task.settlementCondition?.toLowerCase().includes('cash');
+                const isCash = isAdminOrSuper && task.settlementCondition?.toLowerCase().includes('cash');
                 return (
                   <div key={task.id} className={`p-4 flex items-center justify-between transition-colors ${isCash ? 'cash-light-row' : 'hover:bg-surface-bright bg-white'}`}>
                     <div className="flex items-center gap-3">

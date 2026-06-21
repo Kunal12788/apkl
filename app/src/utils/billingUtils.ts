@@ -20,7 +20,10 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
       createdBy: t.created_by,
-      createdAt: t.created_at
+      createdAt: t.created_at,
+      isCashExchange: !!t.is_cash_exchange,
+      staffSubmittedAt: t.staff_submitted_at,
+      adminSubmittedAt: t.admin_submitted_at
     };
   });
 
@@ -65,7 +68,9 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       caratMarking: task.carat,
       details: settlementVal,
       createdBy: task.created_by,
-      createdAt: task.created_at
+      createdAt: task.created_at,
+      staffSubmittedAt: task.staff_submitted_at,
+      adminSubmittedAt: task.admin_submitted_at
     };
   });
 
@@ -101,7 +106,10 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       pieces: t.pieces || '1',
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
       createdBy: t.created_by,
-      createdAt: t.created_at
+      createdAt: t.created_at,
+      isCashExchange: !!t.is_cash_exchange,
+      staffSubmittedAt: t.staff_submitted_at,
+      adminSubmittedAt: t.admin_submitted_at
     };
   });
 
@@ -147,7 +155,9 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       caratMarking: task.carat,
       details: settlementVal,
       createdBy: task.created_by,
-      createdAt: task.created_at
+      createdAt: task.created_at,
+      staffSubmittedAt: task.staff_submitted_at,
+      adminSubmittedAt: task.admin_submitted_at
     };
   });
 

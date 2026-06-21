@@ -381,7 +381,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const cachedTasks = getCachedData('tasks_data');
   const currentUser = user?.id || '';
   const initialTasks = cachedTasks
-    ? cachedTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => ({
+    ? cachedTasks.filter((t: any) => t.created_by === currentUser && !t.staff_submitted_at).map((t: any) => ({
         id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
         workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
         dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
@@ -408,7 +408,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
           const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser && t.assigned_to !== currentUser);
           setCachedData('tasks_data', [...otherTasks, ...data]);
 
-          setTasks(data.map(t => ({
+          const activeTasks = data.filter((t: any) => !t.staff_submitted_at);
+          setTasks(activeTasks.map(t => ({
               id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
               workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
@@ -456,16 +457,20 @@ export const CollectionStaffTasksScreen: React.FC = () => {
          } else if (payload.eventType === 'INSERT') {
             loadTasks();
          } else if (payload.eventType === 'UPDATE') {
-            const t = payload.new;
-            setTasks(prev => prev.map(old => old.id === t.id ? {
-              id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
-              workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
-              dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
-              pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
-              logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
-              createdAt: t.created_at, purity: t.purity
-            } : old));
-         }
+             const t = payload.new;
+             if (t.staff_submitted_at) {
+                setTasks(prev => prev.filter(old => old.id !== t.id));
+             } else {
+                setTasks(prev => prev.map(old => old.id === t.id ? {
+                  id: t.id, customerName: t.customer_name, customerId: t.customer_id, customerPhone: t.customer_phone, customerAddress: t.customer_address,
+                  workType: t.work_type, assignedTo: t.assigned_to, status: t.status, progressPercentage: t.progress_percentage, metal: t.metal || 'Gold',
+                  dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
+                  pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
+                  logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
+                  createdAt: t.created_at, purity: t.purity
+                } : old));
+             }
+          }
       } else {
          loadTasks();
       }
@@ -1052,6 +1057,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                         impure_weight: String(impure),
                         pure_weight: String(calculatedPure),
                         purity_percentage: String(purity),
+                        is_cash_exchange: true,
                         created_by: user?.id || ''
                       };
                       await supabase.from('transactions').insert([newTxn]);
