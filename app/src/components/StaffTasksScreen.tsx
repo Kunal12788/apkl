@@ -992,12 +992,37 @@ export const StaffTasksScreen: React.FC = () => {
 
   const fetchUnsettledEntries = async () => {
     try {
-      const { data, error } = await supabase
+      const isSuperSa = user?.role === 'Super Admin';
+      const cacheKeyBranchUsers = `branch_users_${user?.branch_id || 'unknown'}`;
+      let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
+
+      if (!isSuperSa && user?.branch_id && branchUserIds.length === 0) {
+        const { data: bUsers, error: buError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (!buError && bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+          setCachedData(cacheKeyBranchUsers, branchUserIds);
+        }
+      }
+
+      if (branchUserIds.length === 0) {
+        branchUserIds = [currentUser];
+      }
+
+      let query = supabase
         .from('ledger_entries')
         .select('*')
         .eq('transaction_type', 'Tunch Only')
         .eq('status', 'No Settlement')
         .order('created_at', { ascending: false });
+
+      if (!isSuperSa && user?.branch_id) {
+        query = query.in('staff_id', branchUserIds);
+      }
+
+      const { data, error } = await query;
       if (!error && data) {
         setUnsettledEntries(data);
       }
@@ -1819,8 +1844,16 @@ export const StaffTasksScreen: React.FC = () => {
 
               {/* Part 2: Ledger Entries Returning Lookup */}
               {(() => {
+                const filterEntryBySubmission = (entry: any) => {
+                  if (user?.role === 'Super Admin') return true;
+                  if (user?.role === 'Admin') return !entry.admin_submitted_at;
+                  return !entry.staff_submitted_at;
+                };
+
                 const matched = unsettledEntries.filter(entry => {
-                  if (!settlementSearch) return true;
+                  if (!settlementSearch) {
+                    return filterEntryBySubmission(entry);
+                  }
                   const q = settlementSearch.toLowerCase();
                   return (
                     entry.customer_name?.toLowerCase().includes(q) ||

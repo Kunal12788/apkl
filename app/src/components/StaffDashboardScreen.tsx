@@ -42,7 +42,7 @@ export const StaffDashboardScreen: React.FC = () => {
     ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => branchUserIds.includes(t.created_by) && filterBySubmission(t)))
     : [];
   const initialAllocations = cachedAllocations
-    ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id))
+    ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id && filterBySubmission(a)))
     : [];
 
   let initialPure = 0;
@@ -174,31 +174,34 @@ export const StaffDashboardScreen: React.FC = () => {
     const fetchData = async () => {
       // 1. Instantly load from cache
       const cachedLedger = getCachedData('ledger_data');
-
       const cachedTasks = getCachedData('tasks_data');
       const cachedAllocations = getCachedData('stock_allocations_all');
 
-      const isSuperSa = user?.role === 'Super Admin';
-
       const applyData = (ledgerData: any[] | null, tasksData: any[] | null, allocationsData: any[] | null, branchUserIds: string[]) => {
+        const isSuperSa = user?.role === 'Super Admin';
         const hasBranchFilter = !isSuperSa && user?.branch_id;
 
-        const filteredLedger = ledgerData 
-          ? (hasBranchFilter ? ledgerData.filter((e: any) => branchUserIds.includes(e.staff_id)) : ledgerData)
+        const filteredLedger = ledgerData
+          ? (isSuperSa 
+              ? ledgerData 
+              : ledgerData.filter((e: any) => branchUserIds.includes(e.staff_id) && filterBySubmission(e)))
           : [];
 
         const filteredTasks = tasksData
-          ? (hasBranchFilter ? tasksData.filter((t: any) => branchUserIds.includes(t.created_by)) : tasksData)
+          ? (isSuperSa 
+              ? tasksData 
+              : tasksData.filter((t: any) => branchUserIds.includes(t.created_by) && filterBySubmission(t)))
           : [];
+
         const filteredAllocations = allocationsData
-          ? (hasBranchFilter ? allocationsData.filter((a: any) => a.branch_id === user?.branch_id) : allocationsData)
+          ? (hasBranchFilter 
+              ? allocationsData.filter((a: any) => a.branch_id === user?.branch_id && filterBySubmission(a)) 
+              : allocationsData.filter(filterBySubmission))
           : [];
 
         // Populate metrics
         const totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
         const totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
-
-
         const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
         const totalImpureRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -281,7 +284,7 @@ export const StaffDashboardScreen: React.FC = () => {
       };
 
       if (cachedLedger && cachedTasks && cachedAllocations) {
-        applyData(cachedLedger, cachedTasks, cachedAllocations, [userId]);
+        applyData(cachedLedger, cachedTasks, cachedAllocations, branchUserIds);
       }
 
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors

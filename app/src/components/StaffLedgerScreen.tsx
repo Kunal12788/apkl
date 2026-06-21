@@ -215,21 +215,25 @@ export const StaffLedgerScreen: React.FC = () => {
       if (!hasDateSearch) {
         if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
           entriesQuery = entriesQuery.is('staff_submitted_at', null);
+          allocationsQuery = allocationsQuery.is('staff_submitted_at', null);
           txQuery = txQuery.is('staff_submitted_at', null);
           tasksQuery = tasksQuery.is('staff_submitted_at', null);
         } else if (user?.role === 'Admin') {
           entriesQuery = entriesQuery.is('admin_submitted_at', null);
+          allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
           txQuery = txQuery.is('admin_submitted_at', null);
           tasksQuery = tasksQuery.is('admin_submitted_at', null);
         }
       } else {
         if (startDate) {
           entriesQuery = entriesQuery.gte('iso_date', startDate);
+          allocationsQuery = allocationsQuery.gte('iso_date', startDate);
           txQuery = txQuery.gte('iso_date', startDate);
           tasksQuery = tasksQuery.gte('iso_date', startDate);
         }
         if (endDate) {
           entriesQuery = entriesQuery.lte('iso_date', endDate);
+          allocationsQuery = allocationsQuery.lte('iso_date', endDate);
           txQuery = txQuery.lte('iso_date', endDate);
           tasksQuery = tasksQuery.lte('iso_date', endDate);
         }
@@ -564,32 +568,36 @@ export const StaffLedgerScreen: React.FC = () => {
           branchUserIds = [userId];
         }
 
-        const [r1, r2, r3, r4] = await Promise.all([
+        const [r1, r2, r3, r4, r5] = await Promise.all([
           supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
           supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
           supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null)
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
         if (r2.error) throw r2.error;
         if (r3.error) throw r3.error;
         if (r4.error) throw r4.error;
+        if (r5.error) throw r5.error;
 
         alert('Daily report submitted and active lists cleared successfully!');
       } else {
         // --- 3. Staff Clearance (clear from active screens for logged in staff only) ---
-        const [r1, r2, r3, r4] = await Promise.all([
+        const [r1, r2, r3, r4, r5] = await Promise.all([
           supabase.from('ledger_entries').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null),
           supabase.from('transactions').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
           supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
-          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null)
+          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null),
+          supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
         if (r2.error) throw r2.error;
         if (r3.error) throw r3.error;
         if (r4.error) throw r4.error;
+        if (r5.error) throw r5.error;
 
         alert('Daily report submitted and active lists cleared successfully!');
       }
