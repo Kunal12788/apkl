@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { AddTaskModal } from './AddTaskModal';
 import { useSession } from '../context/SessionContext';
-import { getCachedData, setCachedData } from '../cache';
 
 export const GlobalFAB: React.FC = () => {
   const { user, isFullyAuthenticated } = useSession();
@@ -37,79 +37,235 @@ export const GlobalFAB: React.FC = () => {
           try {
             const isCollection = user?.role === 'Collection Staff';
             const generatedCustomerId = data.customerId || `CUST-${Math.floor(1000 + Math.random() * 9000)}`;
-            const newTask = {
-              id: data.id,
-              customer_name: data.customerName || 'Walk-in Customer',
-              customer_id: generatedCustomerId,
-              metal: data.metal || 'Gold',
-              customer_address: data.address,
-              customer_phone: data.phone,
-              impure_weight: data.impureWeight,
-              purity: data.purity,
-              pure_weight: data.pureWeight,
-              settlement_condition: data.settlementCondition,
-              product_type: data.productType,
-              logo_name: data.logoName,
-              carat: data.carat,
-              pieces: data.pieces,
-              brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
-              point_suggestion: data.pointSuggestion,
-              work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
-              date_given: data.date,
-              status: isCollection ? 'Pending' : data.status,
-              progress_percentage: isCollection ? 0 : data.progressPercentage,
-              assigned_to: isCollection ? 'Pending' : (data.assignedTo || 'Unassigned'),
-              source: isCollection ? 'Collection Staff' : 'Staff',
-              created_by: user?.id || '',
-              created_at: new Date().toISOString(),
-              iso_date: new Date().toISOString().split('T')[0],
-              estimated_completion: isCollection ? 'Awaiting Audit' : 'Today, 06:00 PM',
-              notes: isCollection ? 'Collection intake from field.' : 'Created from Global FAB',
-              total_weight: data.totalWeight,
-              piece_categories: data.pieceCategories,
-              images: data.images
-            };
-            
-            const { error: taskError } = await supabase.from('tasks').insert([newTask]);
-            if (taskError) {
-              console.error('Task Insert Error:', taskError);
-              alert('Failed to save task: ' + taskError.message);
-              return;
+            const isSilver = data.metal === 'Silver';
+            const dateStr = 'Today';
+            const isoDateStr = new Date().toISOString().split('T')[0];
+
+            let serialId = '0001';
+            try {
+              const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+              if (count !== null) {
+                serialId = String(count + 1).padStart(4, '0');
+              }
+            } catch (e) {
+              console.error('Failed to get task count for serial ID', e);
             }
-            
-            // For non-Collection Staff, insert a transaction immediately if fee is provided.
-            // For Collection Staff tasks, the billing transaction will be created by Staff
-            // when they process and complete the task — so we skip it here to avoid duplicates.
-            if (data.fee && !isCollection) {
+
+            const taskIdGenerated = isCollection ? `COL-${serialId}` : `TASK-${serialId}`;
+
+            // Rule 1: Marking & Shouldering Bypass tasks table, write directly to transactions
+            if (data.workType === 'MARKING' || data.workType === 'SHOULDERING') {
               const newTxn = {
                 id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
                 customer_id: generatedCustomerId,
                 customer_name: data.customerName || 'Walk-in Customer',
                 metal: data.metal || 'Gold',
                 type: data.feePaymentMode || 'Cash',
-                work_type: data.workType === 'TUNCH' ? 'Tunch' : data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
-                amount: String(data.fee),
-                date: 'Today',
-                iso_date: new Date().toISOString().split('T')[0],
+                work_type: data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
+                amount: String(data.fee || '0'),
+                date: dateStr,
+                iso_date: isoDateStr,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: data.feeStatus || 'Paid',
-                details: 'Service Fee',
+                details: `${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} Completed. Pieces: ${data.pieces || '1'}. ${data.logoName ? 'Logo: ' + data.logoName + '.' : ''}`,
                 created_by: user?.id || ''
               };
+
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
-              if (txnError) console.error('Transaction Insert Error:', txnError);
+              if (txnError) throw txnError;
+
+              toast.success(`${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} registered directly in Billings.`);
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
             }
 
-            // Update local cache for instant UI refresh
-            const currentCache = getCachedData('tasks_data') || [];
-            setCachedData('tasks_data', [newTask, ...currentCache]);
+            // Rule 2: Tunch -> Pure Gold/Silver Bypass tasks table, write directly to exchange ledger entries
+            if (data.workType === 'TUNCH' && (data.settlementCondition === 'Pure Gold' || data.settlementCondition === 'Pure Silver')) {
+              const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+              const calculatedPure = Number(data.pureWeight || 0);
 
-            // Dispatch an event to notify other components to refresh their data without a full page reload
-            window.dispatchEvent(new CustomEvent('taskCreated', { detail: newTask }));
-            
-          } catch(e) {
-            console.error('Failed to create global task', e);
-            alert('An unexpected error occurred.');
+              const ledgerEntry: any = {
+                id: entryId,
+                date: dateStr,
+                iso_date: isoDateStr,
+                customer_name: data.customerName || 'Walk-in Customer',
+                transaction_type: 'Exchange',
+                status: 'Pending Pure',
+                purity: data.purity || '',
+                staff_id: user?.id || '',
+                pure_gold_out: 0,
+                pure_silver_out: 0
+              };
+
+              if (isSilver) {
+                ledgerEntry.impure_silver_in = Number(data.impureWeight || 0);
+                ledgerEntry.pure_silver_due = calculatedPure;
+                ledgerEntry.pure_gold_due = 0;
+                ledgerEntry.impure_gold_in = 0;
+              } else {
+                ledgerEntry.impure_gold_in = Number(data.impureWeight || 0);
+                ledgerEntry.pure_gold_due = calculatedPure;
+                ledgerEntry.pure_silver_due = 0;
+                ledgerEntry.impure_silver_in = 0;
+              }
+
+              const { error: ledgerError } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+              if (ledgerError) throw ledgerError;
+
+              // Insert fee transaction if provided
+              if (data.fee) {
+                const newTxn = {
+                  id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                  customer_id: generatedCustomerId,
+                  customer_name: data.customerName || 'Walk-in Customer',
+                  metal: data.metal || 'Gold',
+                  type: data.feePaymentMode || 'Cash',
+                  work_type: 'Tunch',
+                  amount: String(data.fee),
+                  date: dateStr,
+                  iso_date: isoDateStr,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  status: data.feeStatus || 'Paid',
+                  details: 'Service Fee (Pure Metal Exchange)',
+                  created_by: user?.id || ''
+                };
+                await supabase.from('transactions').insert([newTxn]);
+              }
+
+              toast.success('Pure metal exchange registered directly in Ledger.');
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
+            // Rule 3: Tunch -> Only Tunch Insert task with status = 'Settlement' + create ledger entry
+            if (data.workType === 'TUNCH' && data.settlementCondition === 'Only Tunch') {
+              const newTask = {
+                id: taskIdGenerated,
+                customer_name: data.customerName || 'Walk-in Customer',
+                customer_id: generatedCustomerId,
+                metal: data.metal || 'Gold',
+                customer_address: data.address,
+                customer_phone: data.phone,
+                impure_weight: data.impureWeight,
+                purity: data.purity,
+                pure_weight: data.pureWeight,
+                settlement_condition: data.settlementCondition,
+                product_type: data.productType,
+                pieces: data.pieces,
+                brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
+                work_type: 'Tunch',
+                date_given: data.date,
+                status: 'Settlement',
+                progress_percentage: 100,
+                assigned_to: user?.id || 'Staff',
+                source: isCollection ? 'Collection Staff' : 'Staff',
+                created_by: user?.id || '',
+                created_at: new Date().toISOString(),
+                iso_date: isoDateStr,
+                estimated_completion: 'Today, 06:00 PM',
+                notes: data.notes || 'Created Tunch Only task',
+                images: data.images
+              };
+
+              const { error: taskError } = await supabase.from('tasks').insert([newTask]);
+              if (taskError) throw taskError;
+
+              // Create Ledger Entry
+              const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+              const ledgerEntry: any = {
+                id: entryId,
+                date: dateStr,
+                iso_date: isoDateStr,
+                customer_name: data.customerName || 'Walk-in Customer',
+                transaction_type: 'Tunch Only',
+                status: 'No Settlement',
+                purity: data.purity || '',
+                staff_id: user?.id || '',
+                pure_gold_out: 0,
+                pure_silver_out: 0,
+                pure_gold_due: 0,
+                pure_silver_due: 0
+              };
+
+              if (isSilver) {
+                ledgerEntry.impure_silver_in = Number(data.impureWeight || 0);
+                ledgerEntry.impure_gold_in = 0;
+              } else {
+                ledgerEntry.impure_gold_in = Number(data.impureWeight || 0);
+                ledgerEntry.impure_silver_in = 0;
+              }
+
+              const { error: ledgerError } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+              if (ledgerError) throw ledgerError;
+
+              // Insert fee transaction if provided
+              if (data.fee) {
+                const newTxn = {
+                  id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                  customer_id: generatedCustomerId,
+                  customer_name: data.customerName || 'Walk-in Customer',
+                  metal: data.metal || 'Gold',
+                  type: data.feePaymentMode || 'Cash',
+                  work_type: 'Tunch',
+                  amount: String(data.fee),
+                  date: dateStr,
+                  iso_date: isoDateStr,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  status: data.feeStatus || 'Paid',
+                  details: 'Service Fee (Tunch Only)',
+                  created_by: user?.id || ''
+                };
+                await supabase.from('transactions').insert([newTxn]);
+              }
+
+              toast.success('Tunch Only task created and ready for Settlement.');
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
+            // Rule 4: Tunch -> Cash Insert task with status = 'In Progress' and progress 40%
+            if (data.workType === 'TUNCH' && data.settlementCondition === 'Cash') {
+              const condStr = data.fee ? `Cash - Fee Suggested ₹${data.fee} (${data.feePaymentMode})` : 'Cash';
+              
+              const newTask = {
+                id: taskIdGenerated,
+                customer_name: data.customerName || 'Walk-in Customer',
+                customer_id: generatedCustomerId,
+                metal: data.metal || 'Gold',
+                customer_address: data.address,
+                customer_phone: data.phone,
+                impure_weight: data.impureWeight,
+                purity: data.purity,
+                pure_weight: data.pureWeight,
+                settlement_condition: condStr,
+                product_type: data.productType,
+                pieces: data.pieces,
+                brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
+                work_type: 'Tunch',
+                date_given: data.date,
+                status: 'In Progress',
+                progress_percentage: 40,
+                assigned_to: user?.id || 'Staff',
+                source: isCollection ? 'Collection Staff' : 'Staff',
+                created_by: user?.id || '',
+                created_at: new Date().toISOString(),
+                iso_date: isoDateStr,
+                estimated_completion: 'Today, 06:00 PM',
+                notes: data.notes || 'Created Tunch Cash task. Awaiting pricing.',
+                images: data.images
+              };
+
+              const { error: taskError } = await supabase.from('tasks').insert([newTask]);
+              if (taskError) throw taskError;
+
+              toast.success('Tunch Cash task created. Awaiting Admin pricing approval.');
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
+          } catch (e: any) {
+            console.error('Failed to create task', e);
+            alert('An error occurred: ' + e.message);
           }
         }}
       />

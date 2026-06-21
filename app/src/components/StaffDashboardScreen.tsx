@@ -99,7 +99,7 @@ export const StaffDashboardScreen: React.FC = () => {
 
     initialTasks.forEach((t: any) => {
       const isCash = (t.sett_condition || t.settlement_condition || '').toLowerCase().includes('cash');
-      if (t.status === 'Pending' || (t.status === 'In Progress' && !isCash)) initialStats.pending++;
+      if (t.status === 'Pending' || t.status === 'Settlement' || (t.status === 'In Progress' && !isCash)) initialStats.pending++;
       else if (t.status === 'In Progress' && isCash) initialStats.inProgress++;
       else if (t.status === 'Completed') initialStats.completed++;
     });
@@ -234,7 +234,7 @@ export const StaffDashboardScreen: React.FC = () => {
             inProgress++;
           } else if (task.status === 'Completed') {
             completed++;
-          } else if (task.status === 'Pending' || (task.status === 'In Progress' && !isCash)) {
+          } else if (task.status === 'Pending' || task.status === 'Settlement' || (task.status === 'In Progress' && !isCash)) {
             pending++;
           }
         });

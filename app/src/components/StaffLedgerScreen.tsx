@@ -285,16 +285,17 @@ export const StaffLedgerScreen: React.FC = () => {
   const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
   const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
 
-
   const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
   const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
   const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
-  
 
+  const totalAllocatedCash = React.useMemo(() => allocations.reduce((s, a) => s + Number(a.cash_amount || 0), 0), [allocations]);
+  const totalCashReceived = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashReceived || 0), 0), [entries]);
+  const totalCashPaid = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashPaid || 0), 0), [entries]);
 
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
-  const currentCashStock = billingCash;
+  const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
   
   const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
 
@@ -728,7 +729,9 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                     <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>
                     <div className="flex justify-between items-center mt-1">
-                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">From Billings</p>
+                      <p className="text-[8px] uppercase tracking-widest font-bold text-outline">
+                        Allocated: {fmt(totalAllocatedCash)} • Billings: {fmt(billingCash)} • Outflow: {fmt(totalCashPaid)}
+                      </p>
                     </div>
                   </div>
                 </div>
