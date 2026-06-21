@@ -125,7 +125,9 @@ export const SuperAdminAlertsScreen: React.FC = () => {
      if (!window.confirm("Approve deletion? This action is irreversible.")) return;
      try {
        const req = alert.originalReq;
-       const tableName = req.item_type === 'Transaction' ? 'transactions' : 'tasks';
+       const isTask = req.item_type === 'Task' || (req.item_type === 'Transaction' && req.item_id.startsWith('TASK-'));
+       const tableName = isTask ? 'tasks' : 'transactions';
+       const targetId = isTask ? req.item_id.replace('TASK-', '') : req.item_id;
        
        // Instant UI update
        setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
@@ -134,16 +136,16 @@ export const SuperAdminAlertsScreen: React.FC = () => {
        if (tableName === 'tasks') {
           const cachedTasks = getCachedData('tasks_data');
           if (cachedTasks) {
-             setCachedData('tasks_data', cachedTasks.filter((t: any) => t.id !== req.item_id));
+             setCachedData('tasks_data', cachedTasks.filter((t: any) => t.id !== targetId));
           }
        } else if (tableName === 'transactions') {
           const cachedTx = getCachedData('tx_data');
           if (cachedTx) {
-             setCachedData('tx_data', cachedTx.filter((t: any) => t.id !== req.item_id));
+             setCachedData('tx_data', cachedTx.filter((t: any) => t.id !== targetId));
           }
        }
        
-       await supabase.from(tableName).delete().eq('id', req.item_id);
+       await supabase.from(tableName).delete().eq('id', targetId);
        await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', req.id);
        
        window.alert("Deletion Approved and executed successfully.");

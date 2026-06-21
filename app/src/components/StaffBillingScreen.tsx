@@ -229,7 +229,10 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
       if (window.confirm("Are you sure you want to instantly delete this transaction?")) {
          setIsDeleting(true);
          try {
-           await supabase.from('transactions').delete().eq('id', txn.id);
+           const isTask = txn.id.startsWith('TASK-');
+           const targetTable = isTask ? 'tasks' : 'transactions';
+           const targetId = isTask ? txn.id.replace('TASK-', '') : txn.id;
+           await supabase.from(targetTable).delete().eq('id', targetId);
            window.dispatchEvent(new Event('databaseSync'));
            onClose();
          } catch(e) { alert('Failed to delete'); }
@@ -240,9 +243,10 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
       if (!reason) return;
       setIsDeleting(true);
       try {
+        const isTask = txn.id.startsWith('TASK-');
         await supabase.from('deletion_requests').insert([{
-           item_type: 'Transaction',
-           item_id: txn.id,
+           item_type: isTask ? 'Task' : 'Transaction',
+           item_id: isTask ? txn.id.replace('TASK-', '') : txn.id,
            requested_by: user?.id,
            reason: reason
         }]);
