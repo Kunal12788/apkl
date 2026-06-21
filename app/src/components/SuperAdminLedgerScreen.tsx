@@ -155,6 +155,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           .from('ledger_entries')
           .select('*')
           .eq('is_approved', false)
+          .not('admin_submitted_at', 'is', null)
           .order('created_at', { ascending: false }),
         supabase.from('users').select('*'),
         supabase
