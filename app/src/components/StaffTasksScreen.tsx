@@ -1097,6 +1097,12 @@ export const StaffTasksScreen: React.FC = () => {
     setSearchParams(newParams);
   };
 
+  const filterBySubmission = (t: Task) => {
+    if (user?.role === 'Super Admin') return true;
+    if (user?.role === 'Admin') return !t.adminSubmittedAt;
+    return !t.staffSubmittedAt;
+  };
+
   const matchesSearch = (task: Task) => {
     let matchesText = true;
     if (searchQuery) {
@@ -1115,7 +1121,12 @@ export const StaffTasksScreen: React.FC = () => {
     if (startDate && task.isoDate < startDate) matchesDate = false;
     if (endDate && task.isoDate > endDate) matchesDate = false;
 
-    return matchesText && matchesDate;
+    let matchesSubmission = true;
+    if (!startDate && !endDate) {
+      matchesSubmission = filterBySubmission(task);
+    }
+
+    return matchesText && matchesDate && matchesSubmission;
   };
 
   const filteredTasks = tasks.filter(t => {

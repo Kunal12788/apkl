@@ -480,90 +480,90 @@ export const StaffLedgerScreen: React.FC = () => {
     }
   };
 
-  const handleSubmitDailyReport = async () => {
+  const handleSubmitReport = async () => {
+    const isAdmin = user?.role === 'Admin';
+    
+    const confirmMessage = isAdmin
+      ? "Are you sure you want to submit the branch daily report and clear active lists? Once submitted, they will be archived."
+      : "Are you sure you want to submit your daily ledger report? Once submitted, active lists will be cleared.";
+
+    if (!window.confirm(confirmMessage)) return;
+
     try {
-      const today = new Date().toISOString().split('T')[0];
-      const todayEntries = entries.filter(e => e.isoDate === today);
-
-      const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
-      const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
-      const tAllocCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
-
-      const pastEntries = entries.filter(e => e.isoDate < today);
-
-      const pastGoldUsed = pastEntries.reduce((s, e) => s + e.pureGoldOut, 0);
-      const pastSilverUsed = pastEntries.reduce((s, e) => s + e.pureSilverOut, 0);
-      const pastCashRecv = pastEntries.reduce((s, e) => s + e.cashReceived, 0);
-      const pastCashPaid = pastEntries.reduce((s, e) => s + e.cashPaid, 0);
-
-      const openingPureGold = tAllocGold - pastGoldUsed;
-      const openingPureSilver = tAllocSilver - pastSilverUsed;
-      const openingCash = tAllocCash + pastCashRecv - pastCashPaid;
-
-      const goldUsed = todayEntries.reduce((s, e) => s + e.pureGoldOut, 0);
-      const silverUsed = todayEntries.reduce((s, e) => s + e.pureSilverOut, 0);
-      const cashUsed = todayEntries.reduce((s, e) => s + e.cashPaid, 0);
-      
-      const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0);
-      const impureGoldRecv = todayEntries.reduce((s, e) => s + e.impureGoldIn, 0);
-      const impureSilverRecv = todayEntries.reduce((s, e) => s + e.impureSilverIn, 0);
-
-      const closingPureGold = openingPureGold - goldUsed;
-      const closingPureSilver = openingPureSilver - silverUsed;
-      const closingCash = openingCash + cashReceived - cashUsed;
-
-      const { error } = await supabase.from('branch_daily_reports').insert([{
-        id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
-        branch_id: user?.branch_id || 'BR-DELHI',
-        branch_name: branchName,
-        staff_id: userId,
-        date: 'Today',
-        iso_date: today,
-        opening_pure_gold: openingPureGold,
-        opening_pure_silver: openingPureSilver,
-        opening_cash: openingCash,
-        gold_used: goldUsed,
-        silver_used: silverUsed,
-        cash_used: cashUsed,
-        cash_received: cashReceived,
-        impure_gold_received: impureGoldRecv,
-        impure_silver_received: impureSilverRecv,
-        closing_pure_gold: closingPureGold,
-        closing_pure_silver: closingPureSilver,
-        closing_cash: closingCash,
-        status: 'Submitted'
-      }]);
-
-      if (error) throw error;
-      alert('Daily report submitted successfully!');
-    } catch (err) {
-      console.error('Error submitting daily report:', err);
-      alert('Failed to submit report.');
-    }
-  };
-
-  const handleClearanceSubmit = async () => {
-    try {
-      const confirmSubmit = window.confirm("Are you sure you want to submit all current ledger, transactions, and tasks data for clearance? Once submitted, they will be archived from active lists.");
-      if (!confirmSubmit) return;
-
       const nowStr = new Date().toISOString();
+      const today = nowStr.split('T')[0];
 
-      let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
-      if (user?.branch_id && branchUserIds.length === 0) {
-        const { data: bUsers } = await supabase
-          .from('users')
-          .select('id')
-          .eq('branch_id', user.branch_id);
-        if (bUsers) {
-          branchUserIds = bUsers.map((bu: any) => bu.id);
+      if (isAdmin) {
+        // --- 1. Compute values for Branch Daily Report ---
+        const todayEntries = entries.filter(e => e.isoDate === today);
+
+        const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
+        const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
+        const tAllocCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+
+        const pastEntries = entries.filter(e => e.isoDate < today);
+
+        const pastGoldUsed = pastEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+        const pastSilverUsed = pastEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+        const pastCashRecv = pastEntries.reduce((s, e) => s + e.cashReceived, 0);
+        const pastCashPaid = pastEntries.reduce((s, e) => s + e.cashPaid, 0);
+
+        const openingPureGold = tAllocGold - pastGoldUsed;
+        const openingPureSilver = tAllocSilver - pastSilverUsed;
+        const openingCash = tAllocCash + pastCashRecv - pastCashPaid;
+
+        const goldUsed = todayEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+        const silverUsed = todayEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+        const cashUsed = todayEntries.reduce((s, e) => s + e.cashPaid, 0);
+        
+        const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0);
+        const impureGoldRecv = todayEntries.reduce((s, e) => s + e.impureGoldIn, 0);
+        const impureSilverRecv = todayEntries.reduce((s, e) => s + e.impureSilverIn, 0);
+
+        const closingPureGold = openingPureGold - goldUsed;
+        const closingPureSilver = openingPureSilver - silverUsed;
+        const closingCash = openingCash + cashReceived - cashUsed;
+
+        // Insert daily report
+        const { error: saReportError } = await supabase.from('branch_daily_reports').insert([{
+          id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: user?.branch_id || 'BR-DELHI',
+          branch_name: branchName,
+          staff_id: userId,
+          date: 'Today',
+          iso_date: today,
+          opening_pure_gold: openingPureGold,
+          opening_pure_silver: openingPureSilver,
+          opening_cash: openingCash,
+          gold_used: goldUsed,
+          silver_used: silverUsed,
+          cash_used: cashUsed,
+          cash_received: cashReceived,
+          impure_gold_received: impureGoldRecv,
+          impure_silver_received: impureSilverRecv,
+          closing_pure_gold: closingPureGold,
+          closing_pure_silver: closingPureSilver,
+          closing_cash: closingCash,
+          status: 'Submitted'
+        }]);
+
+        if (saReportError) throw saReportError;
+
+        // --- 2. Admin Clearance (clear from active screens for all branch staff) ---
+        let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
+        if (user?.branch_id && branchUserIds.length === 0) {
+          const { data: bUsers } = await supabase
+            .from('users')
+            .select('id')
+            .eq('branch_id', user.branch_id);
+          if (bUsers) {
+            branchUserIds = bUsers.map((bu: any) => bu.id);
+          }
         }
-      }
-      if (branchUserIds.length === 0) {
-        branchUserIds = [userId];
-      }
+        if (branchUserIds.length === 0) {
+          branchUserIds = [userId];
+        }
 
-      if (user?.role === 'Admin') {
         const [r1, r2, r3, r4] = await Promise.all([
           supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
           supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
@@ -575,7 +575,10 @@ export const StaffLedgerScreen: React.FC = () => {
         if (r2.error) throw r2.error;
         if (r3.error) throw r3.error;
         if (r4.error) throw r4.error;
+
+        alert('Daily report submitted and active lists cleared successfully!');
       } else {
+        // --- 3. Staff Clearance (clear from active screens for logged in staff only) ---
         const [r1, r2, r3, r4] = await Promise.all([
           supabase.from('ledger_entries').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null),
           supabase.from('transactions').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
@@ -587,13 +590,14 @@ export const StaffLedgerScreen: React.FC = () => {
         if (r2.error) throw r2.error;
         if (r3.error) throw r3.error;
         if (r4.error) throw r4.error;
+
+        alert('Daily report submitted and active lists cleared successfully!');
       }
 
-      alert("Data submitted for clearance successfully!");
       fetchEntries();
     } catch (err) {
-      console.error("Error submitting clearance:", err);
-      alert("Failed to submit clearance.");
+      console.error('Error submitting report:', err);
+      alert('Failed to submit report.');
     }
   };
 
@@ -821,16 +825,9 @@ export const StaffLedgerScreen: React.FC = () => {
                     <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
                   </div>
                   <div className="flex gap-2">
-                    <button 
-                      onClick={handleClearanceSubmit}
-                      className="bg-[#003366]/10 text-primary hover:bg-[#003366] hover:text-white transition-all px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-sm">assignment_turned_in</span>
-                      Submit Clearance
-                    </button>
-                    {isAdmin && (
+                    {(user?.role === 'Staff' || user?.role === 'Collection Staff' || user?.role === 'Admin') && (
                       <button 
-                        onClick={handleSubmitDailyReport}
+                        onClick={handleSubmitReport}
                         className="bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"
                       >
                         <span className="material-symbols-outlined text-sm">cloud_upload</span>
