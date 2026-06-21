@@ -1123,9 +1123,10 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filterBySubmission = (t: Task) => {
-    if (user?.role === 'Super Admin') return true;
-    if (user?.role === 'Admin') return !t.adminSubmittedAt;
-    return !t.staffSubmittedAt;
+    if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
+      return !t.staffSubmittedAt && !t.adminSubmittedAt;
+    }
+    return !t.adminSubmittedAt;
   };
 
   const matchesSearch = (task: Task) => {

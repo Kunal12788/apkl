@@ -14,11 +14,12 @@ export const StaffDashboardScreen: React.FC = () => {
   
   const userName = user?.name || '';
   
-  const role = user?.role;
+
   const filterBySubmission = (item: any) => {
-    if (role === 'Super Admin') return true;
-    if (role === 'Admin') return !item.admin_submitted_at;
-    return !item.staff_submitted_at;
+    if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
+      return !item.staff_submitted_at && !item.admin_submitted_at;
+    }
+    return !item.admin_submitted_at;
   };
   
   // Directly initialize state from cache for 0ms delay on mount

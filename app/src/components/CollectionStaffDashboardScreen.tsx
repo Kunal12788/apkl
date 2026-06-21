@@ -45,7 +45,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const showSubmitted = filterDate && filterDate < todayStr;
   const filterBySubmission = (item: any) => {
     if (showSubmitted) return true;
-    return !item.staff_submitted_at && !item.staffSubmittedAt;
+    return !item.staff_submitted_at && !item.staffSubmittedAt && !item.admin_submitted_at && !item.adminSubmittedAt;
   };
 
   useEffect(() => {

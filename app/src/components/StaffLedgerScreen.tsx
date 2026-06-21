@@ -214,11 +214,12 @@ export const StaffLedgerScreen: React.FC = () => {
       const hasDateSearch = startDate || endDate;
       if (!hasDateSearch) {
         if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
-          entriesQuery = entriesQuery.is('staff_submitted_at', null);
-          allocationsQuery = allocationsQuery.is('staff_submitted_at', null);
-          txQuery = txQuery.is('staff_submitted_at', null);
-          tasksQuery = tasksQuery.is('staff_submitted_at', null);
-        } else if (user?.role === 'Admin') {
+          entriesQuery = entriesQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
+          allocationsQuery = allocationsQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
+          txQuery = txQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
+          tasksQuery = tasksQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
+        } else {
+          // For Admin and Super Admin viewing active branch ledger
           entriesQuery = entriesQuery.is('admin_submitted_at', null);
           allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
           txQuery = txQuery.is('admin_submitted_at', null);

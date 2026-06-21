@@ -490,9 +490,10 @@ export const StaffBillingScreen: React.FC = () => {
   const role = user?.role;
   const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
   const filterBySubmission = (item: any) => {
-    if (role === 'Super Admin') return true;
-    if (role === 'Admin') return !item.adminSubmittedAt && !item.admin_submitted_at;
-    return !item.staffSubmittedAt && !item.staff_submitted_at;
+    if (role === 'Staff' || role === 'Collection Staff') {
+      return !item.staffSubmittedAt && !item.staff_submitted_at && !item.adminSubmittedAt && !item.admin_submitted_at;
+    }
+    return !item.adminSubmittedAt && !item.admin_submitted_at;
   };
   
   const activeTab = (searchParams.get('tab') as TabView) || 'all';

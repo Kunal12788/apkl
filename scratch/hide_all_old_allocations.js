@@ -1,0 +1,32 @@
+import pkg from 'pg';
+const { Client } = pkg;
+
+async function run() {
+  const client = new Client({
+    user: 'postgres.quqcfbairoevddjcxiyi',
+    host: 'aws-1-ap-south-1.pooler.supabase.com',
+    database: 'postgres',
+    password: 'MZZ+6GY4bznXSpj',
+    port: 6543,
+    ssl: { rejectUnauthorized: false }
+  });
+
+  try {
+    await client.connect();
+    
+    // Set admin_submitted_at to now for old stock allocations to clear them from active screen
+    const res = await client.query(`
+      UPDATE public.stock_allocations 
+      SET admin_submitted_at = NOW(), staff_submitted_at = NOW()
+      WHERE admin_submitted_at IS NULL;
+    `);
+    console.log(`Updated ${res.rowCount} stock_allocations rows to be submitted.`);
+
+  } catch (err) {
+    console.error("Error:", err);
+  } finally {
+    await client.end();
+  }
+}
+
+run();
