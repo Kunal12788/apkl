@@ -355,6 +355,14 @@ export const StaffDashboardScreen: React.FC = () => {
       }
     };
     fetchData();
+
+    const handleSync = () => {
+      fetchData();
+    };
+    window.addEventListener('databaseSync', handleSync);
+    return () => {
+      window.removeEventListener('databaseSync', handleSync);
+    };
   }, [userId, isFullyAuthenticated]);
 
   useEffect(() => {

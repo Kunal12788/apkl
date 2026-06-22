@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { getCachedData, setCachedData } from '../cache';
+import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
@@ -603,6 +603,7 @@ export const StaffLedgerScreen: React.FC = () => {
         alert('Daily report submitted and active lists cleared successfully!');
       }
 
+      clearAllDataCaches();
       fetchEntries();
     } catch (err) {
       console.error('Error submitting report:', err);

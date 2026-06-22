@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { getCachedData, setCachedData } from '../cache';
+import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
 
 interface RefiningTransfer {
@@ -161,6 +161,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         supabase
           .from('branch_daily_reports')
           .select('*')
+          .eq('status', 'Approved')
           .order('created_at', { ascending: false }),
         supabase.from('branches').select('*').order('name')
       ]);
@@ -189,20 +190,26 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         setPendingTransfers(transfersData.map(mapDbToTransfer));
       }
 
-      if (branchEntriesRes.data && usersRes.data) {
+      if (branchEntriesRes.data && usersRes.data && branchesRes.data) {
         const usersMap = usersRes.data.reduce((acc: any, u: any) => {
           acc[u.id] = u.branch_id || 'Unknown Branch';
+          return acc;
+        }, {});
+
+        const branchesMap = branchesRes.data.reduce((acc: any, b: any) => {
+          acc[b.id] = b.name;
           return acc;
         }, {});
         
         const grouped: any = {};
         branchEntriesRes.data.forEach((entry: any) => {
-           const branch = usersMap[entry.staff_id] || 'Unknown Branch';
-           const key = `${entry.iso_date}_${branch}`;
+           const branchId = usersMap[entry.staff_id] || 'Unknown Branch';
+           const branchName = branchesMap[branchId] || branchId;
+           const key = `${entry.iso_date}_${branchId}`;
            if (!grouped[key]) {
              grouped[key] = {
                iso_date: entry.iso_date,
-               branch_name: branch,
+               branch_name: branchName,
                entries: [],
                totalPureGoldGiven: 0,
                totalImpureGoldReceived: 0,
@@ -237,7 +244,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+   useEffect(() => {
     fetchData();
 
     const saLedgerSub = supabase.channel('public:super_admin_ledger')
@@ -258,10 +265,17 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       })
       .subscribe();
 
+    const reportsSub = supabase.channel('public:branch_daily_reports')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, () => {
+        fetchData();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(saLedgerSub);
       supabase.removeChannel(transfersSub);
       supabase.removeChannel(entriesSub);
+      supabase.removeChannel(reportsSub);
     };
   }, []);
 
@@ -605,6 +619,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       setAllocCash('');
       setAllocNotes('');
       alert('Stock successfully allocated!');
+      clearAllDataCaches();
       fetchData();
     } catch (err) {
       console.error('Error saving allocation:', err);
@@ -678,6 +693,16 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
         if (updateError) throw updateError;
 
+        // Update the branch_daily_reports to Approved
+        const { error: reportUpdateError } = await supabase
+          .from('branch_daily_reports')
+          .update({ status: 'Approved' })
+          .eq('iso_date', group.iso_date)
+          .eq('branch_name', group.branch_name)
+          .eq('status', 'Submitted');
+
+        if (reportUpdateError) throw reportUpdateError;
+
         const netCash = group.totalCashReceived - group.totalCashPaid;
 
         // Insert consolidation into Super Admin Ledger
@@ -706,6 +731,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       setSelectedBranchForApproval(null);
       setConfirmStep(0);
+      clearAllDataCaches();
       fetchData();
     } catch (e) {
       console.error('Error approving branch data:', e);

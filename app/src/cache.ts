@@ -51,3 +51,21 @@ export const clearCache = (key?: string) => {
   saveCacheToStorage();
 };
 
+export const clearCachePrefix = (prefix: string) => {
+  for (const k in appCache) {
+    if (k.startsWith(prefix)) {
+      delete appCache[k];
+    }
+  }
+  saveCacheToStorage();
+};
+
+export const clearAllDataCaches = () => {
+  clearCache('tx_data');
+  clearCache('tasks_data');
+  clearCache('staff_billing_tx');
+  clearCachePrefix('ledger_');
+  clearCachePrefix('stock_allocations_');
+};
+
+

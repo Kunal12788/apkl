@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import toast, { Toaster } from 'react-hot-toast';
-import { clearCache } from './cache';
+import { clearAllDataCaches } from './cache';
 import { supabase } from './supabaseClient';
 import { SplashScreen } from './components/SplashScreen';
 import { LoginScreen } from './components/LoginScreen';
@@ -209,12 +209,20 @@ function AppContent() {
          }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload: any) => {
-         clearCache('tx_data');
+         clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'transactions', payload } }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload: any) => {
-         clearCache('tasks_data');
+         clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'tasks', payload } }));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_allocations' }, (payload: any) => {
+         clearAllDataCaches();
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'stock_allocations', payload } }));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, (payload: any) => {
+         clearAllDataCaches();
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'ledger_entries', payload } }));
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
