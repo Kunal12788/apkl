@@ -710,8 +710,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (reportUpdateError) throw reportUpdateError;
 
-      const netCash = group.totalCashReceived - group.totalCashPaid;
-
       // Insert consolidation into Super Admin Ledger
       const newEntry = {
         id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -719,14 +717,14 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         iso_date: new Date().toISOString().split('T')[0],
         type: 'Branch Consolidation',
         branch_name: group.branch_name,
-        pure_gold_change: -group.totalPureGoldGiven,
+        pure_gold_change: group.closingPureGold,
         impure_gold_change: group.totalImpureGoldReceived,
         calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
-        pure_silver_change: -group.totalPureSilverGiven,
+        pure_silver_change: group.closingPureSilver,
         impure_silver_change: group.totalImpureSilverReceived,
         calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
-        cash_change: netCash,
-        details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
+        cash_change: group.closingCash,
+        details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Consolidated Stock returned: Pure Gold: ${group.closingPureGold.toFixed(3)}g, Pure Silver: ${group.closingPureSilver.toFixed(3)}g, Impure Gold: ${group.totalImpureGoldReceived.toFixed(3)}g, Impure Silver: ${group.totalImpureSilverReceived.toFixed(3)}g, Cash: ₹${group.closingCash.toLocaleString('en-IN')}.`
       };
 
       const { error: insertError } = await supabase
@@ -1502,23 +1500,57 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                           {report.status}
                         </span>
                       </div>
-                      <div className="grid grid-cols-3 gap-2 mt-1">
-                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Gold Used</p>
-                          <p className="text-xs font-black text-[#755b00]">{fmtG(report.gold_used)}</p>
+                      {/* EOD Report Details Card */}
+                      <div className="bg-slate-50/50 p-4 rounded-2xl border border-outline-variant/15 space-y-3 mt-1">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-outline/80 px-1">Report Metrics</p>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-[#755b00]/5">diamond</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Pure Gold Received</p>
+                            <p className="font-headline font-black text-[#755b00] text-sm">{Number(report.closing_pure_gold || 0).toFixed(3)}g</p>
+                          </div>
+                          
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-amber-600/5">local_fire_department</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Impure Gold Received</p>
+                            <p className="font-headline font-black text-amber-600 text-sm">{Number(report.impure_gold_received || 0).toFixed(3)}g</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-slate-500/5">diamond</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Pure Silver Received</p>
+                            <p className="font-headline font-black text-slate-500 text-sm">{Number(report.closing_pure_silver || 0).toFixed(3)}g</p>
+                          </div>
+                          
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-slate-600/5">local_fire_department</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Impure Silver Received</p>
+                            <p className="font-headline font-black text-slate-600 text-sm">{Number(report.impure_silver_received || 0).toFixed(3)}g</p>
+                          </div>
                         </div>
-                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Silver Used</p>
-                          <p className="text-xs font-black text-slate-500">{fmtG(report.silver_used)}</p>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-[#755b00]/5">trending_up</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Pure Gold Disbursed</p>
+                            <p className="font-headline font-black text-[#755b00] text-sm">{Number(report.gold_used || 0).toFixed(3)}g</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden">
+                            <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-2xl text-slate-500/5">trending_up</span>
+                            <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Pure Silver Disbursed</p>
+                            <p className="font-headline font-black text-slate-500 text-sm">{Number(report.silver_used || 0).toFixed(3)}g</p>
+                          </div>
+
+                          <div className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm relative overflow-hidden col-span-2 sm:col-span-1 flex justify-between items-center">
+                            <div>
+                              <p className="text-[8px] uppercase tracking-wider font-bold text-outline mb-0.5">Cash Stock</p>
+                              <p className="font-headline font-black text-emerald-600 text-sm">{fmt(Number(report.closing_cash || 0))}</p>
+                            </div>
+                            <span className="material-symbols-outlined text-emerald-600 text-xl">payments</span>
+                          </div>
                         </div>
-                        <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-                          <p className="text-[8px] uppercase tracking-widest font-bold text-outline mb-0.5">Cash Recv</p>
-                          <p className="text-xs font-black text-emerald-600">{fmt(report.cash_received)}</p>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mt-1 px-1">
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Pure Gold: <span className="text-primary font-black">{fmtG(report.closing_pure_gold)}</span></p>
-                        <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Cash: <span className="text-primary font-black">{fmt(report.closing_cash)}</span></p>
                       </div>
 
                       {/* Toggle button */}
