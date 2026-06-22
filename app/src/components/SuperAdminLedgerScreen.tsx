@@ -84,6 +84,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   
   // Approval Workflow State
   const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
+  const [approvedBranchEntries, setApprovedBranchEntries] = useState<any[]>([]);
+  const [usersBranchMap, setUsersBranchMap] = useState<Record<string, string>>({});
+  const [currentLedgerBranchFilter, setCurrentLedgerBranchFilter] = useState<string>('All');
   const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>(cachedPendingGroups || []);
   const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
   const [confirmReportId, setConfirmReportId] = useState<string | null>(null);
@@ -155,7 +158,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         supabase
           .from('ledger_entries')
           .select('*')
-          .eq('is_approved', false)
           .not('admin_submitted_at', 'is', null)
           .order('created_at', { ascending: false }),
         supabase.from('users').select('*'),
@@ -195,6 +197,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           acc[u.id] = u.branch_id || 'Unknown Branch';
           return acc;
         }, {});
+        setUsersBranchMap(usersMap);
 
         const reportsData = reportsRes.data || [];
         const approvedReports = reportsData.filter((r: any) => r.status === 'Approved');
@@ -203,8 +206,13 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         setBranchReports(approvedReports);
         setCachedData('super_admin_branch_reports', approvedReports);
 
+        const allEntries = branchEntriesRes.data || [];
+        const pendingEntries = allEntries.filter((e: any) => !e.is_approved);
+        const approvedEntries = allEntries.filter((e: any) => e.is_approved);
+        setApprovedBranchEntries(approvedEntries);
+
         const sortedGroups = pendingReports.map((report: any) => {
-          const associatedEntries = (branchEntriesRes.data || []).filter((entry: any) => {
+          const associatedEntries = pendingEntries.filter((entry: any) => {
             const entryBranchId = usersMap[entry.staff_id] || '';
             return entry.iso_date === report.iso_date && entryBranchId === report.branch_id;
           });
@@ -702,6 +710,66 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (reportUpdateError) throw reportUpdateError;
 
+      // Carry forward closing balances to branch's active stock allocations
+      const carryForwardAllocations = [];
+      const dateStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      const isoDateStr = new Date().toISOString().split('T')[0];
+
+      if (group.closingPureGold > 0) {
+        carryForwardAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: group.branch_id,
+          branch_name: group.branch_name,
+          staff_id: null,
+          metal: 'Gold',
+          pure_weight: group.closingPureGold,
+          cash_amount: 0,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: `Carry-forward Gold from approved report on ${group.iso_date}`
+        });
+      }
+
+      if (group.closingPureSilver > 0) {
+        carryForwardAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: group.branch_id,
+          branch_name: group.branch_name,
+          staff_id: null,
+          metal: 'Silver',
+          pure_weight: group.closingPureSilver,
+          cash_amount: 0,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: `Carry-forward Silver from approved report on ${group.iso_date}`
+        });
+      }
+
+      if (group.closingCash > 0) {
+        carryForwardAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: group.branch_id,
+          branch_name: group.branch_name,
+          staff_id: null,
+          metal: 'Gold',
+          pure_weight: 0,
+          cash_amount: group.closingCash,
+          allocated_by: 'SUPER-001',
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: `Carry-forward Cash from approved report on ${group.iso_date}`
+        });
+      }
+
+      if (carryForwardAllocations.length > 0) {
+        const { error: allocError } = await supabase
+          .from('stock_allocations')
+          .insert(carryForwardAllocations);
+        if (allocError) throw allocError;
+      }
+
       const netCash = group.totalCashReceived - group.totalCashPaid;
 
       // Insert consolidation into Super Admin Ledger
@@ -741,6 +809,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const currentPureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0), [saLedger, activeMetal]);
   const currentImpureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0), [saLedger, activeMetal]);
   const currentCashStock = React.useMemo(() => saLedger.reduce((s, e) => s + e.cashChange, 0), [saLedger]);
+
+  const filteredBranchReports = React.useMemo(() => {
+    return currentLedgerBranchFilter === 'All'
+      ? branchReports
+      : branchReports.filter(r => r.branch_name === currentLedgerBranchFilter);
+  }, [branchReports, currentLedgerBranchFilter]);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
@@ -1444,15 +1518,32 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
             {/* Branch Daily Reports Section */}
             <div className="space-y-4">
-              <p className="label-institutional text-outline uppercase px-1">Branch End-Of-Day Reports</p>
-              {branchReports.length === 0 ? (
+              <div className="flex justify-between items-center px-1">
+                <p className="label-institutional text-outline uppercase">Branch End-Of-Day Reports</p>
+                {branchReports.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-outline text-xs">filter_list</span>
+                    <select
+                      value={currentLedgerBranchFilter}
+                      onChange={e => setCurrentLedgerBranchFilter(e.target.value)}
+                      className="bg-white border border-outline-variant/30 rounded-xl py-1 px-3 text-[10px] font-bold text-primary focus:outline-none focus:ring-1 focus:ring-[#003366]/20 transition-all cursor-pointer shadow-sm"
+                    >
+                      <option value="All">All Branches</option>
+                      {availableBranches.map(b => (
+                        <option key={b.id} value={b.name}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+              {filteredBranchReports.length === 0 ? (
                 <div className="luxury-card p-6 bg-slate-50 border border-outline-variant/10 text-center">
                   <span className="material-symbols-outlined text-slate-400 text-3xl mb-2">inventory</span>
-                  <p className="text-xs text-outline font-semibold">No daily reports submitted yet.</p>
+                  <p className="text-xs text-outline font-semibold">No daily reports found.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3">
-                  {branchReports.slice(0, 5).map(report => (
+                  {filteredBranchReports.map(report => (
                     <div 
                       key={report.id}
                       className="luxury-card p-4 bg-white border border-outline-variant/20 shadow-sm flex flex-col gap-2"
@@ -1489,6 +1580,106 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Pure Gold: <span className="text-primary font-black">{fmtG(report.closing_pure_gold)}</span></p>
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">Closing Cash: <span className="text-primary font-black">{fmt(report.closing_cash)}</span></p>
                       </div>
+
+                      {/* Toggle button */}
+                      <div className="px-2 pb-2 pt-2 border-t border-outline-variant/10 flex justify-between items-center bg-slate-50/50 -mx-4 -mb-2 rounded-b-2xl mt-2">
+                        <button
+                          onClick={() => {
+                            setExpandedGroups(prev => ({ ...prev, [report.id]: !prev[report.id] }));
+                          }}
+                          className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#003366] hover:text-[#001e40] transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-xs">
+                            {expandedGroups[report.id] ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                          </span>
+                          {expandedGroups[report.id] ? 'Hide Transaction Details' : 'View Transaction Details'}
+                        </button>
+                        <span className="text-[8px] font-medium text-outline">
+                          {
+                            approvedBranchEntries.filter((entry: any) => {
+                              const entryBranchId = usersBranchMap[entry.staff_id] || '';
+                              return entry.iso_date === report.iso_date && entryBranchId === report.branch_id;
+                            }).length
+                          } individual entries
+                        </span>
+                      </div>
+
+                      {/* Collapsible Details list */}
+                      {expandedGroups[report.id] && (
+                        <div className="px-2 pb-4 border-t border-outline-variant/10 pt-4 space-y-3 bg-[#F8FAFC] -mx-4 -mb-2 rounded-b-2xl animate-fade-in">
+                          <div className="space-y-2.5 px-2">
+                            {(() => {
+                              const associatedEntries = approvedBranchEntries.filter((entry: any) => {
+                                const entryBranchId = usersBranchMap[entry.staff_id] || '';
+                                return entry.iso_date === report.iso_date && entryBranchId === report.branch_id;
+                              });
+
+                              if (associatedEntries.length === 0) {
+                                return (
+                                  <div className="text-center py-6 bg-white rounded-2xl border border-dashed border-outline-variant/30 text-outline text-[10px] font-semibold">
+                                    No transactions recorded for this day.
+                                  </div>
+                                );
+                              }
+
+                              return associatedEntries.map((entry: any, eIdx: number) => {
+                                return (
+                                  <div key={eIdx} className="bg-white p-3 rounded-xl border border-outline-variant/10 shadow-sm text-left">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                        <p className="font-bold text-xs text-primary">{entry.customer_name}</p>
+                                        <p className="text-[8px] text-outline font-bold tracking-widest uppercase mt-0.5">
+                                          {entry.transaction_type} • {entry.id}
+                                        </p>
+                                      </div>
+                                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                        entry.status === 'Completed' ? 'bg-success/15 text-success' : 'bg-orange-500/10 text-orange-600'
+                                      }`}>
+                                        {entry.status}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-outline-variant/5 text-[10px]">
+                                      {Number(entry.pure_gold_out || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[8px] uppercase font-bold text-outline">Pure Gold Out</span>
+                                          <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.impure_gold_in || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[8px] uppercase font-bold text-outline">Impure Gold In</span>
+                                          <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.pure_silver_out || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[8px] uppercase font-bold text-outline">Pure Silver Out</span>
+                                          <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.impure_silver_in || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[8px] uppercase font-bold text-outline">Impure Silver In</span>
+                                          <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
+                                        <div>
+                                          <span className="text-[8px] uppercase font-bold text-outline">Cash</span>
+                                          <p className="font-bold text-emerald-600">
+                                            {Number(entry.cash_received || 0) > 0 ? `+₹${entry.cash_received.toLocaleString()}` : `-₹${entry.cash_paid.toLocaleString()}`}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   ))}
                 </div>

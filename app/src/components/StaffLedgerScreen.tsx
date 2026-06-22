@@ -691,7 +691,7 @@ export const StaffLedgerScreen: React.FC = () => {
         const silverUsed = todayEntries.reduce((s, e) => s + e.pureSilverOut, 0);
         const cashUsed = todayEntries.reduce((s, e) => s + e.cashPaid, 0);
         
-        const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0);
+        const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0) + billingCash;
         const impureGoldRecv = todayEntries.reduce((s, e) => s + e.impureGoldIn, 0);
         const impureSilverRecv = todayEntries.reduce((s, e) => s + e.impureSilverIn, 0);
 
