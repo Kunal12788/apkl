@@ -672,9 +672,9 @@ export const StaffLedgerScreen: React.FC = () => {
         // --- 1. Compute values for Branch Daily Report ---
         const todayEntries = entries.filter(e => e.isoDate === today);
 
-        const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0);
-        const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0);
-        const tAllocCash = allocations.reduce((s, a) => s + Number(a.cash_amount), 0);
+        const tAllocGold = allocations.filter(a => a.staff_id === null && a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+        const tAllocSilver = allocations.filter(a => a.staff_id === null && a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+        const tAllocCash = allocations.filter(a => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
 
         const pastEntries = entries.filter(e => e.isoDate < today);
 

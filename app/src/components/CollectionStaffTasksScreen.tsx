@@ -964,10 +964,9 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                       return;
                     }
 
-                    // Cash Stock Validation for Settlement Modal
                     if (isCashMode) {
                       const isSuperSa = user?.role === 'Super Admin';
-                      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount');
+                      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount, staff_id');
                       if (!isSuperSa && user?.branch_id) {
                         allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
                       }
@@ -992,7 +991,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                         txQuery
                       ]);
                       
-                      const totalAllocatedCash = (allocationsRes.data || []).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+                      const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
                       const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                       const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
                       
