@@ -220,6 +220,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
             totalImpureSilverReceived: Number(report.impure_silver_received || 0),
             totalCashReceived: Number(report.cash_received || 0),
             totalCashPaid: Number(report.cash_used || 0),
+            closingPureGold: Number(report.closing_pure_gold || 0),
+            closingPureSilver: Number(report.closing_pure_silver || 0),
+            closingCash: Number(report.closing_cash || 0),
             entries: associatedEntries
           };
         }).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date));
@@ -886,7 +889,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               {pendingBranchGroups
                 .filter(group => group.branch_name === selectedBranchForApproval)
                 .map((group, idx) => {
-                  const netCash = group.totalCashReceived - group.totalCashPaid;
                   return (
                     <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden animate-fade-in mb-6">
                       <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-slate-50">
@@ -904,31 +906,56 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                         </span>
                       </div>
                       
-                      <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      {/* Row 1: 4 cards for Gold and Silver stock / received */}
+                      <div className="p-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
                           <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-[#755b00]/5">diamond</span>
-                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Given</p>
-                          <p className="font-headline font-black text-[#755b00] text-xl">{group.totalPureGoldGiven.toFixed(3)}g</p>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Pure Gold Received</p>
+                          <p className="font-headline font-black text-[#755b00] text-xl">{group.closingPureGold.toFixed(3)}g</p>
                         </div>
                         
                         <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
                           <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-amber-600/5">local_fire_department</span>
-                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Gold Recv (Impure)</p>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Impure Gold Received</p>
                           <p className="font-headline font-black text-amber-600 text-xl">{group.totalImpureGoldReceived.toFixed(3)}g</p>
                         </div>
-                        
+
                         <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
-                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-emerald-600/5">payments</span>
-                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Net Cash</p>
-                          <p className={`font-headline font-black text-xl ${netCash >= 0 ? 'text-emerald-600' : 'text-error'}`}>
-                            {netCash >= 0 ? '+' : ''}{fmt(netCash)}
-                          </p>
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">diamond</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Pure Silver Received</p>
+                          <p className="font-headline font-black text-slate-500 text-xl">{group.closingPureSilver.toFixed(3)}g</p>
                         </div>
                         
                         <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
-                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">diamond</span>
-                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Silver Recv (Impure)</p>
-                          <p className="font-headline font-black text-slate-500 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-600/5">local_fire_department</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Impure Silver Received</p>
+                          <p className="font-headline font-black text-slate-600 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
+                        </div>
+                      </div>
+
+                      {/* Row 2: 2 cards for Disbursed pure gold and silver */}
+                      <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-[#755b00]/5">trending_up</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Pure Gold Disbursed</p>
+                          <p className="font-headline font-black text-[#755b00] text-xl">{group.totalPureGoldGiven.toFixed(3)}g</p>
+                        </div>
+
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden">
+                          <span className="material-symbols-outlined absolute -right-2 -bottom-2 text-4xl text-slate-500/5">trending_up</span>
+                          <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Pure Silver Disbursed</p>
+                          <p className="font-headline font-black text-slate-500 text-xl">{group.totalPureSilverGiven.toFixed(3)}g</p>
+                        </div>
+                      </div>
+
+                      {/* Row 3: 1 card for leftover cash stock */}
+                      <div className="px-6 pb-6 w-full">
+                        <div className="bg-white p-4 rounded-2xl border border-outline-variant/20 shadow-sm relative overflow-hidden flex justify-between items-center">
+                          <div>
+                            <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Cash Stock</p>
+                            <p className="font-headline font-black text-emerald-600 text-xl">{fmt(group.closingCash)}</p>
+                          </div>
+                          <span className="material-symbols-outlined text-emerald-600 text-2xl">payments</span>
                         </div>
                       </div>
 
