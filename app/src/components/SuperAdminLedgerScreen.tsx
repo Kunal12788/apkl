@@ -1108,14 +1108,33 @@ export const SuperAdminLedgerScreen: React.FC = () => {
             </div>
           <button 
             onClick={async () => {
-              // Clear DB super admin ledger for testing setup
-              if (window.confirm("Are you sure you want to reset all corporate records for testing setup?")) {
+              if (window.confirm("Are you sure you want to permanently delete all corporate records, reports, transactions, ledger entries, tasks, and stock allocations across all roles? This cannot be undone!")) {
                 try {
-                  await supabase.from('super_admin_ledger').delete().neq('id', '');
-                  await supabase.from('refining_transfers').delete().neq('id', '');
+                  const deleteTable = async (tableName: string) => {
+                    try {
+                      await supabase.from(tableName).delete().neq('id', '');
+                    } catch (err) {
+                      console.warn(`Failed to delete from ${tableName}:`, err);
+                    }
+                  };
+
+                  await Promise.all([
+                    deleteTable('super_admin_ledger'),
+                    deleteTable('refining_transfers'),
+                    deleteTable('ledger_entries'),
+                    deleteTable('transactions'),
+                    deleteTable('tasks'),
+                    deleteTable('stock_allocations'),
+                    deleteTable('branch_daily_reports'),
+                    deleteTable('deletion_requests')
+                  ]);
+
+                  clearAllDataCaches();
                   fetchData();
+                  alert("All corporate records have been permanently cleared.");
                 } catch (e) {
                   console.error(e);
+                  alert("Failed to reset records.");
                 }
               }
             }}
