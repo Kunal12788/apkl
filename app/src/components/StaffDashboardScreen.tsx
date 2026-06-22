@@ -23,7 +23,8 @@ export const StaffDashboardScreen: React.FC = () => {
       if (isAllocation) {
         return !item.admin_submitted_at;
       }
-      return item.staff_submitted_at && !item.admin_submitted_at;
+      const isCreatedByAdmin = item.staff_id === userId || item.created_by === userId || item.assigned_to === userId;
+      return (isCreatedByAdmin || item.staff_submitted_at) && !item.admin_submitted_at;
     }
     return !item.admin_submitted_at;
   };

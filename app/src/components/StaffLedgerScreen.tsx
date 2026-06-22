@@ -255,10 +255,10 @@ export const StaffLedgerScreen: React.FC = () => {
           txQuery = txQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
           tasksQuery = tasksQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
         } else if (user?.role === 'Admin') {
-          entriesQuery = entriesQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
+          entriesQuery = entriesQuery.or(`staff_id.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
           allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
-          txQuery = txQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
-          tasksQuery = tasksQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
+          txQuery = txQuery.or(`created_by.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
+          tasksQuery = tasksQuery.or(`created_by.eq.${userId},assigned_to.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
         } else {
           // For Super Admin viewing active branch ledger
           entriesQuery = entriesQuery.is('admin_submitted_at', null);
@@ -740,11 +740,11 @@ export const StaffLedgerScreen: React.FC = () => {
         }
 
         const [r1, r2, r3, r4, r5] = await Promise.all([
-          supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
-          supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
-          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null)
+          supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;

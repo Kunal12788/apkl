@@ -1127,7 +1127,8 @@ export const StaffTasksScreen: React.FC = () => {
       return !t.staffSubmittedAt && !t.adminSubmittedAt;
     }
     if (user?.role === 'Admin') {
-      return !!t.staffSubmittedAt && !t.adminSubmittedAt;
+      const isCreatedByAdmin = t.createdBy === currentUser || t.assignedTo === currentUser;
+      return (isCreatedByAdmin || !!t.staffSubmittedAt) && !t.adminSubmittedAt;
     }
     return !t.adminSubmittedAt;
   };

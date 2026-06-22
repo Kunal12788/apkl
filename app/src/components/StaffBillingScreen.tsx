@@ -494,7 +494,8 @@ export const StaffBillingScreen: React.FC = () => {
       return !item.staffSubmittedAt && !item.staff_submitted_at && !item.adminSubmittedAt && !item.admin_submitted_at;
     }
     if (role === 'Admin') {
-      return (item.staffSubmittedAt || item.staff_submitted_at) && !item.adminSubmittedAt && !item.admin_submitted_at;
+      const isCreatedByAdmin = item.created_by === user?.id || item.createdBy === user?.id;
+      return (isCreatedByAdmin || item.staffSubmittedAt || item.staff_submitted_at) && !item.adminSubmittedAt && !item.admin_submitted_at;
     }
     return !item.adminSubmittedAt && !item.admin_submitted_at;
   };
