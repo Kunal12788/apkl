@@ -121,6 +121,17 @@ export const StaffLedgerScreen: React.FC = () => {
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const [hasUnsubmittedStaffData, setHasUnsubmittedStaffData] = useState(false);
+  const [branchStaff, setBranchStaff] = useState<any[]>([]);
+
+  // Admin allocation states
+  const [allocStaffId, setAllocStaffId] = useState('');
+  const [allocGold, setAllocGold] = useState('');
+  const [allocSilver, setAllocSilver] = useState('');
+  const [allocCash, setAllocCash] = useState('');
+  const [allocNotes, setAllocNotes] = useState('');
+  const [isAllocating, setIsAllocating] = useState(false);
   
   // Load derived billing transactions cache, or calculate it immediately from raw cache
   let cachedBillingTx = getCachedData('staff_billing_tx', Infinity);
@@ -184,15 +195,20 @@ export const StaffLedgerScreen: React.FC = () => {
     try {
       const isSuperSa = user?.role === 'Super Admin';
       let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
+      let staffUserIds: string[] = [];
 
-      if (!isSuperSa && user?.branch_id && branchUserIds.length === 0) {
+      if (!isSuperSa && user?.branch_id) {
         const { data: bUsers, error: buError } = await supabase
           .from('users')
-          .select('id')
+          .select('id, name, role')
           .eq('branch_id', user.branch_id);
         if (!buError && bUsers) {
           branchUserIds = bUsers.map((bu: any) => bu.id);
           setCachedData(cacheKeyBranchUsers, branchUserIds);
+
+          const staff = bUsers.filter((bu: any) => bu.role !== 'Admin' && bu.role !== 'Super Admin');
+          setBranchStaff(staff);
+          staffUserIds = staff.map((bu: any) => bu.id);
         }
       }
 
@@ -207,8 +223,28 @@ export const StaffLedgerScreen: React.FC = () => {
 
       if (!isSuperSa && user?.branch_id) {
         entriesQuery = entriesQuery.in('staff_id', branchUserIds);
-        allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
+        if (user?.role === 'Admin') {
+          allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
+        } else {
+          allocationsQuery = allocationsQuery.eq('staff_id', userId);
+        }
       }
+
+      // Check for unsubmitted staff data
+      let hasUnsubmitted = false;
+      if (user?.role === 'Admin' && user?.branch_id && staffUserIds.length > 0) {
+        const [uEntries, uAlloc, uTx, uTasks] = await Promise.all([
+          supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
+          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('branch_id', user.branch_id).is('staff_submitted_at', null),
+          supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
+          supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
+        ]);
+        const count = (uEntries.count || 0) + (uAlloc.count || 0) + (uTx.count || 0) + (uTasks.count || 0);
+        if (count > 0) {
+          hasUnsubmitted = true;
+        }
+      }
+      setHasUnsubmittedStaffData(hasUnsubmitted);
 
       // Apply clearance / submission filters
       const hasDateSearch = startDate || endDate;
@@ -218,8 +254,13 @@ export const StaffLedgerScreen: React.FC = () => {
           allocationsQuery = allocationsQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
           txQuery = txQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
           tasksQuery = tasksQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
+        } else if (user?.role === 'Admin') {
+          entriesQuery = entriesQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
+          allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
+          txQuery = txQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
+          tasksQuery = tasksQuery.not('staff_submitted_at', 'is', null).is('admin_submitted_at', null);
         } else {
-          // For Admin and Super Admin viewing active branch ledger
+          // For Super Admin viewing active branch ledger
           entriesQuery = entriesQuery.is('admin_submitted_at', null);
           allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
           txQuery = txQuery.is('admin_submitted_at', null);
@@ -339,15 +380,37 @@ export const StaffLedgerScreen: React.FC = () => {
     };
   }, [user?.branch_id, isSuperSa, startDate, endDate, user?.role]);
 
-  const totalAllocatedPureGold = React.useMemo(() => allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
-  const totalAllocatedPureSilver = React.useMemo(() => allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight), 0), [allocations]);
+  const totalAllocatedPureGold = React.useMemo(() => {
+    if (user?.role === 'Admin') {
+      const fromSuper = allocations.filter(a => a.staff_id === null && a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+      const toStaffActive = allocations.filter(a => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+      return fromSuper - toStaffActive;
+    }
+    return allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+  }, [allocations, user?.role]);
+
+  const totalAllocatedPureSilver = React.useMemo(() => {
+    if (user?.role === 'Admin') {
+      const fromSuper = allocations.filter(a => a.staff_id === null && a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+      const toStaffActive = allocations.filter(a => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+      return fromSuper - toStaffActive;
+    }
+    return allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+  }, [allocations, user?.role]);
 
   const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
   const totalPureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.pureGoldIn || 0) : (e.pureSilverIn || 0)), 0), [entries, activeMetal]);
   const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
   const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
 
-  const totalAllocatedCash = React.useMemo(() => allocations.reduce((s, a) => s + Number(a.cash_amount || 0), 0), [allocations]);
+  const totalAllocatedCash = React.useMemo(() => {
+    if (user?.role === 'Admin') {
+      const fromSuper = allocations.filter(a => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+      const toStaffActive = allocations.filter(a => a.staff_id !== null && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+      return fromSuper - toStaffActive;
+    }
+    return allocations.reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+  }, [allocations, user?.role]);
   const totalCashReceived = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashReceived || 0), 0), [entries]);
   const totalCashPaid = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashPaid || 0), 0), [entries]);
 
@@ -485,6 +548,108 @@ export const StaffLedgerScreen: React.FC = () => {
     }
   };
 
+  const handleAdminAllocateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!allocStaffId) {
+      alert("Please select a staff member.");
+      return;
+    }
+    const goldVal = parseFloat(allocGold) || 0;
+    const silverVal = parseFloat(allocSilver) || 0;
+    const cashVal = parseFloat(allocCash) || 0;
+    if (goldVal <= 0 && silverVal <= 0 && cashVal <= 0) {
+      alert("Please specify at least one allocation amount (Gold, Silver, or Cash).");
+      return;
+    }
+
+    if (goldVal > currentPureStock && activeMetal === 'Gold') {
+      alert(`Insufficient Gold stock. Available: ${currentPureStock.toFixed(3)}g`);
+      return;
+    }
+    if (silverVal > currentPureStock && activeMetal === 'Silver') {
+      alert(`Insufficient Silver stock. Available: ${currentPureStock.toFixed(3)}g`);
+      return;
+    }
+    if (cashVal > currentCashStock) {
+      alert(`Insufficient Cash stock. Available: ₹${currentCashStock.toLocaleString('en-IN')}`);
+      return;
+    }
+
+    setIsAllocating(true);
+    try {
+      const dateStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+      const isoDateStr = new Date().toISOString().split('T')[0];
+
+      const newAllocations = [];
+      const staffName = branchStaff.find(s => s.id === allocStaffId)?.name || 'Staff';
+
+      if (goldVal > 0) {
+        newAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: user?.branch_id,
+          branch_name: branchName,
+          staff_id: allocStaffId,
+          metal: 'Gold',
+          pure_weight: goldVal,
+          cash_amount: 0,
+          allocated_by: userId,
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes || `Allocated by Admin to ${staffName}`
+        });
+      }
+
+      if (silverVal > 0) {
+        newAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: user?.branch_id,
+          branch_name: branchName,
+          staff_id: allocStaffId,
+          metal: 'Silver',
+          pure_weight: silverVal,
+          cash_amount: 0,
+          allocated_by: userId,
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes || `Allocated by Admin to ${staffName}`
+        });
+      }
+
+      if (cashVal > 0) {
+        newAllocations.push({
+          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: user?.branch_id,
+          branch_name: branchName,
+          staff_id: allocStaffId,
+          metal: 'Gold',
+          pure_weight: 0,
+          cash_amount: cashVal,
+          allocated_by: userId,
+          date: dateStr,
+          iso_date: isoDateStr,
+          notes: allocNotes || `Allocated by Admin to ${staffName}`
+        });
+      }
+
+      const { error } = await supabase.from('stock_allocations').insert(newAllocations);
+      if (error) throw error;
+
+      alert("Stock successfully allocated to Staff!");
+      setAllocStaffId('');
+      setAllocGold('');
+      setAllocSilver('');
+      setAllocCash('');
+      setAllocNotes('');
+      clearAllDataCaches();
+      fetchEntries();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save allocation.");
+    } finally {
+      setIsAllocating(false);
+    }
+  };
+
   const handleSubmitReport = async () => {
     const isAdmin = user?.role === 'Admin';
     
@@ -493,6 +658,11 @@ export const StaffLedgerScreen: React.FC = () => {
       : "Are you sure you want to submit your daily ledger report? Once submitted, active lists will be cleared.";
 
     if (!window.confirm(confirmMessage)) return;
+
+    if (isAdmin && hasUnsubmittedStaffData) {
+      alert("You cannot submit the branch daily report until the branch staff has submitted their report.");
+      return;
+    }
 
     try {
       const nowStr = new Date().toISOString();
@@ -570,11 +740,11 @@ export const StaffLedgerScreen: React.FC = () => {
         }
 
         const [r1, r2, r3, r4, r5] = await Promise.all([
-          supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null)
+          supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
+          supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null),
+          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).not('staff_submitted_at', 'is', null).is('admin_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
@@ -591,7 +761,7 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('transactions').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
           supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
           supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null),
-          supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null)
+          supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('staff_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
@@ -835,15 +1005,30 @@ export const StaffLedgerScreen: React.FC = () => {
                     <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
                   </div>
                   <div className="flex gap-2">
-                    {(user?.role === 'Staff' || user?.role === 'Collection Staff' || user?.role === 'Admin') && (
-                      <button 
-                        onClick={handleSubmitReport}
-                        className="bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-all px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm"
-                      >
-                        <span className="material-symbols-outlined text-sm">cloud_upload</span>
-                        Submit Report
-                      </button>
-                    )}
+                    {(user?.role === 'Staff' || user?.role === 'Collection Staff' || user?.role === 'Admin') && (() => {
+                      const isBtnDisabled = user?.role === 'Admin' && hasUnsubmittedStaffData;
+                      return (
+                        <div className="flex flex-col items-end gap-1">
+                          <button 
+                            onClick={handleSubmitReport}
+                            disabled={isBtnDisabled}
+                            className={`transition-all px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-sm ${
+                              isBtnDisabled 
+                                ? 'bg-slate-100 text-outline border border-outline-variant/30 cursor-not-allowed' 
+                                : 'bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600 hover:text-white'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">cloud_upload</span>
+                            {user?.role === 'Admin' ? 'Submit Branch Report' : 'Submit Report'}
+                          </button>
+                          {isBtnDisabled && (
+                            <span className="text-[9px] text-error font-bold uppercase tracking-wider pl-1">
+                              Awaiting Staff Submission
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -931,6 +1116,86 @@ export const StaffLedgerScreen: React.FC = () => {
                     <span className="material-symbols-outlined text-sm">local_fire_department</span>
                     TRANSFER TO REFINERY
                   </button>
+                )}
+
+                {user?.role === 'Admin' && (
+                  <div className="luxury-card p-6 bg-white border border-[#003366]/20 shadow-lg relative overflow-hidden mt-6 animate-fade-in">
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-[#003366]/5 rounded-bl-full -mr-10 -mt-10 blur-xl pointer-events-none"></div>
+                    <p className="label-institutional text-outline uppercase mb-4 font-black">Allocate Stock to Staff</p>
+                    <form onSubmit={handleAdminAllocateSubmit} className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Select Staff Member *</label>
+                          <select
+                            required
+                            value={allocStaffId}
+                            onChange={e => setAllocStaffId(e.target.value)}
+                            className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                          >
+                            <option value="">Choose Staff...</option>
+                            {branchStaff.map(s => (
+                              <option key={s.id} value={s.id}>{s.name} ({s.role})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Cash Amount (₹)</label>
+                          <input
+                            type="number"
+                            placeholder="e.g. 10000"
+                            value={allocCash}
+                            onChange={e => setAllocCash(e.target.value)}
+                            className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Gold Weight (g)</label>
+                            <input
+                              type="number"
+                              step="0.001"
+                              placeholder="0.000g"
+                              value={allocGold}
+                              onChange={e => setAllocGold(e.target.value)}
+                              className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Silver Weight (g)</label>
+                            <input
+                              type="number"
+                              step="0.001"
+                              placeholder="0.000g"
+                              value={allocSilver}
+                              onChange={e => setAllocSilver(e.target.value)}
+                              className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5 block pl-1">Allocation Notes</label>
+                          <input
+                            type="text"
+                            placeholder="Optional notes"
+                            value={allocNotes}
+                            onChange={e => setAllocNotes(e.target.value)}
+                            className="w-full bg-white border border-outline-variant/30 rounded-2xl py-3.5 px-4 text-xs font-bold text-primary focus:outline-none focus:border-[#003366] transition-all"
+                          />
+                        </div>
+                      </div>
+                      <div className="sm:col-span-2 pt-2">
+                        <button
+                          type="submit"
+                          disabled={isAllocating}
+                          className="w-full py-4 bg-[#003366] hover:bg-[#001e40] text-white font-bold text-xs uppercase tracking-widest rounded-2xl transition-all duration-300 shadow-md flex justify-center items-center gap-2"
+                        >
+                          {isAllocating ? 'Allocating...' : 'Allocate Stock to Staff'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 )}
 
                 {/* Pending Liability Engine */}

@@ -1122,9 +1122,12 @@ export const StaffTasksScreen: React.FC = () => {
     setSearchParams(newParams);
   };
 
-  const filterBySubmission = (t: Task) => {
+  const filterBySubmission = (t: Task): boolean => {
     if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
       return !t.staffSubmittedAt && !t.adminSubmittedAt;
+    }
+    if (user?.role === 'Admin') {
+      return !!t.staffSubmittedAt && !t.adminSubmittedAt;
     }
     return !t.adminSubmittedAt;
   };
@@ -1847,7 +1850,7 @@ export const StaffTasksScreen: React.FC = () => {
               {(() => {
                 const filterEntryBySubmission = (entry: any) => {
                   if (user?.role === 'Super Admin') return true;
-                  if (user?.role === 'Admin') return !entry.admin_submitted_at;
+                  if (user?.role === 'Admin') return entry.staff_submitted_at && !entry.admin_submitted_at;
                   return !entry.staff_submitted_at;
                 };
 

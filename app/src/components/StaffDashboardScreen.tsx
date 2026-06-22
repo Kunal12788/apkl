@@ -15,9 +15,15 @@ export const StaffDashboardScreen: React.FC = () => {
   const userName = user?.name || '';
   
 
-  const filterBySubmission = (item: any) => {
+  const filterBySubmission = (item: any, isAllocation = false) => {
     if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
       return !item.staff_submitted_at && !item.admin_submitted_at;
+    }
+    if (user?.role === 'Admin') {
+      if (isAllocation) {
+        return !item.admin_submitted_at;
+      }
+      return item.staff_submitted_at && !item.admin_submitted_at;
     }
     return !item.admin_submitted_at;
   };
@@ -43,7 +49,12 @@ export const StaffDashboardScreen: React.FC = () => {
     ? (isSuperSa ? cachedTasks : cachedTasks.filter((t: any) => branchUserIds.includes(t.created_by) && filterBySubmission(t)))
     : [];
   const initialAllocations = cachedAllocations
-    ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => a.branch_id === user?.branch_id && filterBySubmission(a)))
+    ? (isSuperSa ? cachedAllocations : cachedAllocations.filter((a: any) => {
+        if (user?.role === 'Admin') {
+          return a.branch_id === user?.branch_id && filterBySubmission(a, true);
+        }
+        return a.staff_id === userId && filterBySubmission(a);
+      }))
     : [];
 
   let initialPure = 0;
@@ -60,8 +71,8 @@ export const StaffDashboardScreen: React.FC = () => {
       filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
       filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
     }
-    const activeTx = filteredTx.filter(filterBySubmission);
-    const activeTasksForBilling = filteredTasks.filter(filterBySubmission);
+    const activeTx = filteredTx.filter((t: any) => filterBySubmission(t));
+    const activeTasksForBilling = filteredTasks.filter((t: any) => filterBySubmission(t));
     cachedBillingTx = computeStaffBillingTransactions(activeTx, activeTasksForBilling);
   }
   if (!cachedBillingTx) {
@@ -91,9 +102,21 @@ export const StaffDashboardScreen: React.FC = () => {
   let initialStats = { pending: 0, inProgress: 0, completed: 0 };
 
   if (initialLedger.length > 0 || initialTx.length > 0 || initialTasks.length > 0 || initialAllocations.length > 0) {
-    const totalAllocatedPureGold = initialAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
-    const totalAllocatedPureSilver = initialAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+    let totalAllocatedPureGold = 0;
+    let totalAllocatedPureSilver = 0;
 
+    if (user?.role === 'Admin') {
+      const fromSuperGold = initialAllocations.filter((a: any) => a.staff_id === null && a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+      const toStaffActiveGold = initialAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+      totalAllocatedPureGold = fromSuperGold - toStaffActiveGold;
+
+      const fromSuperSilver = initialAllocations.filter((a: any) => a.staff_id === null && a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+      const toStaffActiveSilver = initialAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+      totalAllocatedPureSilver = fromSuperSilver - toStaffActiveSilver;
+    } else {
+      totalAllocatedPureGold = initialAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+      totalAllocatedPureSilver = initialAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+    }
 
     const totalPureGiven = initialLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
     const totalImpureReceived = initialLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
@@ -196,13 +219,32 @@ export const StaffDashboardScreen: React.FC = () => {
 
         const filteredAllocations = allocationsData
           ? (hasBranchFilter 
-              ? allocationsData.filter((a: any) => a.branch_id === user?.branch_id && filterBySubmission(a)) 
-              : allocationsData.filter(filterBySubmission))
+              ? allocationsData.filter((a: any) => {
+                  if (user?.role === 'Admin') {
+                    return a.branch_id === user?.branch_id && filterBySubmission(a, true);
+                  }
+                  return a.staff_id === userId && filterBySubmission(a);
+                }) 
+              : allocationsData.filter((a: any) => filterBySubmission(a, true)))
           : [];
 
         // Populate metrics
-        const totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
-        const totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+        let totalAllocatedPureGold = 0;
+        let totalAllocatedPureSilver = 0;
+
+        if (user?.role === 'Admin') {
+          const fromSuperGold = filteredAllocations.filter((a: any) => a.staff_id === null && a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+          const toStaffActiveGold = filteredAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+          totalAllocatedPureGold = fromSuperGold - toStaffActiveGold;
+
+          const fromSuperSilver = filteredAllocations.filter((a: any) => a.staff_id === null && a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+          const toStaffActiveSilver = filteredAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null && a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+          totalAllocatedPureSilver = fromSuperSilver - toStaffActiveSilver;
+        } else {
+          totalAllocatedPureGold = filteredAllocations.filter((a: any) => a.metal === 'Gold').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+          totalAllocatedPureSilver = filteredAllocations.filter((a: any) => a.metal === 'Silver').reduce((s: any, a: any) => s + Number(a.pure_weight || 0), 0);
+        }
+
         const totalPureGiven = filteredLedger.reduce((s: any, e: any) => s + (Number(e.pure_gold_out) || 0), 0);
         const totalImpureReceived = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_in) || 0), 0);
         const totalImpureRefined = filteredLedger.reduce((s: any, e: any) => s + (Number(e.impure_gold_out) || 0), 0);
@@ -263,7 +305,7 @@ export const StaffDashboardScreen: React.FC = () => {
           return dateB - dateA;
         });
 
-        const filteredRecentTasks = sortedTasks.filter(filterBySubmission);
+        const filteredRecentTasks = sortedTasks.filter((t: any) => filterBySubmission(t));
 
         const formattedRecent = filteredRecentTasks.slice(0, 5).map((t: any) => {
           const isCash = t.sett_condition?.toLowerCase().includes('cash') || t.settlement_condition?.toLowerCase().includes('cash');
@@ -341,8 +383,8 @@ export const StaffDashboardScreen: React.FC = () => {
           filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
           filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
         }
-        const activeTx = filteredTx.filter(filterBySubmission);
-        const activeTasksForBilling = filteredTasks.filter(filterBySubmission);
+        const activeTx = filteredTx.filter((t: any) => filterBySubmission(t));
+        const activeTasksForBilling = filteredTasks.filter((t: any) => filterBySubmission(t));
         const allTx = computeStaffBillingTransactions(activeTx, activeTasksForBilling);
         setCachedData('staff_billing_tx', allTx);
         setBillingTransactions(allTx);

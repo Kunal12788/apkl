@@ -88,6 +88,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
   const [confirmStep, setConfirmStep] = useState<0 | 1>(0);
   const [approving, setApproving] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
@@ -937,6 +938,86 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                           <p className="font-headline font-black text-slate-500 text-xl">{group.totalImpureSilverReceived.toFixed(3)}g</p>
                         </div>
                       </div>
+
+                      {/* Toggle button */}
+                      <div className="px-6 pb-4 pt-2 border-t border-outline-variant/10 flex justify-between items-center bg-slate-50/50">
+                        <button
+                          onClick={() => {
+                            const key = `${group.iso_date}_${group.branch_name}`;
+                            setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }));
+                          }}
+                          className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[#003366] hover:text-[#001e40] transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            {expandedGroups[`${group.iso_date}_${group.branch_name}`] ? 'keyboard_arrow_up' : 'keyboard_arrow_down'}
+                          </span>
+                          {expandedGroups[`${group.iso_date}_${group.branch_name}`] ? 'Hide Transaction Details' : 'View Transaction Details'}
+                        </button>
+                        <span className="text-[9px] font-medium text-outline">
+                          {group.entries.length} individual entries
+                        </span>
+                      </div>
+
+                      {/* Collapsible Details list */}
+                      {expandedGroups[`${group.iso_date}_${group.branch_name}`] && (
+                        <div className="px-6 pb-6 border-t border-outline-variant/10 pt-4 space-y-3 bg-[#F8FAFC] animate-fade-in">
+                          <div className="space-y-2.5">
+                            {group.entries.map((entry: any, eIdx: number) => {
+                              return (
+                                <div key={eIdx} className="bg-white p-4 rounded-2xl border border-outline-variant/10 shadow-sm text-left">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                      <p className="font-bold text-sm text-primary">{entry.customer_name}</p>
+                                      <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">
+                                        {entry.transaction_type} • {entry.id}
+                                      </p>
+                                    </div>
+                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                      entry.status === 'Completed' ? 'bg-success/15 text-success' : 'bg-orange-500/10 text-orange-600'
+                                    }`}>
+                                      {entry.status}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/5 text-xs">
+                                    {Number(entry.pure_gold_out || 0) > 0 && (
+                                      <div>
+                                        <span className="text-[9px] uppercase font-bold text-outline">Pure Gold Out</span>
+                                        <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                      </div>
+                                    )}
+                                    {Number(entry.impure_gold_in || 0) > 0 && (
+                                      <div>
+                                        <span className="text-[9px] uppercase font-bold text-outline">Impure Gold In</span>
+                                        <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
+                                      </div>
+                                    )}
+                                    {Number(entry.pure_silver_out || 0) > 0 && (
+                                      <div>
+                                        <span className="text-[9px] uppercase font-bold text-outline">Pure Silver Out</span>
+                                        <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
+                                      </div>
+                                    )}
+                                    {Number(entry.impure_silver_in || 0) > 0 && (
+                                      <div>
+                                        <span className="text-[9px] uppercase font-bold text-outline">Impure Silver In</span>
+                                        <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
+                                      </div>
+                                    )}
+                                    {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
+                                      <div>
+                                        <span className="text-[9px] uppercase font-bold text-outline">Cash</span>
+                                        <p className="font-bold text-emerald-600">
+                                          {Number(entry.cash_received || 0) > 0 ? `+₹${entry.cash_received.toLocaleString()}` : `-₹${entry.cash_paid.toLocaleString()}`}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

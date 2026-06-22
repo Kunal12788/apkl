@@ -493,6 +493,9 @@ export const StaffBillingScreen: React.FC = () => {
     if (role === 'Staff' || role === 'Collection Staff') {
       return !item.staffSubmittedAt && !item.staff_submitted_at && !item.adminSubmittedAt && !item.admin_submitted_at;
     }
+    if (role === 'Admin') {
+      return (item.staffSubmittedAt || item.staff_submitted_at) && !item.adminSubmittedAt && !item.admin_submitted_at;
+    }
     return !item.adminSubmittedAt && !item.admin_submitted_at;
   };
   
@@ -683,8 +686,9 @@ export const StaffBillingScreen: React.FC = () => {
 
     const hasDateSearch = startDate || endDate;
     transactions.forEach(t => {
-      if (!hasDateSearch && !filterBySubmission(t)) {
-        return;
+      if (hasDateSearch) {
+        if (startDate && t.isoDate < startDate) return;
+        if (endDate && t.isoDate > endDate) return;
       }
       let cust = customers.find(c => {
         if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
