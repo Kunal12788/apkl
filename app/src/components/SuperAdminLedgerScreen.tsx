@@ -92,7 +92,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [isFirstTimeSetup, setIsFirstTimeSetup] = useState<boolean>(cachedSaLedger !== null && initialLedger.length === 0);
-  const [, setLoading] = useState<boolean>(cachedSaLedger === null);
+  const [loading, setLoading] = useState<boolean>(cachedSaLedger === null || initialLedger.length === 0);
 
   const [setupPureInput, setSetupPureInput] = useState('');
   const [setupImpureInput, setSetupImpureInput] = useState('');
@@ -746,6 +746,14 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
 
 
+
+  if (loading) {
+    return (
+      <div className="min-h-[100svh] flex items-center justify-center bg-background ambient-bg p-6 relative z-50">
+        <div className="w-12 h-12 rounded-full border-4 border-[#003366]/20 border-t-[#003366] animate-spin"></div>
+      </div>
+    );
+  }
 
   // Initial Prompt UI
   if (ledgerMode === 'prompt') {
