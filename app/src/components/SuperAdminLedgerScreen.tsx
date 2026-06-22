@@ -710,66 +710,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
       if (reportUpdateError) throw reportUpdateError;
 
-      // Carry forward closing balances to branch's active stock allocations
-      const carryForwardAllocations = [];
-      const dateStr = new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-      const isoDateStr = new Date().toISOString().split('T')[0];
-
-      if (group.closingPureGold > 0) {
-        carryForwardAllocations.push({
-          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
-          branch_id: group.branch_id,
-          branch_name: group.branch_name,
-          staff_id: null,
-          metal: 'Gold',
-          pure_weight: group.closingPureGold,
-          cash_amount: 0,
-          allocated_by: 'SUPER-001',
-          date: dateStr,
-          iso_date: isoDateStr,
-          notes: `Carry-forward Gold from approved report on ${group.iso_date}`
-        });
-      }
-
-      if (group.closingPureSilver > 0) {
-        carryForwardAllocations.push({
-          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
-          branch_id: group.branch_id,
-          branch_name: group.branch_name,
-          staff_id: null,
-          metal: 'Silver',
-          pure_weight: group.closingPureSilver,
-          cash_amount: 0,
-          allocated_by: 'SUPER-001',
-          date: dateStr,
-          iso_date: isoDateStr,
-          notes: `Carry-forward Silver from approved report on ${group.iso_date}`
-        });
-      }
-
-      if (group.closingCash > 0) {
-        carryForwardAllocations.push({
-          id: `ALLOC-${Math.floor(1000 + Math.random() * 9000)}`,
-          branch_id: group.branch_id,
-          branch_name: group.branch_name,
-          staff_id: null,
-          metal: 'Gold',
-          pure_weight: 0,
-          cash_amount: group.closingCash,
-          allocated_by: 'SUPER-001',
-          date: dateStr,
-          iso_date: isoDateStr,
-          notes: `Carry-forward Cash from approved report on ${group.iso_date}`
-        });
-      }
-
-      if (carryForwardAllocations.length > 0) {
-        const { error: allocError } = await supabase
-          .from('stock_allocations')
-          .insert(carryForwardAllocations);
-        if (allocError) throw allocError;
-      }
-
       const netCash = group.totalCashReceived - group.totalCashPaid;
 
       // Insert consolidation into Super Admin Ledger
