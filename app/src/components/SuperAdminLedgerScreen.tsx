@@ -86,7 +86,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [ledgerMode, setLedgerMode] = useState<'prompt' | 'approval' | 'current'>('prompt');
   const [pendingBranchGroups, setPendingBranchGroups] = useState<any[]>(cachedPendingGroups || []);
   const [selectedBranchForApproval, setSelectedBranchForApproval] = useState<string | null>(null);
-  const [confirmStep, setConfirmStep] = useState<0 | 1>(0);
+  const [confirmReportId, setConfirmReportId] = useState<string | null>(null);
   const [approving, setApproving] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
@@ -162,7 +162,6 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         supabase
           .from('branch_daily_reports')
           .select('*')
-          .eq('status', 'Approved')
           .order('created_at', { ascending: false }),
         supabase.from('branches').select('*').order('name')
       ]);
@@ -191,51 +190,42 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         setPendingTransfers(transfersData.map(mapDbToTransfer));
       }
 
-      if (branchEntriesRes.data && usersRes.data && branchesRes.data) {
+      if (usersRes.data && branchesRes.data) {
         const usersMap = usersRes.data.reduce((acc: any, u: any) => {
           acc[u.id] = u.branch_id || 'Unknown Branch';
           return acc;
         }, {});
 
-        const branchesMap = branchesRes.data.reduce((acc: any, b: any) => {
-          acc[b.id] = b.name;
-          return acc;
-        }, {});
-        
-        const grouped: any = {};
-        branchEntriesRes.data.forEach((entry: any) => {
-           const branchId = usersMap[entry.staff_id] || 'Unknown Branch';
-           const branchName = branchesMap[branchId] || branchId;
-           const key = `${entry.iso_date}_${branchId}`;
-           if (!grouped[key]) {
-             grouped[key] = {
-               iso_date: entry.iso_date,
-               branch_name: branchName,
-               entries: [],
-               totalPureGoldGiven: 0,
-               totalImpureGoldReceived: 0,
-               totalCashReceived: 0,
-               totalCashPaid: 0,
-               totalPureSilverGiven: 0,
-               totalImpureSilverReceived: 0
-             };
-           }
-           grouped[key].entries.push(entry);
-           grouped[key].totalPureGoldGiven += Number(entry.pure_gold_out || 0);
-           grouped[key].totalImpureGoldReceived += Number(entry.impure_gold_in || 0);
-           grouped[key].totalPureSilverGiven += Number(entry.pure_silver_out || 0);
-           grouped[key].totalImpureSilverReceived += Number(entry.impure_silver_in || 0);
-           grouped[key].totalCashReceived += Number(entry.cash_received || 0);
-           grouped[key].totalCashPaid += Number(entry.cash_paid || 0);
-        });
-        const sortedGroups = Object.values(grouped).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date));
+        const reportsData = reportsRes.data || [];
+        const approvedReports = reportsData.filter((r: any) => r.status === 'Approved');
+        const pendingReports = reportsData.filter((r: any) => r.status === 'Submitted');
+
+        setBranchReports(approvedReports);
+        setCachedData('super_admin_branch_reports', approvedReports);
+
+        const sortedGroups = pendingReports.map((report: any) => {
+          const associatedEntries = (branchEntriesRes.data || []).filter((entry: any) => {
+            const entryBranchId = usersMap[entry.staff_id] || '';
+            return entry.iso_date === report.iso_date && entryBranchId === report.branch_id;
+          });
+
+          return {
+            report_id: report.id,
+            iso_date: report.iso_date,
+            branch_id: report.branch_id,
+            branch_name: report.branch_name,
+            totalPureGoldGiven: Number(report.gold_used || 0),
+            totalImpureGoldReceived: Number(report.impure_gold_received || 0),
+            totalPureSilverGiven: Number(report.silver_used || 0),
+            totalImpureSilverReceived: Number(report.impure_silver_received || 0),
+            totalCashReceived: Number(report.cash_received || 0),
+            totalCashPaid: Number(report.cash_used || 0),
+            entries: associatedEntries
+          };
+        }).sort((a: any, b: any) => b.iso_date.localeCompare(a.iso_date));
+
         setPendingBranchGroups(sortedGroups);
         setCachedData('super_admin_pending_groups', sortedGroups);
-        
-        if (reportsRes.data) {
-          setBranchReports(reportsRes.data);
-          setCachedData('super_admin_branch_reports', reportsRes.data);
-        }
       }
 
     } catch (err) {
@@ -279,6 +269,15 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       supabase.removeChannel(reportsSub);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedBranchForApproval) {
+      const hasPending = pendingBranchGroups.some((g: any) => g.branch_name === selectedBranchForApproval);
+      if (!hasPending) {
+        setSelectedBranchForApproval(null);
+      }
+    }
+  }, [pendingBranchGroups, selectedBranchForApproval]);
 
   const handleFirstTimeSetup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -676,62 +675,56 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-  // Handle Branch Approval (approves all pending groups for a specific branch)
-  const handleApproveBranch = async (branchName: string) => {
+  // Handle Branch Approval for a specific daily report
+  const handleApproveBranchReport = async (group: any) => {
     setApproving(true);
     try {
-      // Find all groups for this branch
-      const branchGroups = pendingBranchGroups.filter((g: any) => g.branch_name === branchName);
+      const entryIds = group.entries.map((e: any) => e.id);
       
-      for (const group of branchGroups) {
-        const entryIds = group.entries.map((e: any) => e.id);
-        
-        // Update the ledger entries to approved
+      // Update the ledger entries to approved (if any exist)
+      if (entryIds.length > 0) {
         const { error: updateError } = await supabase
           .from('ledger_entries')
           .update({ is_approved: true })
           .in('id', entryIds);
 
         if (updateError) throw updateError;
-
-        // Update the branch_daily_reports to Approved
-        const { error: reportUpdateError } = await supabase
-          .from('branch_daily_reports')
-          .update({ status: 'Approved' })
-          .eq('iso_date', group.iso_date)
-          .eq('branch_name', group.branch_name)
-          .eq('status', 'Submitted');
-
-        if (reportUpdateError) throw reportUpdateError;
-
-        const netCash = group.totalCashReceived - group.totalCashPaid;
-
-        // Insert consolidation into Super Admin Ledger
-        const newEntry = {
-          id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
-          date: 'Today',
-          iso_date: new Date().toISOString().split('T')[0],
-          type: 'Branch Consolidation',
-          branch_name: group.branch_name,
-          pure_gold_change: -group.totalPureGoldGiven,
-          impure_gold_change: group.totalImpureGoldReceived,
-          calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
-          pure_silver_change: -group.totalPureSilverGiven,
-          impure_silver_change: group.totalImpureSilverReceived,
-          calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
-          cash_change: netCash,
-          details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
-        };
-
-        const { error: insertError } = await supabase
-          .from('super_admin_ledger')
-          .insert([newEntry]);
-
-        if (insertError) throw insertError;
       }
 
-      setSelectedBranchForApproval(null);
-      setConfirmStep(0);
+      // Update the branch_daily_reports to Approved for this specific report ID
+      const { error: reportUpdateError } = await supabase
+        .from('branch_daily_reports')
+        .update({ status: 'Approved' })
+        .eq('id', group.report_id);
+
+      if (reportUpdateError) throw reportUpdateError;
+
+      const netCash = group.totalCashReceived - group.totalCashPaid;
+
+      // Insert consolidation into Super Admin Ledger
+      const newEntry = {
+        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
+        date: 'Today',
+        iso_date: new Date().toISOString().split('T')[0],
+        type: 'Branch Consolidation',
+        branch_name: group.branch_name,
+        pure_gold_change: -group.totalPureGoldGiven,
+        impure_gold_change: group.totalImpureGoldReceived,
+        calculated_pure_gold: group.totalImpureGoldReceived * 0.92,
+        pure_silver_change: -group.totalPureSilverGiven,
+        impure_silver_change: group.totalImpureSilverReceived,
+        calculated_pure_silver: group.totalImpureSilverReceived * 0.92,
+        cash_change: netCash,
+        details: `Approved daily ledger for ${group.branch_name} on ${group.iso_date}. Pure Gold Given: ${group.totalPureGoldGiven.toFixed(3)}g, Impure Gold Recv: ${group.totalImpureGoldReceived.toFixed(3)}g, Net Cash: ₹${netCash.toLocaleString('en-IN')}.`
+      };
+
+      const { error: insertError } = await supabase
+        .from('super_admin_ledger')
+        .insert([newEntry]);
+
+      if (insertError) throw insertError;
+
+      setConfirmReportId(null);
       clearAllDataCaches();
       fetchData();
     } catch (e) {
@@ -809,7 +802,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               onClick={() => {
                 if (selectedBranchForApproval) {
                   setSelectedBranchForApproval(null);
-                  setConfirmStep(0);
+                  setConfirmReportId(null);
                 } else {
                   setLedgerMode('prompt');
                 }
@@ -857,7 +850,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       key={idx} 
                       onClick={() => {
                         setSelectedBranchForApproval(branchName);
-                        setConfirmStep(0);
+                        setConfirmReportId(null);
                       }}
                       className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer overflow-hidden animate-fade-in group"
                     >
@@ -895,7 +888,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 .map((group, idx) => {
                   const netCash = group.totalCashReceived - group.totalCashPaid;
                   return (
-                    <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden animate-fade-in">
+                    <div key={idx} className="luxury-card bg-white rounded-[2rem] border border-outline-variant/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden animate-fade-in mb-6">
                       <div className="p-5 border-b border-outline-variant/10 flex justify-between items-center bg-slate-50">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-[#003366]/10 flex items-center justify-center text-[#003366]">
@@ -962,100 +955,107 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                       {expandedGroups[`${group.iso_date}_${group.branch_name}`] && (
                         <div className="px-6 pb-6 border-t border-outline-variant/10 pt-4 space-y-3 bg-[#F8FAFC] animate-fade-in">
                           <div className="space-y-2.5">
-                            {group.entries.map((entry: any, eIdx: number) => {
-                              return (
-                                <div key={eIdx} className="bg-white p-4 rounded-2xl border border-outline-variant/10 shadow-sm text-left">
-                                  <div className="flex justify-between items-start mb-2">
-                                    <div>
-                                      <p className="font-bold text-sm text-primary">{entry.customer_name}</p>
-                                      <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">
-                                        {entry.transaction_type} • {entry.id}
-                                      </p>
-                                    </div>
-                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                                      entry.status === 'Completed' ? 'bg-success/15 text-success' : 'bg-orange-500/10 text-orange-600'
-                                    }`}>
-                                      {entry.status}
-                                    </span>
-                                  </div>
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/5 text-xs">
-                                    {Number(entry.pure_gold_out || 0) > 0 && (
+                            {group.entries.length === 0 ? (
+                              <div className="text-center py-6 bg-white rounded-2xl border border-dashed border-outline-variant/30 text-outline text-xs font-semibold">
+                                No transactions recorded for this day.
+                              </div>
+                            ) : (
+                              group.entries.map((entry: any, eIdx: number) => {
+                                return (
+                                  <div key={eIdx} className="bg-white p-4 rounded-2xl border border-outline-variant/10 shadow-sm text-left">
+                                    <div className="flex justify-between items-start mb-2">
                                       <div>
-                                        <span className="text-[9px] uppercase font-bold text-outline">Pure Gold Out</span>
-                                        <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
-                                      </div>
-                                    )}
-                                    {Number(entry.impure_gold_in || 0) > 0 && (
-                                      <div>
-                                        <span className="text-[9px] uppercase font-bold text-outline">Impure Gold In</span>
-                                        <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
-                                      </div>
-                                    )}
-                                    {Number(entry.pure_silver_out || 0) > 0 && (
-                                      <div>
-                                        <span className="text-[9px] uppercase font-bold text-outline">Pure Silver Out</span>
-                                        <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
-                                      </div>
-                                    )}
-                                    {Number(entry.impure_silver_in || 0) > 0 && (
-                                      <div>
-                                        <span className="text-[9px] uppercase font-bold text-outline">Impure Silver In</span>
-                                        <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
-                                      </div>
-                                    )}
-                                    {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
-                                      <div>
-                                        <span className="text-[9px] uppercase font-bold text-outline">Cash</span>
-                                        <p className="font-bold text-emerald-600">
-                                          {Number(entry.cash_received || 0) > 0 ? `+₹${entry.cash_received.toLocaleString()}` : `-₹${entry.cash_paid.toLocaleString()}`}
+                                        <p className="font-bold text-sm text-primary">{entry.customer_name}</p>
+                                        <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">
+                                          {entry.transaction_type} • {entry.id}
                                         </p>
                                       </div>
-                                    )}
+                                      <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                                        entry.status === 'Completed' ? 'bg-success/15 text-success' : 'bg-orange-500/10 text-orange-600'
+                                      }`}>
+                                        {entry.status}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/5 text-xs">
+                                      {Number(entry.pure_gold_out || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[9px] uppercase font-bold text-outline">Pure Gold Out</span>
+                                          <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.impure_gold_in || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[9px] uppercase font-bold text-outline">Impure Gold In</span>
+                                          <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.pure_silver_out || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[9px] uppercase font-bold text-outline">Pure Silver Out</span>
+                                          <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {Number(entry.impure_silver_in || 0) > 0 && (
+                                        <div>
+                                          <span className="text-[9px] uppercase font-bold text-outline">Impure Silver In</span>
+                                          <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
+                                        </div>
+                                      )}
+                                      {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
+                                        <div>
+                                          <span className="text-[9px] uppercase font-bold text-outline">Cash</span>
+                                          <p className="font-bold text-emerald-600">
+                                            {Number(entry.cash_received || 0) > 0 ? `+₹${entry.cash_received.toLocaleString()}` : `-₹${entry.cash_paid.toLocaleString()}`}
+                                          </p>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })
+                            )}
                           </div>
                         </div>
                       )}
+
+                      {/* Confirm & Merge action button inside card */}
+                      <div className="px-6 py-4 border-t border-outline-variant/10 flex justify-end bg-slate-50/50">
+                        <button
+                          onClick={() => {
+                            if (confirmReportId === group.report_id) {
+                              handleApproveBranchReport(group);
+                            } else {
+                              setConfirmReportId(group.report_id);
+                            }
+                          }}
+                          disabled={approving}
+                          className={`w-full sm:w-auto px-6 py-2.5 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-md hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${
+                            confirmReportId === group.report_id
+                              ? 'bg-gradient-to-r from-error to-red-600 shadow-red-500/30 hover:shadow-red-500/50' 
+                              : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/30 hover:shadow-emerald-500/50'
+                          }`}
+                        >
+                          {approving && confirmReportId === group.report_id ? (
+                            <>
+                              <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
+                              Merging...
+                            </>
+                          ) : confirmReportId === group.report_id ? (
+                            <>
+                              <span className="material-symbols-outlined text-xs">warning</span>
+                              Are you sure? Click again!
+                            </>
+                          ) : (
+                            <>
+                              <span className="material-symbols-outlined text-xs">fact_check</span>
+                              Confirm & Merge Report
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
-
-              <div className="mt-8 flex justify-end">
-                <button
-                  onClick={() => {
-                    if (confirmStep === 0) {
-                      setConfirmStep(1);
-                    } else {
-                      handleApproveBranch(selectedBranchForApproval);
-                    }
-                  }}
-                  disabled={approving}
-                  className={`w-full sm:w-auto px-10 py-4 text-white rounded-[1.5rem] font-bold text-sm uppercase tracking-widest shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:transform-none disabled:shadow-none ${
-                    confirmStep === 1 
-                      ? 'bg-gradient-to-r from-error to-red-600 shadow-red-500/30 hover:shadow-red-500/50 animate-pulse' 
-                      : 'bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-emerald-500/30 hover:shadow-emerald-500/50'
-                  }`}
-                >
-                  {approving ? (
-                    <>
-                      <span className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>
-                      Merging Data...
-                    </>
-                  ) : confirmStep === 1 ? (
-                    <>
-                      <span className="material-symbols-outlined">warning</span>
-                      Are you sure? Click again to execute!
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined">fact_check</span>
-                      Confirm & Merge Branch Data
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           )}
         </main>
