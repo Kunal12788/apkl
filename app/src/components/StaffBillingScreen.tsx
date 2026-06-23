@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
+import { deleteStorageImagesForTasks, deleteStorageImagesByUrls } from '../utils/storageUtils';
 
 type TabView = 'all' | 'customer';
 
@@ -232,6 +233,9 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
            const isTask = txn.id.startsWith('TASK-');
            const targetTable = isTask ? 'tasks' : 'transactions';
            const targetId = isTask ? txn.id.replace('TASK-', '') : txn.id;
+           if (isTask) {
+             await deleteStorageImagesForTasks([targetId]);
+           }
            await supabase.from(targetTable).delete().eq('id', targetId);
            window.dispatchEvent(new Event('databaseSync'));
            onClose();
@@ -643,6 +647,20 @@ export const StaffBillingScreen: React.FC = () => {
     if (!window.confirm(`Are you sure you want to permanently delete customer ${customerName}? This will erase ALL their tasks and transactions.`)) return;
     
     try {
+      const { data: customerTasks } = await supabase
+        .from('tasks')
+        .select('images, audit_images')
+        .or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
+
+      if (customerTasks && customerTasks.length > 0) {
+        const urls: string[] = [];
+        customerTasks.forEach(t => {
+          if (Array.isArray(t.images)) urls.push(...t.images);
+          if (Array.isArray(t.audit_images)) urls.push(...t.audit_images);
+        });
+        await deleteStorageImagesByUrls(urls);
+      }
+
       const { error: txErr } = await supabase.from('transactions').delete().or(`customer_id.eq.${customerId},customer_name.eq.${customerName}`);
       if (txErr) throw txErr;
 

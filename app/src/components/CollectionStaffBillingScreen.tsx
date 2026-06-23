@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { computeCollectionStaffBillingTransactions } from '../utils/billingUtils';
+import { deleteStorageImagesForTasks } from '../utils/storageUtils';
 
 type TabView = 'all' | 'customer';
 
@@ -245,6 +246,9 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
            const isTask = txn.id.startsWith('TASK-');
            const targetTable = isTask ? 'tasks' : 'transactions';
            const targetId = isTask ? txn.id.replace('TASK-', '') : txn.id;
+           if (isTask) {
+             await deleteStorageImagesForTasks([targetId]);
+           }
            await supabase.from(targetTable).delete().eq('id', targetId);
            window.dispatchEvent(new Event('databaseSync'));
            onClose();

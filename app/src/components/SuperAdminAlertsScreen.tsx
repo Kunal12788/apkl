@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { deleteStorageImagesForTasks } from '../utils/storageUtils';
 
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -145,6 +146,10 @@ export const SuperAdminAlertsScreen: React.FC = () => {
           }
        }
        
+       if (tableName === 'tasks') {
+          await deleteStorageImagesForTasks([targetId]);
+       }
+
        await supabase.from(tableName).delete().eq('id', targetId);
        await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', req.id);
        

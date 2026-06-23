@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
+import { clearAllStorageImages } from '../utils/storageUtils';
 
 interface RefiningTransfer {
   metal: 'Gold' | 'Silver';
@@ -1138,6 +1139,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                     }
                   };
 
+                  await clearAllStorageImages();
                   await Promise.all([
                     deleteTable('super_admin_ledger'),
                     deleteTable('refining_transfers'),
