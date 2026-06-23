@@ -347,35 +347,10 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
 
-  const [unsettledEntries, setUnsettledEntries] = useState<any[]>([]);
-  const [settlementSearch, setSettlementSearch] = useState('');
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
   const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash'>('Pure Gold');
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
-
-  const fetchUnsettledEntries = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('ledger_entries')
-        .select('*')
-        .eq('transaction_type', 'Tunch Only')
-        .eq('status', 'No Settlement')
-        .eq('staff_id', currentUser)
-        .order('created_at', { ascending: false });
-      if (!error && data) {
-        setUnsettledEntries(data);
-      }
-    } catch (e) {
-      console.error('Error fetching unsettled entries:', e);
-    }
-  };
-
-  useEffect(() => {
-    if (activeTab === 'Settlement') {
-      fetchUnsettledEntries();
-    }
-  }, [activeTab]);
 
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
@@ -628,20 +603,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4 animate-fade-in">
-            {/* Search Input */}
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
-              <input 
-                type="text" 
-                value={settlementSearch}
-                onChange={(e) => setSettlementSearch(e.target.value)}
-                placeholder="Search returning customer by name, phone..." 
-                className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-10 text-sm font-medium text-primary placeholder-outline focus:outline-none input-sapphire-focus luxury-card transition-all" 
-              />
-              {settlementSearch && (
-                <span onClick={() => setSettlementSearch('')} className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-lg cursor-pointer hover:text-primary">close</span>
-              )}
-            </div>
+
 
             {/* List of unsettled tasks & entries */}
             <div className="space-y-4">
@@ -712,79 +674,9 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                 </div>
               )}
 
-              {/* Part 2: Ledger Entries Returning Lookup */}
-              {(() => {
-                const matched = unsettledEntries.filter(entry => {
-                  if (!settlementSearch) return true;
-                  const q = settlementSearch.toLowerCase();
-                  return (
-                    entry.customer_name?.toLowerCase().includes(q) ||
-                    entry.id?.toLowerCase().includes(q) ||
-                    entry.purity?.toLowerCase().includes(q)
-                  );
-                });
-                
-                return (
-                  <div className="space-y-3">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-outline px-1 pt-2">Returning Customer History Lookup</p>
-                    {matched.map((entry) => {
-                      const isSilver = Number(entry.impure_silver_in || 0) > 0;
-                      const impureWeight = isSilver ? Number(entry.impure_silver_in) : Number(entry.impure_gold_in);
-                      const metalName = isSilver ? 'Silver' : 'Gold';
-                      
-                      return (
-                        <div 
-                          key={entry.id} 
-                          onClick={() => {
-                            setSelectedSettlement(entry);
-                            setNewSettlementMode(isSilver ? 'Pure Silver' : 'Pure Gold');
-                            setCashAmountInput('');
-                          }} 
-                          className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-full flex items-center justify-center text-secondary bg-secondary-fixed/30">
-                                <span className="material-symbols-outlined text-xl glow-icon">hourglass_empty</span>
-                              </div>
-                              <div>
-                                <p className="font-headline font-bold text-primary text-[15px]">{entry.customer_name}</p>
-                                <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{entry.id} • {entry.date}</p>
-                              </div>
-                            </div>
-                            <span className="whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest bg-slate-100 text-slate-600 border-slate-200">
-                              Ledger Lookup
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10 mb-3">
-                            <div className="flex-grow flex flex-col items-center gap-0.5">
-                              <p className="text-[11px] font-black text-primary">{impureWeight.toFixed(3)}g</p>
-                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure {metalName}</p>
-                            </div>
-                            <div className="w-px h-4 bg-outline-variant/20"></div>
-                            <div className="flex-grow flex flex-col items-center gap-0.5">
-                              <p className="text-[11px] font-black text-secondary">{entry.purity || 'N/A'}%</p>
-                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Purity</p>
-                            </div>
-                          </div>
-
-                          <button 
-                            className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                            PERFORM SETTLEMENT
-                          </button>
-                        </div>
-                      );
-                    })}
-
-                    {matched.length === 0 && filteredTasks.length === 0 && (
-                      <div className="p-8 text-center text-outline text-sm font-medium">No unsettled entries found.</div>
-                    )}
-                  </div>
-                );
-              })()}
+              {filteredTasks.length === 0 && (
+                <div className="p-8 text-center text-outline text-sm font-medium">No unsettled entries found.</div>
+              )}
             </div>
           </div>
         )}
@@ -960,7 +852,6 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
                       toast.success('Task moved to In Progress. Awaiting Admin pricing approval.');
                       setSelectedSettlement(null);
-                      fetchUnsettledEntries();
                       return;
                     }
 
@@ -1092,7 +983,6 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
                     toast.success(isCashMode ? 'Cash settlement completed & billed successfully.' : 'Pure metal exchange settlement registered. Pending Admin allocation.');
                     setSelectedSettlement(null);
-                    fetchUnsettledEntries();
                   } catch (e) {
                     console.error(e);
                     alert('Failed to submit settlement.');
