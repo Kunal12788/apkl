@@ -130,6 +130,18 @@ export const SuperAdminAlertsScreen: React.FC = () => {
        const tableName = isTask ? 'tasks' : 'transactions';
        const targetId = isTask ? req.item_id.replace('TASK-', '') : req.item_id;
        
+       // Get info about the item being deleted to perform cascading deletions
+       let deletedTask: any = null;
+       let deletedTxn: any = null;
+       
+       if (tableName === 'tasks') {
+         const { data: taskData } = await supabase.from('tasks').select('*').eq('id', targetId).maybeSingle();
+         deletedTask = taskData;
+       } else if (tableName === 'transactions') {
+         const { data: txnData } = await supabase.from('transactions').select('*').eq('id', targetId).maybeSingle();
+         deletedTxn = txnData;
+       }
+       
        // Instant UI update
        setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
        
@@ -148,6 +160,52 @@ export const SuperAdminAlertsScreen: React.FC = () => {
        
        if (tableName === 'tasks') {
           await deleteStorageImagesForTasks([targetId]);
+       }
+
+       // Perform cascade deletions
+       if (tableName === 'transactions' && deletedTxn) {
+         // Forward Cascade: Delete any task in Settlement status matching the customer details
+         const customerName = deletedTxn.customer_name;
+         const customerId = deletedTxn.customer_id;
+         
+         let taskQuery = supabase.from('tasks').select('id, images').eq('status', 'Settlement');
+         if (customerId) {
+           taskQuery = taskQuery.or(`customer_name.eq."${customerName}",customer_id.eq."${customerId}"`);
+         } else {
+           taskQuery = taskQuery.eq('customer_name', customerName);
+         }
+         
+         const { data: matchingTasks } = await taskQuery;
+         if (matchingTasks && matchingTasks.length > 0) {
+           const matchingTaskIds = matchingTasks.map(t => t.id);
+           await deleteStorageImagesForTasks(matchingTaskIds);
+           await supabase.from('tasks').delete().in('id', matchingTaskIds);
+           
+           const cachedTasks = getCachedData('tasks_data');
+           if (cachedTasks) {
+             setCachedData('tasks_data', cachedTasks.filter((t: any) => !matchingTaskIds.includes(t.id)));
+           }
+         }
+       } else if (tableName === 'tasks' && deletedTask) {
+         // Reverse Cascade: Delete any transactions matching the deleted task's details
+         const customerName = deletedTask.customer_name;
+         const isoDate = deletedTask.iso_date;
+         
+         const { data: matchingTxns } = await supabase
+           .from('transactions')
+           .select('id')
+           .eq('customer_name', customerName)
+           .eq('iso_date', isoDate);
+           
+         if (matchingTxns && matchingTxns.length > 0) {
+           const matchingTxnIds = matchingTxns.map(t => t.id);
+           await supabase.from('transactions').delete().in('id', matchingTxnIds);
+           
+           const cachedTx = getCachedData('tx_data');
+           if (cachedTx) {
+             setCachedData('tx_data', cachedTx.filter((t: any) => !matchingTxnIds.includes(t.id)));
+           }
+         }
        }
 
        await supabase.from(tableName).delete().eq('id', targetId);

@@ -1072,6 +1072,7 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filterBySubmission = (t: Task): boolean => {
+    if (t.status === 'Settlement') return true;
     if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
       return !t.staffSubmittedAt && !t.adminSubmittedAt;
     }
@@ -1779,12 +1780,40 @@ export const StaffTasksScreen: React.FC = () => {
                           </div>
                         </div>
 
-                        <button 
-                          className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                          PERFORM SETTLEMENT
-                        </button>
+                        <div className="flex gap-2.5">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSettlement({
+                                id: task.id,
+                                customer_name: task.customerName,
+                                date: task.dateGiven,
+                                impure_gold_in: isSilver ? 0 : impureWeight,
+                                impure_silver_in: isSilver ? impureWeight : 0,
+                                purity: task.purity,
+                                isTask: true,
+                                task: task
+                              });
+                              setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
+                              setCashAmountInput('');
+                            }}
+                            className="flex-grow py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                            PERFORM SETTLEMENT
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTask(task.id);
+                            }}
+                            className="w-12 h-12 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold rounded-xl transition-all duration-300 active:scale-[0.95] flex items-center justify-center shrink-0 shadow-sm"
+                            title="Delete Task"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1868,15 +1897,13 @@ export const StaffTasksScreen: React.FC = () => {
                 <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Choose Settlement Mode</p>
                 
                 <div className="flex gap-2">
-                  {selectedSettlement.task?.settlementCondition?.includes('Only Tunch') ? (
-                    <button 
-                      type="button" 
-                      className="flex-1 py-2 rounded-lg text-[10px] font-bold border bg-secondary text-white border-transparent"
-                    >
-                      Only Tunch
-                    </button>
-                  ) : (
-                    (Number(selectedSettlement.impure_silver_in || 0) > 0 ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']).map(mode => (
+                  {(() => {
+                    const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                    const hasOnlyTunch = selectedSettlement.task?.settlementCondition?.includes('Only Tunch') || selectedSettlement.transaction_type === 'Tunch Only';
+                    const options = hasOnlyTunch
+                      ? (isSilver ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash'])
+                      : (isSilver ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']);
+                    return options.map(mode => (
                       <button 
                         key={mode} type="button" 
                         onClick={() => setNewSettlementMode(mode as any)}
@@ -1884,8 +1911,8 @@ export const StaffTasksScreen: React.FC = () => {
                       >
                         {mode}
                       </button>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </div>
 
                 {newSettlementMode === 'Only Tunch' ? (
@@ -2065,7 +2092,7 @@ export const StaffTasksScreen: React.FC = () => {
                       }
                     }
 
-                    const isOnlyTunch = newSettlementMode === 'Only Tunch' || selectedSettlement.task?.settlementCondition?.includes('Only Tunch');
+                    const isOnlyTunch = newSettlementMode === 'Only Tunch';
                     const ledgerUpdates: any = {};
 
                     if (isOnlyTunch) {
@@ -2111,6 +2138,11 @@ export const StaffTasksScreen: React.FC = () => {
                       ledgerUpdates.transaction_type = 'Exchange';
                       ledgerUpdates.status = 'Completed';
                       ledgerUpdates.cash_paid = cashToPay;
+                      if (isSilver) {
+                        ledgerUpdates.impure_silver_in = impure;
+                      } else {
+                        ledgerUpdates.impure_gold_in = impure;
+                      }
                       
                       // Also create a billing transaction
                       const newTxn = {
@@ -2143,11 +2175,13 @@ export const StaffTasksScreen: React.FC = () => {
                         ledgerUpdates.pure_silver_out = 0;
                         ledgerUpdates.pure_gold_due = 0;
                         ledgerUpdates.pure_gold_out = 0;
+                        ledgerUpdates.impure_silver_in = impure;
                       } else {
                         ledgerUpdates.pure_gold_due = calculatedPure;
                         ledgerUpdates.pure_gold_out = 0;
                         ledgerUpdates.pure_silver_due = 0;
                         ledgerUpdates.pure_silver_out = 0;
+                        ledgerUpdates.impure_gold_in = impure;
                       }
                     }
 

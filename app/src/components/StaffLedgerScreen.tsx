@@ -412,10 +412,10 @@ export const StaffLedgerScreen: React.FC = () => {
     return allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
   }, [allocations, user?.role]);
 
-  const totalPureGiven = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
-  const totalPureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.pureGoldIn || 0) : (e.pureSilverIn || 0)), 0), [entries, activeMetal]);
-  const totalImpureReceived = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
-  const totalImpureRefined = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
+  const totalPureGiven = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldOut : e.pureSilverOut), 0), [entries, activeMetal]);
+  const totalPureReceived = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? (e.pureGoldIn || 0) : (e.pureSilverIn || 0)), 0), [entries, activeMetal]);
+  const totalImpureReceived = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn), 0), [entries, activeMetal]);
+  const totalImpureRefined = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? (e.impureGoldOut || 0) : (e.impureSilverOut || 0)), 0), [entries, activeMetal]);
 
   const totalAllocatedCash = React.useMemo(() => {
     if (user?.role === 'Admin') {
@@ -432,8 +432,8 @@ export const StaffLedgerScreen: React.FC = () => {
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
   const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
   
-  const pendingPureLiability = React.useMemo(() => entries.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
-  const pendingCashLiability = React.useMemo(() => entries.reduce((s, e) => e.pendingCashLiability ? s + (e.cashAmount || 0) : s, 0), [entries]);
+  const pendingPureLiability = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
+  const pendingCashLiability = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => e.pendingCashLiability ? s + (e.cashAmount || 0) : s, 0), [entries]);
 
   const combinedHistory = React.useMemo(() => {
     const history: any[] = [];
@@ -695,13 +695,13 @@ export const StaffLedgerScreen: React.FC = () => {
 
       if (isAdmin) {
         // --- 1. Compute values for Branch Daily Report ---
-        const todayEntries = entries.filter(e => e.isoDate === today);
+        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only');
 
         const tAllocGold = allocations.filter(a => a.staff_id === null && a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
         const tAllocSilver = allocations.filter(a => a.staff_id === null && a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
         const tAllocCash = allocations.filter(a => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
 
-        const pastEntries = entries.filter(e => e.isoDate < today);
+        const pastEntries = entries.filter(e => e.isoDate < today && e.transactionType !== 'Tunch Only');
 
         const pastGoldUsed = pastEntries.reduce((s, e) => s + e.pureGoldOut, 0);
         const pastSilverUsed = pastEntries.reduce((s, e) => s + e.pureSilverOut, 0);
@@ -767,8 +767,8 @@ export const StaffLedgerScreen: React.FC = () => {
         const [r1, r2, r3, r4, r5] = await Promise.all([
           supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
           supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
+          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
           supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null)
         ]);
 
@@ -784,8 +784,8 @@ export const StaffLedgerScreen: React.FC = () => {
         const [r1, r2, r3, r4, r5] = await Promise.all([
           supabase.from('ledger_entries').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null),
           supabase.from('transactions').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
-          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
-          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null),
+          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null).neq('status', 'Settlement'),
+          supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null).neq('status', 'Settlement'),
           supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('staff_submitted_at', null)
         ]);
 
