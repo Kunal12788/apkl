@@ -518,7 +518,6 @@ export const StaffDashboardScreen: React.FC = () => {
 
 
 
-        {isAdminOrSuper && (
           <>
             {/* 1. Top Section: Total Cash Collected hero card */}
             <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
@@ -565,7 +564,6 @@ export const StaffDashboardScreen: React.FC = () => {
               </div>
             </section>
           </>
-        )}
 
         {/* 3. Third Section: Job Revenue Analytics */}
         <section className="space-y-3 relative z-10">

@@ -120,7 +120,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [hasActiveDataToSubmit, setHasActiveDataToSubmit] = useState(false);
 
   const [hasUnsubmittedStaffData, setHasUnsubmittedStaffData] = useState(false);
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
@@ -246,8 +246,30 @@ export const StaffLedgerScreen: React.FC = () => {
       }
       setHasUnsubmittedStaffData(hasUnsubmitted);
 
+      let hasActiveData = false;
+      if (user?.role === 'Admin') {
+        const [aEntries, aAlloc, aTx, aTasks] = await Promise.all([
+          supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null),
+          supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+        ]);
+        const count = (aEntries.count || 0) + (aAlloc.count || 0) + (aTx.count || 0) + (aTasks.count || 0);
+        if (count > 0) hasActiveData = true;
+      } else if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
+        const [sEntries, sAlloc, sTx, sTasks] = await Promise.all([
+          supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
+          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
+          supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('created_by', userId).is('staff_submitted_at', null),
+          supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('created_by', userId).is('staff_submitted_at', null),
+        ]);
+        const count = (sEntries.count || 0) + (sAlloc.count || 0) + (sTx.count || 0) + (sTasks.count || 0);
+        if (count > 0) hasActiveData = true;
+      }
+      setHasActiveDataToSubmit(hasActiveData);
+
       // Apply clearance / submission filters
-      const hasDateSearch = startDate || endDate;
+      const hasDateSearch = !!startDate;
       if (!hasDateSearch) {
         if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
           entriesQuery = entriesQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
@@ -267,18 +289,10 @@ export const StaffLedgerScreen: React.FC = () => {
           tasksQuery = tasksQuery.is('admin_submitted_at', null);
         }
       } else {
-        if (startDate) {
-          entriesQuery = entriesQuery.gte('iso_date', startDate);
-          allocationsQuery = allocationsQuery.gte('iso_date', startDate);
-          txQuery = txQuery.gte('iso_date', startDate);
-          tasksQuery = tasksQuery.gte('iso_date', startDate);
-        }
-        if (endDate) {
-          entriesQuery = entriesQuery.lte('iso_date', endDate);
-          allocationsQuery = allocationsQuery.lte('iso_date', endDate);
-          txQuery = txQuery.lte('iso_date', endDate);
-          tasksQuery = tasksQuery.lte('iso_date', endDate);
-        }
+        entriesQuery = entriesQuery.eq('iso_date', startDate);
+        allocationsQuery = allocationsQuery.eq('iso_date', startDate);
+        txQuery = txQuery.eq('iso_date', startDate);
+        tasksQuery = tasksQuery.eq('iso_date', startDate);
       }
 
       const [entriesRes, allocationsRes, txRes, tasksRes] = await Promise.all([
@@ -378,7 +392,7 @@ export const StaffLedgerScreen: React.FC = () => {
       supabase.removeChannel(tasksSub);
       window.removeEventListener('databaseSync', handleSync);
     };
-  }, [user?.branch_id, isSuperSa, startDate, endDate, user?.role]);
+  }, [user?.branch_id, isSuperSa, startDate, user?.role]);
 
   const totalAllocatedPureGold = React.useMemo(() => {
     if (user?.role === 'Admin') {
@@ -661,6 +675,11 @@ export const StaffLedgerScreen: React.FC = () => {
 
     if (isAdmin && hasUnsubmittedStaffData) {
       alert("You cannot submit the branch daily report until the branch staff has submitted their report.");
+      return;
+    }
+
+    if (!hasActiveDataToSubmit) {
+      alert("There is no active data to submit.");
       return;
     }
 
@@ -999,14 +1018,35 @@ export const StaffLedgerScreen: React.FC = () => {
         {!selectedEntry && (
           <div className="space-y-6 animate-fade-in">
               <>
-                <div className="flex justify-between items-end flex-wrap gap-2">
-                  <div>
-                    <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
-                    <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
+                <div className="flex justify-between items-end flex-wrap gap-2 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
+                        <div className="flex items-center gap-1.5 ml-2">
+                          <input 
+                            type="date" 
+                            value={startDate} 
+                            onChange={(e) => setStartDate(e.target.value)} 
+                            className="bg-white border border-outline-variant/30 rounded-lg px-2 py-1 text-xs font-semibold text-primary focus:outline-none focus:ring-1 focus:ring-primary w-32 shadow-sm"
+                          />
+                          {startDate && (
+                            <button 
+                              onClick={() => setStartDate('')}
+                              className="p-1 text-outline hover:text-primary transition-colors flex items-center justify-center rounded-md hover:bg-slate-100"
+                              title="Clear Date"
+                            >
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     {(user?.role === 'Staff' || user?.role === 'Collection Staff' || user?.role === 'Admin') && (() => {
-                      const isBtnDisabled = user?.role === 'Admin' && hasUnsubmittedStaffData;
+                      const isBtnDisabled = (user?.role === 'Admin' && hasUnsubmittedStaffData) || !hasActiveDataToSubmit;
                       return (
                         <div className="flex flex-col items-end gap-1">
                           <button 
@@ -1023,43 +1063,13 @@ export const StaffLedgerScreen: React.FC = () => {
                           </button>
                           {isBtnDisabled && (
                             <span className="text-[9px] text-error font-bold uppercase tracking-wider pl-1">
-                              Awaiting Staff Submission
+                              {!hasActiveDataToSubmit ? 'No Active Data' : 'Awaiting Staff Submission'}
                             </span>
                           )}
                         </div>
                       );
                     })()}
                   </div>
-                </div>
-
-                {/* Date range filter */}
-                <div className="bg-white rounded-2xl p-4 border border-outline-variant/20 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 w-full">
-                  <div className="flex-1 flex flex-col gap-1">
-                    <label className="text-[9px] uppercase font-bold text-outline tracking-wider">Start Date</label>
-                    <input 
-                      type="date" 
-                      value={startDate} 
-                      onChange={(e) => setStartDate(e.target.value)} 
-                      className="bg-surface-container/50 border border-outline-variant/30 rounded-xl p-2 text-xs font-semibold text-primary focus:outline-none focus:ring-1 focus:ring-primary w-full"
-                    />
-                  </div>
-                  <div className="flex-1 flex flex-col gap-1">
-                    <label className="text-[9px] uppercase font-bold text-outline tracking-wider">End Date</label>
-                    <input 
-                      type="date" 
-                      value={endDate} 
-                      onChange={(e) => setEndDate(e.target.value)} 
-                      className="bg-surface-container/50 border border-outline-variant/30 rounded-xl p-2 text-xs font-semibold text-primary focus:outline-none focus:ring-1 focus:ring-primary w-full"
-                    />
-                  </div>
-                  {(startDate || endDate) && (
-                    <button 
-                      onClick={() => { setStartDate(''); setEndDate(''); }}
-                      className="mt-4 sm:mt-0 px-4 py-2 border border-outline-variant/30 text-outline hover:text-primary transition-all rounded-xl font-bold text-xs uppercase tracking-widest shrink-0 self-end"
-                    >
-                      Clear
-                    </button>
-                  )}
                 </div>
 
                 {/* Live Stock Engine Summary */}
@@ -1091,7 +1101,6 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                 </div>
 
-                {isAdminOrSuper && (
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-emerald-500 shadow-lg mb-6">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-2">
@@ -1101,12 +1110,11 @@ export const StaffLedgerScreen: React.FC = () => {
                       <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">
-                          Allocated: {fmt(totalAllocatedCash)} • Billings: {fmt(billingCash)} • Outflow: {fmt(totalCashPaid)}
+                          Allocated Cash: {fmt(totalAllocatedCash)} • Cash Collected: {fmt(totalCashReceived + billingCash)} • Outflow: {fmt(totalCashPaid)}
                         </p>
                       </div>
                     </div>
                   </div>
-                )}
 
                 {currentImpureStock > 0 && (
                   <button 
