@@ -1025,29 +1025,37 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                                       </span>
                                     </div>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-outline-variant/5 text-xs">
-                                      {Number(entry.pure_gold_out || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[9px] uppercase font-bold text-outline">Pure Gold Out</span>
-                                          <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                      {entry.transaction_type === 'Tunch Only' ? (
+                                        <div className="col-span-2 sm:col-span-4 text-center py-1.5 bg-slate-50 rounded-xl">
+                                          <p className="text-[10px] uppercase font-bold text-outline-variant tracking-wider">Tunch Verification Only — No Stock Flow</p>
                                         </div>
-                                      )}
-                                      {Number(entry.impure_gold_in || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[9px] uppercase font-bold text-outline">Impure Gold In</span>
-                                          <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
-                                        </div>
-                                      )}
-                                      {Number(entry.pure_silver_out || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[9px] uppercase font-bold text-outline">Pure Silver Out</span>
-                                          <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
-                                        </div>
-                                      )}
-                                      {Number(entry.impure_silver_in || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[9px] uppercase font-bold text-outline">Impure Silver In</span>
-                                          <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
-                                        </div>
+                                      ) : (
+                                        <>
+                                          {Number(entry.pure_gold_out || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[9px] uppercase font-bold text-outline">Pure Gold Out</span>
+                                              <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.impure_gold_in || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[9px] uppercase font-bold text-outline">Impure Gold In</span>
+                                              <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.pure_silver_out || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[9px] uppercase font-bold text-outline">Pure Silver Out</span>
+                                              <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.impure_silver_in || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[9px] uppercase font-bold text-outline">Impure Silver In</span>
+                                              <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                        </>
                                       )}
                                       {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
                                         <div>
@@ -1613,29 +1621,37 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                                       </span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 pt-2 border-t border-outline-variant/5 text-[10px]">
-                                      {Number(entry.pure_gold_out || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[8px] uppercase font-bold text-outline">Pure Gold Out</span>
-                                          <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                      {entry.transaction_type === 'Tunch Only' ? (
+                                        <div className="col-span-2 text-center py-1 bg-slate-50 rounded-xl">
+                                          <p className="text-[8px] uppercase font-bold text-outline-variant tracking-wider">Tunch Verification Only — No Stock Flow</p>
                                         </div>
-                                      )}
-                                      {Number(entry.impure_gold_in || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[8px] uppercase font-bold text-outline">Impure Gold In</span>
-                                          <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
-                                        </div>
-                                      )}
-                                      {Number(entry.pure_silver_out || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[8px] uppercase font-bold text-outline">Pure Silver Out</span>
-                                          <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
-                                        </div>
-                                      )}
-                                      {Number(entry.impure_silver_in || 0) > 0 && (
-                                        <div>
-                                          <span className="text-[8px] uppercase font-bold text-outline">Impure Silver In</span>
-                                          <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
-                                        </div>
+                                      ) : (
+                                        <>
+                                          {Number(entry.pure_gold_out || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[8px] uppercase font-bold text-outline">Pure Gold Out</span>
+                                              <p className="font-bold text-[#755b00]">{entry.pure_gold_out.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.impure_gold_in || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[8px] uppercase font-bold text-outline">Impure Gold In</span>
+                                              <p className="font-bold text-amber-600">{entry.impure_gold_in.toFixed(3)}g ({entry.purity || 'N/A'}%)</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.pure_silver_out || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[8px] uppercase font-bold text-outline">Pure Silver Out</span>
+                                              <p className="font-bold text-slate-500">{entry.pure_silver_out.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                          {Number(entry.impure_silver_in || 0) > 0 && (
+                                            <div>
+                                              <span className="text-[8px] uppercase font-bold text-outline">Impure Silver In</span>
+                                              <p className="font-bold text-slate-600">{entry.impure_silver_in.toFixed(3)}g</p>
+                                            </div>
+                                          )}
+                                        </>
                                       )}
                                       {(Number(entry.cash_received || 0) > 0 || Number(entry.cash_paid || 0) > 0) && (
                                         <div>

@@ -983,7 +983,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [isVerificationOpen, setVerificationOpen] = useState(false);
   const [currentVerificationTask, setCurrentVerificationTask] = useState<any>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
-  const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash'>('Pure Gold');
+  const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash' | 'Only Tunch'>('Pure Gold');
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
   const showToast = (msg: string) => {
@@ -1218,19 +1218,23 @@ export const StaffTasksScreen: React.FC = () => {
     try {
       let updatedCondition = task.settlementCondition || '';
       const modeStr = details.paymentMode || 'Cash';
+      let nextStatus = 'Pending';
+      let progress = 90;
+
       if (task.workType === 'Tunch') {
         const condition = details.settlementCondition || task.settlementCondition || 'Only Tunch';
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
           ? `${condition} - [Collected] ${modeStr} ₹${details.serviceFee}` 
           : condition;
+
+        if (condition === 'Only Tunch') {
+          nextStatus = 'Settlement';
+        }
       } else {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
           ? `[Collected] ${modeStr} - ₹${details.serviceFee}` 
           : 'Service Fee';
       }
-
-      const nextStatus = 'Pending'; 
-      const progress = 90;
 
       const taskUpdates: any = {
         status: nextStatus,
@@ -1292,11 +1296,12 @@ export const StaffTasksScreen: React.FC = () => {
         if (condition === 'Only Tunch') {
           newLedgerEntry.transaction_type = 'Tunch Only';
           newLedgerEntry.status = 'No Settlement';
-          if (task.metal === 'Silver') {
-            newLedgerEntry.impure_silver_in = 0;
-          } else {
-            newLedgerEntry.impure_gold_in = 0;
-          }
+          newLedgerEntry.impure_gold_in = 0;
+          newLedgerEntry.impure_silver_in = 0;
+          newLedgerEntry.pure_gold_out = 0;
+          newLedgerEntry.pure_silver_out = 0;
+          newLedgerEntry.pure_gold_due = 0;
+          newLedgerEntry.pure_silver_due = 0;
           await supabase.from('ledger_entries').insert([newLedgerEntry]);
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
@@ -1421,75 +1426,78 @@ export const StaffTasksScreen: React.FC = () => {
       const finalCashAmount = cashAmount ? Number(cashAmount) : cashAmountToPay;
       const finalCashRate = cashRate ? Number(cashRate) : 0;
       const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+      const isOnlyTunch = task.settlementCondition?.includes('Only Tunch');
 
-      if (isCashSettlement && handlingMode === 'Front') {
-        // Front mode: Update the Staff's existing Pending Cash ledger entry with rate & amount
-        // Then create an Admin ledger entry for the cash payout
-        const { data: staffEntries } = await supabase
-          .from('ledger_entries')
-          .select('id')
-          .eq('customer_name', task.customerName)
-          .eq('status', 'Pending Cash')
-          .eq('pending_cash_liability', true)
-          .order('created_at', { ascending: false })
-          .limit(1);
+      if (!isOnlyTunch) {
+        if (isCashSettlement && handlingMode === 'Front') {
+          // Front mode: Update the Staff's existing Pending Cash ledger entry with rate & amount
+          // Then create an Admin ledger entry for the cash payout
+          const { data: staffEntries } = await supabase
+            .from('ledger_entries')
+            .select('id')
+            .eq('customer_name', task.customerName)
+            .eq('status', 'Pending Cash')
+            .eq('pending_cash_liability', true)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-        if (staffEntries && staffEntries.length > 0) {
-          await supabase.from('ledger_entries').update({
+          if (staffEntries && staffEntries.length > 0) {
+            await supabase.from('ledger_entries').update({
+              status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+              cash_rate_per_gram: finalCashRate,
+              cash_amount: finalCashAmount,
+              pending_cash_liability: !!task.pendingCashLiability
+            }).eq('id', staffEntries[0].id);
+          }
+
+          // Admin entry: records the cash disbursement
+          const adminEntry: any = {
+            id: entryId,
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: isoDateStr,
+            customer_name: task.customerName,
+            transaction_type: 'Exchange',
             status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+            purity: task.purity || '',
+            cash_paid: task.pendingCashLiability ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
+            cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
             cash_rate_per_gram: finalCashRate,
             cash_amount: finalCashAmount,
+            staff_id: user?.id || '',
+            pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+            impure_gold_in: 0, impure_silver_in: 0,
             pending_cash_liability: !!task.pendingCashLiability
-          }).eq('id', staffEntries[0].id);
-        }
+          };
+          await supabase.from('ledger_entries').insert([adminEntry]);
 
-        // Admin entry: records the cash disbursement
-        const adminEntry: any = {
-          id: entryId,
-          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          iso_date: isoDateStr,
-          customer_name: task.customerName,
-          transaction_type: 'Exchange',
-          status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
-          purity: task.purity || '',
-          cash_paid: task.pendingCashLiability ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
-          cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
-          cash_rate_per_gram: finalCashRate,
-          cash_amount: finalCashAmount,
-          staff_id: user?.id || '',
-          pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
-          impure_gold_in: 0, impure_silver_in: 0,
-          pending_cash_liability: !!task.pendingCashLiability
-        };
-        await supabase.from('ledger_entries').insert([adminEntry]);
-
-      } else {
-        // Back mode or non-cash: Single Admin entry with everything
-        const ledgerEntry: any = {
-          id: entryId,
-          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-          iso_date: isoDateStr,
-          customer_name: task.customerName,
-          transaction_type: 'Exchange',
-          status: (isCashSettlement && task.pendingCashLiability) ? 'Pending Cash' : 'Completed',
-          purity: task.purity || '',
-          cash_paid: (isCashSettlement && task.pendingCashLiability) ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
-          cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
-          cash_rate_per_gram: finalCashRate,
-          cash_amount: finalCashAmount,
-          staff_id: user?.id || '',
-          pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
-          pending_cash_liability: isCashSettlement ? !!task.pendingCashLiability : false
-        };
-
-        if (isSilver) {
-          ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
-          ledgerEntry.impure_gold_in = 0;
         } else {
-          ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
-          ledgerEntry.impure_silver_in = 0;
+          // Back mode or non-cash: Single Admin entry with everything
+          const ledgerEntry: any = {
+            id: entryId,
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: isoDateStr,
+            customer_name: task.customerName,
+            transaction_type: 'Exchange',
+            status: (isCashSettlement && task.pendingCashLiability) ? 'Pending Cash' : 'Completed',
+            purity: task.purity || '',
+            cash_paid: (isCashSettlement && task.pendingCashLiability) ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
+            cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+            cash_rate_per_gram: finalCashRate,
+            cash_amount: finalCashAmount,
+            staff_id: user?.id || '',
+            pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+            pending_cash_liability: isCashSettlement ? !!task.pendingCashLiability : false
+          };
+
+          if (isSilver) {
+            ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
+            ledgerEntry.impure_gold_in = 0;
+          } else {
+            ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
+            ledgerEntry.impure_silver_in = 0;
+          }
+          await supabase.from('ledger_entries').insert([ledgerEntry]);
         }
-        await supabase.from('ledger_entries').insert([ledgerEntry]);
       }
 
       // 3. Create billing transaction
@@ -1739,7 +1747,7 @@ export const StaffTasksScreen: React.FC = () => {
                             isTask: true,
                             task: task
                           });
-                          setNewSettlementMode(isSilver ? 'Pure Silver' : 'Pure Gold');
+                          setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
                           setCashAmountInput('');
                         }} 
                         className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
@@ -1860,18 +1868,34 @@ export const StaffTasksScreen: React.FC = () => {
                 <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Choose Settlement Mode</p>
                 
                 <div className="flex gap-2">
-                  {(Number(selectedSettlement.impure_silver_in || 0) > 0 ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']).map(mode => (
+                  {selectedSettlement.task?.settlementCondition?.includes('Only Tunch') ? (
                     <button 
-                      key={mode} type="button" 
-                      onClick={() => setNewSettlementMode(mode as any)}
-                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-colors ${newSettlementMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                      type="button" 
+                      className="flex-1 py-2 rounded-lg text-[10px] font-bold border bg-secondary text-white border-transparent"
                     >
-                      {mode}
+                      Only Tunch
                     </button>
-                  ))}
+                  ) : (
+                    (Number(selectedSettlement.impure_silver_in || 0) > 0 ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']).map(mode => (
+                      <button 
+                        key={mode} type="button" 
+                        onClick={() => setNewSettlementMode(mode as any)}
+                        className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-colors ${newSettlementMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))
+                  )}
                 </div>
 
-                {newSettlementMode === 'Cash' ? (
+                {newSettlementMode === 'Only Tunch' ? (
+                  <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Tunch Verification Only</span>
+                    <p className="text-xs font-semibold text-primary">
+                      This is a purity verification only. No metal stock flow or cash payout is required.
+                    </p>
+                  </div>
+                ) : newSettlementMode === 'Cash' ? (
                   selectedSettlement.isTask ? (
                     <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
                       <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Workflow</span>
@@ -2041,11 +2065,50 @@ export const StaffTasksScreen: React.FC = () => {
                       }
                     }
 
-                    const ledgerUpdates: any = {
-                      transaction_type: 'Exchange'
-                    };
+                    const isOnlyTunch = newSettlementMode === 'Only Tunch' || selectedSettlement.task?.settlementCondition?.includes('Only Tunch');
+                    const ledgerUpdates: any = {};
 
-                    if (isCashMode) {
+                    if (isOnlyTunch) {
+                      ledgerUpdates.transaction_type = 'Tunch Only';
+                      ledgerUpdates.status = 'Completed';
+
+                      // For normal tasks completed by staff (no source), parse and insert service fee if present
+                      const taskSource = selectedSettlement.task?.source;
+                      if (!taskSource) {
+                        let feeAmount = 0;
+                        let feeMode = 'Cash';
+                        const cond = selectedSettlement.task?.settlementCondition || '';
+                        if (cond.includes('₹')) {
+                          const parts = cond.split('₹');
+                          if (parts.length > 1) {
+                            feeAmount = parseFloat(parts[1].replace(/[^\d.]/g, '')) || 0;
+                          }
+                          if (cond.toLowerCase().includes('upi')) {
+                            feeMode = 'UPI';
+                          }
+                        }
+
+                        if (feeAmount > 0) {
+                          const feeTxn = {
+                            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                            customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
+                            customer_name: selectedSettlement.customer_name,
+                            metal: isSilver ? 'Silver' : 'Gold',
+                            type: feeMode,
+                            work_type: 'Tunch',
+                            amount: String(feeAmount),
+                            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                            iso_date: new Date().toISOString().split('T')[0],
+                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            status: 'Paid',
+                            details: 'Service Fee (Tunch Only)',
+                            created_by: user?.id || ''
+                          };
+                          await supabase.from('transactions').insert([feeTxn]);
+                        }
+                      }
+                    } else if (isCashMode) {
+                      ledgerUpdates.transaction_type = 'Exchange';
                       ledgerUpdates.status = 'Completed';
                       ledgerUpdates.cash_paid = cashToPay;
                       
@@ -2072,6 +2135,7 @@ export const StaffTasksScreen: React.FC = () => {
                       };
                       await supabase.from('transactions').insert([newTxn]);
                     } else {
+                      ledgerUpdates.transaction_type = 'Exchange';
                       // Pure metal due
                       ledgerUpdates.status = 'Pending Pure';
                       if (isSilver) {

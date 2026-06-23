@@ -440,24 +440,30 @@ export const StaffLedgerScreen: React.FC = () => {
     
     // Add allocations
     allocations.forEach(a => {
-      history.push({
-        type: 'allocation',
-        id: a.id,
-        date: new Date(a.created_at || new Date()).toLocaleString(),
-        timestamp: new Date(a.created_at || new Date()).getTime(),
-        metal: a.metal,
-        pureWeight: Number(a.pure_weight),
-        cashAmount: Number(a.cash_amount)
-      });
+      if (a.metal === activeMetal || Number(a.cash_amount) > 0) {
+        history.push({
+          type: 'allocation',
+          id: a.id,
+          date: new Date(a.created_at || new Date()).toLocaleString(),
+          timestamp: new Date(a.created_at || new Date()).getTime(),
+          metal: a.metal,
+          pureWeight: Number(a.pure_weight),
+          cashAmount: Number(a.cash_amount)
+        });
+      }
     });
 
     // Add entries
     entries.forEach(e => {
-      const isTakenPureGold = e.transactionType === 'Pure Gold Sale' || e.pureGoldOut > 0;
-      const isTakenCash = e.cashPaid > 0;
-      const isRefining = e.transactionType === 'Refining Dispatch';
+      const isGold = activeMetal === 'Gold';
+      const hasGold = e.pureGoldOut > 0 || e.pureGoldDue > 0 || e.impureGoldIn > 0 || (e.impureGoldOut || 0) > 0 || (e.pureGoldIn || 0) > 0;
+      const hasSilver = e.pureSilverOut > 0 || e.pureSilverDue > 0 || e.impureSilverIn > 0 || (e.impureSilverOut || 0) > 0 || (e.pureSilverIn || 0) > 0;
+      const hasCash = e.cashPaid > 0 || e.cashReceived > 0 || (e.cashAmount || 0) > 0;
+      const isTunchOnly = e.transactionType === 'Tunch Only';
+
+      const isMatch = isGold ? (hasGold || isTunchOnly || hasCash) : (hasSilver || isTunchOnly || hasCash);
       
-      if (isTakenPureGold || isTakenCash || isRefining) {
+      if (isMatch) {
         history.push({
           type: 'entry',
           id: e.id,
@@ -469,7 +475,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
     // Sort descending by timestamp
     return history.sort((a, b) => b.timestamp - a.timestamp);
-  }, [allocations, entries]);
+  }, [allocations, entries, activeMetal]);
 
   const handleRefineConfirm = async () => {
     const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -950,52 +956,83 @@ export const StaffLedgerScreen: React.FC = () => {
               </div>
 
               <div className="p-6 space-y-6 bg-white">
-                <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-b border-outline-variant/20 pb-5">
-                  <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Impure Gold In</p>
-                    <p className="font-headline text-sm font-bold text-primary">{fmtG(selectedEntry.impureGoldIn)}</p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Gold Out</p>
-                    <p className="font-headline text-sm font-bold text-secondary">{fmtG(selectedEntry.pureGoldOut)}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Gold Due</p>
-                    <p className={`font-headline text-sm font-bold ${selectedEntry.pureGoldDue > 0 ? 'text-error' : 'text-primary'}`}>{fmtG(selectedEntry.pureGoldDue)}</p>
-                  </div>
-                  <div className="space-y-1 text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Purity Evaluated</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.purity || 'N/A'}</p>
-                  </div>
-                  {selectedEntry.cashReceived > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Received</p>
-                      <p className="font-headline text-sm font-bold text-emerald-600">{isAdminOrSuper ? fmt(selectedEntry.cashReceived) : '[Restricted]'}</p>
+                {selectedEntry.transactionType === 'Tunch Only' ? (
+                  <div className="p-5 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10 text-center space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-outline-variant tracking-widest">Tunch Verification Only</p>
+                    <p className="text-xs text-outline font-semibold">No stock flow or cash settlement required.</p>
+                    {selectedEntry.purity && (
+                      <div className="pt-2 border-t border-outline-variant/10">
+                        <span className="text-[9px] uppercase font-bold text-outline block">Purity Evaluated</span>
+                        <p className="font-headline text-base font-extrabold text-primary">{selectedEntry.purity}%</p>
+                      </div>
+                    )}
+                    <div className="pt-2 border-t border-outline-variant/10 flex justify-between items-center text-xs">
+                      <span className="text-[9px] uppercase font-bold text-outline">Status</span>
+                      <p className="font-bold text-primary">{selectedEntry.status}</p>
                     </div>
-                  )}
-                  {selectedEntry.cashPaid > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Paid</p>
-                      <p className="font-headline text-sm font-bold text-red-600">{isAdminOrSuper ? fmt(selectedEntry.cashPaid) : '[Restricted]'}</p>
-                    </div>
-                  )}
-                  {selectedEntry.cashAmount !== undefined && selectedEntry.cashAmount > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Amount</p>
-                      <p className="font-headline text-sm font-bold text-primary">{isAdminOrSuper ? fmt(selectedEntry.cashAmount || 0) : '[Restricted]'}</p>
-                    </div>
-                  )}
-                  {selectedEntry.cashRatePerGram !== undefined && selectedEntry.cashRatePerGram > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Rate / Gram</p>
-                      <p className="font-headline text-sm font-bold text-primary">{isAdminOrSuper ? fmt(selectedEntry.cashRatePerGram || 0) : '[Restricted]'}</p>
-                    </div>
-                  )}
-                  <div className="space-y-1 text-right">
-                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Status</p>
-                    <p className="font-headline text-sm font-bold text-primary">{selectedEntry.status}</p>
                   </div>
-                </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-b border-outline-variant/20 pb-5">
+                    <div className="space-y-1">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">
+                        {activeMetal === 'Gold' ? 'Impure Gold In' : 'Impure Silver In'}
+                      </p>
+                      <p className="font-headline text-sm font-bold text-primary">
+                        {activeMetal === 'Gold' ? fmtG(selectedEntry.impureGoldIn) : fmtG(selectedEntry.impureSilverIn)}
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">
+                        {activeMetal === 'Gold' ? 'Pure Gold Out' : 'Pure Silver Out'}
+                      </p>
+                      <p className="font-headline text-sm font-bold text-secondary">
+                        {activeMetal === 'Gold' ? fmtG(selectedEntry.pureGoldOut) : fmtG(selectedEntry.pureSilverOut)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">
+                        {activeMetal === 'Gold' ? 'Pure Gold Due' : 'Pure Silver Due'}
+                      </p>
+                      <p className={`font-headline text-sm font-bold ${
+                        (activeMetal === 'Gold' ? selectedEntry.pureGoldDue : selectedEntry.pureSilverDue) > 0 ? 'text-error' : 'text-primary'
+                      }`}>
+                        {activeMetal === 'Gold' ? fmtG(selectedEntry.pureGoldDue) : fmtG(selectedEntry.pureSilverDue)}
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-right">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Purity Evaluated</p>
+                      <p className="font-headline text-sm font-bold text-primary">{selectedEntry.purity || 'N/A'}</p>
+                    </div>
+                    {selectedEntry.cashReceived > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Received</p>
+                        <p className="font-headline text-sm font-bold text-emerald-600">{isAdminOrSuper ? fmt(selectedEntry.cashReceived) : '[Restricted]'}</p>
+                      </div>
+                    )}
+                    {selectedEntry.cashPaid > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Paid</p>
+                        <p className="font-headline text-sm font-bold text-red-600">{isAdminOrSuper ? fmt(selectedEntry.cashPaid) : '[Restricted]'}</p>
+                      </div>
+                    )}
+                    {selectedEntry.cashAmount !== undefined && selectedEntry.cashAmount > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Amount</p>
+                        <p className="font-headline text-sm font-bold text-primary">{isAdminOrSuper ? fmt(selectedEntry.cashAmount || 0) : '[Restricted]'}</p>
+                      </div>
+                    )}
+                    {selectedEntry.cashRatePerGram !== undefined && selectedEntry.cashRatePerGram > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Rate / Gram</p>
+                        <p className="font-headline text-sm font-bold text-primary">{isAdminOrSuper ? fmt(selectedEntry.cashRatePerGram || 0) : '[Restricted]'}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1 text-right">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Status</p>
+                      <p className="font-headline text-sm font-bold text-primary">{selectedEntry.status}</p>
+                    </div>
+                  </div>
+                )}
 
                 {isAdmin && (selectedEntry.status.includes('Pending') || selectedEntry.status === 'Pending Pure') && (
                   <div className="pt-2 flex gap-3">
@@ -1314,22 +1351,37 @@ export const StaffLedgerScreen: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10">
-                            <div className="flex-1 flex flex-col items-center gap-0.5">
-                              <p className="text-[11px] font-black text-primary">{fmtG(entry.impureGoldIn)}</p>
-                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure In</p>
+                          {entry.transactionType === 'Tunch Only' ? (
+                            <div className="px-3 py-2 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10 text-center">
+                              <p className="text-[9px] uppercase font-bold text-outline-variant tracking-wider">Tunch Verification Only — No Stock Flow</p>
+                              {entry.purity && (
+                                <p className="text-[11px] font-black text-primary mt-0.5">Purity: {entry.purity}%</p>
+                              )}
                             </div>
-                            <div className="w-px h-4 bg-outline-variant/20"></div>
-                            <div className="flex-1 flex flex-col items-center gap-0.5">
-                              <p className="text-[11px] font-black text-secondary">{fmtG(entry.pureGoldOut)}</p>
-                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure Out</p>
+                          ) : (
+                            <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10">
+                              <div className="flex-1 flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-primary">
+                                  {activeMetal === 'Gold' ? fmtG(entry.impureGoldIn) : fmtG(entry.impureSilverIn)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure In</p>
+                              </div>
+                              <div className="w-px h-4 bg-outline-variant/20"></div>
+                              <div className="flex-1 flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-secondary">
+                                  {activeMetal === 'Gold' ? fmtG(entry.pureGoldOut) : fmtG(entry.pureSilverOut)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure Out</p>
+                              </div>
+                              <div className="w-px h-4 bg-outline-variant/20"></div>
+                              <div className="flex-1 flex flex-col items-center gap-0.5">
+                                <p className={`text-[11px] font-black ${(activeMetal === 'Gold' ? entry.pureGoldDue : entry.pureSilverDue) > 0 ? 'text-error' : 'text-primary'}`}>
+                                  {activeMetal === 'Gold' ? fmtG(entry.pureGoldDue) : fmtG(entry.pureSilverDue)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Due</p>
+                              </div>
                             </div>
-                            <div className="w-px h-4 bg-outline-variant/20"></div>
-                            <div className="flex-1 flex flex-col items-center gap-0.5">
-                              <p className={`text-[11px] font-black ${entry.pureGoldDue > 0 ? 'text-error' : 'text-primary'}`}>{fmtG(entry.pureGoldDue)}</p>
-                              <p className="text-[7px] uppercase font-black text-outline tracking-widest">Due</p>
-                            </div>
-                          </div>
+                          )}
                         </div>
                       );
                     })}
