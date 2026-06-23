@@ -1022,22 +1022,22 @@ export const StaffLedgerScreen: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight">Daily Summary</h2>
-                        <div className="flex items-center gap-1.5 ml-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight whitespace-nowrap">Daily Summary</h2>
+                        <div className="flex items-center gap-1 ml-1">
                           <input 
                             type="date" 
                             value={startDate} 
                             onChange={(e) => setStartDate(e.target.value)} 
-                            className="bg-white border border-outline-variant/30 rounded-lg px-2 py-1 text-xs font-semibold text-primary focus:outline-none focus:ring-1 focus:ring-primary w-32 shadow-sm"
+                            className="bg-surface-container/30 border border-outline-variant/20 rounded-md px-1.5 py-0.5 text-[10px] uppercase font-bold text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:text-primary max-w-[105px] shadow-sm transition-colors cursor-pointer"
                           />
                           {startDate && (
                             <button 
                               onClick={() => setStartDate('')}
-                              className="p-1 text-outline hover:text-primary transition-colors flex items-center justify-center rounded-md hover:bg-slate-100"
+                              className="p-0.5 text-outline hover:text-error transition-colors flex items-center justify-center rounded-md"
                               title="Clear Date"
                             >
-                              <span className="material-symbols-outlined text-sm">close</span>
+                              <span className="material-symbols-outlined text-[14px]">close</span>
                             </button>
                           )}
                         </div>
