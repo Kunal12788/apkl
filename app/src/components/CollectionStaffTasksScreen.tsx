@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import toast from 'react-hot-toast';
+
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 
-type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'Settlement';
+type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
 interface Task {
   metal: 'Gold' | 'Silver';
@@ -165,69 +165,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
                   <p className={val}>{task.pieces}</p>
                 </div>
               )}
-              {(() => {
-                if (!task.settlementCondition) return null;
-                const lowerCond = task.settlementCondition.toLowerCase();
-                const isPureGold = lowerCond === 'tunch' || lowerCond.includes('pure gold') || lowerCond.includes('pure');
-                const isCash = lowerCond.includes('cash');
-
-                if (isPureGold) {
-                  return (
-                    <>
-                      <div>
-                        <span className={lbl}>Settlement Mode</span>
-                        <p className={val}>Pure Gold</p>
-                      </div>
-                      {task.pureWeight && (
-                        <div>
-                          <span className={lbl}>Pure Gold Weight</span>
-                          <p className={val}>{task.pureWeight}g</p>
-                        </div>
-                      )}
-                    </>
-                  );
-                }
-
-                if (isCash) {
-                  const parts = task.settlementCondition.split(' - ₹');
-                  const details = parts[0];
-                  const amount = parts.length > 1 ? parts[1] : null;
-
-                  return (
-                    <>
-                      <div>
-                        <span className={lbl}>Settlement Mode</span>
-                        <p className={val}>Cash</p>
-                      </div>
-                      {amount && (
-                        <div>
-                          <span className={lbl}>Cash Amount</span>
-                          <p className={val}>₹{amount}</p>
-                        </div>
-                      )}
-                      <div className="col-span-2">
-                        <span className={lbl}>Cash Details</span>
-                        <p className={val}>{details}</p>
-                      </div>
-                    </>
-                  );
-                }
-
-                return (
-                  <>
-                    <div>
-                      <span className={lbl}>Settlement Mode</span>
-                      <p className={val}>{task.settlementCondition}</p>
-                    </div>
-                    {task.pureWeight && (
-                      <div>
-                        <span className={lbl}>Pure Weight</span>
-                        <p className={val}>{task.pureWeight}g</p>
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
               {task.logoName && task.workType === 'Marking' && (
                 <div>
                   <span className={lbl}>Logo Markings</span>
@@ -347,11 +284,6 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
 
-  const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
-  const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash'>('Pure Gold');
-  const [cashAmountInput, setCashAmountInput] = useState('');
-  const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
-
   // Load tasks from cache synchronously on mount for 0ms delay
   const cachedTasks = getCachedData('tasks_data');
   const currentUser = user?.id || '';
@@ -462,16 +394,6 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const matchesSearch = (t: Task) => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase());
   
   const filteredTasks = tasks.filter(t => {
-     const isCash = t.settlementCondition?.toLowerCase().includes('cash');
-     if (activeTab === 'Pending') {
-        return (t.status === 'Pending' || (t.status === 'In Progress' && !isCash)) && matchesSearch(t);
-     }
-     if (activeTab === 'In Progress') {
-        return (t.status === 'In Progress' && isCash) && matchesSearch(t);
-     }
-     if (activeTab === 'Settlement') {
-        return t.status === 'Settlement' && matchesSearch(t);
-     }
      return t.status === activeTab && matchesSearch(t);
   });
 
@@ -521,15 +443,14 @@ export const CollectionStaffTasksScreen: React.FC = () => {
           <div 
             className="absolute top-1.5 bottom-1.5 left-1.5 bg-white rounded-full premium-shadow transition-transform duration-300 ease-out z-0"
             style={{
-              width: 'calc(25% - 3px)',
-              transform: `translateX(${['Pending', 'In Progress', 'Completed', 'Settlement'].indexOf(activeTab) * 100}%)`,
+              width: 'calc(33.333% - 4px)',
+              transform: `translateX(${['Pending', 'In Progress', 'Completed'].indexOf(activeTab) * 100}%)`,
             }}
           />
           {[
             { id: 'Pending', label: 'Pending' },
             { id: 'In Progress', label: 'In Progress' },
-            { id: 'Completed', label: 'Completed' },
-            { id: 'Settlement', label: 'Settlement' }
+            { id: 'Completed', label: 'Completed' }
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -551,8 +472,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
           })}
         </div>
 
-        {activeTab !== 'Settlement' ? (
-          <div className="space-y-4 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
             <div className="relative">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline text-lg">search</span>
               <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search by customer or ID..." className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary luxury-card focus:outline-none" />
@@ -560,9 +480,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
             <div className="space-y-4">
               {filteredTasks.map((task) => {
-                const isCash = task.settlementCondition?.toLowerCase().includes('cash');
                 return (
-                <div key={task.id} onClick={() => setSelectedTask(task)} className={`p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform ${isCash ? 'cash-luxury-card' : 'luxury-card border-outline-variant/10 bg-white bg-opacity-100'}`}>
+                <div key={task.id} onClick={() => setSelectedTask(task)} className={`p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform luxury-card border-outline-variant/10 bg-white bg-opacity-100`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`w-11 h-11 rounded-full flex items-center justify-center ${getWorkColor(task.workType)}`}>
@@ -601,85 +520,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               )}
             </div>
           </div>
-        ) : (
-          <div className="space-y-4 animate-fade-in">
 
-
-            {/* List of unsettled tasks & entries */}
-            <div className="space-y-4">
-              {/* Part 1: Tasks */}
-              {filteredTasks.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-primary px-1">Unsettled Work Orders ({filteredTasks.length})</p>
-                  {filteredTasks.map((task) => {
-                    const isSilver = task.metal === 'Silver';
-                    const impureWeight = parseFloat(task.impureWeight || '0');
-                    const metalName = isSilver ? 'Silver' : 'Gold';
-                    
-                    return (
-                      <div 
-                        key={task.id} 
-                        onClick={() => {
-                          setSelectedSettlement({
-                            id: task.id,
-                            customer_name: task.customerName,
-                            date: task.dateGiven,
-                            impure_gold_in: isSilver ? 0 : impureWeight,
-                            impure_silver_in: isSilver ? impureWeight : 0,
-                            purity: task.purity,
-                            isTask: true,
-                            task: task
-                          });
-                          setNewSettlementMode(isSilver ? 'Pure Silver' : 'Pure Gold');
-                          setCashAmountInput('');
-                        }} 
-                        className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
-                      >
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-11 h-11 rounded-full flex items-center justify-center text-primary bg-primary-fixed/30">
-                              <span className="material-symbols-outlined text-xl glow-icon">assignment</span>
-                            </div>
-                            <div>
-                              <p className="font-headline font-bold text-primary text-[15px]">{task.customerName}</p>
-                              <p className="text-[10px] text-outline font-bold tracking-widest uppercase mt-0.5">{task.id} • {task.dateGiven}</p>
-                            </div>
-                          </div>
-                          <span className="whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest bg-amber-500/10 text-amber-600 border-amber-500/20">
-                            Unsettled Task
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10 mb-3">
-                          <div className="flex-grow flex flex-col items-center gap-0.5">
-                            <p className="text-[11px] font-black text-primary">{impureWeight.toFixed(3)}g</p>
-                            <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure {metalName}</p>
-                          </div>
-                          <div className="w-px h-4 bg-outline-variant/20"></div>
-                          <div className="flex-grow flex flex-col items-center gap-0.5">
-                            <p className="text-[11px] font-black text-secondary">{task.purity || 'N/A'}%</p>
-                            <p className="text-[7px] uppercase font-black text-outline tracking-widest">Purity</p>
-                          </div>
-                        </div>
-
-                        <button 
-                          className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">swap_horiz</span>
-                          PERFORM SETTLEMENT
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {filteredTasks.length === 0 && (
-                <div className="p-8 text-center text-outline text-sm font-medium">No unsettled entries found.</div>
-              )}
-            </div>
-          </div>
-        )}
       </main>
 
       {/* View: Detailed Task Modal */}
@@ -690,323 +531,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
         onDeleteTask={handleDeleteTask}
       />
 
-      {/* View: Perform Settlement Modal */}
-      {selectedSettlement && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
-          <div className="absolute inset-0" onClick={() => setSelectedSettlement(null)} />
-          <div className="bg-white w-full max-w-sm rounded-[2rem] p-5 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden"
-            style={{ maxHeight: '92svh' }}>
-            
-            {/* Header */}
-            <div className="flex justify-between items-center mb-4 shrink-0">
-              <div>
-                <h3 className="font-headline text-base font-extrabold text-primary flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-lg text-secondary">swap_horiz</span>
-                  Tunch Settlement
-                </h3>
-                <p className="text-[9px] text-outline font-bold uppercase tracking-widest mt-0.5">Customer: {selectedSettlement.customer_name}</p>
-              </div>
-              <button onClick={() => setSelectedSettlement(null)} className="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline hover:text-primary active:scale-90 transition-transform">
-                <span className="material-symbols-outlined text-sm">close</span>
-              </button>
-            </div>
 
-            {/* Content */}
-            <div className="space-y-4 flex-grow overflow-y-auto hide-scrollbar pb-4 pr-1">
-              {/* Original Tunch Params */}
-              <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
-                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Intake Parameters</p>
-                <div className="grid grid-cols-2 gap-2 text-left">
-                  <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Metal</span>
-                    <p className="text-xs font-bold text-primary truncate">{Number(selectedSettlement.impure_silver_in || 0) > 0 ? 'Silver' : 'Gold'}</p>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Intake Date</span>
-                    <p className="text-xs font-bold text-primary truncate">{selectedSettlement.date}</p>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Impure Weight</span>
-                    <p className="text-xs font-bold text-primary truncate">{Number(selectedSettlement.impure_silver_in || selectedSettlement.impure_gold_in || 0).toFixed(3)}g</p>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Purity</span>
-                    <p className="text-xs font-bold text-primary truncate">{selectedSettlement.purity || 'N/A'}%</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Settlement Form */}
-              <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
-                <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Choose Settlement Mode</p>
-                
-                <div className="flex gap-2">
-                  {(Number(selectedSettlement.impure_silver_in || 0) > 0 ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']).map(mode => (
-                    <button 
-                      key={mode} type="button" 
-                      onClick={() => setNewSettlementMode(mode as any)}
-                      className={`flex-1 py-2 rounded-lg text-[10px] font-bold border transition-colors ${newSettlementMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-
-                {newSettlementMode === 'Cash' ? (
-                  selectedSettlement.isTask ? (
-                    <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Workflow</span>
-                      <p className="text-xs font-semibold text-primary">
-                        This task will be moved to "In Progress" status. Admin will finalize the gold/silver pricing per gram and total payout amount.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-left">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Amount Paid to Customer (₹) *</span>
-                      <input 
-                        type="number" 
-                        value={cashAmountInput} 
-                        onChange={e => setCashAmountInput(e.target.value)}
-                        placeholder="e.g. 15000" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                  )
-                ) : (
-                  <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Calculated Pure Metal Yield</span>
-                    <p className="text-sm font-black text-secondary">
-                      {(() => {
-                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0;
-                        const impure = isSilver ? Number(selectedSettlement.impure_silver_in) : Number(selectedSettlement.impure_gold_in);
-                        const purity = parseFloat(selectedSettlement.purity) || 0;
-                        const yieldWeight = impure * (purity / 100);
-                        return `${yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
-                      })()}
-                    </p>
-                    <p className="text-[8.5px] text-outline font-medium mt-1">This will create a liability for Admin allocation from Live Pure Stock.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer Buttons */}
-            <div className="flex gap-3 mt-4 shrink-0">
-              <button 
-                onClick={() => setSelectedSettlement(null)}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/50 font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all"
-              >
-                Dismiss
-              </button>
-              <button 
-                onClick={async () => {
-                  const isCashMode = newSettlementMode === 'Cash';
-                  const cashToPay = Number(cashAmountInput || 0);
-                  
-                  if (isCashMode && !selectedSettlement.isTask && (!cashAmountInput.trim() || isNaN(cashToPay) || cashToPay <= 0)) {
-                    alert('Please enter a valid cash amount paid.');
-                    return;
-                  }
-                  
-                  setIsSubmittingSettlement(true);
-                  try {
-                    const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
-                    const impure = isSilver 
-                      ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
-                      : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
-                    const purity = parseFloat(selectedSettlement.purity) || 0;
-                    const calculatedPure = impure * (purity / 100);
-
-                    // Special Task-specific flow for Cash settlement (follows cash work workflow)
-                    if (selectedSettlement.isTask && isCashMode) {
-                      let taskLedgerId = selectedSettlement.id;
-                      const { data: matchedLedger } = await supabase
-                        .from('ledger_entries')
-                        .select('id')
-                        .eq('customer_name', selectedSettlement.customer_name)
-                        .eq('transaction_type', 'Tunch Only')
-                        .eq('status', 'No Settlement')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                      
-                      if (matchedLedger) {
-                        taskLedgerId = matchedLedger.id;
-                      }
-
-                      const taskUpdates = {
-                        status: 'In Progress' as any,
-                        progress_percentage: 40,
-                        settlement_condition: 'Cash'
-                      };
-                      await supabase.from('tasks').update(taskUpdates).eq('id', selectedSettlement.id);
-                      setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { ...t, ...taskUpdates, progressPercentage: 40 } : t));
-
-                      if (taskLedgerId) {
-                        await supabase.from('ledger_entries').update({
-                          transaction_type: 'Exchange',
-                          status: 'Completed',
-                          details: 'Converted to Cash Task'
-                        }).eq('id', taskLedgerId);
-                      }
-
-                      toast.success('Task moved to In Progress. Awaiting Admin pricing approval.');
-                      setSelectedSettlement(null);
-                      return;
-                    }
-
-                    if (isCashMode) {
-                      const isSuperSa = user?.role === 'Super Admin';
-                      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount, staff_id');
-                      if (!isSuperSa && user?.branch_id) {
-                        allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
-                      }
-                      
-                      let branchUserIds: string[] = [];
-                      if (!isSuperSa && user?.branch_id) {
-                        const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
-                        if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
-                      }
-                      if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
-                      
-                      let entriesQuery = supabase.from('ledger_entries').select('cash_received, cash_paid');
-                      if (!isSuperSa && user?.branch_id) {
-                        entriesQuery = entriesQuery.in('staff_id', branchUserIds);
-                      }
-                      
-                      const txQuery = supabase.from('transactions').select('amount, status, type');
-                      
-                      const [allocationsRes, entriesRes, txRes] = await Promise.all([
-                        allocationsQuery,
-                        entriesQuery,
-                        txQuery
-                      ]);
-                      
-                      const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-                      const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
-                      const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
-                      
-                      let billingCash = 0;
-                      (txRes.data || []).forEach((tx: any) => {
-                        const type = tx.type?.trim().toLowerCase() || '';
-                        if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-                          const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-                          billingCash += Number(amtStr) || 0;
-                        }
-                      });
-                      
-                      const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
-                      if (cashToPay > currentCashStock) {
-                        alert(`Insufficient Cash Stock in the Branch! Remaining Stock: ₹${currentCashStock.toLocaleString('en-IN')}. Please request Cash Allocation from Super Admin.`);
-                        setIsSubmittingSettlement(false);
-                        return;
-                      }
-                    }
-
-                    // If it is a task, find the associated ledger entry ID
-                    let ledgerEntryId = selectedSettlement.id;
-                    if (selectedSettlement.isTask) {
-                      const { data: matchedLedger } = await supabase
-                        .from('ledger_entries')
-                        .select('id')
-                        .eq('customer_name', selectedSettlement.customer_name)
-                        .eq('transaction_type', 'Tunch Only')
-                        .eq('status', 'No Settlement')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                      
-                      if (matchedLedger) {
-                        ledgerEntryId = matchedLedger.id;
-                      }
-                    }
-
-                    const ledgerUpdates: any = {
-                      transaction_type: 'Exchange'
-                    };
-
-                    if (isCashMode) {
-                      ledgerUpdates.status = 'Completed';
-                      ledgerUpdates.cash_paid = cashToPay;
-                      
-                      // Also create a billing transaction
-                      const newTxn = {
-                        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-                        customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
-                        customer_name: selectedSettlement.customer_name,
-                        metal: isSilver ? 'Silver' : 'Gold',
-                        type: 'Cash',
-                        work_type: 'Tunch',
-                        amount: String(cashToPay),
-                        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                        iso_date: new Date().toISOString().split('T')[0],
-                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        status: 'Paid',
-                        details: `Cash settlement for completed Tunch gold. Original Entry ID: ${ledgerEntryId}`,
-                        piece_type: 'Jewellery',
-                        impure_weight: String(impure),
-                        pure_weight: String(calculatedPure),
-                        purity_percentage: String(purity),
-                        is_cash_exchange: true,
-                        created_by: user?.id || ''
-                      };
-                      await supabase.from('transactions').insert([newTxn]);
-                    } else {
-                      // Pure metal due
-                      ledgerUpdates.status = 'Pending Pure';
-                      if (isSilver) {
-                        ledgerUpdates.pure_silver_due = calculatedPure;
-                        ledgerUpdates.pure_silver_out = 0;
-                        ledgerUpdates.pure_gold_due = 0;
-                        ledgerUpdates.pure_gold_out = 0;
-                      } else {
-                        ledgerUpdates.pure_gold_due = calculatedPure;
-                        ledgerUpdates.pure_gold_out = 0;
-                        ledgerUpdates.pure_silver_due = 0;
-                        ledgerUpdates.pure_silver_out = 0;
-                      }
-                    }
-
-                    // Update ledger entries
-                    const { error } = await supabase
-                      .from('ledger_entries')
-                      .update(ledgerUpdates)
-                      .eq('id', ledgerEntryId);
-
-                    if (error) throw error;
-                    
-                    // If it was a task, close it
-                    if (selectedSettlement.isTask) {
-                      await supabase.from('tasks').update({ status: 'Completed', progress_percentage: 100 }).eq('id', selectedSettlement.id);
-                      setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
-                    }
-
-                    toast.success(isCashMode ? 'Cash settlement completed & billed successfully.' : 'Pure metal exchange settlement registered. Pending Admin allocation.');
-                    setSelectedSettlement(null);
-                  } catch (e) {
-                    console.error(e);
-                    alert('Failed to submit settlement.');
-                  } finally {
-                    setIsSubmittingSettlement(false);
-                  }
-                }}
-                disabled={isSubmittingSettlement}
-                className="flex-grow flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5"
-              >
-                {isSubmittingSettlement ? (
-                  <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                    Confirm Settlement
-                  </>
-                )}
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
 
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">
         <a onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-on-surface-variant opacity-60 hover:opacity-100 cursor-pointer">
