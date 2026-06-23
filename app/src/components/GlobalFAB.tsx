@@ -92,7 +92,7 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 customer_name: data.customerName || 'Walk-in Customer',
                 transaction_type: 'Exchange',
-                status: 'Pending Pure',
+                status: data.pendingPureLiability ? 'Pending Pure' : 'Completed',
                 purity: data.purity || '',
                 staff_id: user?.id || '',
                 pure_gold_out: 0,
@@ -103,12 +103,24 @@ export const GlobalFAB: React.FC = () => {
 
               if (isSilver) {
                 ledgerEntry.impure_silver_in = Number(data.impureWeight || 0);
-                ledgerEntry.pure_silver_due = calculatedPure;
+                if (data.pendingPureLiability) {
+                  ledgerEntry.pure_silver_due = calculatedPure;
+                  ledgerEntry.pure_silver_out = 0;
+                } else {
+                  ledgerEntry.pure_silver_due = 0;
+                  ledgerEntry.pure_silver_out = calculatedPure;
+                }
                 ledgerEntry.pure_gold_due = 0;
                 ledgerEntry.impure_gold_in = 0;
               } else {
                 ledgerEntry.impure_gold_in = Number(data.impureWeight || 0);
-                ledgerEntry.pure_gold_due = calculatedPure;
+                if (data.pendingPureLiability) {
+                  ledgerEntry.pure_gold_due = calculatedPure;
+                  ledgerEntry.pure_gold_out = 0;
+                } else {
+                  ledgerEntry.pure_gold_due = 0;
+                  ledgerEntry.pure_gold_out = calculatedPure;
+                }
                 ledgerEntry.pure_silver_due = 0;
                 ledgerEntry.impure_silver_in = 0;
               }

@@ -1954,7 +1954,11 @@ export const StaffTasksScreen: React.FC = () => {
                         return `${yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
                       })()}
                     </p>
-                    <p className="text-[8.5px] text-outline font-medium mt-1">This will create a liability for Admin allocation from Live Pure Stock.</p>
+                    <p className="text-[8.5px] text-outline font-medium mt-1">
+                      {selectedSettlement.task?.pendingPureLiability 
+                        ? 'This will create a liability for Admin allocation from Live Pure Stock.' 
+                        : 'This will be deducted directly from Live Pure Stock.'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -2168,17 +2172,27 @@ export const StaffTasksScreen: React.FC = () => {
                       await supabase.from('transactions').insert([newTxn]);
                     } else {
                       ledgerUpdates.transaction_type = 'Exchange';
-                      // Pure metal due
-                      ledgerUpdates.status = 'Pending Pure';
+                      const isPending = !!selectedSettlement.task?.pendingPureLiability;
+                      ledgerUpdates.status = isPending ? 'Pending Pure' : 'Completed';
                       if (isSilver) {
-                        ledgerUpdates.pure_silver_due = calculatedPure;
-                        ledgerUpdates.pure_silver_out = 0;
+                        if (isPending) {
+                          ledgerUpdates.pure_silver_due = calculatedPure;
+                          ledgerUpdates.pure_silver_out = 0;
+                        } else {
+                          ledgerUpdates.pure_silver_due = 0;
+                          ledgerUpdates.pure_silver_out = calculatedPure;
+                        }
                         ledgerUpdates.pure_gold_due = 0;
                         ledgerUpdates.pure_gold_out = 0;
                         ledgerUpdates.impure_silver_in = impure;
                       } else {
-                        ledgerUpdates.pure_gold_due = calculatedPure;
-                        ledgerUpdates.pure_gold_out = 0;
+                        if (isPending) {
+                          ledgerUpdates.pure_gold_due = calculatedPure;
+                          ledgerUpdates.pure_gold_out = 0;
+                        } else {
+                          ledgerUpdates.pure_gold_due = 0;
+                          ledgerUpdates.pure_gold_out = calculatedPure;
+                        }
                         ledgerUpdates.pure_silver_due = 0;
                         ledgerUpdates.pure_silver_out = 0;
                         ledgerUpdates.impure_gold_in = impure;
