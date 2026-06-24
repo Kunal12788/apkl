@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { NotificationBell } from './NotificationBell';
 
 
 export const SuperAdminWorkScreen: React.FC = () => {
@@ -112,6 +113,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
             <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Operational Analytics</p>
           </div>
         </div>
+        <NotificationBell />
       </header>
 
       <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">

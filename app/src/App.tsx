@@ -19,6 +19,8 @@ import { CollectionStaffProfileScreen } from './components/CollectionStaffProfil
 import { CollectionStaffBillingScreen } from './components/CollectionStaffBillingScreen';
 import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScreen';
 import { GlobalFAB } from './components/GlobalFAB';
+import { GlobalChat } from './components/GlobalChat';
+import { playNotificationSound } from './utils/audio';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
@@ -227,11 +229,49 @@ function AppContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+         const newMsg = payload.new;
+         if (newMsg && newMsg.receiver_id === user.id && !newMsg.is_read) {
+            playNotificationSound();
+            if (newMsg.type === 'notification') {
+               toast.success(`Notification: ${newMsg.content}`, { duration: 4000 });
+            } else {
+               toast(`New message!`, { 
+                 icon: '💬',
+                 duration: 3000 
+               });
+            }
+         }
+      })
       .subscribe();
 
     return () => {
        supabase.removeChannel(realtimeChannel);
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const checkUnreadOnLogin = async () => {
+      try {
+        const { count } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', user.id)
+          .eq('is_read', false);
+        
+        if (count && count > 0) {
+          setTimeout(() => {
+            playNotificationSound();
+          }, 1500);
+        }
+      } catch (err) {
+        console.error('Error checking unread messages on login:', err);
+      }
+    };
+    
+    checkUnreadOnLogin();
   }, [user]);
 
   const handleComplete = () => {
@@ -302,6 +342,7 @@ function AppContent() {
             <Route path="/calculator" element={<CalculatorWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
+          {user && <GlobalChat />}
         </HashRouter>
         </div>
       )}

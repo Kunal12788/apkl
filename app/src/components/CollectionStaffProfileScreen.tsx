@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import { NotificationBell } from './NotificationBell';
 
 export const CollectionStaffProfileScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -69,9 +70,7 @@ export const CollectionStaffProfileScreen: React.FC = () => {
             <h1 className="font-headline text-2xl font-bold text-primary leading-tight">My Identity</h1>
             <p className="text-xs text-outline font-medium">Field Personnel Security Clearance</p>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-          </button>
+          <NotificationBell />
         </header>
 
         {/* Profile Card */}

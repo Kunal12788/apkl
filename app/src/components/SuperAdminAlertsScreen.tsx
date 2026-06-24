@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { deleteStorageImagesForTasks } from '../utils/storageUtils';
+import { NotificationBell } from './NotificationBell';
 
 export const SuperAdminAlertsScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -249,7 +250,7 @@ export const SuperAdminAlertsScreen: React.FC = () => {
     <div className="bg-surface text-on-surface font-body w-full min-h-[100svh] relative overflow-y-auto hide-scrollbar">
       
       {/* App Bar */}
-      <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 px-4 sm:px-6 py-4">
+      <header className="sticky top-0 z-40 bg-surface/80 backdrop-blur-md border-b border-outline-variant/30 px-4 sm:px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -259,6 +260,7 @@ export const SuperAdminAlertsScreen: React.FC = () => {
             <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Command Center Notifications</p>
           </div>
         </div>
+        <NotificationBell />
       </header>
 
       <main className="px-4 sm:px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">

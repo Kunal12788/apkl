@@ -6,6 +6,7 @@ import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
 import { triggerBlueToast } from './AppleToast';
+import { NotificationBell } from './NotificationBell';
 
 interface LedgerEntry {
   pureSilverOut: number;
@@ -869,9 +870,7 @@ export const StaffLedgerScreen: React.FC = () => {
                 <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Ledger Panel</h1>
                 <p className="text-xs text-outline font-medium">Real-time Stock & Settlement Engine</p>
               </div>
-              <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform shrink-0">
-                <span className="material-symbols-outlined text-xl">notifications</span>
-              </button>
+              <NotificationBell />
             </div>
             
             {/* Premium Metal Selector Card */}

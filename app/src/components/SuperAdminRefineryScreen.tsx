@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { NotificationBell } from './NotificationBell';
 
 interface RefiningTransfer {
   metal: 'Gold' | 'Silver';
@@ -323,6 +324,7 @@ export const SuperAdminRefineryScreen: React.FC = () => {
                 <p className="text-xs text-outline font-medium">Super Admin Master Refining Log & Processing Terminal</p>
               </div>
             </div>
+            <NotificationBell />
           </div>
         </header>
 

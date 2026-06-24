@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { NotificationBell } from './NotificationBell';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { fitText } from '../utils';
@@ -209,9 +210,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
               <p className="text-xs text-outline font-medium">Your summary for Zurich Main today.</p>
             </div>
           </div>
-          <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-primary-fixed-dim hover:bg-surface-container transition-colors border border-outline-variant/30">
-            <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>notifications</span>
-          </button>
+          <NotificationBell />
         </header>
 
         {/* Gold & Silver Weight Summary */}

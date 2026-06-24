@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { triggerAppleToast } from './AppleToast';
+import { NotificationBell } from './NotificationBell';
 
 // Create a separate client for auth signups so we don't log out the Super Admin
 import { createClient } from '@supabase/supabase-js';
@@ -326,13 +327,16 @@ export const SuperAdminStaffScreen: React.FC = () => {
               <p className="text-[10px] font-bold text-[#F6C358] uppercase tracking-widest opacity-90">Staff & Branches</p>
             </div>
           </div>
-          <button 
-            onClick={() => setShowHireModal(true)}
-            className="flex items-center gap-2 bg-[#F6C358] text-[#001e40] px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform premium-shadow"
-          >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
-            Hire
-          </button>
+          <div className="flex items-center gap-2.5">
+            <NotificationBell />
+            <button 
+              onClick={() => setShowHireModal(true)}
+              className="flex items-center gap-2 bg-[#F6C358] text-[#001e40] px-4 py-2 rounded-full font-bold text-xs uppercase tracking-wider active:scale-95 transition-transform premium-shadow"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span>
+              Hire
+            </button>
+          </div>
         </div>
         
         {/* Search */}

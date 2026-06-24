@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
+import { NotificationBell } from './NotificationBell';
 
 interface StockEntry {
   id: string;
@@ -106,6 +107,7 @@ export const SuperAdminStockScreen: React.FC = () => {
             <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Detailed Stock History</p>
           </div>
         </div>
+        <NotificationBell />
       </header>
 
       <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">

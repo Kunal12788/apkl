@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { NotificationBell } from './NotificationBell';
 import { useSession } from '../context/SessionContext';
 
 export const StaffProfileScreen: React.FC = () => {
@@ -63,10 +64,7 @@ export const StaffProfileScreen: React.FC = () => {
             <h1 className="font-headline text-2xl font-bold text-primary leading-tight">My Profile</h1>
             <p className="text-xs text-outline font-medium">Manage account and preferences</p>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-            <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
-          </button>
+          <NotificationBell />
         </header>
 
         {/* Profile Card */}

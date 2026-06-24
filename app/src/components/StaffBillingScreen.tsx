@@ -5,6 +5,7 @@ import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks, deleteStorageImagesByUrls } from '../utils/storageUtils';
+import { NotificationBell } from './NotificationBell';
 
 type TabView = 'all' | 'customer';
 
@@ -825,10 +826,7 @@ export const StaffBillingScreen: React.FC = () => {
               <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Billing & Records</h1>
               <p className="text-xs text-outline font-medium">Manage ledgers and transactions</p>
             </div>
-            <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-              <span className="material-symbols-outlined text-xl">notifications</span>
-              <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
-            </button>
+            <NotificationBell />
           </header>
         )}
 
@@ -1022,10 +1020,7 @@ export const StaffBillingScreen: React.FC = () => {
                     Delete Customer
                   </button>
                 )}
-                <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative">
-                  <span className="material-symbols-outlined text-xl">notifications</span>
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-error rounded-full animate-pulse border border-white"></span>
-                </button>
+                  <NotificationBell />
               </div>
             </header>
             

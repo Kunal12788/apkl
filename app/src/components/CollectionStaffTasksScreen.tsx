@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
+import { NotificationBell } from './NotificationBell';
 
 type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
 
@@ -433,9 +434,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
             <h1 className="font-headline text-2xl font-bold text-primary leading-tight">My Collections</h1>
             <p className="text-xs text-outline font-medium">Track your field assignments</p>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-          </button>
+          <NotificationBell />
         </header>
 
         {/* Tab Navigation */}

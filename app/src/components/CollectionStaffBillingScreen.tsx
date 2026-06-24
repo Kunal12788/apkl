@@ -5,6 +5,7 @@ import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { computeCollectionStaffBillingTransactions } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks } from '../utils/storageUtils';
+import { NotificationBell } from './NotificationBell';
 
 type TabView = 'all' | 'customer';
 
@@ -696,9 +697,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Field Billings</h1>
             <p className="text-xs text-outline font-medium">Collection Ledger & Receipts</p>
           </div>
-          <button className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow">
-            <span className="material-symbols-outlined text-xl">notifications</span>
-          </button>
+          <NotificationBell />
         </header>
 
         {!selectedCustomer && (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { useState, useEffect } from 'react';
+import { NotificationBell } from './NotificationBell';
 
 export const CollectionHistoryScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -41,7 +42,7 @@ export const CollectionHistoryScreen: React.FC = () => {
 
   return (
     <div className="bg-background text-on-background font-body w-full h-[100svh] relative flex flex-col">
-      <header className="shrink-0 bg-primary px-6 pt-8 pb-6 relative overflow-hidden">
+      <header className="shrink-0 bg-primary px-6 pt-8 pb-6 relative overflow-hidden flex justify-between items-center">
         <div className="relative z-10 flex items-center gap-4">
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -50,6 +51,9 @@ export const CollectionHistoryScreen: React.FC = () => {
             <h1 className="text-xl font-bold text-white">Collection Audit</h1>
             <p className="text-[10px] font-bold text-tertiary-fixed uppercase tracking-widest">Historical Records</p>
           </div>
+        </div>
+        <div className="relative z-10">
+          <NotificationBell />
         </div>
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
       </header>

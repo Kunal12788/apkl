@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
 import { clearAllStorageImages } from '../utils/storageUtils';
+import { NotificationBell } from './NotificationBell';
 
 interface RefiningTransfer {
   metal: 'Gold' | 'Silver';
@@ -777,6 +778,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
              <span className="material-symbols-outlined">arrow_back</span>
            </button>
         </div>
+        <div className="absolute top-8 right-6">
+           <NotificationBell />
+        </div>
         <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-outline-variant/20 flex flex-col items-center text-center space-y-8 animate-fade-in">
           <div className="w-20 h-20 rounded-full bg-[#003366]/10 flex items-center justify-center text-[#003366] mb-2">
             <span className="material-symbols-outlined text-4xl">admin_panel_settings</span>
@@ -844,6 +848,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               </p>
             </div>
           </div>
+          <NotificationBell />
         </header>
 
         <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
@@ -1125,6 +1130,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         
         {/* Header */}
         <header className="flex justify-between items-center mb-2 animate-fade-in">
+          <div className="flex items-center">
             <button 
               onClick={() => setLedgerMode('prompt')} 
               className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20 mr-3 shrink-0"
@@ -1135,44 +1141,48 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               <h1 className="font-headline text-2xl font-bold text-primary leading-tight">Head Office Hub</h1>
               <p className="text-xs text-outline font-medium">Super Admin Global Allocation & Refining Terminal</p>
             </div>
-          <button 
-            onClick={async () => {
-              if (window.confirm("Are you sure you want to permanently delete all corporate records, reports, transactions, ledger entries, tasks, and stock allocations across all roles? This cannot be undone!")) {
-                try {
-                  const deleteTable = async (tableName: string) => {
-                    try {
-                      await supabase.from(tableName).delete().neq('id', '');
-                    } catch (err) {
-                      console.warn(`Failed to delete from ${tableName}:`, err);
-                    }
-                  };
+          </div>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <button 
+              onClick={async () => {
+                if (window.confirm("Are you sure you want to permanently delete all corporate records, reports, transactions, ledger entries, tasks, and stock allocations across all roles? This cannot be undone!")) {
+                  try {
+                    const deleteTable = async (tableName: string) => {
+                      try {
+                        await supabase.from(tableName).delete().neq('id', '');
+                      } catch (err) {
+                        console.warn(`Failed to delete from ${tableName}:`, err);
+                      }
+                    };
 
-                  await clearAllStorageImages();
-                  await Promise.all([
-                    deleteTable('super_admin_ledger'),
-                    deleteTable('refining_transfers'),
-                    deleteTable('ledger_entries'),
-                    deleteTable('transactions'),
-                    deleteTable('tasks'),
-                    deleteTable('stock_allocations'),
-                    deleteTable('branch_daily_reports'),
-                    deleteTable('deletion_requests')
-                  ]);
+                    await clearAllStorageImages();
+                    await Promise.all([
+                      deleteTable('super_admin_ledger'),
+                      deleteTable('refining_transfers'),
+                      deleteTable('ledger_entries'),
+                      deleteTable('transactions'),
+                      deleteTable('tasks'),
+                      deleteTable('stock_allocations'),
+                      deleteTable('branch_daily_reports'),
+                      deleteTable('deletion_requests')
+                    ]);
 
-                  clearAllDataCaches();
-                  fetchData();
-                  alert("All corporate records have been permanently cleared.");
-                } catch (e) {
-                  console.error(e);
-                  alert("Failed to reset records.");
+                    clearAllDataCaches();
+                    fetchData();
+                    alert("All corporate records have been permanently cleared.");
+                  } catch (e) {
+                    console.error(e);
+                    alert("Failed to reset records.");
+                  }
                 }
-              }
-            }}
-            className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform shrink-0"
-            title="Reset Initial Details"
-          >
-            <span className="material-symbols-outlined text-xl">restart_alt</span>
-          </button>
+              }}
+              className="w-10 h-10 rounded-full bg-white border border-outline-variant/30 flex items-center justify-center text-primary premium-shadow relative active:scale-95 transition-transform shrink-0"
+              title="Reset Initial Details"
+            >
+              <span className="material-symbols-outlined text-xl">restart_alt</span>
+            </button>
+          </div>
         </header>
 
         {/* Premium Metal Selector Card */}
