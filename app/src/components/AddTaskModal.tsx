@@ -37,6 +37,15 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
 
 // Local scanning removed - standard image upload mode active
 
+const getActualPureWeight = (impureStr: string, purityStr: string): string => {
+  const impure = parseFloat(impureStr);
+  const purity = parseFloat(purityStr);
+  if (isNaN(impure) || isNaN(purity)) return "";
+  const raw = (impure * purity) / 100;
+  // Fix floating point precision issues by rounding to 10 decimal places, then parsing back to float to drop trailing zeros.
+  return parseFloat(raw.toFixed(10)).toString();
+};
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -627,20 +636,34 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     </div>
                   </div>
                   {!isCollection && (
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div>
-                        <label className={lbl}>Purity (%) *</label>
-                        <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
-                        {errMsg('purity')}
-                      </div>
-                      <div>
-                        <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
-                        <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
-                        {errMsg('pureWeight')}
-                      </div>
+                    <div className="mt-3">
+                      <label className={lbl}>Purity (%) *</label>
+                      <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
+                      {errMsg('purity')}
                     </div>
                   )}
                 </SectionCard>
+
+                {!isCollection && (
+                  <>
+                    <SectionCard title="Actual Pure Weight" icon="calculate" color="bg-secondary/5 text-secondary">
+                      <div>
+                        <label className={lbl}>Calculated Weight (g)</label>
+                        <div className="w-full h-12 bg-secondary/5 border border-secondary/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-secondary">
+                          {getActualPureWeight(formData.impureWeight, formData.purity) || '0.000'} g
+                        </div>
+                      </div>
+                    </SectionCard>
+
+                    <SectionCard title="Pure Weight" icon="workspace_premium" color="bg-tertiary/5 text-tertiary">
+                      <div>
+                        <label className={lbl}>Manually Entered Pure Weight (g) *</label>
+                        <input className={inp(errors.pureWeight)} placeholder="Enter rounded pure weight" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
+                        {errMsg('pureWeight')}
+                      </div>
+                    </SectionCard>
+                  </>
+                )}
 
                 <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
                   <div className="space-y-2">
