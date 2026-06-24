@@ -519,13 +519,13 @@ export const StaffDashboardScreen: React.FC = () => {
 
 
           <>
-            {/* 1. Top Section: Total Cash Collected hero card */}
+            {/* 1. Top Section: TOTAL AMOUNT COLLECTED hero card */}
             <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
               <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
               <div className="flex justify-between items-start relative z-10">
                 <div>
-                  <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Collected</h3>
+                  <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">TOTAL AMOUNT COLLECTED</h3>
                   <div className="flex items-baseline gap-2">
                     <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
                     <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>

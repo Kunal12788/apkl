@@ -275,7 +275,7 @@ export const SuperAdminDashboardScreen: React.FC = () => {
           <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
           <div className="flex justify-between items-start relative z-10 gap-4">
             <div className="min-w-0 flex-1">
-              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">Total Cash Remaining</h3>
+              <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">TOTAL AMOUNT COLLECTED</h3>
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
                 <span className="font-headline font-extrabold text-white tracking-tight" style={fitText(cashRemaining.toLocaleString('en-IN'), 9, 3.0, 1.25)}>{cashRemaining.toLocaleString('en-IN')}</span>
