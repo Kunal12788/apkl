@@ -191,7 +191,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
   };
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium focus:outline-none focus:border-secondary transition-colors`;
-  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
+  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block truncate";
 
   const isCustomerMatched = customers.some(c => c.name.toLowerCase() === formData.customerName.toLowerCase());
   const showApprovalButton = formData.customerName.length > 0 && !isCustomerMatched;

@@ -431,7 +431,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
 
   const inp = (err?: string) => `w-full h-12 bg-white border ${err ? 'border-error' : 'border-outline-variant/40'} rounded-DEFAULT px-4 text-sm text-primary font-medium placeholder-outline/40 focus:outline-none focus:border-secondary transition-colors`;
-  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block";
+  const lbl = "text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-1 block truncate";
   const errMsg = (k: string) => errors[k] ? <p className="text-[10px] text-error mt-1 font-medium">{errors[k]}</p> : null;
 
   const stepTitles = ['Select Operation', 'Enter Details', 'Review & Confirm', 'Authorize Entry'];
