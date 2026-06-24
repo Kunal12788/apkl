@@ -89,5 +89,28 @@ export const triggerAppleToast = (title: string, message: string, type: 'login' 
   );
 };
 
+export const triggerBlueToast = (message: string) => {
+  toast.custom(
+    (t) => (
+      <div 
+        className={`${
+          t.visible ? 'animate-fade-in' : 'opacity-0'
+        } w-11/12 max-w-sm pointer-events-auto transition-opacity duration-300 mx-auto`}
+        style={{ zIndex: 9999 }}
+      >
+        <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-white text-sm">info</span>
+          </div>
+          <span className="font-bold text-[13px] tracking-wide flex-1 leading-snug">
+            {message}
+          </span>
+        </div>
+      </div>
+    ),
+    { duration: 4000, position: 'top-center' }
+  );
+};
+
 
 

@@ -4,6 +4,7 @@ import { TaskReconciliationModal } from './TaskReconciliationModal';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
+import { triggerBlueToast } from './AppleToast';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed' | 'Settlement';
 
@@ -1406,7 +1407,10 @@ export const StaffTasksScreen: React.FC = () => {
       const cashAmountToPay = Number(finalPrice || 0);
 
       if (modeStr === 'Cash' && cashAmountToPay > currentCashStock) {
-        alert(`Insufficient Cash Stock in the Branch! Remaining Stock: ₹${currentCashStock.toLocaleString('en-IN')}. Please request Cash Allocation from Super Admin.`);
+        const msg = user?.role === 'Admin'
+          ? "Required stock is not present, kindly talk to the Super Admin."
+          : "Required stock is not present, kindly talk to the Admin.";
+        triggerBlueToast(msg);
         return;
       }
 
@@ -2038,34 +2042,38 @@ export const StaffTasksScreen: React.FC = () => {
                       return;
                     }
 
-                    // Cash Stock Validation for Settlement Modal
+                    // Stock Validation for Settlement Modal
+                    const isSuperSa = user?.role === 'Super Admin';
+                    let allocationsQuery = supabase.from('stock_allocations').select('*');
+                    if (!isSuperSa && user?.branch_id) {
+                      allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
+                    }
+                    
+                    let branchUserIds: string[] = [];
+                    if (!isSuperSa && user?.branch_id) {
+                      const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
+                      if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
+                    }
+                    if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
+                    
+                    let entriesQuery = supabase.from('ledger_entries').select('*');
+                    if (!isSuperSa && user?.branch_id) {
+                      entriesQuery = entriesQuery.in('staff_id', branchUserIds);
+                    }
+                    
+                    const txQuery = supabase.from('transactions').select('amount, status, type');
+                    
+                    const [allocationsRes, entriesRes, txRes] = await Promise.all([
+                      allocationsQuery,
+                      entriesQuery,
+                      txQuery
+                    ]);
+
+                    const msg = user?.role === 'Admin'
+                      ? "Required stock is not present, kindly talk to the Super Admin."
+                      : "Required stock is not present, kindly talk to the Admin.";
+
                     if (isCashMode) {
-                      const isSuperSa = user?.role === 'Super Admin';
-                      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount, staff_id');
-                      if (!isSuperSa && user?.branch_id) {
-                        allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
-                      }
-                      
-                      let branchUserIds: string[] = [];
-                      if (!isSuperSa && user?.branch_id) {
-                        const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
-                        if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
-                      }
-                      if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
-                      
-                      let entriesQuery = supabase.from('ledger_entries').select('cash_received, cash_paid');
-                      if (!isSuperSa && user?.branch_id) {
-                        entriesQuery = entriesQuery.in('staff_id', branchUserIds);
-                      }
-                      
-                      const txQuery = supabase.from('transactions').select('amount, status, type');
-                      
-                      const [allocationsRes, entriesRes, txRes] = await Promise.all([
-                        allocationsQuery,
-                        entriesQuery,
-                        txQuery
-                      ]);
-                      
                       const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
                       const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                       const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
@@ -2081,7 +2089,22 @@ export const StaffTasksScreen: React.FC = () => {
                       
                       const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
                       if (cashToPay > currentCashStock) {
-                        alert(`Insufficient Cash Stock in the Branch! Remaining Stock: ₹${currentCashStock.toLocaleString('en-IN')}. Please request Cash Allocation from Super Admin.`);
+                        triggerBlueToast(msg);
+                        setIsSubmittingSettlement(false);
+                        return;
+                      }
+                    }
+
+                    const isPureGoldMode = newSettlementMode === 'Pure Gold';
+                    const isPureSilverMode = newSettlementMode === 'Pure Silver';
+                    if ((isPureGoldMode || isPureSilverMode) && !selectedSettlement.task?.pendingPureLiability) {
+                      const metalType = isPureSilverMode ? 'Silver' : 'Gold';
+                      const totalAllocatedPure = (allocationsRes.data || []).filter((a: any) => a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+                      const totalPureGiven = (entriesRes.data || []).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
+                      const currentPureStock = totalAllocatedPure - totalPureGiven;
+
+                      if (calculatedPure > currentPureStock) {
+                        triggerBlueToast(msg);
                         setIsSubmittingSettlement(false);
                         return;
                       }

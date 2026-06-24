@@ -5,6 +5,7 @@ import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
+import { triggerBlueToast } from './AppleToast';
 
 interface LedgerEntry {
   pureSilverOut: number;
@@ -582,16 +583,20 @@ export const StaffLedgerScreen: React.FC = () => {
       return;
     }
 
+    const msg = user?.role === 'Admin'
+      ? "Required stock is not present, kindly talk to the Super Admin."
+      : "Required stock is not present, kindly talk to the Admin.";
+
     if (goldVal > currentPureStock && activeMetal === 'Gold') {
-      alert(`Insufficient Gold stock. Available: ${currentPureStock.toFixed(3)}g`);
+      triggerBlueToast(msg);
       return;
     }
     if (silverVal > currentPureStock && activeMetal === 'Silver') {
-      alert(`Insufficient Silver stock. Available: ${currentPureStock.toFixed(3)}g`);
+      triggerBlueToast(msg);
       return;
     }
     if (cashVal > currentCashStock) {
-      alert(`Insufficient Cash stock. Available: ₹${currentCashStock.toLocaleString('en-IN')}`);
+      triggerBlueToast(msg);
       return;
     }
 
