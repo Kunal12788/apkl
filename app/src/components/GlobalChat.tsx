@@ -482,6 +482,7 @@ export const GlobalChat: React.FC = () => {
         stream.getTracks().forEach(track => track.stop());
 
         if (audioChunksRef.current.length === 0) return;
+        if (!user || !selectedContact) return;
 
         setIsUploading(true);
         try {

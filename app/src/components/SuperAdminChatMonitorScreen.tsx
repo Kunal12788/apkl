@@ -129,7 +129,7 @@ const AudioPlayer: React.FC<{ url: string; duration?: number | null; isSelf?: bo
 
 export const SuperAdminChatMonitorScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<Record<string, UserDetail>>({});
+  const [, setUsers] = useState<Record<string, UserDetail>>({});
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [selectedThread, setSelectedThread] = useState<ChatThread | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
