@@ -88,21 +88,21 @@ const AudioPlayer: React.FC<{ url: string; duration?: number | null; isSelf?: bo
   };
 
   return (
-    <div className={`flex items-center gap-3 p-2.5 rounded-2xl w-56 border ${
+    <div className={`flex items-center gap-3.5 p-3 rounded-2xl w-60 border transition-all ${
       isSelf 
-        ? 'bg-white/10 border-white/20 text-white' 
-        : 'bg-slate-100 border-slate-200/50 text-primary'
+        ? 'bg-white/10 border-white/20 text-white backdrop-blur-md shadow-inner' 
+        : 'bg-slate-50 border-slate-200/60 text-primary shadow-xs'
     }`}>
       <button 
         type="button"
         onClick={togglePlay}
-        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all shrink-0 ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 hover:scale-105 transition-all shrink-0 shadow-sm ${
           isSelf 
-            ? 'bg-white text-primary hover:bg-slate-100' 
-            : 'bg-[#003366] text-white hover:bg-[#001e40]'
+            ? 'bg-white text-[#003366] hover:bg-slate-50 shadow-md' 
+            : 'bg-[#003366] text-white hover:bg-[#001e40] shadow-md'
         }`}
       >
-        <span className="material-symbols-outlined text-xl">{isPlaying ? 'pause' : 'play_arrow'}</span>
+        <span className="material-symbols-outlined text-lg">{isPlaying ? 'pause' : 'play_arrow'}</span>
       </button>
       <div className="flex-grow min-w-0">
         <input 
@@ -111,12 +111,12 @@ const AudioPlayer: React.FC<{ url: string; duration?: number | null; isSelf?: bo
           max={totalDuration || 100}
           value={currentTime}
           onChange={handleSeek}
-          className={`w-full h-1 rounded-lg appearance-none cursor-pointer range-sm ${
-            isSelf ? 'bg-white/30 accent-white' : 'bg-slate-200 accent-primary'
+          className={`w-full h-1 rounded-lg appearance-none cursor-pointer range-sm outline-none transition-all ${
+            isSelf ? 'bg-white/30 accent-white' : 'bg-slate-200 accent-[#003366]'
           }`}
         />
-        <div className={`flex justify-between text-[9px] font-black uppercase tracking-widest mt-1 ${
-          isSelf ? 'text-white/70' : 'text-slate-500'
+        <div className={`flex justify-between text-[9px] font-black uppercase tracking-widest mt-1.5 ${
+          isSelf ? 'text-white/80' : 'text-slate-500'
         }`}>
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(totalDuration)}</span>
@@ -139,6 +139,9 @@ export const GlobalChat: React.FC = () => {
   const [notifications, setNotifications] = useState<Message[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+
+  // New Search functionality for contacts
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Attachment and Voice states
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
@@ -563,97 +566,134 @@ export const GlobalChat: React.FC = () => {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Filter contacts by search
+  const filteredContacts = contacts.filter(c => 
+    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.role.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Define badges styling based on contact role
+  const getRoleBadgeClass = (role: string) => {
+    switch (role) {
+      case 'Super Admin':
+        return 'bg-amber-50 text-amber-700 border border-amber-200/50';
+      case 'Admin':
+        return 'bg-indigo-50 text-indigo-700 border border-indigo-200/50';
+      case 'Staff':
+        return 'bg-sky-50 text-sky-700 border border-sky-200/50';
+      case 'Collection Staff':
+        return 'bg-emerald-50 text-emerald-700 border border-emerald-200/50';
+      default:
+        return 'bg-slate-50 text-slate-700 border border-slate-200/50';
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex justify-end">
+    <div className="fixed inset-0 z-[150] flex justify-end">
       {/* Backdrop blur overlay */}
       <div 
-        className="absolute inset-0 bg-[#001e40]/30 backdrop-blur-sm animate-fade-in" 
+        className="absolute inset-0 bg-[#001e40]/40 backdrop-blur-md transition-all duration-300 animate-fade-in" 
         onClick={() => { setIsOpen(false); setSelectedContact(null); }} 
       />
       
-      {/* Sidebar drawer content */}
-      <div className="relative w-full max-w-md h-full bg-background border-l border-outline-variant/10 shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-in-right z-10">
+      {/* Sidebar drawer container */}
+      <div className="relative w-full sm:w-[460px] md:w-[480px] h-full bg-white border-l border-slate-100 shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-in-right z-10">
         
-        {/* Header */}
-        <div className="shrink-0 bg-gradient-to-br from-[#001e40] to-[#003366] px-5 pt-6 pb-4 relative overflow-hidden text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        {/* Premium Header */}
+        <div className="shrink-0 bg-gradient-to-r from-[#001e40] via-[#002855] to-[#003366] px-6 py-5 relative overflow-hidden text-white flex items-center justify-between shadow-md">
+          {/* Ambient Glow effect inside header */}
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-sky-400/20 rounded-full blur-2xl"></div>
+          
+          <div className="flex items-center gap-3.5 z-10">
             {selectedContact ? (
               <button 
                 onClick={() => setSelectedContact(null)} 
-                className="w-8 h-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all"
+                className="w-9 h-9 rounded-full border border-white/10 bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-95 transition-all text-white/90"
               >
-                <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                <span className="material-symbols-outlined text-[18px]">arrow_back</span>
               </button>
             ) : (
-              <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-xl">forum</span>
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center shadow-inner">
+                <span className="material-symbols-outlined text-xl text-sky-200">forum</span>
               </div>
             )}
             <div>
-              <h3 className="font-headline font-bold text-base leading-tight">
+              <h3 className="font-headline font-bold text-[15px] tracking-tight leading-tight flex items-center gap-2">
                 {selectedContact ? selectedContact.name : 'Communications'}
+                {selectedContact && (
+                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider ${getRoleBadgeClass(selectedContact.role)}`}>
+                    {selectedContact.role}
+                  </span>
+                )}
               </h3>
-              <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mt-0.5">
-                {selectedContact ? `${selectedContact.role} Thread` : 'Chats & Notifications'}
+              <p className="text-[10px] font-black text-sky-200/60 uppercase tracking-widest mt-1">
+                {selectedContact ? 'Secure Message Channel' : 'Inbox & Team Chats'}
               </p>
             </div>
           </div>
           <button 
             onClick={() => { setIsOpen(false); setSelectedContact(null); }} 
-            className="w-8 h-8 rounded-full border border-white/20 bg-white/10 flex items-center justify-center hover:bg-red-500/30 active:scale-95 transition-all"
+            className="w-9 h-9 rounded-full border border-white/10 bg-white/10 flex items-center justify-center hover:bg-rose-500/20 hover:border-rose-500/30 active:scale-95 transition-all text-white/90 z-10"
           >
-            <span className="material-symbols-outlined text-[16px]">close</span>
+            <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         </div>
 
         {/* Tab selection (only show if not inside a thread) */}
         {!selectedContact && (
-          <div className="shrink-0 bg-white border-b border-outline-variant/10 flex px-4">
+          <div className="shrink-0 bg-slate-50/80 p-1.5 rounded-2xl mx-5 my-4 flex border border-slate-200/30">
             <button 
               onClick={() => setActiveTab('chats')}
-              className={`flex-1 py-3.5 text-center text-xs font-black uppercase tracking-wider border-b-2 transition-all ${
+              className={`flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                 activeTab === 'chats' 
-                  ? 'border-primary text-primary font-extrabold' 
-                  : 'border-transparent text-outline hover:text-primary'
+                  ? 'bg-white text-[#003366] shadow-sm font-extrabold border border-slate-100' 
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
+              <span className="material-symbols-outlined text-sm">chat</span>
               Chats
             </button>
             <button 
               onClick={() => setActiveTab('notifications')}
-              className={`flex-1 py-3.5 text-center text-xs font-black uppercase tracking-wider border-b-2 transition-all relative ${
+              className={`flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 relative ${
                 activeTab === 'notifications' 
-                  ? 'border-primary text-primary font-extrabold' 
-                  : 'border-transparent text-outline hover:text-primary'
+                  ? 'bg-white text-[#003366] shadow-sm font-extrabold border border-slate-100' 
+                  : 'text-slate-500 hover:text-slate-800'
               }`}
             >
+              <span className="material-symbols-outlined text-sm">notifications</span>
               Notifications
               {notifications.some(n => !n.is_read) && (
-                <span className="absolute top-3.5 right-12 w-2.5 h-2.5 bg-error rounded-full border-2 border-white shadow-sm"></span>
+                <span className="absolute top-2.5 right-6 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm animate-pulse"></span>
               )}
             </button>
           </div>
         )}
 
         {/* Body Content */}
-        <div className="flex-grow overflow-y-auto hide-scrollbar bg-slate-50/50 p-4">
+        <div className="flex-grow overflow-y-auto hide-scrollbar bg-slate-50/40 p-5">
           
           {/* Thread Chat View */}
           {selectedContact ? (
-            <div className="flex flex-col gap-3 h-full">
+            <div className="flex flex-col gap-4 h-full">
               {isLoadingMessages ? (
                 <div className="flex-grow flex items-center justify-center">
-                  <span className="w-7 h-7 border-3 border-primary/20 border-t-primary rounded-full animate-spin"></span>
+                  <span className="w-8 h-8 border-3 border-[#003366]/20 border-t-[#003366] rounded-full animate-spin"></span>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="flex-grow flex flex-col items-center justify-center text-center opacity-60 px-6 space-y-3">
-                  <span className="material-symbols-outlined text-4xl text-outline-variant">chat_bubble_outline</span>
-                  <p className="text-xs font-bold text-outline">No messages here yet. Start chatting!</p>
+                <div className="flex-grow flex flex-col items-center justify-center text-center opacity-60 p-6 space-y-4">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                    <span className="material-symbols-outlined text-2xl">chat_bubble_outline</span>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Start the conversation</p>
+                    <p className="text-[10px] text-slate-400 mt-1 font-medium max-w-[200px]">Send a greeting, a document, or record a voice note to get started.</p>
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3 pb-2 flex-grow">
+                <div className="space-y-4 pb-2 flex-grow">
                   {messages.map(m => {
                     const isSelf = m.sender_id === user?.id;
                     const hasAttachment = !!m.file_url;
@@ -662,44 +702,52 @@ export const GlobalChat: React.FC = () => {
                     return (
                       <div 
                         key={m.id} 
-                        className={`flex flex-col max-w-[80%] ${isSelf ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                        className={`flex flex-col max-w-[85%] ${isSelf ? 'ml-auto items-end animate-fade-in' : 'mr-auto items-start animate-fade-in'}`}
                       >
-                        <div className={`p-3 rounded-2xl text-[13px] font-medium leading-relaxed ${
+                        <div className={`p-3.5 rounded-2xl text-[13px] font-medium leading-relaxed shadow-sm ${
                           isSelf 
-                            ? 'bg-primary text-white rounded-tr-none shadow-sm' 
-                            : 'bg-white border border-outline-variant/15 text-primary rounded-tl-none shadow-xs'
+                            ? 'bg-gradient-to-br from-[#001e40] to-[#003366] text-white rounded-tr-none' 
+                            : 'bg-white border border-slate-100 text-slate-800 rounded-tl-none'
                         }`}>
                           {hasAttachment && (
                             <div className="mb-2">
                               {fileType === 'image' && (
-                                <img 
-                                  src={m.file_url!} 
-                                  alt={m.file_name || 'image'} 
-                                  onClick={() => setPreviewImageUrl(m.file_url!)}
-                                  className="max-w-full max-h-48 rounded-xl cursor-zoom-in hover:brightness-95 transition-all"
-                                />
+                                <div className="relative rounded-xl overflow-hidden shadow-xs border border-black/5">
+                                  <img 
+                                    src={m.file_url!} 
+                                    alt={m.file_name || 'image'} 
+                                    onClick={() => setPreviewImageUrl(m.file_url!)}
+                                    className="max-w-full max-h-56 cursor-zoom-in hover:scale-102 transition-transform duration-300 object-cover"
+                                  />
+                                </div>
                               )}
                               {fileType === 'video' && (
-                                <video 
-                                  src={m.file_url!} 
-                                  controls 
-                                  className="max-w-full max-h-48 rounded-xl bg-black"
-                                />
+                                <div className="rounded-xl overflow-hidden shadow-xs bg-black">
+                                  <video 
+                                    src={m.file_url!} 
+                                    controls 
+                                    className="max-w-full max-h-56 rounded-xl"
+                                  />
+                                </div>
                               )}
                               {fileType === 'document' && (
                                 <a 
                                   href={m.file_url!} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
-                                  className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${
+                                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                                     isSelf 
-                                      ? 'bg-white/10 border-white/20 text-white hover:bg-white/15' 
-                                      : 'bg-slate-50 border-outline-variant/20 text-primary hover:bg-slate-100'
+                                      ? 'bg-white/10 border-white/20 text-white hover:bg-white/15 shadow-inner' 
+                                      : 'bg-slate-50 border-slate-200/50 text-[#003366] hover:bg-slate-100 shadow-xs'
                                   }`}
                                 >
-                                  <span className="material-symbols-outlined text-2xl shrink-0">description</span>
+                                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                                    isSelf ? 'bg-white/10' : 'bg-[#003366]/5'
+                                  }`}>
+                                    <span className="material-symbols-outlined text-lg">description</span>
+                                  </div>
                                   <div className="text-left min-w-0">
-                                    <p className="font-bold text-xs truncate">{m.file_name || 'Document'}</p>
+                                    <p className="font-bold text-xs truncate max-w-[160px]">{m.file_name || 'Document'}</p>
                                     <p className="text-[9px] opacity-75 uppercase tracking-wider font-extrabold mt-0.5">Click to Open</p>
                                   </div>
                                 </a>
@@ -715,10 +763,10 @@ export const GlobalChat: React.FC = () => {
                           )}
                           {/* Only show text caption/content if it's not voice message alone or standard caption */}
                           {(!hasAttachment || fileType !== 'audio') && (
-                            <div>{m.content}</div>
+                            <div className="whitespace-pre-wrap">{m.content}</div>
                           )}
                         </div>
-                        <span className="text-[8px] font-extrabold text-outline/65 uppercase tracking-wider mt-1 px-1">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5 px-1.5">
                           {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -731,58 +779,89 @@ export const GlobalChat: React.FC = () => {
           ) : (
             // Tabs views
             activeTab === 'chats' ? (
-              // Contacts List
-              isLoadingContacts ? (
-                <div className="flex items-center justify-center py-20">
-                  <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span>
+              // Contacts list block
+              <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative shrink-0 mb-1 z-10">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
+                  <input 
+                    type="text" 
+                    placeholder="Search contacts..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#003366] transition-all shadow-xs"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">cancel</span>
+                    </button>
+                  )}
                 </div>
-              ) : contacts.length === 0 ? (
-                <div className="text-center py-14 px-6 space-y-3 opacity-60">
-                  <span className="material-symbols-outlined text-4xl text-outline-variant">people</span>
-                  <p className="text-xs font-bold text-outline">No eligible contacts available for communication.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {contacts.map(c => {
-                    const unread = unreadCounts[c.id] || 0;
-                    return (
-                      <button 
-                        key={c.id} 
-                        onClick={() => setSelectedContact(c)}
-                        className="w-full bg-white p-4 rounded-2xl border border-outline-variant/15 flex items-center justify-between hover:bg-white/80 active:scale-[0.99] transition-all shadow-xs group"
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary font-headline text-sm font-bold group-hover:scale-105 transition-transform shrink-0">
-                            {c.name.charAt(0)}
+
+                {isLoadingContacts ? (
+                  <div className="flex items-center justify-center py-20">
+                    <span className="w-8 h-8 border-4 border-[#003366]/20 border-t-[#003366] rounded-full animate-spin"></span>
+                  </div>
+                ) : filteredContacts.length === 0 ? (
+                  <div className="text-center py-16 px-6 space-y-4 bg-white rounded-3xl border border-slate-100 shadow-xs">
+                    <span className="material-symbols-outlined text-4xl text-slate-300">people</span>
+                    <p className="text-xs font-bold text-slate-500">No contacts found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredContacts.map(c => {
+                      const unread = unreadCounts[c.id] || 0;
+                      return (
+                        <button 
+                          key={c.id} 
+                          onClick={() => setSelectedContact(c)}
+                          className="w-full bg-white p-4 rounded-2xl border border-slate-100 flex items-center justify-between hover:bg-slate-50/50 hover:shadow-md hover:-translate-y-[1px] active:scale-[0.99] transition-all shadow-xs group"
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#003366] to-[#0059bb] text-white flex items-center justify-center font-headline text-sm font-bold group-hover:scale-105 transition-transform shrink-0 shadow-sm relative">
+                              {c.name.charAt(0).toUpperCase()}
+                              {/* Small status dot indicating they are system users */}
+                              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+                            </div>
+                            <div className="text-left min-w-0">
+                              <p className="font-bold text-slate-800 text-sm truncate group-hover:text-[#003366] transition-colors">{c.name}</p>
+                              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full tracking-wider ${getRoleBadgeClass(c.role)}`}>
+                                  {c.role}
+                                </span>
+                                {c.branch_id && (
+                                  <span className="text-[8px] text-slate-400 font-extrabold uppercase bg-slate-100 px-1.5 py-0.5 rounded">
+                                    {c.branch_id.replace('BR-', '')}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-left min-w-0">
-                            <p className="font-bold text-primary text-sm truncate">{c.name}</p>
-                            <p className="text-[10px] text-outline uppercase tracking-wider font-extrabold mt-0.5">
-                              {c.role} {c.branch_id ? `• ${c.branch_id.replace('BR-', '')}` : ''}
-                            </p>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {unread > 0 && (
+                              <span className="bg-rose-500 text-white font-black text-[9px] w-5.5 h-5.5 rounded-full flex items-center justify-center shadow-md animate-pulse shrink-0">
+                                {unread}
+                              </span>
+                            )}
+                            <span className="material-symbols-outlined text-slate-300 group-hover:text-[#003366] group-hover:translate-x-0.5 transition-all">chevron_right</span>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {unread > 0 && (
-                            <span className="bg-error text-white font-black text-[9px] w-5 h-5 rounded-full flex items-center justify-center shadow-sm animate-pulse">
-                              {unread}
-                            </span>
-                          )}
-                          <span className="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             ) : (
-              // System Notifications Tab
-              <div className="space-y-3">
+              // System Notifications block
+              <div className="space-y-4">
                 {notifications.length > 0 && (
                   <div className="flex justify-end pr-1">
                     <button 
                       onClick={handleMarkAllNotificationsAsRead}
-                      className="text-[9px] font-black text-secondary uppercase tracking-widest hover:text-primary transition-colors flex items-center gap-1.5"
+                      className="text-[9px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-3 py-1.5 uppercase tracking-widest transition-colors flex items-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-sm">done_all</span>
                       Clear Notifications
@@ -790,34 +869,39 @@ export const GlobalChat: React.FC = () => {
                   </div>
                 )}
                 {notifications.length === 0 ? (
-                  <div className="text-center py-14 px-6 space-y-3 opacity-60">
-                    <span className="material-symbols-outlined text-4xl text-outline-variant">notifications</span>
-                    <p className="text-xs font-bold text-outline">You are all caught up. No notifications!</p>
+                  <div className="text-center py-16 px-6 space-y-4 bg-white rounded-3xl border border-slate-100 shadow-xs">
+                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto">
+                      <span className="material-symbols-outlined text-2xl">notifications_off</span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-600">All caught up!</p>
+                      <p className="text-[10px] text-slate-400 mt-1 font-medium">No new notifications from the system.</p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {notifications.map(n => (
                       <div 
                         key={n.id} 
                         className={`bg-white p-4 rounded-2xl border ${
-                          n.is_read ? 'border-outline-variant/15' : 'border-secondary/30 bg-[#003366]/[0.01]'
-                        } flex items-start gap-3 shadow-xs relative overflow-hidden`}
+                          n.is_read ? 'border-slate-100 opacity-80' : 'border-blue-100 bg-blue-50/[0.12] shadow-xs'
+                        } flex items-start gap-3.5 relative overflow-hidden transition-all hover:shadow-md`}
                       >
                         {!n.is_read && (
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#003366]"></div>
                         )}
-                        <span className={`material-symbols-outlined text-base mt-0.5 shrink-0 ${
-                          n.is_read ? 'text-outline/70' : 'text-secondary'
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-[#003366]/5 text-[#003366]'
                         }`}>
-                          info
-                        </span>
+                          <span className="material-symbols-outlined text-base">info</span>
+                        </div>
                         <div className="flex-grow min-w-0">
                           <p className={`text-[12px] font-medium leading-relaxed ${
-                            n.is_read ? 'text-primary/70' : 'text-primary'
+                            n.is_read ? 'text-slate-500' : 'text-slate-800'
                           }`}>
                             {n.content}
                           </p>
-                          <span className="text-[8px] font-extrabold text-outline/65 uppercase tracking-wider block mt-1.5">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mt-2.5">
                             {new Date(n.created_at).toLocaleDateString([], { day: '2-digit', month: 'short' })} • {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
@@ -832,19 +916,19 @@ export const GlobalChat: React.FC = () => {
 
         {/* Input box inside selected thread */}
         {selectedContact && (
-          <div className="shrink-0 p-4 bg-white border-t border-outline-variant/10 flex flex-col gap-2 relative">
+          <div className="shrink-0 p-4 bg-white border-t border-slate-100 flex flex-col gap-2 relative shadow-lg">
             {isUploading && (
-              <div className="flex items-center gap-2 pb-1 text-[10px] font-bold text-outline uppercase tracking-wider">
-                <span className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></span>
-                Sending Attachment...
+              <div className="flex items-center gap-2 pb-1.5 text-[9px] font-black text-slate-400 uppercase tracking-wider animate-pulse">
+                <span className="w-3.5 h-3.5 border-2 border-[#003366]/20 border-t-[#003366] rounded-full animate-spin"></span>
+                Uploading attachment to cloud storage...
               </div>
             )}
             
             {isRecording ? (
-              <div className="flex items-center justify-between bg-error/5 border border-error/15 p-2 rounded-full w-full">
+              <div className="flex items-center justify-between bg-rose-50 border border-rose-100 p-2 rounded-2xl w-full">
                 <div className="flex items-center gap-2.5 px-3">
-                  <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse"></span>
-                  <span className="text-xs font-bold text-error uppercase tracking-wider">
+                  <span className="w-3 h-3 rounded-full bg-rose-500 animate-ping"></span>
+                  <span className="text-xs font-black text-rose-600 uppercase tracking-wider">
                     Recording ({formatRecordingTime(recordingSeconds)})
                   </span>
                 </div>
@@ -852,54 +936,59 @@ export const GlobalChat: React.FC = () => {
                   <button
                     type="button"
                     onClick={cancelRecording}
-                    className="w-9 h-9 rounded-full bg-white border border-error/20 text-error flex items-center justify-center hover:bg-error/10 active:scale-95 transition-all"
+                    className="w-10 h-10 rounded-xl bg-white border border-rose-200 text-rose-600 flex items-center justify-center hover:bg-rose-100/50 active:scale-95 transition-all"
+                    title="Cancel Recording"
                   >
                     <span className="material-symbols-outlined text-lg">delete</span>
                   </button>
                   <button
                     type="button"
                     onClick={stopAndSendRecording}
-                    className="w-9 h-9 rounded-full bg-error text-white flex items-center justify-center hover:bg-error/90 active:scale-95 transition-all shadow-md"
+                    className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center hover:bg-rose-700 active:scale-95 transition-all shadow-md"
+                    title="Send Voice Message"
                   >
                     <span className="material-symbols-outlined text-lg">send</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSendMessage} className="flex gap-2 items-center w-full">
-                <div className="relative">
+              <form onSubmit={handleSendMessage} className="flex gap-2 items-center w-full relative">
+                <div className="relative shrink-0">
                   <button
                     type="button"
                     onClick={() => setShowAttachmentMenu(prev => !prev)}
-                    className="w-11 h-11 rounded-full border border-outline-variant/40 bg-slate-50 text-outline hover:text-primary active:scale-95 transition-all flex items-center justify-center shrink-0"
+                    className={`w-11 h-11 rounded-full border border-slate-200 bg-slate-50/80 text-slate-500 hover:text-[#003366] active:scale-95 transition-all flex items-center justify-center shrink-0 ${
+                      showAttachmentMenu ? 'bg-slate-100 text-[#003366]' : ''
+                    }`}
                   >
                     <span className="material-symbols-outlined text-lg">attach_file</span>
                   </button>
                   
                   {showAttachmentMenu && (
-                    <div className="absolute bottom-14 left-0 bg-white border border-outline-variant/15 rounded-2xl shadow-xl p-2 flex flex-col gap-1 z-50 min-w-[140px] animate-fade-in">
+                    <div className="absolute bottom-14 left-0 bg-white border border-slate-100 rounded-2xl shadow-xl p-2.5 flex flex-col gap-1.5 z-[200] min-w-[150px] animate-fade-in">
+                      <div className="text-[8px] font-black uppercase text-slate-400 tracking-wider px-3.5 py-1">Attach file</div>
                       <button
                         type="button"
                         onClick={() => triggerFileSelect('image')}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                        className="flex items-center gap-3 px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-rose-50/50 rounded-xl text-left transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base text-secondary">image</span>
+                        <span className="w-6 h-6 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center material-symbols-outlined text-base">image</span>
                         Image
                       </button>
                       <button
                         type="button"
                         onClick={() => triggerFileSelect('video')}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                        className="flex items-center gap-3 px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-blue-50/50 rounded-xl text-left transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base text-tertiary">movie</span>
+                        <span className="w-6 h-6 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center material-symbols-outlined text-base">movie</span>
                         Video
                       </button>
                       <button
                         type="button"
                         onClick={() => triggerFileSelect('document')}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                        className="flex items-center gap-3 px-3.5 py-2 text-xs font-bold text-slate-800 hover:bg-amber-50/50 rounded-xl text-left transition-colors"
                       >
-                        <span className="material-symbols-outlined text-base text-amber-600">description</span>
+                        <span className="w-6 h-6 rounded-lg bg-amber-50 text-amber-500 flex items-center justify-center material-symbols-outlined text-base">description</span>
                         Document
                       </button>
                     </div>
@@ -918,13 +1007,13 @@ export const GlobalChat: React.FC = () => {
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   placeholder="Type your message..."
-                  className="flex-grow h-11 bg-slate-50 border border-outline-variant/40 rounded-full px-4 text-xs font-medium placeholder-outline focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                  className="flex-grow h-11 bg-slate-50 border border-slate-200 rounded-full px-5 text-xs font-semibold placeholder-slate-400 text-slate-800 focus:outline-none focus:border-[#003366] focus:bg-white transition-all shadow-inner"
                 />
                 
                 {newMessage.trim() ? (
                   <button 
                     type="submit"
-                    className="w-11 h-11 rounded-full button-gradient text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0"
+                    className="w-11 h-11 rounded-full bg-gradient-to-r from-[#001e40] to-[#003366] text-white flex items-center justify-center shadow-md active:scale-95 transition-all hover:brightness-110 shrink-0"
                   >
                     <span className="material-symbols-outlined text-lg">send</span>
                   </button>
@@ -932,7 +1021,8 @@ export const GlobalChat: React.FC = () => {
                   <button
                     type="button"
                     onClick={startRecording}
-                    className="w-11 h-11 rounded-full bg-[#003366] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0 hover:bg-[#001e40]"
+                    className="w-11 h-11 rounded-full bg-[#003366] text-white flex items-center justify-center shadow-md active:scale-95 transition-all hover:bg-[#001e40] shrink-0"
+                    title="Record voice message"
                   >
                     <span className="material-symbols-outlined text-lg">mic</span>
                   </button>
@@ -946,7 +1036,7 @@ export const GlobalChat: React.FC = () => {
       {/* Image Preview Overlay Modal */}
       {previewImageUrl && (
         <div 
-          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center animate-fade-in"
+          className="fixed inset-0 z-[300] bg-black/90 flex items-center justify-center animate-fade-in"
           onClick={() => setPreviewImageUrl(null)}
         >
           <button
@@ -958,7 +1048,7 @@ export const GlobalChat: React.FC = () => {
           <img 
             src={previewImageUrl} 
             alt="Preview" 
-            className="max-w-[90%] max-h-[85%] rounded-xl shadow-2xl object-contain" 
+            className="max-w-[90%] max-h-[85%] rounded-2xl shadow-2xl object-contain border border-white/5" 
             onClick={(e) => e.stopPropagation()}
           />
         </div>
