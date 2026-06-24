@@ -708,34 +708,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 )}
               </>)}
 
-              <SectionCard title="Shortage / Liability Check" icon="report_problem" color="bg-error/5 text-error">
-                <div className="flex flex-col gap-3">
-                  <label className="flex items-center gap-3 cursor-pointer py-1.5 px-1 hover:bg-surface-container/30 rounded-xl transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.pendingPureLiability} 
-                      onChange={e => setFormData(f => ({ ...f, pendingPureLiability: e.target.checked }))}
-                      className="w-4 h-4 rounded text-error border-outline-variant/40 focus:ring-error"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-primary uppercase tracking-wider">Shortage of Pure Metal</span>
-                      <span className="text-[9px] text-outline mt-0.5">Mark this task as Pending Pure Liability</span>
-                    </div>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer py-1.5 px-1 hover:bg-surface-container/30 rounded-xl transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.pendingCashLiability} 
-                      onChange={e => setFormData(f => ({ ...f, pendingCashLiability: e.target.checked }))}
-                      className="w-4 h-4 rounded text-error border-outline-variant/40 focus:ring-error"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-primary uppercase tracking-wider">Shortage of Cash</span>
-                      <span className="text-[9px] text-outline mt-0.5">Mark this task as Pending Cash Liability</span>
-                    </div>
-                  </label>
-                </div>
-              </SectionCard>
+
 
               {Object.keys(errors).length > 0 && (
                 <div className="glass-effect rounded-2xl border border-error/20 p-4 flex items-center gap-3">
