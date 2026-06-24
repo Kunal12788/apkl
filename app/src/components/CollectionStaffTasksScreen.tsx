@@ -36,6 +36,7 @@ interface Task {
   auditImages?: string[];
   createdAt?: string;
   purity?: string;
+  wasSettlementCategory?: boolean;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -322,7 +323,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
               pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
               logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
-              createdAt: t.created_at, purity: t.purity
+              createdAt: t.created_at, purity: t.purity, wasSettlementCategory: t.was_settlement_category
           })));
         } else {
           setTasks([]);
@@ -346,7 +347,7 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               dateGiven: newTask.date_given, isoDate: newTask.iso_date, estimatedCompletion: newTask.estimated_completion, notes: newTask.notes, broughtBy: newTask.brought_by,
               pieces: newTask.pieces, productType: newTask.product_type, impureWeight: newTask.impure_weight, pureWeight: newTask.pure_weight, settlementCondition: newTask.settlement_condition,
               logoName: newTask.logo_name, carat: newTask.carat, pointSuggestion: newTask.point_suggestion, createdBy: newTask.created_by, images: newTask.images || [], auditImages: newTask.audit_images || [],
-              createdAt: newTask.created_at, purity: newTask.purity
+              createdAt: newTask.created_at, purity: newTask.purity, wasSettlementCategory: newTask.was_settlement_category
           };
           // Avoid duplicates if already fetched
           if (prev.some(t => t.id === mappedTask.id)) return prev;

@@ -432,7 +432,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
   const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
   
-  const pendingPureLiability = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldDue : e.pureSilverDue), 0), [entries, activeMetal]);
+
   const pendingCashLiability = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => e.pendingCashLiability ? s + (e.cashAmount || 0) : s, 0), [entries]);
 
   const combinedHistory = React.useMemo(() => {
@@ -1244,24 +1244,7 @@ export const StaffLedgerScreen: React.FC = () => {
                 )}
 
                 {/* Pending Liability Engine */}
-                <div className={`grid ${isAdminOrSuper ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
-                  {/* Pending Pure Liability Card */}
-                  <div className="luxury-card p-5 bg-gradient-to-br from-amber-50/60 to-orange-50/30 border border-amber-200/60 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <p className="text-[9px] font-bold text-amber-800 uppercase tracking-[0.15em] mb-1">Pending Pure Liability</p>
-                        <p className="font-headline font-black text-amber-700 tracking-tight" style={fitText(fmtG(pendingPureLiability), 8, 1.5, 1.0)}>{fmtG(pendingPureLiability)}</p>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-700">
-                        <span className="material-symbols-outlined text-base">hourglass_empty</span>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                      <span className="text-[8px] text-amber-800/80 font-bold uppercase tracking-wider">Awaiting Settlement</span>
-                    </div>
-                  </div>
-
+                <div className={`grid ${isAdminOrSuper ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                   {/* Total Pure Disbursed Card */}
                   <div className="luxury-card p-5 bg-gradient-to-br from-slate-50/60 to-white/30 border border-outline-variant/30 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md">
                     <div className="flex justify-between items-start">

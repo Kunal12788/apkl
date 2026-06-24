@@ -182,7 +182,8 @@ export const GlobalFAB: React.FC = () => {
                 notes: data.notes || 'Created Tunch Only task',
                 images: data.images,
                 pending_pure_liability: !!data.pendingPureLiability,
-                pending_cash_liability: !!data.pendingCashLiability
+                pending_cash_liability: !!data.pendingCashLiability,
+                was_settlement_category: true
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);

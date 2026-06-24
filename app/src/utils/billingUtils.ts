@@ -27,7 +27,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
     };
   });
 
-  const taskEntries = tasksData.filter((task: any) => task.status === 'Completed' && !txTaskIds.has(task.id)).map((task: any) => {
+  const taskEntries = tasksData.filter((task: any) => task.status === 'Completed' && !task.was_settlement_category && !task.wasSettlementCategory && !txTaskIds.has(task.id)).map((task: any) => {
     const dateStr = task.created_at ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : task.date_given || '';
     const timeStr = task.created_at ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const settlementVal = task.settlement_condition || '';
@@ -113,7 +113,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     };
   });
 
-  const taskEntries = tasksData.filter((task: any) => task.status === 'Completed' && !txTaskIds.has(task.id)).map((task: any) => {
+  const taskEntries = tasksData.filter((task: any) => task.status === 'Completed' && !task.was_settlement_category && !task.wasSettlementCategory && !txTaskIds.has(task.id)).map((task: any) => {
     const dateStr = task.created_at ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : task.date_given || '';
     const timeStr = task.created_at ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const settlementVal = task.settlement_condition || '';

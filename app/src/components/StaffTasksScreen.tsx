@@ -48,6 +48,7 @@ interface Task {
   pendingCashLiability?: boolean;
   staffSubmittedAt?: string;
   adminSubmittedAt?: string;
+  wasSettlementCategory?: boolean;
 }
 
 const mapDbToTask = (t: any): Task => ({
@@ -90,7 +91,8 @@ const mapDbToTask = (t: any): Task => ({
   pendingPureLiability: t.pending_pure_liability,
   pendingCashLiability: t.pending_cash_liability,
   staffSubmittedAt: t.staff_submitted_at,
-  adminSubmittedAt: t.admin_submitted_at
+  adminSubmittedAt: t.admin_submitted_at,
+  wasSettlementCategory: t.was_settlement_category
 });
 
 const getWorkIcon = (workType: string) => {
@@ -1243,6 +1245,10 @@ export const StaffTasksScreen: React.FC = () => {
         settlement_condition: updatedCondition
       };
 
+      if (nextStatus === 'Settlement') {
+        taskUpdates.was_settlement_category = true;
+      }
+
       if (task.workType === 'Tunch') {
         taskUpdates.impure_weight = details.impureWeight || task.impureWeight;
         taskUpdates.purity = details.purity || task.purity;
@@ -1273,7 +1279,8 @@ export const StaffTasksScreen: React.FC = () => {
         broughtBy: taskUpdates.brought_by || t.broughtBy,
         settlementCondition: updatedCondition,
         status: nextStatus,
-        progressPercentage: progress
+        progressPercentage: progress,
+        wasSettlementCategory: nextStatus === 'Settlement' ? true : t.wasSettlementCategory
       } : t));
 
       // Handle Ledger Entry if Tunch Work
@@ -1502,33 +1509,35 @@ export const StaffTasksScreen: React.FC = () => {
       }
 
       // 3. Create billing transaction
-      const newTxn = {
-        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-        customer_id: task.customerId || 'CUST-COL',
-        customer_name: task.customerName,
-        task_id: task.id,
-        customer_phone: task.customerPhone || '',
-        customer_address: task.customerAddress || '',
-        metal: task.metal || 'Gold',
-        type: paymentMode || 'Cash',
-        work_type: task.workType || 'Tunch',
-        amount: finalPrice,
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        iso_date: new Date().toISOString().split('T')[0],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        status: (Number(finalPrice) > 0) ? 'Unpaid' : 'Paid',
-        details: `${task.workType} task completed. Pieces: ${task.pieces || '1'}. ${task.logoName ? 'Logo: ' + task.logoName + '.' : ''} Settlement: ${updatedCondition}. ${task.notes || ''}`.trim(),
-        piece_type: task.productType || '',
-        impure_weight: task.impureWeight || task.totalWeight || task.weight || '',
-        pure_weight: task.pureWeight || '',
-        purity_percentage: task.purity || '',
-        points_count: task.pointSuggestion && !isNaN(parseInt(task.pointSuggestion)) ? parseInt(task.pointSuggestion) : null,
-        points_type: task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold'),
-        carat_marking: task.carat || '',
-        created_by: user?.id || ''
-      };
+      if (!task.wasSettlementCategory) {
+        const newTxn = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          customer_id: task.customerId || 'CUST-COL',
+          customer_name: task.customerName,
+          task_id: task.id,
+          customer_phone: task.customerPhone || '',
+          customer_address: task.customerAddress || '',
+          metal: task.metal || 'Gold',
+          type: paymentMode || 'Cash',
+          work_type: task.workType || 'Tunch',
+          amount: finalPrice,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: (Number(finalPrice) > 0) ? 'Unpaid' : 'Paid',
+          details: `${task.workType} task completed. Pieces: ${task.pieces || '1'}. ${task.logoName ? 'Logo: ' + task.logoName + '.' : ''} Settlement: ${updatedCondition}. ${task.notes || ''}`.trim(),
+          piece_type: task.productType || '',
+          impure_weight: task.impureWeight || task.totalWeight || task.weight || '',
+          pure_weight: task.pureWeight || '',
+          purity_percentage: task.purity || '',
+          points_count: task.pointSuggestion && !isNaN(parseInt(task.pointSuggestion)) ? parseInt(task.pointSuggestion) : null,
+          points_type: task.pointSuggestion ? (task.pointSuggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold'),
+          carat_marking: task.carat || '',
+          created_by: user?.id || ''
+        };
 
-      await supabase.from('transactions').insert([newTxn]);
+        await supabase.from('transactions').insert([newTxn]);
+      }
 
       showToast('Task approved & completed! Billings & Ledger updated.');
       handleCloseModal();
