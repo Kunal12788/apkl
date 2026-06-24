@@ -1064,9 +1064,9 @@ export const StaffLedgerScreen: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <div>
                       <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2.5 flex-nowrap whitespace-nowrap overflow-visible">
                         <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight whitespace-nowrap">Daily Summary</h2>
-                        <div className="flex items-center gap-1.5 ml-2">
+                        <div className="flex items-center gap-1.5 ml-2 shrink-0">
                           <input 
                             type="date" 
                             ref={dateInputRef}

@@ -1700,9 +1700,9 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
             {/* Super Admin Ledger History */}
             <div className="space-y-3">
-              <div className="flex justify-between items-center px-1 flex-wrap gap-2">
-                <p className="label-institutional text-outline uppercase">Corporate Ledger History</p>
-                <div className="flex items-center gap-1.5">
+              <div className="flex justify-between items-center px-1 flex-nowrap gap-2">
+                <p className="label-institutional text-outline uppercase whitespace-nowrap">Corporate Ledger History</p>
+                <div className="flex items-center gap-1.5 shrink-0">
                   <input 
                     type="date" 
                     ref={dateInputRef}
