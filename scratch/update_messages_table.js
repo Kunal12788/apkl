@@ -1,0 +1,35 @@
+import pkg from 'pg';
+const { Client } = pkg;
+
+async function runMigration() {
+  const client = new Client({
+    user: 'postgres.quqcfbairoevddjcxiyi',
+    host: 'aws-1-ap-south-1.pooler.supabase.com',
+    database: 'postgres',
+    password: 'MZZ+6GY4bznXSpj',
+    port: 6543,
+    ssl: { rejectUnauthorized: false }
+  });
+
+  try {
+    await client.connect();
+    console.log("Connected to PostgreSQL database.");
+
+    // Add columns if they do not exist
+    await client.query(`
+      ALTER TABLE public.messages 
+      ADD COLUMN IF NOT EXISTS file_url TEXT,
+      ADD COLUMN IF NOT EXISTS file_name TEXT,
+      ADD COLUMN IF NOT EXISTS file_type TEXT,
+      ADD COLUMN IF NOT EXISTS duration NUMERIC;
+    `);
+    console.log("Added new columns to messages table.");
+
+  } catch (err) {
+    console.error("Migration error:", err.message);
+  } finally {
+    await client.end();
+  }
+}
+
+runMigration();

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
+import toast from 'react-hot-toast';
 
 interface UserContact {
   id: string;
@@ -17,7 +18,113 @@ interface Message {
   type: 'chat' | 'notification';
   is_read: boolean;
   created_at: string;
+  file_url?: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  duration?: number | null;
 }
+
+// Custom Premium Audio Player component for voice messages
+const AudioPlayer: React.FC<{ url: string; duration?: number | null; isSelf?: boolean }> = ({ url, duration, isSelf }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [totalDuration, setTotalDuration] = useState(duration || 0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = new Audio(url);
+    audioRef.current = audio;
+
+    const onTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const onLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration)) {
+        setTotalDuration(audio.duration);
+      }
+    };
+
+    const onEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('ended', onEnded);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('ended', onEnded);
+    };
+  }, [url]);
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play().catch(err => console.error("Audio playback failed:", err));
+      setIsPlaying(true);
+    }
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const seekTime = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = seekTime;
+      setCurrentTime(seekTime);
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  return (
+    <div className={`flex items-center gap-3 p-2.5 rounded-2xl w-56 border ${
+      isSelf 
+        ? 'bg-white/10 border-white/20 text-white' 
+        : 'bg-slate-100 border-slate-200/50 text-primary'
+    }`}>
+      <button 
+        type="button"
+        onClick={togglePlay}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shadow-md active:scale-95 transition-all shrink-0 ${
+          isSelf 
+            ? 'bg-white text-primary hover:bg-slate-100' 
+            : 'bg-[#003366] text-white hover:bg-[#001e40]'
+        }`}
+      >
+        <span className="material-symbols-outlined text-xl">{isPlaying ? 'pause' : 'play_arrow'}</span>
+      </button>
+      <div className="flex-grow min-w-0">
+        <input 
+          type="range"
+          min="0"
+          max={totalDuration || 100}
+          value={currentTime}
+          onChange={handleSeek}
+          className={`w-full h-1 rounded-lg appearance-none cursor-pointer range-sm ${
+            isSelf ? 'bg-white/30 accent-white' : 'bg-slate-200 accent-primary'
+          }`}
+        />
+        <div className={`flex justify-between text-[9px] font-black uppercase tracking-widest mt-1 ${
+          isSelf ? 'text-white/70' : 'text-slate-500'
+        }`}>
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(totalDuration)}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const GlobalChat: React.FC = () => {
   const { user } = useSession();
@@ -33,6 +140,18 @@ export const GlobalChat: React.FC = () => {
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
+  // Attachment and Voice states
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileTypeRef = useRef<'image' | 'video' | 'document' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Listen to open event and bind global window hooks
@@ -260,7 +379,6 @@ export const GlobalChat: React.FC = () => {
     setNewMessage('');
     try {
       await supabase.from('messages').insert([msgObj]);
-      // Local optimism insertion is not required since the supabase realtime insert subscription captures it
     } catch (err) {
       console.error('Failed to send message:', err);
     }
@@ -280,6 +398,168 @@ export const GlobalChat: React.FC = () => {
     } catch (err) {
       console.error('Failed to clear notifications:', err);
     }
+  };
+
+  // Attachment Triggers
+  const triggerFileSelect = (type: 'image' | 'video' | 'document') => {
+    fileTypeRef.current = type;
+    setShowAttachmentMenu(false);
+    if (fileInputRef.current) {
+      if (type === 'image') fileInputRef.current.accept = 'image/*';
+      else if (type === 'video') fileInputRef.current.accept = 'video/*';
+      else fileInputRef.current.accept = '.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip';
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !selectedContact || !fileTypeRef.current) return;
+
+    setIsUploading(true);
+    const fileType = fileTypeRef.current;
+    
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `chat_attachments/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+      
+      // Upload to the public 'task_images' bucket
+      const { error: uploadError } = await supabase.storage
+        .from('task_images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('task_images')
+        .getPublicUrl(filePath);
+
+      // Insert message with attachment info
+      const mid = `MSG-${Math.floor(100000 + Math.random() * 900000)}`;
+      const caption = `Sent a ${fileType}: ${file.name}`;
+      
+      const msgObj = {
+        id: mid,
+        sender_id: user.id,
+        receiver_id: selectedContact.id,
+        content: caption,
+        type: 'chat',
+        is_read: false,
+        file_url: publicUrl,
+        file_name: file.name,
+        file_type: fileType
+      };
+
+      await supabase.from('messages').insert([msgObj]);
+      toast.success(`${fileType} sent successfully!`);
+    } catch (err: any) {
+      console.error('File upload failed:', err);
+      toast.error(`Upload failed: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+      fileTypeRef.current = null;
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Audio Recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        // Release all tracks
+        stream.getTracks().forEach(track => track.stop());
+
+        if (audioChunksRef.current.length === 0) return;
+
+        setIsUploading(true);
+        try {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const filePath = `chat_attachments/audio_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('task_images')
+            .upload(filePath, audioBlob);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('task_images')
+            .getPublicUrl(filePath);
+
+          const mid = `MSG-${Math.floor(100000 + Math.random() * 900000)}`;
+          const msgObj = {
+            id: mid,
+            sender_id: user.id,
+            receiver_id: selectedContact.id,
+            content: 'Voice Message',
+            type: 'chat',
+            is_read: false,
+            file_url: publicUrl,
+            file_name: 'Voice Message.webm',
+            file_type: 'audio',
+            duration: recordingSeconds
+          };
+
+          await supabase.from('messages').insert([msgObj]);
+          toast.success('Voice message sent!');
+        } catch (err: any) {
+          console.error('Audio upload failed:', err);
+          toast.error('Failed to send voice message.');
+        } finally {
+          setIsUploading(false);
+        }
+      };
+
+      recorder.start();
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds(prev => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Microphone access denied:', err);
+      toast.error('Please allow microphone permissions to record.');
+    }
+  };
+
+  const stopAndSendRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      clearInterval(recordingTimerRef.current);
+      setIsRecording(false);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      // Temporarily overwrite onstop to avoid uploading
+      mediaRecorderRef.current.onstop = () => {
+        mediaRecorderRef.current?.stream.getTracks().forEach(track => track.stop());
+      };
+      mediaRecorderRef.current.stop();
+      clearInterval(recordingTimerRef.current);
+      setIsRecording(false);
+      audioChunksRef.current = [];
+      toast('Recording cancelled', { icon: '🗑️' });
+    }
+  };
+
+  const formatRecordingTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
   if (!isOpen) return null;
@@ -375,6 +655,9 @@ export const GlobalChat: React.FC = () => {
                 <div className="space-y-3 pb-2 flex-grow">
                   {messages.map(m => {
                     const isSelf = m.sender_id === user?.id;
+                    const hasAttachment = !!m.file_url;
+                    const fileType = m.file_type;
+                    
                     return (
                       <div 
                         key={m.id} 
@@ -385,7 +668,54 @@ export const GlobalChat: React.FC = () => {
                             ? 'bg-primary text-white rounded-tr-none shadow-sm' 
                             : 'bg-white border border-outline-variant/15 text-primary rounded-tl-none shadow-xs'
                         }`}>
-                          {m.content}
+                          {hasAttachment && (
+                            <div className="mb-2">
+                              {fileType === 'image' && (
+                                <img 
+                                  src={m.file_url!} 
+                                  alt={m.file_name || 'image'} 
+                                  onClick={() => setPreviewImageUrl(m.file_url!)}
+                                  className="max-w-full max-h-48 rounded-xl cursor-zoom-in hover:brightness-95 transition-all"
+                                />
+                              )}
+                              {fileType === 'video' && (
+                                <video 
+                                  src={m.file_url!} 
+                                  controls 
+                                  className="max-w-full max-h-48 rounded-xl bg-black"
+                                />
+                              )}
+                              {fileType === 'document' && (
+                                <a 
+                                  href={m.file_url!} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${
+                                    isSelf 
+                                      ? 'bg-white/10 border-white/20 text-white hover:bg-white/15' 
+                                      : 'bg-slate-50 border-outline-variant/20 text-primary hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span className="material-symbols-outlined text-2xl shrink-0">description</span>
+                                  <div className="text-left min-w-0">
+                                    <p className="font-bold text-xs truncate">{m.file_name || 'Document'}</p>
+                                    <p className="text-[9px] opacity-75 uppercase tracking-wider font-extrabold mt-0.5">Click to Open</p>
+                                  </div>
+                                </a>
+                              )}
+                              {fileType === 'audio' && (
+                                <AudioPlayer 
+                                  url={m.file_url!} 
+                                  duration={m.duration}
+                                  isSelf={isSelf}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {/* Only show text caption/content if it's not voice message alone or standard caption */}
+                          {(!hasAttachment || fileType !== 'audio') && (
+                            <div>{m.content}</div>
+                          )}
                         </div>
                         <span className="text-[8px] font-extrabold text-outline/65 uppercase tracking-wider mt-1 px-1">
                           {new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -501,27 +831,137 @@ export const GlobalChat: React.FC = () => {
 
         {/* Input box inside selected thread */}
         {selectedContact && (
-          <form 
-            onSubmit={handleSendMessage}
-            className="shrink-0 p-4 bg-white border-t border-outline-variant/10 flex gap-2 items-center"
-          >
-            <input 
-              type="text" 
-              value={newMessage}
-              onChange={e => setNewMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-grow h-11 bg-slate-50 border border-outline-variant/40 rounded-full px-4 text-xs font-medium placeholder-outline focus:outline-none focus:border-primary focus:bg-white transition-colors"
-            />
-            <button 
-              type="submit"
-              disabled={!newMessage.trim()}
-              className="w-11 h-11 rounded-full button-gradient text-white flex items-center justify-center disabled:opacity-50 disabled:scale-100 shadow-md active:scale-95 transition-transform shrink-0"
-            >
-              <span className="material-symbols-outlined text-lg">send</span>
-            </button>
-          </form>
+          <div className="shrink-0 p-4 bg-white border-t border-outline-variant/10 flex flex-col gap-2 relative">
+            {isUploading && (
+              <div className="flex items-center gap-2 pb-1 text-[10px] font-bold text-outline uppercase tracking-wider">
+                <span className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></span>
+                Sending Attachment...
+              </div>
+            )}
+            
+            {isRecording ? (
+              <div className="flex items-center justify-between bg-error/5 border border-error/15 p-2 rounded-full w-full">
+                <div className="flex items-center gap-2.5 px-3">
+                  <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse"></span>
+                  <span className="text-xs font-bold text-error uppercase tracking-wider">
+                    Recording ({formatRecordingTime(recordingSeconds)})
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={cancelRecording}
+                    className="w-9 h-9 rounded-full bg-white border border-error/20 text-error flex items-center justify-center hover:bg-error/10 active:scale-95 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-lg">delete</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopAndSendRecording}
+                    className="w-9 h-9 rounded-full bg-error text-white flex items-center justify-center hover:bg-error/90 active:scale-95 transition-all shadow-md"
+                  >
+                    <span className="material-symbols-outlined text-lg">send</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleSendMessage} className="flex gap-2 items-center w-full">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowAttachmentMenu(prev => !prev)}
+                    className="w-11 h-11 rounded-full border border-outline-variant/40 bg-slate-50 text-outline hover:text-primary active:scale-95 transition-all flex items-center justify-center shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-lg">attach_file</span>
+                  </button>
+                  
+                  {showAttachmentMenu && (
+                    <div className="absolute bottom-14 left-0 bg-white border border-outline-variant/15 rounded-2xl shadow-xl p-2 flex flex-col gap-1 z-50 min-w-[140px] animate-fade-in">
+                      <button
+                        type="button"
+                        onClick={() => triggerFileSelect('image')}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                      >
+                        <span className="material-symbols-outlined text-base text-secondary">image</span>
+                        Image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerFileSelect('video')}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                      >
+                        <span className="material-symbols-outlined text-base text-tertiary">movie</span>
+                        Video
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerFileSelect('document')}
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-primary hover:bg-slate-50 rounded-xl text-left"
+                      >
+                        <span className="material-symbols-outlined text-base text-amber-600">description</span>
+                        Document
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                <input 
+                  type="text" 
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  placeholder="Type your message..."
+                  className="flex-grow h-11 bg-slate-50 border border-outline-variant/40 rounded-full px-4 text-xs font-medium placeholder-outline focus:outline-none focus:border-primary focus:bg-white transition-colors"
+                />
+                
+                {newMessage.trim() ? (
+                  <button 
+                    type="submit"
+                    className="w-11 h-11 rounded-full button-gradient text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-lg">send</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={startRecording}
+                    className="w-11 h-11 rounded-full bg-[#003366] text-white flex items-center justify-center shadow-md active:scale-95 transition-transform shrink-0 hover:bg-[#001e40]"
+                  >
+                    <span className="material-symbols-outlined text-lg">mic</span>
+                  </button>
+                )}
+              </form>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Image Preview Overlay Modal */}
+      {previewImageUrl && (
+        <div 
+          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center animate-fade-in"
+          onClick={() => setPreviewImageUrl(null)}
+        >
+          <button
+            onClick={() => setPreviewImageUrl(null)}
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors active:scale-95"
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
+          <img 
+            src={previewImageUrl} 
+            alt="Preview" 
+            className="max-w-[90%] max-h-[85%] rounded-xl shadow-2xl object-contain" 
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

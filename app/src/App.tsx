@@ -29,6 +29,7 @@ import { SuperAdminWorkScreen } from './components/SuperAdminWorkScreen';
 import { SuperAdminStockScreen } from './components/SuperAdminStockScreen';
 import { SuperAdminAlertsScreen } from './components/SuperAdminAlertsScreen';
 import { SuperAdminCalculatorScreen } from './components/SuperAdminCalculatorScreen';
+import { SuperAdminChatMonitorScreen } from './components/SuperAdminChatMonitorScreen';
 import { ConfirmAccountScreen } from './components/ConfirmAccountScreen';
 
 const LoginWrapper = () => {
@@ -156,6 +157,17 @@ const CalculatorWrapper = () => {
 
   if (user.role === 'Super Admin') {
     return <SuperAdminCalculatorScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
+};
+
+const ChatMonitorWrapper = () => {
+  const { user, isFullyAuthenticated } = useSession();
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isFullyAuthenticated) return <SessionInitializationScreen />;
+
+  if (user.role === 'Super Admin') {
+    return <SuperAdminChatMonitorScreen />;
   }
   return <Navigate to="/dashboard" replace />;
 };
@@ -340,6 +352,7 @@ function AppContent() {
             <Route path="/stock" element={<StockWrapper />} />
             <Route path="/alerts" element={<AlertsWrapper />} />
             <Route path="/calculator" element={<CalculatorWrapper />} />
+            <Route path="/chat-monitor" element={<ChatMonitorWrapper />} />
           </Routes>
           {user && <GlobalFAB />}
           {user && <GlobalChat />}
