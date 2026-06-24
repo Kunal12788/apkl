@@ -68,34 +68,7 @@ const mapDbToEntry = (db: any): LedgerEntry => ({
   adminSubmittedAt: db.admin_submitted_at
 });
 
-const mapEntryToDb = (entry: LedgerEntry, staffId: string) => ({
-  id: entry.id,
-  date: entry.date,
-  iso_date: entry.isoDate,
-  customer_name: entry.customerName,
-  transaction_type: entry.transactionType,
-  pure_gold_out: entry.pureGoldOut,
-  pure_gold_due: entry.pureGoldDue,
-  impure_gold_in: entry.impureGoldIn,
-  impure_gold_out: entry.impureGoldOut || 0,
-  pure_silver_out: entry.pureSilverOut,
-  pure_silver_due: entry.pureSilverDue,
-  impure_silver_in: entry.impureSilverIn,
-  impure_silver_out: entry.impureSilverOut || 0,
-  purity: entry.purity || '',
-  cash_received: entry.cashReceived,
-  cash_paid: entry.cashPaid,
-  status: entry.status,
-  staff_id: staffId,
-  pure_gold_in: entry.pureGoldIn || 0,
-  pure_silver_in: entry.pureSilverIn || 0,
-  cash_rate_per_gram: entry.cashRatePerGram || 0,
-  cash_amount: entry.cashAmount || 0,
-  pending_pure_liability: entry.pendingPureLiability || false,
-  pending_cash_liability: entry.pendingCashLiability || false,
-  staff_submitted_at: entry.staffSubmittedAt || null,
-  admin_submitted_at: entry.adminSubmittedAt || null
-});
+
 
 export const StaffLedgerScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -120,7 +93,6 @@ export const StaffLedgerScreen: React.FC = () => {
   const [allocations, setAllocations] = useState<any[]>(initialAllocations);
   const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
   const [, setLoading] = useState(initialEntries.length === 0);
-  const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   const [startDate, setStartDate] = useState('');
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [selectedAllocation, setSelectedAllocation] = useState<any | null>(null);
@@ -437,8 +409,6 @@ export const StaffLedgerScreen: React.FC = () => {
   const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
   
 
-  const pendingCashLiability = React.useMemo(() => entries.filter(e => e.transactionType !== 'Tunch Only').reduce((s, e) => e.pendingCashLiability ? s + (e.cashAmount || 0) : s, 0), [entries]);
-
   const combinedHistory = React.useMemo(() => {
     const history: any[] = [];
     
@@ -452,7 +422,10 @@ export const StaffLedgerScreen: React.FC = () => {
           timestamp: new Date(a.created_at || new Date()).getTime(),
           metal: a.metal,
           pureWeight: Number(a.pure_weight),
-          cashAmount: Number(a.cash_amount)
+          cashAmount: Number(a.cash_amount),
+          notes: a.notes,
+          staff_id: a.staff_id,
+          allocated_by: a.allocated_by
         });
       }
     });
@@ -480,97 +453,6 @@ export const StaffLedgerScreen: React.FC = () => {
     // Sort descending by timestamp
     return history.sort((a, b) => b.timestamp - a.timestamp);
   }, [allocations, entries, activeMetal]);
-
-  const handleRefineConfirm = async () => {
-    const txnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
-    const trfId = `TRF-${Math.floor(100 + Math.random() * 900)}`;
-
-    // Calculate expected/calculated pure gold based on weighted purity of impure gold received
-    let totalImpureIn = 0;
-    let totalExpectedPure = 0;
-    entries.forEach(e => {
-      const impureIn = activeMetal === 'Gold' ? e.impureGoldIn : e.impureSilverIn;
-      if (impureIn > 0) {
-        totalImpureIn += impureIn;
-        const p = parseFloat(e.purity || '0') || 0;
-        totalExpectedPure += impureIn * (p / 100);
-      }
-    });
-    
-    const avgPurity = totalImpureIn > 0 ? (totalExpectedPure / totalImpureIn) : 0.92; // Default to 92% tunch
-    const calculatedPureOutput = currentImpureStock * avgPurity;
-
-    const newEntry: LedgerEntry = {
-      id: txnId,
-      date: 'Just Now',
-      isoDate: new Date().toISOString().split('T')[0],
-      customerName: 'Refinery Dispatch',
-      transactionType: 'Refining Dispatch',
-      pureGoldOut: 0,
-      pureGoldDue: 0,
-      impureGoldIn: 0,
-      impureGoldOut: activeMetal === 'Gold' ? currentImpureStock : 0,
-      pureSilverOut: 0,
-      pureSilverDue: 0,
-      impureSilverIn: 0,
-      impureSilverOut: activeMetal === 'Silver' ? currentImpureStock : 0,
-      cashReceived: 0,
-      cashPaid: 0,
-      status: 'Completed'
-    };
-
-    try {
-      const { error: ledgerError } = await supabase
-        .from('ledger_entries')
-        .insert([mapEntryToDb(newEntry, userId)]);
-      if (ledgerError) throw ledgerError;
-
-      // Add to transfers queue for Super Admin approval
-      const { error: transferError } = await supabase
-        .from('refining_transfers')
-        .insert([{
-          id: trfId,
-          branch_id: user?.branch_id || 'BR-DELHI',
-          branch_name: branchName,
-          metal: activeMetal,
-          impure_gold_sent: activeMetal === 'Gold' ? currentImpureStock : 0,
-          calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
-          impure_silver_sent: activeMetal === 'Silver' ? currentImpureStock : 0,
-          calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureOutput : 0,
-          date_sent: new Date().toISOString().split('T')[0],
-          status: 'Pending',
-        }]);
-      if (transferError) throw transferError;
-
-      // Add to Super Admin Corporate Ledger to track unrefined stock increases
-      const newSaEntry = {
-        id: `SAL-${Math.floor(1000 + Math.random() * 9000)}`,
-        date: 'Today',
-        iso_date: new Date().toISOString().split('T')[0],
-        type: 'Branch Dispatch',
-        branch_name: branchName,
-        pure_gold_change: 0,
-        impure_gold_change: activeMetal === 'Gold' ? currentImpureStock : 0,
-        calculated_pure_gold: activeMetal === 'Gold' ? calculatedPureOutput : 0,
-        pure_silver_change: 0,
-        impure_silver_change: activeMetal === 'Silver' ? currentImpureStock : 0,
-        calculated_pure_silver: activeMetal === 'Silver' ? calculatedPureOutput : 0,
-        cash_change: 0,
-        details: `Dispatched ${currentImpureStock.toFixed(3)}g Impure ${activeMetal} from ${branchName}. Expected pure yield: ${calculatedPureOutput.toFixed(3)}g.`
-      };
-
-      const { error: saLedgerError } = await supabase
-        .from('super_admin_ledger')
-        .insert([newSaEntry]);
-
-      if (saLedgerError) throw saLedgerError;
-
-      setShowRefiningConfirm(false);
-      fetchEntries();
-    } catch (err) {
-      console.error('Error dispatching to refinery:', err);
-    }
-  };
 
   const handleAdminAllocateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1083,7 +965,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       Stock Allocation
                     </p>
                     <h2 className="font-headline text-2xl font-extrabold text-white flex items-baseline gap-1">
-                      <span className="material-symbols-outlined text-lg">inventory_2</span> Admin Allocation
+                      <span className="material-symbols-outlined text-lg">inventory_2</span> {!selectedAllocation.staff_id ? 'Super Admin Allocation' : 'Admin Allocation'}
                     </h2>
                     <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mt-1">{selectedAllocation.id} • {selectedAllocation.date}</p>
                   </div>
@@ -1257,15 +1139,7 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                   </div>
 
-                {currentImpureStock > 0 && (
-                  <button 
-                    onClick={() => setShowRefiningConfirm(true)}
-                    className="w-full py-4 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-[0.2em] rounded-2xl transition-all duration-300 shadow-md hover:shadow-lg active:scale-[0.99] flex justify-center items-center gap-2 animate-fade-in"
-                  >
-                    <span className="material-symbols-outlined text-sm">local_fire_department</span>
-                    TRANSFER TO REFINERY
-                  </button>
-                )}
+
 
                 {user?.role === 'Admin' && (
                   <div className="luxury-card p-6 bg-white border border-[#003366]/20 shadow-lg relative overflow-hidden mt-6 animate-fade-in">
@@ -1348,7 +1222,7 @@ export const StaffLedgerScreen: React.FC = () => {
                 )}
 
                 {/* Pending Liability Engine */}
-                <div className={`grid ${isAdminOrSuper ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
+                <div className="grid grid-cols-1 gap-4">
                   {/* Total Pure Disbursed Card */}
                   <div className="luxury-card p-5 bg-gradient-to-br from-slate-50/60 to-white/30 border border-outline-variant/30 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md">
                     <div className="flex justify-between items-start">
@@ -1365,25 +1239,6 @@ export const StaffLedgerScreen: React.FC = () => {
                       <span className="text-[8px] text-outline font-bold uppercase tracking-wider">All-Time Disbursed</span>
                     </div>
                   </div>
-
-                  {/* Pending Cash Liability Card (Admin only) */}
-                  {isAdminOrSuper && (
-                    <div className="luxury-card p-5 bg-gradient-to-br from-red-50/60 to-rose-50/30 border border-red-200/60 rounded-3xl relative overflow-hidden shadow-sm backdrop-blur-md animate-fade-in">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-[9px] font-bold text-red-800 uppercase tracking-[0.15em] mb-1">Pending Cash Liability</p>
-                          <p className="font-headline font-black text-red-700 tracking-tight" style={fitText(fmt(pendingCashLiability), 8, 1.5, 1.0)}>{fmt(pendingCashLiability)}</p>
-                        </div>
-                        <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-700">
-                          <span className="material-symbols-outlined text-base">hourglass_empty</span>
-                        </div>
-                      </div>
-                      <div className="mt-3 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                        <span className="text-[8px] text-red-800/80 font-bold uppercase tracking-wider">Awaiting Cash Settle</span>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Audit Log Entries */}
@@ -1408,8 +1263,10 @@ export const StaffLedgerScreen: React.FC = () => {
                                   <span className="material-symbols-outlined text-xl">inventory_2</span>
                                 </div>
                                 <div>
-                                  <p className="font-bold text-sm text-primary">Super Admin Allocation</p>
-                                  <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">Admin Allocation • {item.id}</p>
+                                  <p className="font-bold text-sm text-primary">
+                                    {!item.staff_id ? 'Super Admin Allocation' : 'Admin Allocation'}
+                                  </p>
+                                  <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">Stock Allocation • {item.id}</p>
                                 </div>
                               </div>
                               <div className="text-right">
@@ -1507,35 +1364,7 @@ export const StaffLedgerScreen: React.FC = () => {
           </div>
         )}
 
-        {/* Refining Confirmation Modal */}
-        {showRefiningConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white w-full max-w-sm rounded-[2rem] p-6 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up">
-              <div className="w-16 h-16 rounded-full bg-[#755b00]/10 flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-3xl text-[#755b00]">local_fire_department</span>
-              </div>
-              <h3 className="font-headline text-xl font-bold text-center text-primary mb-2">Transfer to Refinery</h3>
-              <p className="text-sm text-center text-outline mb-6">
-                You are about to transfer <strong className="text-[#755b00] text-base">{fmtG(currentImpureStock)}</strong> of impure gold to the refinery. This action will clear your local impure gold stock balance.
-              </p>
-              
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setShowRefiningConfirm(false)}
-                  className="flex-1 py-3 bg-surface-container hover:bg-surface-variant text-primary font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98]"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={handleRefineConfirm}
-                  className="flex-1 py-3 bg-[#755b00] hover:bg-[#5a4600] text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-colors active:scale-[0.98] shadow-lg shadow-[#755b00]/20"
-                >
-                  Confirm Transfer
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
       </main>
 
       {/* Bottom Nav Bar */}
