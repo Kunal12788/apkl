@@ -123,6 +123,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   const [startDate, setStartDate] = useState('');
   const dateInputRef = React.useRef<HTMLInputElement>(null);
+  const [selectedAllocation, setSelectedAllocation] = useState<any | null>(null);
   const [hasActiveDataToSubmit, setHasActiveDataToSubmit] = useState(false);
 
   const [hasUnsubmittedStaffData, setHasUnsubmittedStaffData] = useState(false);
@@ -1032,15 +1033,22 @@ export const StaffLedgerScreen: React.FC = () => {
                         <p className="font-headline text-sm font-bold text-primary">{isAdminOrSuper ? fmt(selectedEntry.cashRatePerGram || 0) : '[Restricted]'}</p>
                       </div>
                     )}
-                    <div className="space-y-1 text-right">
-                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Status</p>
-                      <p className="font-headline text-sm font-bold text-primary">{selectedEntry.status}</p>
-                    </div>
                   </div>
                 )}
 
+                {/* Centered Status Badge */}
+                <div className="flex justify-center pt-4 border-t border-outline-variant/10 mt-4">
+                  <span className={`px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest ${
+                    selectedEntry.status.includes('Pending') 
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200/50 animate-pulse' 
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200/50'
+                  }`}>
+                    {selectedEntry.status}
+                  </span>
+                </div>
+
                 {isAdmin && (selectedEntry.status.includes('Pending') || selectedEntry.status === 'Pending Pure') && (
-                  <div className="pt-2 flex gap-3">
+                  <div className="pt-4 flex gap-3">
                     <button 
                       onClick={handleApproveSettlement}
                       className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-colors shadow-md flex justify-center items-center gap-1.5"
@@ -1057,7 +1065,84 @@ export const StaffLedgerScreen: React.FC = () => {
           </div>
         )}
 
-        {!selectedEntry && (
+        {selectedAllocation && (
+          <div className="animate-fade-in space-y-6">
+            <button 
+              onClick={() => setSelectedAllocation(null)} 
+              className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors"
+            >
+              <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
+            </button>
+
+            <div className="luxury-card overflow-hidden">
+              <div className="p-6 text-white relative bg-gradient-to-br from-[#003366] to-[#001e40]">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold mb-1">
+                      Stock Allocation
+                    </p>
+                    <h2 className="font-headline text-2xl font-extrabold text-white flex items-baseline gap-1">
+                      <span className="material-symbols-outlined text-lg">inventory_2</span> Admin Allocation
+                    </h2>
+                    <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mt-1">{selectedAllocation.id} • {selectedAllocation.date}</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                    <span className="material-symbols-outlined text-2xl">
+                      inventory_2
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6 bg-white">
+                <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-b border-outline-variant/20 pb-5">
+                  {selectedAllocation.pureWeight > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">
+                        Pure {selectedAllocation.metal} Allocated
+                      </p>
+                      <p className="font-headline text-sm font-bold text-secondary">
+                        {fmtG(selectedAllocation.pureWeight)}
+                      </p>
+                    </div>
+                  )}
+                  {selectedAllocation.cashAmount > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Allocated</p>
+                      <p className="font-headline text-sm font-bold text-emerald-600">
+                        {fmt(selectedAllocation.cashAmount)}
+                      </p>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Timestamp</p>
+                    <p className="font-headline text-sm font-bold text-primary">{selectedAllocation.date}</p>
+                  </div>
+                  <div className="space-y-1 text-right">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Status</p>
+                    <p className="font-headline text-sm font-bold text-primary">Completed</p>
+                  </div>
+                </div>
+
+                {selectedAllocation.notes && (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Allocation Details / Notes</p>
+                    <p className="text-xs text-primary font-medium">{selectedAllocation.notes}</p>
+                  </div>
+                )}
+                
+                <div className="flex justify-center pt-2">
+                  <span className="px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                    Allocated Successfully
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!selectedEntry && !selectedAllocation && (
           <div className="space-y-6 animate-fade-in">
               <>
                 <div className="flex justify-between items-end flex-wrap gap-2 mb-4">
@@ -1309,20 +1394,49 @@ export const StaffLedgerScreen: React.FC = () => {
                     {combinedHistory.map((item: any) => {
                       if (item.type === 'allocation') {
                         return (
-                          <div key={item.id} className="luxury-card p-5 bg-white transition-all overflow-hidden border border-outline-variant/10">
-                            <div className="flex items-center justify-between">
+                          <div 
+                            key={item.id} 
+                            onClick={() => {
+                              setSelectedAllocation(item);
+                              setSelectedEntry(null);
+                            }} 
+                            className="luxury-card p-5 bg-white active:scale-[0.98] transition-all cursor-pointer group relative overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-blue-50 text-blue-500">
                                   <span className="material-symbols-outlined text-xl">inventory_2</span>
                                 </div>
                                 <div>
                                   <p className="font-bold text-sm text-primary">Super Admin Allocation</p>
-                                  <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{item.date}</p>
+                                  <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">Admin Allocation • {item.id}</p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                {item.pureWeight > 0 && <p className="text-[11px] font-black text-secondary">{fmtG(item.pureWeight)} {item.metal}</p>}
-                                {item.cashAmount > 0 && isAdminOrSuper && <p className="text-[11px] font-black text-emerald-600">{fmt(item.cashAmount)}</p>}
+                                <p className="text-[9px] font-black uppercase tracking-widest text-[#003366] bg-[#003366]/5 px-2 py-1 rounded-md">
+                                  Received
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Bottom allocation details block mirroring exchange design */}
+                            <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10">
+                              {item.pureWeight > 0 ? (
+                                <>
+                                  <div className="flex-1 flex flex-col items-center gap-0.5">
+                                    <p className="text-[11px] font-black text-secondary">
+                                      {fmtG(item.pureWeight)}
+                                    </p>
+                                    <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure {item.metal}</p>
+                                  </div>
+                                  <div className="w-px h-4 bg-outline-variant/20"></div>
+                                </>
+                              ) : null}
+                              <div className="flex-1 flex flex-col items-center gap-0.5">
+                                <p className={`text-[11px] font-black ${item.cashAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                  {item.cashAmount > 0 ? fmt(item.cashAmount) : '₹0'}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Cash Given</p>
                               </div>
                             </div>
                           </div>

@@ -142,6 +142,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const [branchReports, setBranchReports] = useState<any[]>(cachedReports || []);
   const [startDate, setStartDate] = useState('');
   const dateInputRef = React.useRef<HTMLInputElement>(null);
+  const [selectedLedgerEntry, setSelectedLedgerEntry] = useState<SuperAdminLedgerEntry | null>(null);
 
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
@@ -1138,7 +1139,99 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
   return (
     <div className="bg-background ambient-bg text-on-background font-body w-full h-[100svh] relative overflow-y-auto hide-scrollbar">
-      <main className="px-6 max-w-5xl mx-auto pt-8 pb-32 relative space-y-6">
+      {selectedLedgerEntry ? (
+        <main className="px-6 max-w-2xl mx-auto pt-8 pb-32 relative space-y-6 animate-fade-in">
+          <button 
+            onClick={() => setSelectedLedgerEntry(null)} 
+            className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors"
+          >
+            <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Ledger
+          </button>
+
+          <div className="luxury-card overflow-hidden bg-white border border-outline-variant/10">
+            <div className="p-6 text-white relative bg-gradient-to-br from-[#003366] to-[#001e40]">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold mb-1">
+                    Corporate Ledger Entry
+                  </p>
+                  <h2 className="font-headline text-2xl font-extrabold text-white flex items-baseline gap-1">
+                    <span className="material-symbols-outlined text-lg">account_balance</span> {selectedLedgerEntry.type}
+                  </h2>
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 font-bold mt-1">{selectedLedgerEntry.id} • {selectedLedgerEntry.date}</p>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                  <span className="material-symbols-outlined text-2xl">account_balance</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 space-y-6 bg-white">
+              <div className="grid grid-cols-2 gap-y-5 gap-x-4 border-b border-outline-variant/20 pb-5">
+                {selectedLedgerEntry.pureGoldChange !== 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Gold Change</p>
+                    <p className={`font-headline text-sm font-bold ${selectedLedgerEntry.pureGoldChange > 0 ? 'text-[#755b00]' : 'text-error'}`}>
+                      {selectedLedgerEntry.pureGoldChange > 0 ? '+' : ''}{fmtG(selectedLedgerEntry.pureGoldChange)}
+                    </p>
+                  </div>
+                )}
+                {selectedLedgerEntry.impureGoldChange !== 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Impure Gold Change</p>
+                    <p className={`font-headline text-sm font-bold ${selectedLedgerEntry.impureGoldChange > 0 ? 'text-amber-600' : 'text-error'}`}>
+                      {selectedLedgerEntry.impureGoldChange > 0 ? '+' : ''}{fmtG(selectedLedgerEntry.impureGoldChange)}
+                    </p>
+                  </div>
+                )}
+                {selectedLedgerEntry.pureSilverChange !== 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Pure Silver Change</p>
+                    <p className={`font-headline text-sm font-bold ${selectedLedgerEntry.pureSilverChange > 0 ? 'text-slate-500' : 'text-error'}`}>
+                      {selectedLedgerEntry.pureSilverChange > 0 ? '+' : ''}{fmtG(selectedLedgerEntry.pureSilverChange)}
+                    </p>
+                  </div>
+                )}
+                {selectedLedgerEntry.impureSilverChange !== 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Impure Silver Change</p>
+                    <p className={`font-headline text-sm font-bold ${selectedLedgerEntry.impureSilverChange > 0 ? 'text-slate-600' : 'text-error'}`}>
+                      {selectedLedgerEntry.impureSilverChange > 0 ? '+' : ''}{fmtG(selectedLedgerEntry.impureSilverChange)}
+                    </p>
+                  </div>
+                )}
+                {selectedLedgerEntry.cashChange !== 0 && (
+                  <div className="space-y-1">
+                    <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Cash Change</p>
+                    <p className={`font-headline text-sm font-bold ${selectedLedgerEntry.cashChange > 0 ? 'text-emerald-600' : 'text-error'}`}>
+                      {selectedLedgerEntry.cashChange > 0 ? '+' : ''}{fmt(selectedLedgerEntry.cashChange)}
+                    </p>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <p className="text-[9px] uppercase tracking-widest text-outline font-bold">Timestamp</p>
+                  <p className="font-headline text-sm font-bold text-primary">{selectedLedgerEntry.date}</p>
+                </div>
+              </div>
+
+              {selectedLedgerEntry.details && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                  <p className="text-[9px] uppercase tracking-wider font-bold text-outline mb-1">Details</p>
+                  <p className="text-xs text-primary font-medium">{selectedLedgerEntry.details}</p>
+                </div>
+              )}
+              
+              <div className="flex justify-center pt-2">
+                <span className="px-4 py-1.5 rounded-full font-black text-[10px] uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200/50">
+                  Completed
+                </span>
+              </div>
+            </div>
+          </div>
+        </main>
+      ) : (
+        <main className="px-6 max-w-5xl mx-auto pt-8 pb-32 relative space-y-6">
         
         {/* Header */}
         <header className="flex justify-between items-center mb-2 animate-fade-in">
@@ -1736,8 +1829,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
               </div>
               <div className="space-y-3">
                 {filteredSaLedger.map(entry => (
-                  <div key={entry.id} className="luxury-card p-5 bg-white border border-outline-variant/20 relative overflow-hidden shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
+                  <div 
+                    key={entry.id} 
+                    onClick={() => setSelectedLedgerEntry(entry)}
+                    className="luxury-card p-5 bg-white border border-outline-variant/20 relative overflow-hidden shadow-sm active:scale-[0.98] transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${entry.type === 'Refining Yield' ? 'bg-[#755b00]/10 text-[#755b00]' : 'bg-[#003366]/10 text-[#003366]'}`}>
                           <span className="material-symbols-outlined text-sm">
@@ -1750,29 +1847,39 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        {entry.pureGoldChange !== 0 && (
-                          <p className={`text-xs font-black ${entry.pureGoldChange > 0 ? 'text-[#755b00]' : 'text-error'}`}>
-                            {entry.pureGoldChange > 0 ? '+' : ''}{fmtG(entry.pureGoldChange)}
-                          </p>
-                        )}
-                        {entry.impureGoldChange !== 0 && (
-                          <p className={`text-xs font-black ${entry.impureGoldChange > 0 ? 'text-amber-600' : 'text-error'}`}>
-                            {entry.impureGoldChange > 0 ? '+' : ''}{fmtG(entry.impureGoldChange)} (Impure)
-                          </p>
-                        )}
-                        {entry.calculatedPureGold !== 0 && (
-                          <p className={`text-xs font-black ${entry.calculatedPureGold > 0 ? 'text-[#755b00]' : 'text-error'}`}>
-                            {entry.calculatedPureGold > 0 ? '+' : ''}{fmtG(entry.calculatedPureGold)} (Expected Pure)
-                          </p>
-                        )}
-                        {entry.cashChange !== 0 && (
-                          <p className={`text-xs font-black ${entry.cashChange > 0 ? 'text-emerald-600' : 'text-error'}`}>
-                            {entry.cashChange > 0 ? '+' : ''}{fmt(entry.cashChange)}
-                          </p>
-                        )}
+                        <span className="text-[8px] font-black uppercase tracking-widest text-[#003366] bg-[#003366]/5 px-2 py-0.5 rounded">
+                          Recorded
+                        </span>
                       </div>
                     </div>
-                    <p className="text-[10px] text-outline font-medium border-t border-outline-variant/10 pt-2">{entry.details}</p>
+
+                    {/* Bottom block mirroring the exchange layout style */}
+                    <div className="flex items-center gap-4 px-3 py-2 bg-[#F8FAFC] rounded-xl border border-outline-variant/10">
+                      {entry.pureGoldChange !== 0 ? (
+                        <div className="flex-grow flex flex-col items-center gap-0.5">
+                          <p className={`text-[10px] font-black ${entry.pureGoldChange > 0 ? 'text-[#755b00]' : 'text-error'}`}>
+                            {entry.pureGoldChange > 0 ? '+' : ''}{fmtG(entry.pureGoldChange)}
+                          </p>
+                          <p className="text-[6px] uppercase font-black text-outline tracking-widest">Pure Gold</p>
+                        </div>
+                      ) : null}
+                      {entry.pureSilverChange !== 0 ? (
+                        <div className="flex-grow flex flex-col items-center gap-0.5">
+                          <p className={`text-[10px] font-black ${entry.pureSilverChange > 0 ? 'text-slate-500' : 'text-error'}`}>
+                            {entry.pureSilverChange > 0 ? '+' : ''}{fmtG(entry.pureSilverChange)}
+                          </p>
+                          <p className="text-[6px] uppercase font-black text-outline tracking-widest">Pure Silver</p>
+                        </div>
+                      ) : null}
+                      {entry.cashChange !== 0 ? (
+                        <div className="flex-grow flex flex-col items-center gap-0.5">
+                          <p className={`text-[10px] font-black ${entry.cashChange > 0 ? 'text-emerald-600' : 'text-error'}`}>
+                            {entry.cashChange > 0 ? '+' : ''}{fmt(entry.cashChange)}
+                          </p>
+                          <p className="text-[6px] uppercase font-black text-outline tracking-widest">Cash</p>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2136,7 +2243,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
         )}
 
-      </main>
+        </main>
+      )}
 
       {/* Floating Action Button for Corporate Entries */}
       <button 
