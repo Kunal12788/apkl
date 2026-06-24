@@ -68,6 +68,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   });
   
   const [taskImages, setTaskImages] = useState<Record<number, File>>({});
+  const [imageScanResults, setImageScanResults] = useState<Record<number, {
+    scanning: boolean;
+    success: boolean;
+    reason?: string;
+    coordinates?: { x: number; y: number }[];
+  }>>({});
+  const [uploadedUrls, setUploadedUrls] = useState<Record<number, string>>({});
   const [isUploading, setIsUploading] = useState(false);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -165,7 +172,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     if (key === 'pieces') {
       setPieceCategories({ '22k': '', '18k': '', '14k': '', '9k': '' });
       setTaskImages({});
+      setImageScanResults({});
+      setUploadedUrls({});
     }
+  };
+
+  const getRequiredImages = (numPieces: number) => {
+    if (numPieces <= 0) return 0;
+    return numPieces > 10 ? Math.ceil(numPieces / 10) : numPieces;
   };
 
   const validate = () => {
@@ -202,16 +216,26 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         if (!formData.fee.trim()) e.fee = 'Required';
       }
     }
-    
-    if (numPieces > 0 && (workType === 'TUNCH' || workType === 'MARKING')) {
-      if (Object.keys(taskImages).length < numPieces) {
-         e.images = `Please upload all ${numPieces} images.`;
-      }
-    }
     if (workType === 'SHOULDERING') {
+      if (!formData.pieces.trim()) e.pieces = 'Required';
       if (!isCollection) {
         if (!formData.pointsUsed.trim()) e.pointsUsed = 'Required';
         if (!formData.fee.trim()) e.fee = 'Required';
+      }
+    }
+    
+    if (numPieces > 0 && (workType === 'TUNCH' || workType === 'MARKING' || workType === 'SHOULDERING')) {
+      const reqImgs = getRequiredImages(numPieces);
+      if (Object.keys(taskImages).length < reqImgs) {
+         e.images = `Please upload all ${reqImgs} verification photos.`;
+      } else {
+         const hasFailedOrScanning = Array.from({ length: reqImgs }).some((_, idx) => {
+           const scan = imageScanResults[idx];
+           return !scan || scan.scanning || !scan.success;
+         });
+         if (hasFailedOrScanning) {
+           e.images = `All photos must pass the server-side AI security scan.`;
+         }
       }
     }
     setErrors(e);
@@ -225,25 +249,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
   const handleFinalSubmit = async () => {
     setIsUploading(true);
-    let uploadedUrls: string[] = [];
-    const uploadTasks: Promise<any>[] = [];
-    
     try {
       const numPieces = parseInt(formData.pieces) || 0;
-      for (let i = 0; i < numPieces; i++) {
-        const file = taskImages[i];
-        if (file) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-          
-          const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
-          uploadedUrls.push(publicUrl);
-          
-          uploadTasks.push(
-            supabase.storage.from('task_images').upload(fileName, file).catch(err => {
-              console.error("Background image upload failed:", err);
-            })
-          );
+      const reqImgs = getRequiredImages(numPieces);
+      let urls: string[] = [];
+      for (let i = 0; i < reqImgs; i++) {
+        if (uploadedUrls[i]) {
+          urls.push(uploadedUrls[i]);
         }
       }
 
@@ -257,14 +269,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         console.error('Failed to get task count for serial ID', e);
       }
 
-      // Fire and forget uploads
-      Promise.all(uploadTasks);
-
       onSuccess({ 
         ...formData, 
         workType, 
         pieceCategories,
-        images: uploadedUrls,
+        images: urls,
         id: isCollection ? `COL-${serialId}` : `TASK-${serialId}`, 
         date: 'Just Now', 
         status: 'In Progress', 
@@ -272,54 +281,239 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         assignedTo: 'Staff' 
       });
       
-      setStep(1); setWorkType(null); setErrors({}); setTaskImages({});
+      setStep(1); 
+      setWorkType(null); 
+      setErrors({}); 
+      setTaskImages({});
+      setImageScanResults({});
+      setUploadedUrls({});
       setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
-      alert("Failed to upload images. Please try again.");
+      alert("Failed to submit task. Please try again.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const getExpectedPiecesForSlot = (index: number, totalPieces: number) => {
+    if (totalPieces <= 10) return 1;
+    const fullSlots = Math.floor(totalPieces / 10);
+    if (index < fullSlots) return 10;
+    return totalPieces % 10 || 10;
+  };
+
+  const handleImageChange = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      
+      // Store the image locally first for preview
       setTaskImages(prev => ({ ...prev, [index]: file }));
       if (errors['images']) {
-         setErrors(e => { const n = {...e}; delete n['images']; return n; });
+         setErrors(errs => { const n = {...errs}; delete n['images']; return n; });
+      }
+
+      // Initialize slot scanning state
+      setImageScanResults(prev => ({ 
+        ...prev, 
+        [index]: { scanning: true, success: false } 
+      }));
+
+      try {
+        // Upload image to Supabase storage to get its path
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Date.now()}_scan_${index}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage.from('task_images').upload(fileName, file);
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
+        setUploadedUrls(prev => ({ ...prev, [index]: publicUrl }));
+
+        const totalPieces = parseInt(formData.pieces) || 0;
+        const expectedPieces = getExpectedPiecesForSlot(index, totalPieces);
+
+        // Call the Edge Function
+        const { data, error } = await supabase.functions.invoke('verify-task-image', {
+          body: {
+            imagePath: fileName,
+            expectedPieces,
+            workType
+          }
+        });
+
+        if (error || !data) {
+          throw new Error(error?.message || "Verification failed to return a response.");
+        }
+
+        if (data.success) {
+          setImageScanResults(prev => ({
+            ...prev,
+            [index]: {
+              scanning: false,
+              success: true,
+              coordinates: data.coordinates || []
+            }
+          }));
+        } else {
+          setImageScanResults(prev => ({
+            ...prev,
+            [index]: {
+              scanning: false,
+              success: false,
+              reason: data.reason || "Scan failed. Verification did not pass checks."
+            }
+          }));
+        }
+      } catch (err: any) {
+        console.error("AI scanning error:", err);
+        setImageScanResults(prev => ({
+          ...prev,
+          [index]: {
+            scanning: false,
+            success: false,
+            reason: err.message || "Failed to connect to the server scanner. Try again."
+          }
+        }));
       }
     }
+  };
+
+  const getSlotLabel = (idx: number, totalPieces: number) => {
+    if (totalPieces <= 10) {
+      return `Piece ${idx + 1}`;
+    }
+    const start = idx * 10 + 1;
+    const end = Math.min((idx + 1) * 10, totalPieces);
+    return `Pieces ${start}-${end}`;
   };
 
   const renderImageUploads = () => {
     const numPieces = parseInt(formData.pieces) || 0;
     if (numPieces <= 0) return null;
-    
+    const requiredImages = getRequiredImages(numPieces);
+
     return (
       <div className="mt-4 bg-surface-container/30 p-4 rounded-2xl border border-outline-variant/30">
-        <label className={lbl}>Upload Images ({numPieces} needed) *</label>
+        <div className="flex justify-between items-center mb-1">
+          <label className={lbl}>Upload Verification Photos *</label>
+          <span className="text-[9px] font-bold text-outline uppercase tracking-wider bg-outline-variant/10 px-2 py-0.5 rounded-full">
+            {requiredImages} {requiredImages === 1 ? 'Slot' : 'Slots'}
+          </span>
+        </div>
         {errMsg('images')}
         <div className="grid grid-cols-2 gap-3 mt-3">
-          {Array.from({ length: numPieces }).map((_, idx) => (
-            <div key={idx} className="relative aspect-square rounded-xl border-2 border-dashed border-outline-variant/40 bg-white overflow-hidden flex flex-col items-center justify-center hover:border-primary/40 transition-colors">
-              {taskImages[idx] ? (
-                <>
-                  <img src={URL.createObjectURL(taskImages[idx])} alt={`Piece ${idx + 1}`} className="w-full h-full object-cover" />
-                  <button type="button" onClick={() => setTaskImages(p => { const n={...p}; delete n[idx]; return n; })} className="absolute top-1.5 right-1.5 w-7 h-7 bg-error/90 text-white rounded-full flex items-center justify-center backdrop-blur-sm shadow-md">
-                    <span className="material-symbols-outlined text-[16px]">close</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageChange(idx, e)} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  <span className="material-symbols-outlined text-outline-variant text-3xl mb-1.5">add_a_photo</span>
-                  <span className="text-[10px] font-bold text-outline uppercase tracking-wider">Piece {idx + 1}</span>
-                </>
-              )}
-            </div>
-          ))}
+          {Array.from({ length: requiredImages }).map((_, idx) => {
+            const scan = imageScanResults[idx];
+            const hasImage = !!taskImages[idx];
+            const isScanning = scan?.scanning;
+            const isSuccess = scan?.success;
+            const isFailed = scan && !scan.scanning && !scan.success;
+
+            return (
+              <div 
+                key={idx} 
+                className={`relative aspect-square rounded-xl border-2 border-dashed bg-white overflow-hidden flex flex-col items-center justify-center transition-all ${
+                  isScanning 
+                    ? 'border-secondary/60 bg-secondary/5' 
+                    : isSuccess 
+                    ? 'border-green-500 bg-green-500/[0.02]' 
+                    : isFailed 
+                    ? 'border-error bg-error/[0.02]' 
+                    : 'border-outline-variant/40 hover:border-primary/40'
+                }`}
+              >
+                {hasImage ? (
+                  <>
+                    <img 
+                      src={URL.createObjectURL(taskImages[idx])} 
+                      alt={getSlotLabel(idx, numPieces)} 
+                      className="w-full h-full object-cover" 
+                    />
+                    
+                    {/* Laser scanning sweep animation */}
+                    {isScanning && (
+                      <div className="absolute inset-0 bg-secondary/10 flex flex-col items-center justify-center backdrop-blur-[1px]">
+                        <div className="laser-line"></div>
+                        <span className="w-8 h-8 border-3 border-secondary/20 border-t-secondary rounded-full animate-spin"></span>
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-secondary mt-2 drop-shadow-sm">AI Scanning...</span>
+                      </div>
+                    )}
+
+                    {/* Success marker overlays */}
+                    {isSuccess && (
+                      <>
+                        <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-green-500/90 text-white font-bold text-[8px] flex items-center gap-1 shadow-md backdrop-blur-sm animate-fade-in">
+                          <span className="material-symbols-outlined text-[8px] font-bold">verified</span>
+                          SECURE
+                        </div>
+                        {scan.coordinates?.map((coord, cIdx) => (
+                          <div 
+                            key={cIdx} 
+                            className="absolute w-5 h-5 -ml-2.5 -mt-2.5 border border-green-400 rounded-full flex items-center justify-center bg-green-500/30 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-ping-once"
+                            style={{ left: `${coord.x}%`, top: `${coord.y}%` }}
+                          >
+                            <span className="text-[7px] font-black text-white leading-none">{cIdx + 1}</span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Failed state overlay */}
+                    {isFailed && (
+                      <div className="absolute inset-0 bg-error/95 p-3 flex flex-col items-center justify-center text-center animate-fade-in animate-duration-200">
+                        <span className="material-symbols-outlined text-white text-2xl mb-1 drop-shadow-sm">warning</span>
+                        <p className="text-[8px] font-black text-white uppercase tracking-wider mb-1 leading-tight">Verification Failed</p>
+                        <p className="text-[8px] text-white/90 leading-tight line-clamp-3 px-1">{scan.reason}</p>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setTaskImages(p => { const n={...p}; delete n[idx]; return n; });
+                            setImageScanResults(p => { const n={...p}; delete n[idx]; return n; });
+                            setUploadedUrls(p => { const n={...p}; delete n[idx]; return n; });
+                          }}
+                          className="mt-2 px-2.5 py-1 bg-white text-error rounded-full text-[8px] font-bold uppercase tracking-wider shadow-sm hover:scale-105 active:scale-95 transition-transform"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Standard close button if not scanning/failed */}
+                    {!isScanning && !isFailed && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setTaskImages(p => { const n={...p}; delete n[idx]; return n; });
+                          setImageScanResults(p => { const n={...p}; delete n[idx]; return n; });
+                          setUploadedUrls(p => { const n={...p}; delete n[idx]; return n; });
+                        }} 
+                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-error/90 text-white rounded-full flex items-center justify-center backdrop-blur-sm shadow-md"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      capture="environment" 
+                      onChange={(e) => handleImageChange(idx, e)} 
+                      className="absolute inset-0 opacity-0 cursor-pointer" 
+                    />
+                    <span className="material-symbols-outlined text-outline-variant text-3xl mb-1.5">add_a_photo</span>
+                    <span className="text-[9px] font-bold text-outline uppercase tracking-wider">{getSlotLabel(idx, numPieces)}</span>
+                    <span className="text-[7px] text-outline/50 uppercase tracking-widest mt-0.5">
+                      Need {getExpectedPiecesForSlot(idx, numPieces)} Pcs
+                    </span>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -511,32 +705,32 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
 
                 <SectionCard title="Gold Audit Parameters" icon="science" color="bg-tertiary/5 text-tertiary">
-                  <div className={isCollection ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={lbl}>Impure Wt. (g) *</label>
                       <input className={inp(errors.impureWeight)} placeholder="e.g. 12.45" value={formData.impureWeight} onChange={e => up('impureWeight', e.target.value)} />
                       {errMsg('impureWeight')}
                     </div>
-                    {!isCollection && (
+                    <div>
+                      <label className={lbl}>No. of Pieces *</label>
+                      <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                      {errMsg('pieces')}
+                    </div>
+                  </div>
+                  {!isCollection && (
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       <div>
                         <label className={lbl}>Purity (%) *</label>
                         <input className={inp(errors.purity)} placeholder="e.g. 91.6" value={formData.purity} onChange={e => up('purity', e.target.value)} />
                         {errMsg('purity')}
                       </div>
-                    )}
-                  </div>
-                  {!isCollection && (
-                    <div>
-                      <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
-                      <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
-                      {errMsg('pureWeight')}
+                      <div>
+                        <label className={lbl + " !text-tertiary"}>Pure Weight (g) *</label>
+                        <input className={`${inp(errors.pureWeight)} !border-tertiary/40 !bg-tertiary-fixed/10`} placeholder="Calculated pure output" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
+                        {errMsg('pureWeight')}
+                      </div>
                     </div>
                   )}
-                  <div className="mt-3">
-                    <label className={lbl}>No. of Pieces *</label>
-                    <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
-                    {errMsg('pieces')}
-                  </div>
                 </SectionCard>
 
                 <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
@@ -584,18 +778,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
 
                 <SectionCard title="Specifications" icon="tune" color="bg-primary/5 text-primary">
-                  <div>
-                    <label className={lbl}>Carat</label>
-                    <div className="flex gap-2">
-                      {['22k','18k','14k','9k'].map(k => (
-                        <button key={k} onClick={() => up('carat', k)}
-                          className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.carat === k ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
-                          {k.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className={isCollection ? "grid grid-cols-1 mt-3" : "grid grid-cols-2 gap-3 mt-3"}>
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className={lbl}>Total Weight (g) *</label>
                       <input className={inp(errors.totalWeight)} placeholder="e.g. 15.2" value={formData.totalWeight} onChange={e => up('totalWeight', e.target.value)} />
@@ -607,24 +790,84 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       {errMsg('pieces')}
                     </div>
                   </div>
-                  {parseInt(formData.pieces) > 1 && (
-                    <div className="mt-3 bg-surface-container/50 p-4 rounded-xl border border-outline-variant/30">
-                      <label className={lbl}>Category Breakdown (Must sum to {formData.pieces})</label>
-                      <div className="grid grid-cols-4 gap-2 mt-3">
-                        {['22k', '18k', '14k', '9k'].map(k => (
-                          <div key={k}>
-                            <label className="text-[10px] font-bold text-outline uppercase block text-center mb-1.5">{k}</label>
-                            <input 
-                              type="number" min="0"
-                              className="w-full h-10 bg-white border border-outline-variant/40 rounded-lg text-center text-sm font-bold focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
-                              value={pieceCategories[k]}
-                              onChange={e => setPieceCategories(p => ({...p, [k]: e.target.value}))}
-                            />
-                          </div>
+
+                  {parseInt(formData.pieces) === 1 && (
+                    <div className="mt-3 animate-fade-in">
+                      <label className={lbl}>Carat</label>
+                      <div className="flex gap-2">
+                        {['22k','18k','14k','9k'].map(k => (
+                          <button key={k} onClick={() => up('carat', k)}
+                            className={`flex-1 h-11 rounded-full text-[12px] font-bold transition-all ${formData.carat === k ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20'}`}>
+                            {k.toUpperCase()}
+                          </button>
                         ))}
                       </div>
                     </div>
                   )}
+
+                  {parseInt(formData.pieces) > 1 && (() => {
+                    const totalPieces = parseInt(formData.pieces) || 0;
+                    const currentSum = Object.values(pieceCategories).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+                    const isMatching = currentSum === totalPieces;
+                    
+                    const adjustCategory = (key: string, delta: number) => {
+                      setPieceCategories(prev => {
+                        const currentVal = parseInt(prev[key]) || 0;
+                        const newVal = Math.max(0, currentVal + delta);
+                        const otherSum = Object.entries(prev)
+                          .filter(([k]) => k !== key)
+                          .reduce((s, [_, v]) => s + (parseInt(v) || 0), 0);
+                        if (delta > 0 && (otherSum + newVal) > totalPieces) return prev;
+                        return {
+                          ...prev,
+                          [key]: newVal === 0 ? '' : String(newVal)
+                        };
+                      });
+                    };
+
+                    return (
+                      <div className="mt-4 bg-surface-container/20 p-5 rounded-2xl border border-outline-variant/30 backdrop-blur-md animate-fade-in">
+                        <div className="flex justify-between items-center mb-3">
+                          <label className={lbl}>Carat Breakdown</label>
+                          <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider transition-all duration-300 ${
+                            isMatching 
+                              ? 'bg-green-500/10 text-green-500 border border-green-500/20' 
+                              : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          }`}>
+                            Sum: {currentSum} / {totalPieces}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3.5">
+                          {['22k', '18k', '14k', '9k'].map(k => {
+                            const val = parseInt(pieceCategories[k]) || 0;
+                            return (
+                              <div key={k} className="bg-white p-3.5 rounded-xl border border-outline-variant/20 flex flex-col items-center justify-between shadow-sm">
+                                <span className="text-[10px] font-black text-primary uppercase tracking-widest">{k}</span>
+                                <div className="flex items-center justify-between w-full mt-2.5 bg-surface-container/40 rounded-full p-1 border border-outline-variant/10">
+                                  <button
+                                    type="button"
+                                    onClick={() => adjustCategory(k, -1)}
+                                    className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-outline hover:text-primary active:scale-90 transition-all border border-outline-variant/10 shadow-sm"
+                                  >
+                                    <span className="material-symbols-outlined text-sm font-bold">remove</span>
+                                  </button>
+                                  <span className="text-sm font-black text-primary w-8 text-center">{val}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => adjustCategory(k, 1)}
+                                    className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-outline hover:text-primary active:scale-90 transition-all border border-outline-variant/10 shadow-sm"
+                                  >
+                                    <span className="material-symbols-outlined text-sm font-bold">add</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {!isCollection && (
                     <div className="mt-3">
                       <label className={lbl}>Brought By</label>
@@ -658,20 +901,33 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
               {workType === 'SHOULDERING' && (<>
                 <SectionCard title="Shouldering Details" icon="precision_manufacturing" color="bg-error/5 text-error">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Total Weight (g)</label>
+                      <input className={inp(errors.totalWeight)} placeholder="e.g. 10.5" value={formData.totalWeight} onChange={e => up('totalWeight', e.target.value)} />
+                      {errMsg('totalWeight')}
+                    </div>
+                    <div>
+                      <label className={lbl}>No. of Pieces *</label>
+                      <input className={inp(errors.pieces)} placeholder="Qty" value={formData.pieces} onChange={e => up('pieces', e.target.value)} />
+                      {errMsg('pieces')}
+                    </div>
+                  </div>
+
                   {!isCollection ? (
                     <>
-                      <div>
+                      <div className="mt-3">
                         <label className={lbl}>Points Used *</label>
                         <input className={inp(errors.pointsUsed)} placeholder="Total solder points" value={formData.pointsUsed} onChange={e => up('pointsUsed', e.target.value)} />
                         {errMsg('pointsUsed')}
                       </div>
-                      <div>
+                      <div className="mt-3">
                         <label className={lbl}>Material Brought By</label>
                         <ToggleBtn options={['Customer', 'Staff']} value={formData.broughtBy === 'Staff Member' ? 'Staff' : formData.broughtBy} onChange={v => up('broughtBy', v === 'Staff' ? 'Staff Member' : v)} />
                       </div>
                     </>
                   ) : (
-                    <div>
+                    <div className="mt-3">
                       <label className={lbl}>Point Suggestion</label>
                       <div className="flex gap-3">
                          {['Gold', 'Silver'].map(pt => (
@@ -684,6 +940,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       </div>
                     </div>
                   )}
+                  {renderImageUploads()}
                 </SectionCard>
 
                 {!isCollection && (
@@ -745,13 +1002,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     ] : []),
                     ...(workType === 'MARKING' ? [
                       ['Logo', formData.logoName],
-                      ['Carat', formData.carat.toUpperCase()],
+                      ...(parseInt(formData.pieces) > 1 ? [
+                        ['Carat Breakdown', Object.entries(pieceCategories).filter(([_, v]) => parseInt(v) > 0).map(([k, v]) => `${v}x ${k.toUpperCase()}`).join(', ') || 'None']
+                      ] : [
+                        ['Carat', formData.carat.toUpperCase()]
+                      ]),
                       ['Total Weight', `${formData.totalWeight}g`],
                       ['Pieces', formData.pieces],
                       ['Images', `${Object.keys(taskImages).length} uploaded`],
                       ...(!isCollection ? [['Brought By', formData.broughtBy]] : [])
                     ] : []),
                     ...(workType === 'SHOULDERING' ? [
+                      ['Total Weight', formData.totalWeight ? `${formData.totalWeight}g` : 'N/A'],
+                      ['Pieces', formData.pieces],
+                      ['Images', `${Object.keys(taskImages).length} uploaded`],
                       ...(!isCollection ? [
                         ['Points', formData.pointsUsed],
                         ['Brought By', formData.broughtBy]
@@ -822,7 +1086,38 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
           </div>
         )}
       </div>
-      <style>{`@keyframes modalUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }`}</style>
+      <style>{`
+        @keyframes modalUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes laserSweep {
+          0% { top: 0%; }
+          50% { top: 100%; }
+          100% { top: 0%; }
+        }
+        .laser-line {
+          position: absolute;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: #0088ff;
+          box-shadow: 0 0 8px #0088ff, 0 0 15px #0088ff;
+          animation: laserSweep 2s ease-in-out infinite;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out forwards;
+        }
+        @keyframes pingOnce {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 0.5; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-ping-once {
+          animation: pingOnce 1.5s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   );
 };
