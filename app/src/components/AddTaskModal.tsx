@@ -35,6 +35,215 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
   </div>
 );
 
+const analyzeImageLocally = (
+  file: File,
+  expectedPieces: number
+): Promise<{ success: boolean; detected_count: number; coordinates: { x: number; y: number }[]; reason?: string }> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const maxDim = 120;
+          let w = img.width;
+          let h = img.height;
+          if (w > h) {
+            if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
+          } else {
+            if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
+          }
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Could not initialize image scanner context." });
+            return;
+          }
+          ctx.drawImage(img, 0, 0, w, h);
+          const imgData = ctx.getImageData(0, 0, w, h);
+          const data = imgData.data;
+
+          let sumLuma = 0;
+          const lumaArray = new Float32Array(w * h);
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i+1];
+            const b = data[i+2];
+            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+            lumaArray[i/4] = luma;
+            sumLuma += luma;
+          }
+          const avgLuma = sumLuma / (w * h);
+
+          let sumVar = 0;
+          for (let i = 0; i < lumaArray.length; i++) {
+            sumVar += Math.pow(lumaArray[i] - avgLuma, 2);
+          }
+          const stdDev = Math.sqrt(sumVar / (w * h));
+
+          if (avgLuma < 15) {
+            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo is too dark. Please take a clear photo under good lighting." });
+            return;
+          }
+          if (avgLuma > 242) {
+            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo is too bright/blurry. Please capture the actual items." });
+            return;
+          }
+          if (stdDev < 10) {
+            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo appears blank or uniform. Please take a photo of the actual items." });
+            return;
+          }
+
+          let borderSum = 0;
+          let borderCount = 0;
+          for (let x = 0; x < w; x++) {
+            borderSum += lumaArray[x] + lumaArray[(h-1)*w + x];
+            borderCount += 2;
+          }
+          for (let y = 1; y < h - 1; y++) {
+            borderSum += lumaArray[y*w] + lumaArray[y*w + (w-1)];
+            borderCount += 2;
+          }
+          const bgLuma = borderSum / borderCount;
+
+          const binary = new Uint8Array(w * h);
+          const diffThreshold = 22;
+          for (let i = 0; i < lumaArray.length; i++) {
+            binary[i] = Math.abs(lumaArray[i] - bgLuma) > diffThreshold ? 1 : 0;
+          }
+
+          const labels = new Int32Array(w * h);
+          let nextLabel = 1;
+          const parent = [0];
+
+          function find(i: number): number {
+            let root = i;
+            while (parent[root] !== root) {
+              root = parent[root];
+            }
+            let curr = i;
+            while (curr !== root) {
+              const nxt = parent[curr];
+              parent[curr] = root;
+              curr = nxt;
+            }
+            return root;
+          }
+
+          function union(i: number, j: number) {
+            const rootI = find(i);
+            const rootJ = find(j);
+            if (rootI !== rootJ) {
+              parent[rootI] = rootJ;
+            }
+          }
+
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const idx = y * w + x;
+              if (binary[idx] === 1) {
+                const neighbors = [];
+                if (x > 0 && binary[idx - 1] === 1) neighbors.push(labels[idx - 1]);
+                if (y > 0 && binary[idx - w] === 1) neighbors.push(labels[idx - w]);
+                
+                if (neighbors.length === 0) {
+                  labels[idx] = nextLabel;
+                  parent.push(nextLabel);
+                  nextLabel++;
+                } else {
+                  let minLabel = neighbors[0];
+                  for (let n of neighbors) {
+                    if (n < minLabel) minLabel = n;
+                  }
+                  labels[idx] = minLabel;
+                  for (let n of neighbors) {
+                    union(n, minLabel);
+                  }
+                }
+              }
+            }
+          }
+
+          const componentStats: Record<number, { sumX: number; sumY: number; count: number }> = {};
+          for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+              const idx = y * w + x;
+              if (binary[idx] === 1) {
+                const rootLabel = find(labels[idx]);
+                labels[idx] = rootLabel;
+                if (!componentStats[rootLabel]) {
+                  componentStats[rootLabel] = { sumX: 0, sumY: 0, count: 0 };
+                }
+                componentStats[rootLabel].sumX += x;
+                componentStats[rootLabel].sumY += y;
+                componentStats[rootLabel].count++;
+              }
+            }
+          }
+
+          const minComponentSize = Math.max(12, Math.round((w * h) * 0.0006));
+          const validComponents = Object.entries(componentStats)
+            .map(([label, stats]) => ({
+              label: parseInt(label),
+              ...stats
+            }))
+            .filter(c => c.count > minComponentSize);
+
+          const coordinates = validComponents.map(c => ({
+            x: Math.round((c.sumX / c.count) / w * 100),
+            y: Math.round((c.sumY / c.count) / h * 100)
+          }));
+
+          const detectedCount = coordinates.length;
+
+          let success = false;
+          let reason = "";
+
+          if (expectedPieces === 1) {
+            success = detectedCount === 1;
+            if (!success) {
+              if (detectedCount === 0) {
+                reason = "No items detected. Place the item on a solid background and make sure it is clearly visible.";
+              } else {
+                reason = `Detected ${detectedCount} items, but expected exactly 1. Please capture only one item at a time.`;
+              }
+            }
+          } else {
+            const tolerance = expectedPieces > 5 ? 1 : 0;
+            const minAllowed = expectedPieces - tolerance;
+            const maxAllowed = expectedPieces + tolerance;
+            success = detectedCount >= minAllowed && detectedCount <= maxAllowed;
+
+            if (!success) {
+              reason = `Expected ${expectedPieces} pieces, but local scan detected ${detectedCount}. Please separate the items clearly on a plain background.`;
+            }
+          }
+
+          resolve({
+            success,
+            detected_count: detectedCount,
+            coordinates,
+            reason: success ? undefined : reason
+          });
+
+        } catch (e: any) {
+          resolve({ success: false, detected_count: 0, coordinates: [], reason: "Scan error: " + e.message });
+        }
+      };
+      img.onerror = () => {
+        resolve({ success: false, detected_count: 0, coordinates: [], reason: "Failed to process image file." });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => {
+      resolve({ success: false, detected_count: 0, coordinates: [], reason: "Failed to read image upload." });
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
 interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -234,7 +443,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
            return !scan || scan.scanning || !scan.success;
          });
          if (hasFailedOrScanning) {
-           e.images = `All photos must pass the server-side AI security scan.`;
+           e.images = `All photos must pass the local AI security scan.`;
          }
       }
     }
@@ -334,26 +543,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         const totalPieces = parseInt(formData.pieces) || 0;
         const expectedPieces = getExpectedPiecesForSlot(index, totalPieces);
 
-        // Call the Edge Function
-        const { data, error } = await supabase.functions.invoke('verify-task-image', {
-          body: {
-            imagePath: fileName,
-            expectedPieces,
-            workType
-          }
-        });
+        // Run the local image analyzer
+        const result = await analyzeImageLocally(file, expectedPieces);
 
-        if (error || !data) {
-          throw new Error(error?.message || "Verification failed to return a response.");
-        }
-
-        if (data.success) {
+        if (result.success) {
           setImageScanResults(prev => ({
             ...prev,
             [index]: {
               scanning: false,
               success: true,
-              coordinates: data.coordinates || []
+              coordinates: result.coordinates || []
             }
           }));
         } else {
@@ -362,7 +561,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
             [index]: {
               scanning: false,
               success: false,
-              reason: data.reason || "Scan failed. Verification did not pass checks."
+              reason: result.reason || "Scan failed. Verification did not pass checks."
             }
           }));
         }
@@ -373,7 +572,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
           [index]: {
             scanning: false,
             success: false,
-            reason: err.message || "Failed to connect to the server scanner. Try again."
+            reason: err.message || "Failed to complete local scan. Try again."
           }
         }));
       }
