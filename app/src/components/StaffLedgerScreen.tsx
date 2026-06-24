@@ -122,6 +122,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const [, setLoading] = useState(initialEntries.length === 0);
   const [showRefiningConfirm, setShowRefiningConfirm] = useState(false);
   const [startDate, setStartDate] = useState('');
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [hasActiveDataToSubmit, setHasActiveDataToSubmit] = useState(false);
 
   const [hasUnsubmittedStaffData, setHasUnsubmittedStaffData] = useState(false);
@@ -1065,20 +1066,34 @@ export const StaffLedgerScreen: React.FC = () => {
                       <p className="label-institutional text-outline uppercase px-1 mb-1">Stock Position</p>
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 className="font-headline text-3xl font-bold text-primary px-1 tracking-tight whitespace-nowrap">Daily Summary</h2>
-                        <div className="flex items-center gap-1 ml-1">
+                        <div className="flex items-center gap-1.5 ml-2">
                           <input 
                             type="date" 
+                            ref={dateInputRef}
                             value={startDate} 
                             onChange={(e) => setStartDate(e.target.value)} 
-                            className="bg-surface-container/30 border border-outline-variant/20 rounded-md px-1.5 py-0.5 text-[10px] uppercase font-bold text-outline focus:outline-none focus:ring-1 focus:ring-primary focus:text-primary max-w-[105px] shadow-sm transition-colors cursor-pointer"
+                            className="sr-only"
                           />
+                          <button
+                            onClick={() => {
+                              try {
+                                dateInputRef.current?.showPicker();
+                              } catch (err) {
+                                dateInputRef.current?.click();
+                              }
+                            }}
+                            className="flex items-center gap-2 bg-[#003366]/5 border border-[#003366]/10 hover:bg-[#003366]/10 text-[#003366] rounded-full px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wider transition-all shadow-xs group active:scale-95 cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px] text-[#003366]/70 group-hover:scale-105 transition-transform">calendar_month</span>
+                            <span>{startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'All Dates'}</span>
+                          </button>
                           {startDate && (
                             <button 
                               onClick={() => setStartDate('')}
-                              className="p-0.5 text-outline hover:text-error transition-colors flex items-center justify-center rounded-md"
+                              className="w-7 h-7 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors active:scale-90 shadow-xs border border-rose-200/40"
                               title="Clear Date"
                             >
-                              <span className="material-symbols-outlined text-[14px]">close</span>
+                              <span className="material-symbols-outlined text-[15px]">close</span>
                             </button>
                           )}
                         </div>

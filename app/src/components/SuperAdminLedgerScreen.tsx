@@ -140,6 +140,8 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   
   // Branch Daily Reports
   const [branchReports, setBranchReports] = useState<any[]>(cachedReports || []);
+  const [startDate, setStartDate] = useState('');
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
 
   // Fetch all corporate data from Supabase
   const fetchData = async () => {
@@ -751,10 +753,20 @@ export const SuperAdminLedgerScreen: React.FC = () => {
   const currentCashStock = React.useMemo(() => saLedger.reduce((s, e) => s + e.cashChange, 0), [saLedger]);
 
   const filteredBranchReports = React.useMemo(() => {
-    return currentLedgerBranchFilter === 'All'
-      ? branchReports
-      : branchReports.filter(r => r.branch_name === currentLedgerBranchFilter);
-  }, [branchReports, currentLedgerBranchFilter]);
+    let list = branchReports;
+    if (currentLedgerBranchFilter !== 'All') {
+      list = list.filter(r => r.branch_name === currentLedgerBranchFilter);
+    }
+    if (startDate) {
+      list = list.filter(r => r.iso_date === startDate);
+    }
+    return list;
+  }, [branchReports, currentLedgerBranchFilter, startDate]);
+
+  const filteredSaLedger = React.useMemo(() => {
+    if (!startDate) return saLedger;
+    return saLedger.filter(entry => entry.isoDate === startDate);
+  }, [saLedger, startDate]);
 
   const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
   const fmtG = (n: number) => `${n.toFixed(3)}g`;
@@ -1688,9 +1700,42 @@ export const SuperAdminLedgerScreen: React.FC = () => {
 
             {/* Super Admin Ledger History */}
             <div className="space-y-3">
-              <p className="label-institutional text-outline uppercase px-1">Corporate Ledger History</p>
+              <div className="flex justify-between items-center px-1 flex-wrap gap-2">
+                <p className="label-institutional text-outline uppercase">Corporate Ledger History</p>
+                <div className="flex items-center gap-1.5">
+                  <input 
+                    type="date" 
+                    ref={dateInputRef}
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)} 
+                    className="sr-only"
+                  />
+                  <button
+                    onClick={() => {
+                      try {
+                        dateInputRef.current?.showPicker();
+                      } catch (err) {
+                        dateInputRef.current?.click();
+                      }
+                    }}
+                    className="flex items-center gap-2 bg-[#003366]/5 border border-[#003366]/10 hover:bg-[#003366]/10 text-[#003366] rounded-full px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-widest transition-all shadow-xs group active:scale-95 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[14px] text-[#003366]/70 group-hover:scale-105 transition-transform">calendar_month</span>
+                    <span>{startDate ? new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'All Dates'}</span>
+                  </button>
+                  {startDate && (
+                    <button 
+                      onClick={() => setStartDate('')}
+                      className="w-6.5 h-6.5 rounded-full bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors active:scale-90 shadow-xs border border-rose-200/40"
+                      title="Clear Date"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="space-y-3">
-                {saLedger.map(entry => (
+                {filteredSaLedger.map(entry => (
                   <div key={entry.id} className="luxury-card p-5 bg-white border border-outline-variant/20 relative overflow-hidden shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
