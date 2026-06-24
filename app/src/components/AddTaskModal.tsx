@@ -36,8 +36,7 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
 );
 
 const analyzeImageLocally = (
-  file: File,
-  expectedPieces: number
+  file: File
 ): Promise<{ success: boolean; detected_count: number; coordinates: { x: number; y: number }[]; reason?: string }> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -198,27 +197,11 @@ const analyzeImageLocally = (
 
           const detectedCount = coordinates.length;
 
-          let success = false;
+          let success = detectedCount > 0;
           let reason = "";
 
-          if (expectedPieces === 1) {
-            success = detectedCount === 1;
-            if (!success) {
-              if (detectedCount === 0) {
-                reason = "No items detected. Place the item on a solid background and make sure it is clearly visible.";
-              } else {
-                reason = `Detected ${detectedCount} items, but expected exactly 1. Please capture only one item at a time.`;
-              }
-            }
-          } else {
-            const tolerance = expectedPieces > 5 ? 1 : 0;
-            const minAllowed = expectedPieces - tolerance;
-            const maxAllowed = expectedPieces + tolerance;
-            success = detectedCount >= minAllowed && detectedCount <= maxAllowed;
-
-            if (!success) {
-              reason = `Expected ${expectedPieces} pieces, but local scan detected ${detectedCount}. Please separate the items clearly on a plain background.`;
-            }
+          if (!success) {
+            reason = "No items detected. Place the items on a clear background and take a well-lit photo.";
           }
 
           resolve({
@@ -540,11 +523,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
         setUploadedUrls(prev => ({ ...prev, [index]: publicUrl }));
 
-        const totalPieces = parseInt(formData.pieces) || 0;
-        const expectedPieces = getExpectedPiecesForSlot(index, totalPieces);
-
         // Run the local image analyzer
-        const result = await analyzeImageLocally(file, expectedPieces);
+        const result = await analyzeImageLocally(file);
 
         if (result.success) {
           setImageScanResults(prev => ({
