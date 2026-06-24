@@ -35,197 +35,7 @@ const SectionCard = ({ title, icon, color, children }: { title: string; icon: st
   </div>
 );
 
-const analyzeImageLocally = (
-  file: File
-): Promise<{ success: boolean; detected_count: number; coordinates: { x: number; y: number }[]; reason?: string }> => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        try {
-          const canvas = document.createElement('canvas');
-          const maxDim = 120;
-          let w = img.width;
-          let h = img.height;
-          if (w > h) {
-            if (w > maxDim) { h = Math.round((h * maxDim) / w); w = maxDim; }
-          } else {
-            if (h > maxDim) { w = Math.round((w * maxDim) / h); h = maxDim; }
-          }
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Could not initialize image scanner context." });
-            return;
-          }
-          ctx.drawImage(img, 0, 0, w, h);
-          const imgData = ctx.getImageData(0, 0, w, h);
-          const data = imgData.data;
-
-          let sumLuma = 0;
-          const lumaArray = new Float32Array(w * h);
-          for (let i = 0; i < data.length; i += 4) {
-            const r = data[i];
-            const g = data[i+1];
-            const b = data[i+2];
-            const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-            lumaArray[i/4] = luma;
-            sumLuma += luma;
-          }
-          const avgLuma = sumLuma / (w * h);
-
-          let sumVar = 0;
-          for (let i = 0; i < lumaArray.length; i++) {
-            sumVar += Math.pow(lumaArray[i] - avgLuma, 2);
-          }
-          const stdDev = Math.sqrt(sumVar / (w * h));
-
-          if (avgLuma < 15) {
-            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo is too dark. Please take a clear photo under good lighting." });
-            return;
-          }
-          if (avgLuma > 242) {
-            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo is too bright/blurry. Please capture the actual items." });
-            return;
-          }
-          if (stdDev < 10) {
-            resolve({ success: false, detected_count: 0, coordinates: [], reason: "Photo appears blank or uniform. Please take a photo of the actual items." });
-            return;
-          }
-
-          let borderSum = 0;
-          let borderCount = 0;
-          for (let x = 0; x < w; x++) {
-            borderSum += lumaArray[x] + lumaArray[(h-1)*w + x];
-            borderCount += 2;
-          }
-          for (let y = 1; y < h - 1; y++) {
-            borderSum += lumaArray[y*w] + lumaArray[y*w + (w-1)];
-            borderCount += 2;
-          }
-          const bgLuma = borderSum / borderCount;
-
-          const binary = new Uint8Array(w * h);
-          const diffThreshold = 22;
-          for (let i = 0; i < lumaArray.length; i++) {
-            binary[i] = Math.abs(lumaArray[i] - bgLuma) > diffThreshold ? 1 : 0;
-          }
-
-          const labels = new Int32Array(w * h);
-          let nextLabel = 1;
-          const parent = [0];
-
-          function find(i: number): number {
-            let root = i;
-            while (parent[root] !== root) {
-              root = parent[root];
-            }
-            let curr = i;
-            while (curr !== root) {
-              const nxt = parent[curr];
-              parent[curr] = root;
-              curr = nxt;
-            }
-            return root;
-          }
-
-          function union(i: number, j: number) {
-            const rootI = find(i);
-            const rootJ = find(j);
-            if (rootI !== rootJ) {
-              parent[rootI] = rootJ;
-            }
-          }
-
-          for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-              const idx = y * w + x;
-              if (binary[idx] === 1) {
-                const neighbors = [];
-                if (x > 0 && binary[idx - 1] === 1) neighbors.push(labels[idx - 1]);
-                if (y > 0 && binary[idx - w] === 1) neighbors.push(labels[idx - w]);
-                
-                if (neighbors.length === 0) {
-                  labels[idx] = nextLabel;
-                  parent.push(nextLabel);
-                  nextLabel++;
-                } else {
-                  let minLabel = neighbors[0];
-                  for (let n of neighbors) {
-                    if (n < minLabel) minLabel = n;
-                  }
-                  labels[idx] = minLabel;
-                  for (let n of neighbors) {
-                    union(n, minLabel);
-                  }
-                }
-              }
-            }
-          }
-
-          const componentStats: Record<number, { sumX: number; sumY: number; count: number }> = {};
-          for (let y = 0; y < h; y++) {
-            for (let x = 0; x < w; x++) {
-              const idx = y * w + x;
-              if (binary[idx] === 1) {
-                const rootLabel = find(labels[idx]);
-                labels[idx] = rootLabel;
-                if (!componentStats[rootLabel]) {
-                  componentStats[rootLabel] = { sumX: 0, sumY: 0, count: 0 };
-                }
-                componentStats[rootLabel].sumX += x;
-                componentStats[rootLabel].sumY += y;
-                componentStats[rootLabel].count++;
-              }
-            }
-          }
-
-          const minComponentSize = Math.max(12, Math.round((w * h) * 0.0006));
-          const validComponents = Object.entries(componentStats)
-            .map(([label, stats]) => ({
-              label: parseInt(label),
-              ...stats
-            }))
-            .filter(c => c.count > minComponentSize);
-
-          const coordinates = validComponents.map(c => ({
-            x: Math.round((c.sumX / c.count) / w * 100),
-            y: Math.round((c.sumY / c.count) / h * 100)
-          }));
-
-          const detectedCount = coordinates.length;
-
-          let success = detectedCount > 0;
-          let reason = "";
-
-          if (!success) {
-            reason = "No items detected. Place the items on a clear background and take a well-lit photo.";
-          }
-
-          resolve({
-            success,
-            detected_count: detectedCount,
-            coordinates,
-            reason: success ? undefined : reason
-          });
-
-        } catch (e: any) {
-          resolve({ success: false, detected_count: 0, coordinates: [], reason: "Scan error: " + e.message });
-        }
-      };
-      img.onerror = () => {
-        resolve({ success: false, detected_count: 0, coordinates: [], reason: "Failed to process image file." });
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.onerror = () => {
-      resolve({ success: false, detected_count: 0, coordinates: [], reason: "Failed to read image upload." });
-    };
-    reader.readAsDataURL(file);
-  });
-};
+// Local scanning removed - standard image upload mode active
 
 interface AddTaskModalProps {
   isOpen: boolean;
@@ -260,12 +70,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   });
   
   const [taskImages, setTaskImages] = useState<Record<number, File>>({});
-  const [imageScanResults, setImageScanResults] = useState<Record<number, {
-    scanning: boolean;
-    success: boolean;
-    reason?: string;
-    coordinates?: { x: number; y: number }[];
-  }>>({});
+  const [uploadingSlots, setUploadingSlots] = useState<Record<number, boolean>>({});
   const [uploadedUrls, setUploadedUrls] = useState<Record<number, string>>({});
   const [isUploading, setIsUploading] = useState(false);
 
@@ -364,7 +169,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     if (key === 'pieces') {
       setPieceCategories({ '22k': '', '18k': '', '14k': '', '9k': '' });
       setTaskImages({});
-      setImageScanResults({});
+      setUploadingSlots({});
       setUploadedUrls({});
     }
   };
@@ -422,12 +227,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       if (Object.keys(taskImages).length < reqImgs) {
          e.images = `Please upload all ${reqImgs} verification photos.`;
       } else {
-         const hasFailedOrScanning = Array.from({ length: reqImgs }).some((_, idx) => {
-           const scan = imageScanResults[idx];
-           return !scan || scan.scanning || !scan.success;
+         const isStillUploading = Array.from({ length: reqImgs }).some((_, idx) => {
+           return uploadingSlots[idx] || !uploadedUrls[idx];
          });
-         if (hasFailedOrScanning) {
-           e.images = `All photos must pass the local AI security scan.`;
+         if (isStillUploading) {
+           e.images = `Please wait for all photos to finish uploading.`;
          }
       }
     }
@@ -478,7 +282,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       setWorkType(null); 
       setErrors({}); 
       setTaskImages({});
-      setImageScanResults({});
+      setUploadingSlots({});
       setUploadedUrls({});
       setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false });
       onClose();
@@ -510,55 +314,24 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
          setErrors(errs => { const n = {...errs}; delete n['images']; return n; });
       }
 
-      // Initialize slot scanning state
-      setImageScanResults(prev => ({ 
-        ...prev, 
-        [index]: { scanning: true, success: false } 
-      }));
+      // Mark slot as uploading
+      setUploadingSlots(prev => ({ ...prev, [index]: true }));
 
       try {
         // Upload image to Supabase storage to get its path
         const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_scan_${index}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const fileName = `${Date.now()}_task_${index}_${Math.random().toString(36).substring(7)}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage.from('task_images').upload(fileName, file);
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
         setUploadedUrls(prev => ({ ...prev, [index]: publicUrl }));
-
-        // Run the local image analyzer
-        const result = await analyzeImageLocally(file);
-
-        if (result.success) {
-          setImageScanResults(prev => ({
-            ...prev,
-            [index]: {
-              scanning: false,
-              success: true,
-              coordinates: result.coordinates || []
-            }
-          }));
-        } else {
-          setImageScanResults(prev => ({
-            ...prev,
-            [index]: {
-              scanning: false,
-              success: false,
-              reason: result.reason || "Scan failed. Verification did not pass checks."
-            }
-          }));
-        }
       } catch (err: any) {
-        console.error("AI scanning error:", err);
-        setImageScanResults(prev => ({
-          ...prev,
-          [index]: {
-            scanning: false,
-            success: false,
-            reason: err.message || "Failed to complete local scan. Try again."
-          }
-        }));
+        console.error("Upload error:", err);
+        alert("Failed to upload image. Please try again.");
+      } finally {
+        setUploadingSlots(prev => ({ ...prev, [index]: false }));
       }
     }
   };
@@ -590,95 +363,46 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         {errMsg('images')}
         <div className="grid grid-cols-2 gap-3 mt-3">
           {Array.from({ length: requiredImages }).map((_, idx) => {
-            const scan = imageScanResults[idx];
             const hasImage = !!taskImages[idx];
-            const isScanning = scan?.scanning;
-            const isSuccess = scan?.success;
-            const isFailed = scan && !scan.scanning && !scan.success;
+            const isUploadingSlot = uploadingSlots[idx];
 
             return (
               <div 
                 key={idx} 
                 className={`relative aspect-square rounded-xl border-2 border-dashed bg-white overflow-hidden flex flex-col items-center justify-center transition-all ${
-                  isScanning 
-                    ? 'border-secondary/60 bg-secondary/5' 
-                    : isSuccess 
-                    ? 'border-green-500 bg-green-500/[0.02]' 
-                    : isFailed 
-                    ? 'border-error bg-error/[0.02]' 
+                  isUploadingSlot 
+                    ? 'border-secondary/60 bg-secondary/5 shadow-inner' 
+                    : hasImage 
+                    ? 'border-primary/40 bg-[#003366]/[0.01]' 
                     : 'border-outline-variant/40 hover:border-primary/40'
                 }`}
               >
-                {hasImage ? (
+                {isUploadingSlot ? (
+                  <div className="absolute inset-0 bg-[#001e40]/5 flex flex-col items-center justify-center backdrop-blur-[1px]">
+                    <span className="w-8 h-8 border-3 border-secondary/20 border-t-secondary rounded-full animate-spin"></span>
+                    <span className="text-[8px] font-bold uppercase tracking-wider text-secondary mt-2.5">Uploading...</span>
+                  </div>
+                ) : hasImage ? (
                   <>
                     <img 
                       src={URL.createObjectURL(taskImages[idx])} 
                       alt={getSlotLabel(idx, numPieces)} 
-                      className="w-full h-full object-cover" 
+                      className="w-full h-full object-cover animate-fade-in" 
                     />
-                    
-                    {/* Laser scanning sweep animation */}
-                    {isScanning && (
-                      <div className="absolute inset-0 bg-secondary/10 flex flex-col items-center justify-center backdrop-blur-[1px]">
-                        <div className="laser-line"></div>
-                        <span className="w-8 h-8 border-3 border-secondary/20 border-t-secondary rounded-full animate-spin"></span>
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-secondary mt-2 drop-shadow-sm">AI Scanning...</span>
-                      </div>
-                    )}
-
-                    {/* Success marker overlays */}
-                    {isSuccess && (
-                      <>
-                        <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-green-500/90 text-white font-bold text-[8px] flex items-center gap-1 shadow-md backdrop-blur-sm animate-fade-in">
-                          <span className="material-symbols-outlined text-[8px] font-bold">verified</span>
-                          SECURE
-                        </div>
-                        {scan.coordinates?.map((coord, cIdx) => (
-                          <div 
-                            key={cIdx} 
-                            className="absolute w-5 h-5 -ml-2.5 -mt-2.5 border border-green-400 rounded-full flex items-center justify-center bg-green-500/30 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-ping-once"
-                            style={{ left: `${coord.x}%`, top: `${coord.y}%` }}
-                          >
-                            <span className="text-[7px] font-black text-white leading-none">{cIdx + 1}</span>
-                          </div>
-                        ))}
-                      </>
-                    )}
-
-                    {/* Failed state overlay */}
-                    {isFailed && (
-                      <div className="absolute inset-0 bg-error/95 p-3 flex flex-col items-center justify-center text-center animate-fade-in animate-duration-200">
-                        <span className="material-symbols-outlined text-white text-2xl mb-1 drop-shadow-sm">warning</span>
-                        <p className="text-[8px] font-black text-white uppercase tracking-wider mb-1 leading-tight">Verification Failed</p>
-                        <p className="text-[8px] text-white/90 leading-tight line-clamp-3 px-1">{scan.reason}</p>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setTaskImages(p => { const n={...p}; delete n[idx]; return n; });
-                            setImageScanResults(p => { const n={...p}; delete n[idx]; return n; });
-                            setUploadedUrls(p => { const n={...p}; delete n[idx]; return n; });
-                          }}
-                          className="mt-2 px-2.5 py-1 bg-white text-error rounded-full text-[8px] font-bold uppercase tracking-wider shadow-sm hover:scale-105 active:scale-95 transition-transform"
-                        >
-                          Retry
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Standard close button if not scanning/failed */}
-                    {!isScanning && !isFailed && (
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          setTaskImages(p => { const n={...p}; delete n[idx]; return n; });
-                          setImageScanResults(p => { const n={...p}; delete n[idx]; return n; });
-                          setUploadedUrls(p => { const n={...p}; delete n[idx]; return n; });
-                        }} 
-                        className="absolute top-1.5 right-1.5 w-6 h-6 bg-error/90 text-white rounded-full flex items-center justify-center backdrop-blur-sm shadow-md"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">close</span>
-                      </button>
-                    )}
+                    <div className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-full bg-[#003366]/90 text-white font-bold text-[8px] flex items-center gap-1 shadow-md backdrop-blur-sm animate-fade-in">
+                      <span className="material-symbols-outlined text-[8px] font-bold">image</span>
+                      UPLOADED
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setTaskImages(p => { const n={...p}; delete n[idx]; return n; });
+                        setUploadedUrls(p => { const n={...p}; delete n[idx]; return n; });
+                      }} 
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-error/90 text-white rounded-full flex items-center justify-center backdrop-blur-sm shadow-md hover:scale-105 active:scale-95 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
                   </>
                 ) : (
                   <>
@@ -692,7 +416,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <span className="material-symbols-outlined text-outline-variant text-3xl mb-1.5">add_a_photo</span>
                     <span className="text-[9px] font-bold text-outline uppercase tracking-wider">{getSlotLabel(idx, numPieces)}</span>
                     <span className="text-[7px] text-outline/50 uppercase tracking-widest mt-0.5">
-                      Need {getExpectedPiecesForSlot(idx, numPieces)} Pcs
+                      {getExpectedPiecesForSlot(idx, numPieces)} Pieces
                     </span>
                   </>
                 )}
