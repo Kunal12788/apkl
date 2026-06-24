@@ -371,7 +371,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
   const getRequiredImages = (numPieces: number) => {
     if (numPieces <= 0) return 0;
-    return numPieces > 10 ? Math.ceil(numPieces / 10) : numPieces;
+    const slots = Math.ceil(numPieces / 10);
+    return Math.min(10, slots);
   };
 
   const validate = () => {
@@ -490,10 +491,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   };
 
   const getExpectedPiecesForSlot = (index: number, totalPieces: number) => {
-    if (totalPieces <= 10) return 1;
-    const fullSlots = Math.floor(totalPieces / 10);
-    if (index < fullSlots) return 10;
-    return totalPieces % 10 || 10;
+    const maxSlots = getRequiredImages(totalPieces);
+    if (maxSlots <= 1) return totalPieces;
+    const isLast = index === maxSlots - 1;
+    if (isLast) {
+      return totalPieces - (maxSlots - 1) * 10;
+    }
+    return 10;
   };
 
   const handleImageChange = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -560,11 +564,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   };
 
   const getSlotLabel = (idx: number, totalPieces: number) => {
-    if (totalPieces <= 10) {
-      return `Piece ${idx + 1}`;
+    const maxSlots = getRequiredImages(totalPieces);
+    if (maxSlots <= 1) {
+      return `Pieces 1-${totalPieces}`;
     }
     const start = idx * 10 + 1;
-    const end = Math.min((idx + 1) * 10, totalPieces);
+    const isLast = idx === maxSlots - 1;
+    const end = isLast ? totalPieces : (idx + 1) * 10;
     return `Pieces ${start}-${end}`;
   };
 
