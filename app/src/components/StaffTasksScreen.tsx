@@ -1957,14 +1957,22 @@ export const StaffTasksScreen: React.FC = () => {
                   )
                 ) : (
                   <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Calculated Pure Metal Yield</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">
+                      {selectedSettlement.task?.pureWeight ? "Pure Metal Yield" : "Calculated Pure Metal Yield"}
+                    </span>
                     <p className="text-sm font-black text-secondary">
                       {(() => {
-                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0;
-                        const impure = isSilver ? Number(selectedSettlement.impure_silver_in) : Number(selectedSettlement.impure_gold_in);
-                        const purity = parseFloat(selectedSettlement.purity) || 0;
-                        const yieldWeight = impure * (purity / 100);
-                        return `${yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
+                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                        const yieldWeight = selectedSettlement.task?.pureWeight 
+                          ? Number(selectedSettlement.task.pureWeight)
+                          : (() => {
+                              const impure = isSilver 
+                                ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
+                                : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
+                              const purity = parseFloat(selectedSettlement.purity) || 0;
+                              return impure * (purity / 100);
+                            })();
+                        return `${selectedSettlement.task?.pureWeight ? yieldWeight.toString() : yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
                       })()}
                     </p>
                     <p className="text-[8.5px] text-outline font-medium mt-1">
@@ -2002,7 +2010,9 @@ export const StaffTasksScreen: React.FC = () => {
                       ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
                       : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
                     const purity = parseFloat(selectedSettlement.purity) || 0;
-                    const calculatedPure = impure * (purity / 100);
+                    const calculatedPure = selectedSettlement.task?.pureWeight
+                      ? Number(selectedSettlement.task.pureWeight)
+                      : impure * (purity / 100);
 
                     // Special Task-specific flow for Cash settlement (follows cash work workflow)
                     if (selectedSettlement.isTask && isCashMode) {
