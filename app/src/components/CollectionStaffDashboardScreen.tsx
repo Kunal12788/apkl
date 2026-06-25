@@ -194,14 +194,8 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   ];
 
   // 2. Calculate status stats dynamically
-  let pendingCount = unifiedDashboardItems.filter(t => {
-    const isCash = t.settlementCondition?.toLowerCase().includes('cash');
-    return t.status === 'Pending' || (t.status === 'In Progress' && !isCash);
-  }).length;
-  let progressCount = unifiedDashboardItems.filter(t => {
-    const isCash = t.settlementCondition?.toLowerCase().includes('cash');
-    return t.status === 'In Progress' && isCash;
-  }).length;
+  let pendingCount = unifiedDashboardItems.filter(t => t.status === 'Pending').length;
+  let progressCount = unifiedDashboardItems.filter(t => t.status === 'In Progress').length;
   let completedCount = unifiedDashboardItems.filter(t => t.status === 'Completed').length;
 
   const statusStats = [

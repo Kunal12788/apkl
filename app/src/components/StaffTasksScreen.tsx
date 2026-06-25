@@ -1111,16 +1111,6 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
-     const isCash = t.settlementCondition?.toLowerCase().includes('cash');
-     if (activeTab === 'Pending') {
-        return (t.status === 'Pending' || (t.status === 'In Progress' && !isCash)) && matchesSearch(t);
-     }
-     if (activeTab === 'In Progress') {
-        return (t.status === 'In Progress' && isCash) && matchesSearch(t);
-     }
-     if (activeTab === 'Settlement') {
-        return t.status === 'Settlement' && matchesSearch(t);
-     }
      return t.status === activeTab && matchesSearch(t);
   });
 

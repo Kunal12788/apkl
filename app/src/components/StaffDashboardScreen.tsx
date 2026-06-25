@@ -133,9 +133,8 @@ export const StaffDashboardScreen: React.FC = () => {
     initialImpureSilver = totalImpureSilverReceived - totalImpureSilverRefined;
 
     initialTasks.forEach((t: any) => {
-      const isCash = (t.sett_condition || t.settlement_condition || '').toLowerCase().includes('cash');
-      if (t.status === 'Pending' || t.status === 'Settlement' || (t.status === 'In Progress' && !isCash)) initialStats.pending++;
-      else if (t.status === 'In Progress' && isCash) initialStats.inProgress++;
+      if (t.status === 'Pending' || t.status === 'Settlement') initialStats.pending++;
+      else if (t.status === 'In Progress') initialStats.inProgress++;
       else if (t.status === 'Completed') initialStats.completed++;
     });
   }
@@ -286,12 +285,11 @@ export const StaffDashboardScreen: React.FC = () => {
           else if (task.source === 'Super Admin') source.superAdmin++;
           else if (task.source === 'Collection Staff') source.collectionStaff++;
 
-          const isCash = (task.sett_condition || task.settlement_condition || '').toLowerCase().includes('cash');
-          if (task.status === 'In Progress' && isCash) {
+          if (task.status === 'In Progress') {
             inProgress++;
           } else if (task.status === 'Completed') {
             completed++;
-          } else if (task.status === 'Pending' || task.status === 'Settlement' || (task.status === 'In Progress' && !isCash)) {
+          } else if (task.status === 'Pending' || task.status === 'Settlement') {
             pending++;
           }
         });
