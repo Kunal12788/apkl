@@ -1,7 +1,7 @@
 // Build Trigger: Reverted OneSignal integration completely
 import { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { clearAllDataCaches } from './cache';
 import { supabase } from './supabaseClient';
 import { SplashScreen } from './components/SplashScreen';

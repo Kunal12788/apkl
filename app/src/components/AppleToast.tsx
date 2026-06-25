@@ -1,6 +1,6 @@
 import React from 'react';
 import toast, { type Toast } from 'react-hot-toast';
-import { ShieldCheck, LogOut, Bell, Key, Layers, CheckCircle2, TrendingUp, Coins } from 'lucide-react';
+import { LogOut, Bell, Key, Layers, CheckCircle2, TrendingUp, Coins } from 'lucide-react';
 import { playNotificationSound } from '../utils/audio';
 
 interface AppleToastProps {
