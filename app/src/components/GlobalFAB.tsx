@@ -330,7 +330,7 @@ export const GlobalFAB: React.FC = () => {
               return;
             }
 
-            // Rule 4: Tunch -> Cash Insert task with status = 'In Progress' and progress 40%
+            // Rule 4: Tunch -> Cash Insert task with status = 'Pending' and progress 0%
             if (data.workType === 'TUNCH' && data.settlementCondition === 'Cash') {
               const condStr = data.fee ? `Cash - Fee Suggested ₹${data.fee} (${data.feePaymentMode})` : 'Cash';
               
@@ -350,15 +350,15 @@ export const GlobalFAB: React.FC = () => {
                 brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
                 work_type: 'Tunch',
                 date_given: data.date,
-                status: 'In Progress',
-                progress_percentage: 40,
+                status: 'Pending',
+                progress_percentage: 0,
                 assigned_to: user?.id || 'Staff',
                 source: isCollection ? 'Collection Staff' : 'Staff',
                 created_by: user?.id || '',
                 created_at: new Date().toISOString(),
                 iso_date: isoDateStr,
-                estimated_completion: 'Today, 06:00 PM',
-                notes: data.notes || 'Created Tunch Cash task. Awaiting pricing.',
+                estimated_completion: 'Awaiting Audit',
+                notes: data.notes || 'Created Tunch Cash task. Awaiting Admin verification.',
                 images: data.images,
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability
@@ -367,7 +367,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
               if (taskError) throw taskError;
 
-              toast.success('Tunch Cash task created. Awaiting Admin pricing approval.');
+              toast.success('Tunch Cash task created. Awaiting Admin verification.');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
