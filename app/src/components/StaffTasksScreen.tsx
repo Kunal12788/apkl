@@ -1079,7 +1079,7 @@ export const StaffTasksScreen: React.FC = () => {
     }
     if (user?.role === 'Admin') {
       const isCreatedByAdmin = t.createdBy === currentUser || t.assignedTo === currentUser;
-      const isCashTask = t.settlementCondition?.toLowerCase().includes('cash');
+      const isCashTask = t.settlementCondition?.toLowerCase().includes('cash') || false;
       return (isCreatedByAdmin || !!t.staffSubmittedAt || isCashTask) && !t.adminSubmittedAt;
     }
     return !t.adminSubmittedAt;
@@ -1112,7 +1112,7 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
-     const isReopenedCashTask = t.status === 'Pending' && t.settlementCondition?.includes('Cash') && !!t.purity;
+     const isReopenedCashTask = t.status === 'Pending' && (t.settlementCondition?.includes('Cash') || false) && !!t.purity;
      
      let matchesTab = t.status === activeTab;
      if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
