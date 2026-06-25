@@ -25,7 +25,8 @@ export const StaffDashboardScreen: React.FC = () => {
         return !item.admin_submitted_at;
       }
       const isCreatedByAdmin = item.staff_id === userId || item.created_by === userId || item.assigned_to === userId;
-      return (isCreatedByAdmin || item.staff_submitted_at) && !item.admin_submitted_at;
+      const isCashTask = item.settlement_condition?.toLowerCase().includes('cash') || item.settlementCondition?.toLowerCase().includes('cash');
+      return (isCreatedByAdmin || item.staff_submitted_at || isCashTask) && !item.admin_submitted_at;
     }
     return !item.admin_submitted_at;
   };

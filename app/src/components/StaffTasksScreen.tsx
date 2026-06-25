@@ -752,7 +752,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Section: Admin Pricing Panel */}
-          {task.status === 'Pending' && isAdminOrSuper && (
+          {((task.status === 'Pending' || (task.status === 'In Progress' && task.settlementCondition === 'Cash')) && isAdminOrSuper) && (
             <div className="rounded-2xl border border-tertiary/20 p-3.5 bg-tertiary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-tertiary">Admin pricing verification</p>
               
@@ -917,7 +917,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <span className="material-symbols-outlined text-[16px]">rule</span>
               Verify Intake Data
             </button>
-          ) : task.status === 'Pending' && isAdminOrSuper ? (
+          ) : (task.status === 'Pending' || (task.status === 'In Progress' && task.settlementCondition === 'Cash')) && isAdminOrSuper ? (
             <button 
               onClick={() => {
                 if (!finalPriceInput.trim()) {
@@ -1079,7 +1079,8 @@ export const StaffTasksScreen: React.FC = () => {
     }
     if (user?.role === 'Admin') {
       const isCreatedByAdmin = t.createdBy === currentUser || t.assignedTo === currentUser;
-      return (isCreatedByAdmin || !!t.staffSubmittedAt) && !t.adminSubmittedAt;
+      const isCashTask = t.settlementCondition?.toLowerCase().includes('cash');
+      return (isCreatedByAdmin || !!t.staffSubmittedAt || isCashTask) && !t.adminSubmittedAt;
     }
     return !t.adminSubmittedAt;
   };
@@ -1111,7 +1112,18 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
-     return t.status === activeTab && matchesSearch(t);
+     const isReopenedCashTask = t.status === 'Pending' && t.settlementCondition?.includes('Cash') && !!t.purity;
+     
+     let matchesTab = t.status === activeTab;
+     if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
+       if (activeTab === 'In Progress') {
+         matchesTab = t.status === 'In Progress' || isReopenedCashTask;
+       } else if (activeTab === 'Pending') {
+         matchesTab = t.status === 'Pending' && !isReopenedCashTask;
+       }
+     }
+     
+     return matchesTab && matchesSearch(t);
   });
 
   const handleDeleteTask = async (id: string) => {
@@ -1654,7 +1666,7 @@ export const StaffTasksScreen: React.FC = () => {
                   <div 
                     key={task.id} 
                     onClick={() => {
-                      if (task.status === 'Pending' && !isAdminOrSuper) {
+                      if (task.status === 'Pending') {
                         setCurrentVerificationTask(task);
                         setVerificationOpen(true);
                       } else {
@@ -1706,17 +1718,13 @@ export const StaffTasksScreen: React.FC = () => {
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
-                            if (isAdminOrSuper) {
-                              handleUpdateStatus(task);
-                            } else {
-                              setCurrentVerificationTask(task); 
-                              setVerificationOpen(true); 
-                            }
+                            setCurrentVerificationTask(task); 
+                            setVerificationOpen(true); 
                           }}
                           className="w-full py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
                         >
-                           <span className="material-symbols-outlined text-sm">{isAdminOrSuper ? 'play_arrow' : 'rule'}</span>
-                           {isAdminOrSuper ? 'START TASK WORK' : 'VERIFY INTAKE DATA'}
+                           <span className="material-symbols-outlined text-sm">rule</span>
+                           VERIFY INTAKE DATA
                         </button>
                       )}
 
@@ -2041,12 +2049,20 @@ export const StaffTasksScreen: React.FC = () => {
                       }
 
                       const taskUpdates = {
-                        status: 'In Progress' as any,
-                        progress_percentage: 40,
-                        settlement_condition: 'Cash'
+                        status: 'Pending' as any,
+                        progress_percentage: 20,
+                        settlement_condition: 'Cash',
+                        staff_submitted_at: null,
+                        admin_submitted_at: null
                       };
                       await supabase.from('tasks').update(taskUpdates).eq('id', selectedSettlement.id);
-                      setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { ...t, ...taskUpdates, progressPercentage: 40 } : t));
+                      setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { 
+                        ...t, 
+                        ...taskUpdates, 
+                        progressPercentage: 20,
+                        staffSubmittedAt: undefined,
+                        adminSubmittedAt: undefined
+                      } : t));
 
                       if (taskLedgerId) {
                         await supabase.from('ledger_entries').update({
@@ -2056,7 +2072,7 @@ export const StaffTasksScreen: React.FC = () => {
                         }).eq('id', taskLedgerId);
                       }
 
-                      showToast('Task moved to In Progress. Awaiting Admin pricing approval.');
+                      showToast('Task moved to Pending. Awaiting Admin confirmation.');
                       setSelectedSettlement(null);
                       return;
                     }
