@@ -6,7 +6,7 @@ import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { NotificationBell } from './NotificationBell';
 
-type TaskStatus = 'Pending' | 'In Progress' | 'Completed';
+type TaskStatus = 'Pending' | 'In Progress' | 'Completed' | 'Settlement';
 
 interface Task {
   metal: 'Gold' | 'Silver';
@@ -408,10 +408,13 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const matchesSearch = (t: Task) => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase());
   
   const filteredTasks = tasks.filter(t => {
+     const isOnlyTunch = t.workType === 'Tunch' && (t.settlementCondition?.toLowerCase().includes('only tunch') || false);
      if (activeTab === 'Completed') {
-        const isTunch = t.workType === 'Tunch';
-        const isOnlyTunch = t.settlementCondition?.toLowerCase().includes('only tunch') || false;
-        return t.status === 'Completed' && isTunch && isOnlyTunch && matchesSearch(t);
+        return (t.status === 'Completed' || (t.status === 'Settlement' && isOnlyTunch)) && matchesSearch(t);
+     }
+     if (activeTab === 'In Progress') {
+        if (t.status === 'Settlement' && isOnlyTunch) return false;
+        return t.status === 'In Progress' && matchesSearch(t);
      }
      return t.status === activeTab && matchesSearch(t);
   });
@@ -497,6 +500,10 @@ export const CollectionStaffTasksScreen: React.FC = () => {
 
             <div className="space-y-4">
               {filteredTasks.map((task) => {
+                const isOnlyTunch = task.workType === 'Tunch' && (task.settlementCondition?.toLowerCase().includes('only tunch') || false);
+                const displayStatus = (task.status === 'Settlement' && isOnlyTunch) ? 'Completed' : task.status;
+                const displayProgress = (task.status === 'Settlement' && isOnlyTunch) ? 100 : task.progressPercentage;
+
                 return (
                 <div key={task.id} onClick={() => setSelectedTask(task)} className={`p-4 relative overflow-hidden group border cursor-pointer active:scale-[0.99] transition-transform luxury-card border-outline-variant/10 bg-white bg-opacity-100`}>
                   <div className="flex justify-between items-start mb-4">
@@ -513,8 +520,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                         </div>
                       </div>
                     </div>
-                    <div className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(task.status)}`}>
-                      {task.status}
+                    <div className={`whitespace-nowrap text-center px-2.5 py-1 rounded-full border text-[9px] font-bold uppercase tracking-widest ${getStatusColor(displayStatus as any)}`}>
+                      {displayStatus}
                     </div>
                   </div>
 
@@ -522,10 +529,10 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                      <div className="px-1 pt-1">
                         <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest text-outline mb-1.5">
                            <span>Progress</span>
-                           <span className="text-primary">{task.progressPercentage}%</span>
+                           <span className="text-primary">{displayProgress}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-                          <div className="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style={{ width: `${task.progressPercentage}%` }}></div>
+                           <div className="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style={{ width: `${displayProgress}%` }}></div>
                         </div>
                       </div>
                   </div>
