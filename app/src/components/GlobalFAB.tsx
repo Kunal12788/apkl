@@ -54,6 +54,51 @@ export const GlobalFAB: React.FC = () => {
 
             const taskIdGenerated = isCollection ? `COL-${serialId}` : `TASK-${serialId}`;
 
+            // COLLECTION STAFF WORKFLOW: Always write directly to the tasks table with status 'Pending' and progress 0 (No stock validation)
+            if (isCollection) {
+              const newTask = {
+                id: taskIdGenerated,
+                customer_name: data.customerName || 'Walk-in Customer',
+                customer_id: generatedCustomerId,
+                metal: data.metal || 'Gold',
+                customer_address: data.address,
+                customer_phone: data.phone,
+                impure_weight: data.impureWeight || null,
+                purity: data.purity || null,
+                pure_weight: data.pureWeight || null,
+                settlement_condition: data.settlementCondition || 'Only Tunch',
+                product_type: data.productType || 'Jewellery',
+                pieces: data.pieces || '1',
+                brought_by: 'Collection Staff',
+                work_type: data.workType === 'MARKING' ? 'Marking' : data.workType === 'SHOULDERING' ? 'Shouldering' : 'Tunch',
+                date_given: data.date,
+                status: 'Pending',
+                progress_percentage: 0,
+                assigned_to: 'Staff',
+                source: 'Collection Staff',
+                created_by: user?.id || '',
+                created_at: new Date().toISOString(),
+                iso_date: isoDateStr,
+                estimated_completion: 'Awaiting Audit',
+                notes: data.notes || 'Created by Collection Staff',
+                images: data.images || [],
+                logo_name: data.logoName || null,
+                carat: data.carat || null,
+                point_suggestion: data.pointsUsed ? `${data.pointsUsed} ${data.pointSuggestion || 'Gold'} Points` : null,
+                total_weight: data.totalWeight || null,
+                pending_pure_liability: false,
+                pending_cash_liability: false,
+                was_settlement_category: false
+              };
+
+              const { error: taskError } = await supabase.from('tasks').insert([newTask]);
+              if (taskError) throw taskError;
+
+              toast.success(`${newTask.work_type} task registered successfully as Pending verification.`);
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
             // Rule 1: Marking & Shouldering Bypass tasks table, write directly to transactions
             if (data.workType === 'MARKING' || data.workType === 'SHOULDERING') {
               const newTxn = {
