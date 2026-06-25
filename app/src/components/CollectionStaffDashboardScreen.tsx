@@ -18,7 +18,16 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const cachedTasks = getCachedData('tasks_data', Infinity);
 
   const initialTasks = cachedTasks 
-    ? cachedTasks.filter((t: any) => (t.created_by === currentUser || t.assigned_to === currentUser) && !t.staff_submitted_at).map((t: any) => ({
+    ? cachedTasks.filter((t: any) => {
+        const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
+        if (isBelong) {
+          if (t.status === 'Completed' && t.work_type === 'Tunch' && t.settlement_condition?.toLowerCase().includes('only tunch')) {
+            return true;
+          }
+          return !t.staff_submitted_at;
+        }
+        return false;
+      }).map((t: any) => ({
         id: t.id, customerName: t.customer_name, category: t.work_type, pieces: t.pieces, status: t.status, dateGiven: t.date_given, isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''), settlementCondition: t.sett_condition || t.settlement_condition
       }))
     : [];
@@ -29,7 +38,16 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     const cachedTx = getCachedData('tx_data', Infinity);
     if (cachedTx && cachedTasks) {
       let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser && !t.staff_submitted_at);
-      let filteredTasks = cachedTasks.filter((t: any) => (t.created_by === currentUser || t.assigned_to === currentUser) && !t.staff_submitted_at);
+      let filteredTasks = cachedTasks.filter((t: any) => {
+        const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
+        if (isBelong) {
+          if (t.status === 'Completed' && t.work_type === 'Tunch' && t.settlement_condition?.toLowerCase().includes('only tunch')) {
+            return true;
+          }
+          return !t.staff_submitted_at;
+        }
+        return false;
+      });
       cachedBillingTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
     }
   }
@@ -46,6 +64,10 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const showSubmitted = filterDate && filterDate < todayStr;
   const filterBySubmission = (item: any) => {
     if (showSubmitted) return true;
+    const isOnlyTunch = (item.status === 'Completed' || item.status === 'Settlement') &&
+      ((item.category || item.workType || '').toUpperCase() === 'TUNCH') &&
+      ((item.settlementCondition || '').toLowerCase().includes('only tunch'));
+    if (isOnlyTunch) return true;
     return !item.staff_submitted_at && !item.staffSubmittedAt && !item.admin_submitted_at && !item.adminSubmittedAt;
   };
 
