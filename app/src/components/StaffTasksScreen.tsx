@@ -2130,41 +2130,38 @@ export const StaffTasksScreen: React.FC = () => {
                       ledgerUpdates.transaction_type = 'Tunch Only';
                       ledgerUpdates.status = 'Completed';
 
-                      // For normal tasks completed by staff (no source), parse and insert service fee if present
-                      const taskSource = selectedSettlement.task?.source;
-                      if (!taskSource) {
-                        let feeAmount = 0;
-                        let feeMode = 'Cash';
-                        const cond = selectedSettlement.task?.settlementCondition || '';
-                        if (cond.includes('₹')) {
-                          const parts = cond.split('₹');
-                          if (parts.length > 1) {
-                            feeAmount = parseFloat(parts[1].replace(/[^\d.]/g, '')) || 0;
-                          }
-                          if (cond.toLowerCase().includes('upi')) {
-                            feeMode = 'UPI';
-                          }
-                        }
+                       // Parse and insert service fee if present in settlement condition
+                       let feeAmount = 0;
+                       let feeMode = 'Cash';
+                       const cond = selectedSettlement.task?.settlementCondition || '';
+                       if (cond.includes('₹')) {
+                         const parts = cond.split('₹');
+                         if (parts.length > 1) {
+                           feeAmount = parseFloat(parts[1].replace(/[^\d.]/g, '')) || 0;
+                         }
+                         if (cond.toLowerCase().includes('upi')) {
+                           feeMode = 'UPI';
+                         }
+                       }
 
-                        if (feeAmount > 0) {
-                          const feeTxn = {
-                            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-                            customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
-                            customer_name: selectedSettlement.customer_name,
-                            metal: isSilver ? 'Silver' : 'Gold',
-                            type: feeMode,
-                            work_type: 'Tunch',
-                            amount: String(feeAmount),
-                            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-                            iso_date: new Date().toISOString().split('T')[0],
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            status: 'Paid',
-                            details: 'Service Fee (Tunch Only)',
-                            created_by: user?.id || ''
-                          };
-                          await supabase.from('transactions').insert([feeTxn]);
-                        }
-                      }
+                       if (feeAmount > 0) {
+                         const feeTxn = {
+                           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                           customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
+                           customer_name: selectedSettlement.customer_name,
+                           metal: isSilver ? 'Silver' : 'Gold',
+                           type: feeMode,
+                           work_type: 'Tunch',
+                           amount: String(feeAmount),
+                           date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                           iso_date: new Date().toISOString().split('T')[0],
+                           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                           status: 'Paid',
+                           details: 'Service Fee (Tunch Only)',
+                           created_by: user?.id || ''
+                         };
+                         await supabase.from('transactions').insert([feeTxn]);
+                       }
                     } else if (isCashMode) {
                       ledgerUpdates.transaction_type = 'Exchange';
                       ledgerUpdates.status = 'Completed';

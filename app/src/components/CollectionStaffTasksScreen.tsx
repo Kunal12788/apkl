@@ -396,6 +396,11 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   const matchesSearch = (t: Task) => t.customerName.toLowerCase().includes(searchQuery.toLowerCase()) || t.id.toLowerCase().includes(searchQuery.toLowerCase());
   
   const filteredTasks = tasks.filter(t => {
+     if (activeTab === 'Completed') {
+        const isTunch = t.workType === 'Tunch';
+        const isOnlyTunch = t.settlementCondition?.toLowerCase().includes('only tunch') || false;
+        return t.status === 'Completed' && isTunch && isOnlyTunch && matchesSearch(t);
+     }
      return t.status === activeTab && matchesSearch(t);
   });
 

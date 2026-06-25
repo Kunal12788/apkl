@@ -196,7 +196,12 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   // 2. Calculate status stats dynamically
   let pendingCount = unifiedDashboardItems.filter(t => t.status === 'Pending').length;
   let progressCount = unifiedDashboardItems.filter(t => t.status === 'In Progress').length;
-  let completedCount = unifiedDashboardItems.filter(t => t.status === 'Completed').length;
+  let completedCount = unifiedDashboardItems.filter(t => {
+    if (t.status !== 'Completed') return false;
+    const isTunch = (t.category || '').toUpperCase() === 'TUNCH';
+    const isOnlyTunch = (t.settlementCondition || '').toLowerCase().includes('only tunch');
+    return isTunch && isOnlyTunch;
+  }).length;
 
   const statusStats = [
     { label: 'Pending', value: pendingCount.toString(), color: 'bg-error/10 text-error' },
