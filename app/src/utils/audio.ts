@@ -1,12 +1,26 @@
+let sharedAudioCtx: AudioContext | null = null;
+
 /**
  * Synthesizes a futuristic ascending chime sound using the Web Audio API.
  * Resembles the code-completion or action-completed chime of premium systems.
  */
 export const playNotificationSound = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+    const ctx = sharedAudioCtx;
+
+    // Mobile browsers suspend the audio context to prevent autoplay sound.
+    // Calling resume() inside user interaction context unlocks audio output.
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch((err) => {
+        console.warn("Could not resume AudioContext:", err);
+      });
+    }
     
     const playTone = (freq: number, start: number, duration: number) => {
       const osc = ctx.createOscillator();
@@ -38,3 +52,4 @@ export const playNotificationSound = () => {
     console.error("Web Audio API sound playback failed:", e);
   }
 };
+

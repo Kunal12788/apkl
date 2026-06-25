@@ -22,6 +22,7 @@ import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScr
 import { GlobalFAB } from './components/GlobalFAB';
 import { GlobalChat } from './components/GlobalChat';
 import { playNotificationSound } from './utils/audio';
+import { triggerBlueToast } from './components/AppleToast';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
@@ -203,41 +204,123 @@ function AppContent() {
 
          if (newRecord && newRecord.status === 'Approved' && (!oldRecord || oldRecord.status !== 'Approved')) {
             if ((user.role === 'Collection Staff' || user.role === 'Staff') && (newRecord.created_by === user.id || user.role === 'Collection Staff')) {
-               toast.custom((t) => (
-                 <div 
-                   className={`${
-                     t.visible ? 'animate-fade-in' : 'opacity-0'
-                   } w-11/12 max-w-sm pointer-events-auto transition-opacity duration-300`}
-                   style={{ zIndex: 9999 }}
-                 >
-                   <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
-                     <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                       <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
-                     </div>
-                     <span className="font-bold text-[13px] tracking-wide flex-1">
-                       Customer {newRecord.name} approved! You can now create tasks for them.
-                     </span>
-                   </div>
-                 </div>
-               ), { duration: 5000, position: 'top-center' });
+               triggerBlueToast(`Customer ${newRecord.name} approved! You can now create tasks for them.`, 'Customer Approved', 'success');
             }
          }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'transactions', payload } }));
+         
+         const newRecord = payload.new;
+         const oldRecord = payload.old;
+
+         if (payload.eventType === 'INSERT' && newRecord) {
+            const creatorText = newRecord.created_by === user.id ? 'You' : `User (${newRecord.created_by})`;
+            triggerBlueToast(
+              `${creatorText} registered a new ${newRecord.work_type} transaction for ${newRecord.customer_name}.`,
+              'Work Creation',
+              'task'
+            );
+         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
+            const wasUnpaid = oldRecord.status === 'Unpaid';
+            const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
+            const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
+            const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
+
+            if ((wasUnpaid && isPaid) || staffPaidJustNow || colStaffPaidJustNow) {
+               let msg = `Payment cleared for ${newRecord.customer_name}: ${newRecord.amount}`;
+               if (newRecord.status === 'Fully Paid' || (newRecord.staff_paid && newRecord.col_staff_paid)) {
+                 msg = `Payment Fully Cleared: ${newRecord.customer_name} (₹${newRecord.amount})`;
+               } else if (staffPaidJustNow) {
+                 msg = `Payment approved by Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
+               } else if (colStaffPaidJustNow) {
+                 msg = `Payment collected by Field Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
+               }
+               triggerBlueToast(msg, 'Payment Received', 'success');
+            }
+         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'tasks', payload } }));
+
+         const newRecord = payload.new;
+         const oldRecord = payload.old;
+
+         if (payload.eventType === 'INSERT' && newRecord) {
+            const creatorText = newRecord.created_by === user.id ? 'You' : `User (${newRecord.created_by})`;
+            triggerBlueToast(
+              `${creatorText} created a new ${newRecord.work_type} task for ${newRecord.customer_name}.`,
+              'Task Registered',
+              'task'
+            );
+         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
+            const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
+            const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');
+            const completedJustNow = oldRecord.status !== 'Completed' && newRecord.status === 'Completed';
+            const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
+            const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
+
+            if (verifiedJustNow) {
+               const verifier = newRecord.assigned_to === user.id ? 'You' : 'Staff';
+               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified by ${verifier}.`, 'Task Verified', 'success');
+            } else if (processedJustNow) {
+               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
+            } else if (completedJustNow) {
+               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
+            } else if (staffPaidJustNow || colStaffPaidJustNow) {
+               let msg = `Task payment updated for ${newRecord.customer_name}`;
+               if (newRecord.staff_paid && newRecord.col_staff_paid) {
+                 msg = `Task payment Fully Cleared for ${newRecord.customer_name}`;
+               } else if (staffPaidJustNow) {
+                 msg = `Task payment approved by Staff: ${newRecord.customer_name}`;
+               } else if (colStaffPaidJustNow) {
+                 msg = `Task payment collected by Field Staff: ${newRecord.customer_name}`;
+               }
+               triggerBlueToast(msg, 'Payment Received', 'success');
+            }
+         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_allocations' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'stock_allocations', payload } }));
+
+         const newRecord = payload.new;
+         if (payload.eventType === 'INSERT' && newRecord) {
+            const isSelfAllocated = newRecord.allocated_by === user.id;
+            const isAllocatedToMe = newRecord.staff_id === user.id;
+            const myBranch = user.branch_id && newRecord.branch_id === user.branch_id;
+            
+            let detailsText = '';
+            if (Number(newRecord.pure_weight || 0) > 0) detailsText += `${newRecord.pure_weight}g Pure Metal `;
+            if (Number(newRecord.cash_amount || 0) > 0) detailsText += `₹${newRecord.cash_amount} Cash`;
+
+            if (isSelfAllocated) {
+               triggerBlueToast(`You successfully allocated stock: ${detailsText}`, 'Stock Allocated', 'allocation');
+            } else if (isAllocatedToMe) {
+               triggerBlueToast(`You have been allocated stock: ${detailsText}`, 'Stock Allocation Received', 'allocation');
+            } else if (myBranch && !newRecord.staff_id) {
+               triggerBlueToast(`Your branch received a stock allocation: ${detailsText}`, 'Branch Stock Allocation', 'allocation');
+            }
+         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'ledger_entries', payload } }));
+
+         const newRecord = payload.new;
+         if (payload.eventType === 'INSERT' && newRecord) {
+            if (newRecord.transaction_type === 'Exchange' || newRecord.transaction_type === 'Tunch Only') {
+               const isSelf = newRecord.staff_id === user.id;
+               const actor = isSelf ? 'You' : `Staff (${newRecord.staff_id})`;
+               triggerBlueToast(
+                 `${actor} registered a new pure metal exchange ledger entry for ${newRecord.customer_name}.`,
+                 'Exchange Registered',
+                 'task'
+               );
+            }
+         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
@@ -247,13 +330,24 @@ function AppContent() {
          if (newMsg && newMsg.receiver_id === user.id && !newMsg.is_read) {
             playNotificationSound();
             if (newMsg.type === 'notification') {
-               toast.success(`Notification: ${newMsg.content}`, { duration: 4000 });
+               triggerBlueToast(newMsg.content, 'New Notification', 'info');
             } else {
-               toast(`New message!`, { 
-                 icon: '💬',
-                 duration: 3000 
-               });
+               triggerBlueToast(`New message from user!`, 'Chat Message', 'info');
             }
+         }
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, (payload: any) => {
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'branch_daily_reports', payload } }));
+         
+         const newRecord = payload.new;
+         if (payload.eventType === 'INSERT' && newRecord) {
+            const isSelfSubmitted = newRecord.staff_id === user.id;
+            const submitter = isSelfSubmitted ? 'You' : `Staff member (${newRecord.staff_id})`;
+            triggerBlueToast(
+              `${submitter} submitted the daily report for branch ${newRecord.branch_name}.`,
+              'Daily Report Submitted',
+              'report'
+            );
          }
       })
       .subscribe();

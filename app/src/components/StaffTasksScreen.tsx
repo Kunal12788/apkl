@@ -982,8 +982,6 @@ export const StaffTasksScreen: React.FC = () => {
   const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
 
   const activeTab = (searchParams.get('tab') as TaskStatus) || 'Pending';
-  const [toastMessage, setToastMessage] = useState('');
-  
   const [isVerificationOpen, setVerificationOpen] = useState(false);
   const [currentVerificationTask, setCurrentVerificationTask] = useState<any>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
@@ -991,8 +989,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(''), 3000);
+    triggerBlueToast(msg);
   };
 
   // Load tasks from cache synchronously on mount for 0ms delay
@@ -2280,17 +2277,7 @@ export const StaffTasksScreen: React.FC = () => {
         </div>
       )}
         
-        {/* Toast Notification System */}
-        {toastMessage && (
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] animate-fade-in w-11/12 max-w-sm">
-            <div className="bg-[#003366] text-white py-3.5 px-5 rounded-2xl shadow-[0_10px_40px_rgba(0,51,102,0.3)] flex items-center gap-3 border border-white/10">
-              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-white text-sm">notifications_active</span>
-              </div>
-              <span className="font-bold text-[13px] tracking-wide flex-1">{toastMessage}</span>
-            </div>
-          </div>
-        )}
+
       </main>
 
       {/* Bottom Nav Bar */}
