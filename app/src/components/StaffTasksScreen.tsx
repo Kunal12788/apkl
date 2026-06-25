@@ -1387,9 +1387,12 @@ export const StaffTasksScreen: React.FC = () => {
       const isSilver = task.metal === 'Silver';
       const isoDateStr = new Date().toISOString().split('T')[0];
 
-      // Cash Stock Validation System
+      // Cash Stock Validation System for Admin
+      const adminId = user?.id || '';
       const isSuperSa = user?.role === 'Super Admin';
-      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount, staff_id');
+      const isBranchAdmin = user?.role === 'Admin';
+      
+      let allocationsQuery = supabase.from('stock_allocations').select('cash_amount, staff_id, staff_submitted_at');
       if (!isSuperSa && user?.branch_id) {
         allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
       }
@@ -1399,14 +1402,17 @@ export const StaffTasksScreen: React.FC = () => {
         const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
         if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
       }
-      if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
+      if (branchUserIds.length === 0) branchUserIds = [adminId];
       
-      let entriesQuery = supabase.from('ledger_entries').select('cash_received, cash_paid');
+      let entriesQuery = supabase.from('ledger_entries').select('cash_received, cash_paid, staff_id, staff_submitted_at').is('admin_submitted_at', null);
       if (!isSuperSa && user?.branch_id) {
         entriesQuery = entriesQuery.in('staff_id', branchUserIds);
       }
       
-      const txQuery = supabase.from('transactions').select('amount, status, type');
+      let txQuery = supabase.from('transactions').select('amount, status, type, created_by, staff_submitted_at').is('admin_submitted_at', null);
+      if (!isSuperSa && user?.branch_id) {
+        txQuery = txQuery.in('created_by', branchUserIds);
+      }
       
       const [allocationsRes, entriesRes, txRes] = await Promise.all([
         allocationsQuery,
@@ -1414,23 +1420,51 @@ export const StaffTasksScreen: React.FC = () => {
         txQuery
       ]);
       
-      const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-      const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
-      const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+      let currentCashStock = 0;
       
-      let billingCash = 0;
-      (txRes.data || []).forEach((tx: any) => {
-        const type = tx.type?.trim().toLowerCase() || '';
-        if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-          const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-          billingCash += Number(amtStr) || 0;
-        }
-      });
+      if (isBranchAdmin) {
+        // Calculate Admin's personal live cash stock
+        const branchAllocations = allocationsRes.data || [];
+        const fromSuper = branchAllocations.filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+        const toStaffActive = branchAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+        const totalAllocatedCash = fromSuper - toStaffActive;
+        
+        const adminEntries = (entriesRes.data || []).filter((e: any) => e.staff_id === adminId || e.staff_submitted_at !== null);
+        const totalCashReceived = adminEntries.reduce((s, e) => s + Number(e.cash_received || 0), 0);
+        const totalCashPaid = adminEntries.reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+        
+        let billingCash = 0;
+        (txRes.data || []).forEach((tx: any) => {
+          const isRelevant = tx.created_by === adminId || tx.createdBy === adminId || tx.staff_submitted_at !== null;
+          const type = tx.type?.trim().toLowerCase() || '';
+          if (isRelevant && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+            billingCash += Number(amtStr) || 0;
+          }
+        });
+        
+        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+      } else {
+        // Fallback for Super Admin
+        const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+        const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+        const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+        
+        let billingCash = 0;
+        (txRes.data || []).forEach((tx: any) => {
+          const type = tx.type?.trim().toLowerCase() || '';
+          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+            billingCash += Number(amtStr) || 0;
+          }
+        });
+        
+        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+      }
       
-      const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
-      const cashAmountToPay = Number(finalPrice || 0);
+      const cashPayout = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
 
-      if (modeStr === 'Cash' && cashAmountToPay > currentCashStock) {
+      if (modeStr === 'Cash' && cashPayout > currentCashStock) {
         const msg = user?.role === 'Admin'
           ? "Required stock is not present, kindly talk to the Super Admin."
           : "Required stock is not present, kindly talk to the Admin.";
@@ -1459,7 +1493,7 @@ export const StaffTasksScreen: React.FC = () => {
       // 2. Insert ledger entries based on cash handling mode
       const handlingMode = task.cashHandlingMode || 'Front';
       const isCashSettlement = task.settlementCondition?.toLowerCase().includes('cash');
-      const finalCashAmount = cashAmount ? Number(cashAmount) : cashAmountToPay;
+      const finalCashAmount = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
       const finalCashRate = cashRate ? Number(cashRate) : 0;
       const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
       const isOnlyTunch = task.settlementCondition?.includes('Only Tunch');
