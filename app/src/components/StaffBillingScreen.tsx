@@ -524,7 +524,11 @@ export const StaffBillingScreen: React.FC = () => {
     : [];
 
   const cachedStaffTx = getCachedData('staff_billing_tx', Infinity) || [];
-  const [transactions, setTransactions] = useState<Transaction[]>(cachedStaffTx);
+
+  const initialTransactions = isNonAdmin 
+    ? cachedStaffTx.filter((t: any) => !t.isCashExchange)
+    : cachedStaffTx;
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
@@ -580,7 +584,8 @@ export const StaffBillingScreen: React.FC = () => {
 
         const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
         setCachedData('staff_billing_tx', allTx);
-        setTransactions(allTx);
+        const finalTx = isNonAdmin ? allTx.filter((t: any) => !t.isCashExchange) : allTx;
+        setTransactions(finalTx);
       } catch (err) {
         console.error('Error fetching billing data:', err);
       }
