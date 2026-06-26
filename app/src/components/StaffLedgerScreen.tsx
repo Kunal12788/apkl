@@ -134,7 +134,7 @@ export const StaffLedgerScreen: React.FC = () => {
   let initialBillingCash = 0;
   cachedBillingTx.forEach((tx: any) => {
     const type = tx.type?.trim().toLowerCase() || '';
-    if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+    if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.isCashExchange && !tx.is_cash_exchange) {
       const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
       initialBillingCash += Number(amtStr) || 0;
     }
