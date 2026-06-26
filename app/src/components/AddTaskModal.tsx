@@ -232,6 +232,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         if (!formData.pointsUsed.trim()) e.pointsUsed = 'Required';
         if (!formData.fee.trim()) e.fee = 'Required';
       }
+    }
     if (workType === 'BUY_SELL') {
       if (!formData.impureWeight.trim()) e.impureWeight = 'Required';
       if (!formData.purity.trim()) e.purity = 'Required';
@@ -308,7 +309,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       setTaskImages({});
       setUploadingSlots({});
       setUploadedUrls({});
-      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front' });
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front', cashRate: '', cashAmount: '' });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
