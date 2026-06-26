@@ -500,7 +500,11 @@ export const StaffBillingScreen: React.FC = () => {
     }
     if (role === 'Admin') {
       const isCreatedByAdmin = item.created_by === user?.id || item.createdBy === user?.id;
-      const isCashTask = item.settlement_condition?.toLowerCase().includes('cash') || item.settlementCondition?.toLowerCase().includes('cash');
+      const isCashTask = item.settlement_condition?.toLowerCase().includes('cash') || 
+                         item.settlementCondition?.toLowerCase().includes('cash') ||
+                         item.details?.toLowerCase().includes('cash') ||
+                         item.isCashExchange ||
+                         item.type === 'Cash';
       return (isCreatedByAdmin || item.staffSubmittedAt || item.staff_submitted_at || isCashTask) && !item.adminSubmittedAt && !item.admin_submitted_at;
     }
     return !item.adminSubmittedAt && !item.admin_submitted_at;
