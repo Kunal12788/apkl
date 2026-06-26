@@ -284,7 +284,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       setPureWeightInput(task.pureWeight || '');
       setSettlementInput(task.settlementCondition || 'Only Tunch');
       setServiceFeeInput('');
-      setFinalPriceInput(extractFee(task.settlementCondition) || '');
+      setFinalPriceInput(extractFee(task.settlementCondition) || (task.settlementCondition?.toLowerCase().includes('cash') ? '0' : ''));
       setPaymentModeInput(extractPaymentMode(task.settlementCondition));
       setCashHandlingMode(task.cashHandlingMode || 'Front');
       setCashRateInput(task.cashRatePerGram ? String(task.cashRatePerGram) : '');
@@ -756,21 +756,23 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <div className="rounded-2xl border border-tertiary/20 p-3.5 bg-tertiary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-tertiary">Admin pricing verification</p>
               
-              <div>
-                <span className={lbl}>Set Service Price / Fee (₹) *</span>
-                <div className="relative mt-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-outline">₹</span>
-                  <input 
-                    type="number" 
-                    value={finalPriceInput} 
-                    onChange={e => setFinalPriceInput(e.target.value)}
-                    placeholder="e.g. 500" 
-                    className="w-full h-10 pl-7 pr-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
-                  />
+              {!(task.settlementCondition?.toLowerCase().includes('cash') || settlementInput === 'Cash') && (
+                <div>
+                  <span className={lbl}>Set Service Price / Fee (₹) *</span>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-outline">₹</span>
+                    <input 
+                      type="number" 
+                      value={finalPriceInput} 
+                      onChange={e => setFinalPriceInput(e.target.value)}
+                      placeholder="e.g. 500" 
+                      className="w-full h-10 pl-7 pr-3 bg-white border border-outline-variant/40 rounded-lg text-xs font-bold text-primary focus:outline-none focus:border-tertiary"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {(task.settlementCondition === 'Cash' || settlementInput === 'Cash') && (
+              {(task.settlementCondition?.toLowerCase().includes('cash') || settlementInput === 'Cash') && (
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   <div>
                     <span className={lbl}>Cash Rate / Gram (₹) *</span>
@@ -803,20 +805,22 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </div>
               )}
 
-              <div>
-                <span className={lbl}>Payment Mode *</span>
-                <div className="flex gap-2 mt-1">
-                  {['Cash', 'UPI'].map(mode => (
-                    <button 
-                      key={mode} type="button" 
-                      onClick={() => setPaymentModeInput(mode as 'Cash' | 'UPI')}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${paymentModeInput === mode ? 'bg-tertiary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-tertiary/40'}`}
-                    >
-                      {mode}
-                    </button>
-                  ))}
+              {!(task.settlementCondition?.toLowerCase().includes('cash') || settlementInput === 'Cash') && (
+                <div>
+                  <span className={lbl}>Payment Mode *</span>
+                  <div className="flex gap-2 mt-1">
+                    {['Cash', 'UPI'].map(mode => (
+                      <button 
+                        key={mode} type="button" 
+                        onClick={() => setPaymentModeInput(mode as 'Cash' | 'UPI')}
+                        className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${paymentModeInput === mode ? 'bg-tertiary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-tertiary/40'}`}
+                      >
+                        {mode}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -1596,8 +1600,8 @@ export const StaffTasksScreen: React.FC = () => {
             transaction_type: 'Exchange',
             status: 'Completed',
             purity: task.purity || '',
-            cash_paid: modeStr === 'Cash' ? finalCashAmount : 0,
-            cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+            cash_paid: finalCashAmount,
+            cash_received: 0,
             cash_rate_per_gram: finalCashRate,
             cash_amount: finalCashAmount,
             staff_id: user?.id || '',
@@ -1620,8 +1624,8 @@ export const StaffTasksScreen: React.FC = () => {
               transaction_type: 'Exchange',
               status: 'Completed',
               purity: task.purity || '',
-              cash_paid: modeStr === 'Cash' ? finalCashAmount : 0,
-              cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+              cash_paid: finalCashAmount,
+              cash_received: 0,
               cash_rate_per_gram: finalCashRate,
               cash_amount: finalCashAmount,
               staff_id: user?.id || '',
