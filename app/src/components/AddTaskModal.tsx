@@ -71,7 +71,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     broughtBy: 'Customer', pointsUsed: '',
     pointSuggestion: 'Gold', totalWeight: '',
     pendingPureLiability: false,
-    pendingCashLiability: false
+    pendingCashLiability: false,
+    cashHandlingMode: 'Front'
   });
 
   const [pieceCategories, setPieceCategories] = useState<Record<string, string>>({
@@ -293,7 +294,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       setTaskImages({});
       setUploadingSlots({});
       setUploadedUrls({});
-      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false });
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front' });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
@@ -675,6 +676,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       </button>
                     ))}
                   </div>
+                  {formData.settlementCondition === 'Cash' && (
+                    <div className="mt-4 pt-4 border-t border-outline-variant/20">
+                      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-2 block">Cash Handling Mode *</label>
+                      <div className="flex gap-2">
+                        {['Front', 'Back'].map(mode => (
+                          <button 
+                            key={mode} type="button" 
+                            onClick={() => up('cashHandlingMode', mode)}
+                            className={`flex-grow py-2.5 rounded-xl text-[11px] font-bold border transition-all ${formData.cashHandlingMode === mode ? 'button-gradient text-white border-transparent shadow-sm' : 'bg-white border-outline-variant/30 text-on-surface-variant hover:border-secondary/40 hover:text-secondary'}`}
+                          >
+                            {mode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {renderImageUploads()}
                 </SectionCard>
 

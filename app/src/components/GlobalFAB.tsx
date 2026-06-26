@@ -333,7 +333,8 @@ export const GlobalFAB: React.FC = () => {
             // Rule 4: Tunch -> Cash Insert task with status = 'Pending' and progress 0%
             if (data.workType === 'TUNCH' && data.settlementCondition === 'Cash') {
               const condStr = data.fee ? `Cash - Fee Suggested ₹${data.fee} (${data.feePaymentMode})` : 'Cash';
-              
+              const handlingMode = data.cashHandlingMode || 'Front';
+
               const newTask = {
                 id: taskIdGenerated,
                 customer_name: data.customerName || 'Walk-in Customer',
@@ -361,11 +362,81 @@ export const GlobalFAB: React.FC = () => {
                 notes: data.notes || 'Created Tunch Cash task. Awaiting Admin verification.',
                 images: data.images,
                 pending_pure_liability: !!data.pendingPureLiability,
-                pending_cash_liability: !!data.pendingCashLiability
+                pending_cash_liability: !!data.pendingCashLiability,
+                cash_handling_mode: handlingMode
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
               if (taskError) throw taskError;
+
+              // Insert Staff's initial ledger entry
+              const entryId = `LGR-S-${Math.floor(1000 + Math.random() * 9000)}`;
+              const serviceFeeAmount = Number(data.fee || 0);
+              const serviceFeeCash = data.feePaymentMode === 'Cash' ? serviceFeeAmount : 0;
+
+              const staffLedgerEntry: any = {
+                id: entryId,
+                date: 'Today',
+                iso_date: isoDateStr,
+                customer_name: data.customerName || 'Walk-in Customer',
+                transaction_type: 'Exchange',
+                purity: data.purity || '',
+                staff_id: user?.id || '',
+                created_at: new Date().toISOString()
+              };
+
+              if (handlingMode === 'Front') {
+                staffLedgerEntry.status = 'Pending Cash';
+                staffLedgerEntry.pending_cash_liability = true;
+                staffLedgerEntry.cash_received = serviceFeeCash;
+                staffLedgerEntry.cash_paid = 0;
+                staffLedgerEntry.cash_amount = 0;
+                staffLedgerEntry.cash_rate_per_gram = 0;
+                if (data.metal === 'Silver') {
+                  staffLedgerEntry.impure_silver_in = Number(data.impureWeight || 0);
+                  staffLedgerEntry.pure_silver_in = Number(data.pureWeight || 0);
+                  staffLedgerEntry.pure_gold_in = 0;
+                  staffLedgerEntry.impure_gold_in = 0;
+                } else {
+                  staffLedgerEntry.impure_gold_in = Number(data.impureWeight || 0);
+                  staffLedgerEntry.pure_gold_in = Number(data.pureWeight || 0);
+                  staffLedgerEntry.pure_silver_in = 0;
+                  staffLedgerEntry.impure_silver_in = 0;
+                }
+              } else {
+                // Back mode
+                staffLedgerEntry.status = 'Completed';
+                staffLedgerEntry.pending_cash_liability = false;
+                staffLedgerEntry.cash_received = serviceFeeCash;
+                staffLedgerEntry.cash_paid = 0;
+                staffLedgerEntry.cash_amount = 0;
+                staffLedgerEntry.cash_rate_per_gram = 0;
+                staffLedgerEntry.pure_gold_in = 0; staffLedgerEntry.impure_gold_in = 0;
+                staffLedgerEntry.pure_silver_in = 0; staffLedgerEntry.impure_silver_in = 0;
+              }
+
+              const { error: ledgerError } = await supabase.from('ledger_entries').insert([staffLedgerEntry]);
+              if (ledgerError) throw ledgerError;
+
+              // Insert fee transaction if provided
+              if (serviceFeeAmount > 0) {
+                const newTxn = {
+                  id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                  customer_id: generatedCustomerId,
+                  customer_name: data.customerName || 'Walk-in Customer',
+                  metal: data.metal || 'Gold',
+                  type: data.feePaymentMode || 'Cash',
+                  work_type: 'Tunch',
+                  amount: String(data.fee),
+                  date: 'Today',
+                  iso_date: isoDateStr,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  status: data.feeStatus || 'Paid',
+                  details: 'Service Fee (Tunch Cash)',
+                  created_by: user?.id || ''
+                };
+                await supabase.from('transactions').insert([newTxn]);
+              }
 
               toast.success('Tunch Cash task created. Awaiting Admin verification.');
               window.dispatchEvent(new CustomEvent('databaseSync'));

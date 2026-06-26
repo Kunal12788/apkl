@@ -409,12 +409,17 @@ export const CollectionStaffTasksScreen: React.FC = () => {
   
   const filteredTasks = tasks.filter(t => {
      const isOnlyTunch = t.workType === 'Tunch' && (t.settlementCondition?.toLowerCase().includes('only tunch') || false);
+     const isReopenedCashTask = t.status === 'Pending' && (t.settlementCondition?.toLowerCase().includes('cash') || false) && (t.purity !== null && t.purity !== '' && t.purity !== undefined);
+     
      if (activeTab === 'Completed') {
         return (t.status === 'Completed' || (t.status === 'Settlement' && isOnlyTunch)) && matchesSearch(t);
      }
      if (activeTab === 'In Progress') {
         if (t.status === 'Settlement' && isOnlyTunch) return false;
-        return t.status === 'In Progress' && matchesSearch(t);
+        return (t.status === 'In Progress' || isReopenedCashTask) && matchesSearch(t);
+     }
+     if (activeTab === 'Pending') {
+        return (t.status === 'Pending' && !isReopenedCashTask) && matchesSearch(t);
      }
      return t.status === activeTab && matchesSearch(t);
   });

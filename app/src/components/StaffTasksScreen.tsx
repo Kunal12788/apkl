@@ -752,7 +752,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           )}
 
           {/* Section: Admin Pricing Panel */}
-          {((task.status === 'Pending' || (task.status === 'In Progress' && task.settlementCondition === 'Cash')) && isAdminOrSuper) && (
+          {((task.status === 'In Progress') && isAdminOrSuper) && (
             <div className="rounded-2xl border border-tertiary/20 p-3.5 bg-tertiary-container/5 space-y-3">
               <p className="text-[8px] font-black uppercase tracking-[0.15em] text-tertiary">Admin pricing verification</p>
               
@@ -917,18 +917,24 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               <span className="material-symbols-outlined text-[16px]">rule</span>
               Verify Intake Data
             </button>
-          ) : (task.status === 'Pending' || (task.status === 'In Progress' && task.settlementCondition === 'Cash')) && isAdminOrSuper ? (
+          ) : task.status === 'Pending' && isAdminOrSuper ? (
+            <button 
+              onClick={() => onUpdateStatus(task)}
+              className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">rule</span>
+              Verify Details
+            </button>
+          ) : task.status === 'In Progress' && task.settlementCondition?.includes('Cash') && isAdminOrSuper ? (
             <button 
               onClick={() => {
                 if (!finalPriceInput.trim()) {
                   alert('Please enter the service price/fee.');
                   return;
                 }
-                if (task.settlementCondition === 'Cash') {
-                  if (!cashRateInput.trim() || !cashAmountInputState.trim()) {
-                    alert('Please enter cash rate and total cash amount.');
-                    return;
-                  }
+                if (!cashRateInput.trim() || !cashAmountInputState.trim()) {
+                  alert('Please enter cash rate and total cash amount.');
+                  return;
                 }
                 onFinalizePricing?.(task, finalPriceInput, paymentModeInput, cashRateInput, cashAmountInputState);
               }}
@@ -938,7 +944,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               Approve & Price
             </button>
           ) : (
-            task.status !== 'Completed' && isAdminOrSuper && (
+            task.status === 'In Progress' && isAdminOrSuper && (
               <button 
                 onClick={() => onUpdateStatus(task, 'approve')}
                 className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
@@ -1112,7 +1118,7 @@ export const StaffTasksScreen: React.FC = () => {
   };
 
   const filteredTasks = tasks.filter(t => {
-     const isReopenedCashTask = t.status === 'Pending' && (t.settlementCondition?.includes('Cash') || false) && !!t.purity;
+     const isReopenedCashTask = t.status === 'Pending' && (t.settlementCondition?.toLowerCase().includes('cash') || false) && (t.purity !== null && t.purity !== '' && t.purity !== undefined);
      
      let matchesTab = t.status === activeTab;
      if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
@@ -1120,6 +1126,12 @@ export const StaffTasksScreen: React.FC = () => {
          matchesTab = t.status === 'In Progress' || isReopenedCashTask;
        } else if (activeTab === 'Pending') {
          matchesTab = t.status === 'Pending' && !isReopenedCashTask;
+       }
+     } else if (user?.role === 'Admin' || user?.role === 'Super Admin') {
+       if (activeTab === 'Pending') {
+         matchesTab = t.status === 'Pending' && t.purity !== null && t.purity !== '' && t.purity !== undefined;
+       } else if (activeTab === 'In Progress') {
+         matchesTab = t.status === 'In Progress';
        }
      }
      
@@ -1155,7 +1167,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleVerifySuccess = async (verifiedTask: any, isMismatch?: boolean, verifiedDetails?: { pieces: string; weight: string }) => {
      try {
-       const updates: any = { status: 'In Progress', progress_percentage: 40 };
+       const updates: any = { status: 'In Progress', progress_percentage: 40, assigned_to: user?.id || 'Staff' };
        if (verifiedTask.images) {
          updates.images = verifiedTask.images;
        }
@@ -1188,6 +1200,7 @@ export const StaffTasksScreen: React.FC = () => {
        setTasks(prev => prev.map(t => t.id === verifiedTask.id ? { 
          ...t, 
          ...updates, 
+         assignedTo: updates.assigned_to,
          impureWeight: updates.impure_weight || t.impureWeight,
          totalWeight: updates.total_weight || t.totalWeight,
          pieces: updates.pieces || t.pieces,
@@ -1254,12 +1267,15 @@ export const StaffTasksScreen: React.FC = () => {
         taskUpdates.impure_weight = details.impureWeight || task.impureWeight;
         taskUpdates.purity = details.purity || task.purity;
         taskUpdates.pure_weight = details.pureWeight || task.pureWeight;
+        if (details.settlementCondition === 'Cash' || task.settlementCondition?.includes('Cash')) {
+          taskUpdates.cash_handling_mode = details.cashHandlingMode || 'Front';
+        }
       } else if (task.workType === 'Marking') {
         taskUpdates.total_weight = details.totalWeight || task.totalWeight;
         taskUpdates.pieces = details.pieces || task.pieces;
         taskUpdates.carat = details.carat || task.carat;
         taskUpdates.logo_name = details.logoName || task.logoName;
-         } else if (task.workType === 'Shouldering') {
+      } else if (task.workType === 'Shouldering') {
         taskUpdates.point_suggestion = details.pointsCount ? `${details.pointsCount} ${details.pointsType || 'Gold'} Points` : task.pointSuggestion;
         taskUpdates.brought_by = details.broughtBy || task.broughtBy;
       }
@@ -1293,6 +1309,7 @@ export const StaffTasksScreen: React.FC = () => {
       setTasks(prev => prev.map(t => t.id === task.id ? {
         ...t,
         ...taskUpdates,
+        cashHandlingMode: taskUpdates.cash_handling_mode || t.cashHandlingMode,
         impureWeight: taskUpdates.impure_weight || t.impureWeight,
         purity: taskUpdates.purity || t.purity,
         pureWeight: taskUpdates.pure_weight || t.pureWeight,
@@ -1314,6 +1331,9 @@ export const StaffTasksScreen: React.FC = () => {
         const finalImpure = Number(details.impureWeight || task.impureWeight) || 0;
         const finalPure = Number(details.pureWeight || task.pureWeight) || 0;
         const handlingMode = details.cashHandlingMode || 'Front';
+        const serviceFeeAmount = Number(details.serviceFee || 0);
+        const serviceFeeMode = details.paymentMode || 'Cash';
+        const serviceFeeCash = serviceFeeMode === 'Cash' ? serviceFeeAmount : 0;
 
         const newLedgerEntry: any = {
           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -1322,8 +1342,7 @@ export const StaffTasksScreen: React.FC = () => {
           customer_name: task.customerName,
           purity: details.purity || task.purity || '',
           staff_id: user?.id || task.createdBy || '',
-          created_at: new Date().toISOString(),
-          cash_handling_mode: condition === 'Cash' ? handlingMode : null
+          created_at: new Date().toISOString()
         };
 
         if (condition === 'Only Tunch') {
@@ -1354,22 +1373,35 @@ export const StaffTasksScreen: React.FC = () => {
             newLedgerEntry.transaction_type = 'Exchange';
             newLedgerEntry.status = 'Pending Cash';
             newLedgerEntry.pending_cash_liability = true;
+            newLedgerEntry.cash_received = serviceFeeCash;
+            newLedgerEntry.cash_paid = 0;
+            newLedgerEntry.cash_amount = 0;
+            newLedgerEntry.cash_rate_per_gram = 0;
             if (task.metal === 'Silver') {
               newLedgerEntry.impure_silver_in = finalImpure;
               newLedgerEntry.pure_silver_in = finalPure;
+              newLedgerEntry.pure_gold_in = 0;
+              newLedgerEntry.impure_gold_in = 0;
             } else {
               newLedgerEntry.impure_gold_in = finalImpure;
               newLedgerEntry.pure_gold_in = finalPure;
+              newLedgerEntry.pure_silver_in = 0;
+              newLedgerEntry.impure_silver_in = 0;
             }
             await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          } else {
+            // Back mode: create a staff ledger entry for the service fee ONLY
+            newLedgerEntry.transaction_type = 'Exchange';
+            newLedgerEntry.status = 'Completed';
+            newLedgerEntry.pending_cash_liability = false;
+            newLedgerEntry.cash_received = serviceFeeCash;
+            newLedgerEntry.cash_paid = 0;
+            newLedgerEntry.cash_amount = 0;
+            newLedgerEntry.cash_rate_per_gram = 0;
+            newLedgerEntry.pure_gold_in = 0; newLedgerEntry.impure_gold_in = 0;
+            newLedgerEntry.pure_silver_in = 0; newLedgerEntry.impure_silver_in = 0;
+            await supabase.from('ledger_entries').insert([newLedgerEntry]);
           }
-          // Back mode: no staff ledger entry; Admin will create the entry on finalize
-        }
-
-        // Also persist the cash_handling_mode on the task for Admin finalization reference
-        if (condition === 'Cash') {
-          await supabase.from('tasks').update({ cash_handling_mode: handlingMode }).eq('id', task.id);
-          setTasks(prev => prev.map(t => t.id === task.id ? { ...t, cashHandlingMode: handlingMode } : t));
         }
       }
 
@@ -1499,9 +1531,14 @@ export const StaffTasksScreen: React.FC = () => {
       const isOnlyTunch = task.settlementCondition?.includes('Only Tunch');
 
       if (!isOnlyTunch) {
+        const staffUserId = (task.assignedTo && task.assignedTo !== 'Staff') ? task.assignedTo : (task.createdBy || '');
+        const serviceFeeAmount = Number(finalPrice || 0);
+        const serviceFeeMode = extractPaymentMode(task.settlementCondition);
+        const serviceFeeCash = serviceFeeMode === 'Cash' ? serviceFeeAmount : 0;
+
         if (isCashSettlement && handlingMode === 'Front') {
-          // Front mode: Update the Staff's existing Pending Cash ledger entry with rate & amount
-          // Then create an Admin ledger entry for the cash payout
+          // Front mode: Update the Staff's existing Pending Cash ledger entry with rate, amount, and status Completed.
+          // Then create an Admin ledger entry for the cash payout.
           const { data: staffEntries } = await supabase
             .from('ledger_entries')
             .select('id')
@@ -1513,11 +1550,41 @@ export const StaffTasksScreen: React.FC = () => {
 
           if (staffEntries && staffEntries.length > 0) {
             await supabase.from('ledger_entries').update({
-              status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+              status: 'Completed',
               cash_rate_per_gram: finalCashRate,
               cash_amount: finalCashAmount,
-              pending_cash_liability: !!task.pendingCashLiability
+              pending_cash_liability: false
             }).eq('id', staffEntries[0].id);
+          } else {
+            // Fallback: create Staff entry if not found
+            const staffEntry: any = {
+              id: `LGR-S-${Math.floor(1000 + Math.random() * 9000)}`,
+              date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+              iso_date: isoDateStr,
+              customer_name: task.customerName,
+              transaction_type: 'Exchange',
+              status: 'Completed',
+              purity: task.purity || '',
+              cash_paid: 0,
+              cash_received: serviceFeeCash,
+              cash_rate_per_gram: finalCashRate,
+              cash_amount: finalCashAmount,
+              staff_id: staffUserId,
+              pending_cash_liability: false,
+              pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0
+            };
+            if (isSilver) {
+              staffEntry.impure_silver_in = Number(task.impureWeight || 0);
+              staffEntry.pure_silver_in = Number(task.pureWeight || 0);
+              staffEntry.impure_gold_in = 0;
+              staffEntry.pure_gold_in = 0;
+            } else {
+              staffEntry.impure_gold_in = Number(task.impureWeight || 0);
+              staffEntry.pure_gold_in = Number(task.pureWeight || 0);
+              staffEntry.impure_silver_in = 0;
+              staffEntry.pure_silver_in = 0;
+            }
+            await supabase.from('ledger_entries').insert([staffEntry]);
           }
 
           // Admin entry: records the cash disbursement
@@ -1527,46 +1594,83 @@ export const StaffTasksScreen: React.FC = () => {
             iso_date: isoDateStr,
             customer_name: task.customerName,
             transaction_type: 'Exchange',
-            status: task.pendingCashLiability ? 'Pending Cash' : 'Completed',
+            status: 'Completed',
             purity: task.purity || '',
-            cash_paid: task.pendingCashLiability ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
+            cash_paid: modeStr === 'Cash' ? finalCashAmount : 0,
             cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
             cash_rate_per_gram: finalCashRate,
             cash_amount: finalCashAmount,
             staff_id: user?.id || '',
             pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
             impure_gold_in: 0, impure_silver_in: 0,
-            pending_cash_liability: !!task.pendingCashLiability
+            pending_cash_liability: false
           };
           await supabase.from('ledger_entries').insert([adminEntry]);
 
         } else {
-          // Back mode or non-cash: Single Admin entry with everything
-          const ledgerEntry: any = {
-            id: entryId,
-            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-            iso_date: isoDateStr,
-            customer_name: task.customerName,
-            transaction_type: 'Exchange',
-            status: (isCashSettlement && task.pendingCashLiability) ? 'Pending Cash' : 'Completed',
-            purity: task.purity || '',
-            cash_paid: (isCashSettlement && task.pendingCashLiability) ? 0 : (modeStr === 'Cash' ? finalCashAmount : 0),
-            cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
-            cash_rate_per_gram: finalCashRate,
-            cash_amount: finalCashAmount,
-            staff_id: user?.id || '',
-            pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
-            pending_cash_liability: isCashSettlement ? !!task.pendingCashLiability : false
-          };
+          // Back mode or non-cash
+          if (isCashSettlement) {
+            // Staff entry: records the service fee ONLY. Staff entry was already created during processing, 
+            // but we must create the Admin entry with cash paid + pure/impure metal weights (since it is kept at back).
+            const adminEntry: any = {
+              id: entryId,
+              date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+              iso_date: isoDateStr,
+              customer_name: task.customerName,
+              transaction_type: 'Exchange',
+              status: 'Completed',
+              purity: task.purity || '',
+              cash_paid: modeStr === 'Cash' ? finalCashAmount : 0,
+              cash_received: modeStr === 'UPI' ? finalCashAmount : 0,
+              cash_rate_per_gram: finalCashRate,
+              cash_amount: finalCashAmount,
+              staff_id: user?.id || '',
+              pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+              pending_cash_liability: false
+            };
 
-          if (isSilver) {
-            ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
-            ledgerEntry.impure_gold_in = 0;
+            if (isSilver) {
+              adminEntry.impure_silver_in = Number(task.impureWeight || 0);
+              adminEntry.pure_silver_in = Number(task.pureWeight || 0);
+              adminEntry.impure_gold_in = 0;
+              adminEntry.pure_gold_in = 0;
+            } else {
+              adminEntry.impure_gold_in = Number(task.impureWeight || 0);
+              adminEntry.pure_gold_in = Number(task.pureWeight || 0);
+              adminEntry.impure_silver_in = 0;
+              adminEntry.pure_silver_in = 0;
+            }
+            await supabase.from('ledger_entries').insert([adminEntry]);
           } else {
-            ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
-            ledgerEntry.impure_silver_in = 0;
+            // Non-cash (Pure Gold / Pure Silver): Single Admin entry
+            const ledgerEntry: any = {
+              id: entryId,
+              date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+              iso_date: isoDateStr,
+              customer_name: task.customerName,
+              transaction_type: 'Exchange',
+              status: 'Completed',
+              purity: task.purity || '',
+              cash_paid: 0,
+              cash_received: 0,
+              cash_rate_per_gram: 0,
+              cash_amount: 0,
+              staff_id: user?.id || '',
+              pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+              pending_cash_liability: false
+            };
+
+            if (isSilver) {
+              ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
+              ledgerEntry.pure_silver_out = Number(task.pureWeight || 0);
+              ledgerEntry.impure_gold_in = 0;
+            } else {
+              ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
+              ledgerEntry.pure_gold_out = Number(task.pureWeight || 0);
+              ledgerEntry.impure_silver_in = 0;
+            }
+            await supabase.from('ledger_entries').insert([ledgerEntry]);
           }
-          await supabase.from('ledger_entries').insert([ledgerEntry]);
         }
       }
 
@@ -1618,9 +1722,9 @@ export const StaffTasksScreen: React.FC = () => {
          handleCloseModal();
        } else if (task.status === 'Pending') {
           if (isAdminOrSuper) {
-            await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 40 }).eq('id', task.id);
-            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 40 } : t));
-            showToast('Task started successfully.');
+            await supabase.from('tasks').update({ status: 'In Progress', progress_percentage: 70 }).eq('id', task.id);
+            setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: 'In Progress', progressPercentage: 70 } : t));
+            showToast('Task verified by Admin.');
             handleCloseModal();
           } else {
             setCurrentVerificationTask(task);
