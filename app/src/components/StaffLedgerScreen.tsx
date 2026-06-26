@@ -17,7 +17,7 @@ interface LedgerEntry {
   date: string;
   isoDate: string;
   customerName: string;
-  transactionType: 'Tunch Only' | 'Exchange' | 'Pending Settlement' | 'Pure Gold Sale' | 'Refining Dispatch';
+  transactionType: 'Tunch Only' | 'Exchange' | 'Pending Settlement' | 'Pure Gold Sale' | 'Refining Dispatch' | 'Buy' | 'Sell';
   pureGoldOut: number;
   pureGoldDue: number;
   impureGoldIn: number;
@@ -899,10 +899,14 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                     <div className="space-y-1 text-right">
                       <p className="text-[9px] uppercase tracking-widest text-outline font-bold">
-                        {activeMetal === 'Gold' ? 'Pure Gold Out' : 'Pure Silver Out'}
+                        {selectedEntry.transactionType === 'Buy' 
+                          ? (activeMetal === 'Gold' ? 'Pure Gold In' : 'Pure Silver In') 
+                          : (activeMetal === 'Gold' ? 'Pure Gold Out' : 'Pure Silver Out')}
                       </p>
                       <p className="font-headline text-sm font-bold text-secondary">
-                        {activeMetal === 'Gold' ? fmtG(selectedEntry.pureGoldOut) : fmtG(selectedEntry.pureSilverOut)}
+                        {selectedEntry.transactionType === 'Buy'
+                          ? (activeMetal === 'Gold' ? fmtG(selectedEntry.pureGoldIn || 0) : fmtG(selectedEntry.pureSilverIn || 0))
+                          : (activeMetal === 'Gold' ? fmtG(selectedEntry.pureGoldOut) : fmtG(selectedEntry.pureSilverOut))}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -1340,8 +1344,8 @@ export const StaffLedgerScreen: React.FC = () => {
                         >
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${entry.status.includes('Pending') ? 'bg-orange-50 text-orange-500' : entry.transactionType === 'Tunch Only' ? 'bg-slate-100 text-slate-500' : 'bg-secondary/10 text-secondary'}`}>
-                                <span className="material-symbols-outlined text-xl">{entry.transactionType === 'Tunch Only' ? 'science' : entry.transactionType === 'Exchange' ? 'swap_horiz' : 'pending_actions'}</span>
+                              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${entry.status.includes('Pending') ? 'bg-orange-50 text-orange-500' : entry.transactionType === 'Tunch Only' ? 'bg-slate-100 text-slate-500' : entry.transactionType === 'Buy' ? 'bg-emerald-50 text-emerald-600' : entry.transactionType === 'Sell' ? 'bg-blue-50 text-blue-600' : 'bg-secondary/10 text-secondary'}`}>
+                                <span className="material-symbols-outlined text-xl">{entry.transactionType === 'Tunch Only' ? 'science' : entry.transactionType === 'Exchange' ? 'swap_horiz' : entry.transactionType === 'Buy' ? 'shopping_bag' : entry.transactionType === 'Sell' ? 'sell' : 'pending_actions'}</span>
                               </div>
                               <div>
                                 <p className="font-bold text-sm text-primary">{entry.customerName}</p>
@@ -1361,6 +1365,45 @@ export const StaffLedgerScreen: React.FC = () => {
                               {entry.purity && (
                                 <p className="text-[11px] font-black text-primary mt-0.5">Purity: {entry.purity}%</p>
                               )}
+                            </div>
+                          ) : entry.transactionType === 'Buy' ? (
+                            <div className="flex items-center gap-4 px-3 py-3 bg-emerald-50/30 rounded-2xl border border-emerald-500/10">
+                              <div className="flex-grow flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-primary">
+                                  {activeMetal === 'Gold' ? fmtG(entry.impureGoldIn) : fmtG(entry.impureSilverIn)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Impure In</p>
+                              </div>
+                              <div className="w-px h-4 bg-emerald-500/10"></div>
+                              <div className="flex-grow flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-secondary">
+                                  {activeMetal === 'Gold' ? fmtG(entry.pureGoldIn) : fmtG(entry.pureSilverIn)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure In</p>
+                              </div>
+                              <div className="w-px h-4 bg-emerald-500/10"></div>
+                              <div className="flex-grow flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-red-600">
+                                  {isAdminOrSuper ? `₹${entry.cashPaid.toLocaleString('en-IN')}` : '[Restricted]'}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Cash Paid</p>
+                              </div>
+                            </div>
+                          ) : entry.transactionType === 'Sell' ? (
+                            <div className="flex items-center gap-4 px-3 py-3 bg-blue-50/30 rounded-2xl border border-blue-500/10">
+                              <div className="flex-grow flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-secondary">
+                                  {activeMetal === 'Gold' ? fmtG(entry.pureGoldOut) : fmtG(entry.pureSilverOut)}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Pure Out</p>
+                              </div>
+                              <div className="w-px h-4 bg-blue-500/10"></div>
+                              <div className="flex-grow flex flex-col items-center gap-0.5">
+                                <p className="text-[11px] font-black text-emerald-600">
+                                  {isAdminOrSuper ? `₹${entry.cashReceived.toLocaleString('en-IN')}` : '[Restricted]'}
+                                </p>
+                                <p className="text-[7px] uppercase font-black text-outline tracking-widest">Cash Recd</p>
+                              </div>
                             </div>
                           ) : (
                             <div className="flex items-center gap-4 px-3 py-3 bg-[#F8FAFC] rounded-2xl border border-outline-variant/10">

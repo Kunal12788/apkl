@@ -99,6 +99,142 @@ export const GlobalFAB: React.FC = () => {
               return;
             }
 
+            // Rule 0: Direct Buy and Sell direct transaction (Bypasses tasks, inserts completed ledger and transactions)
+            if (data.workType === 'BUY_SELL') {
+              const isBuy = data.settlementCondition === 'Buy';
+              const calculatedPure = Number(data.pureWeight || 0);
+              const totalAmount = Number(data.cashAmount || 0);
+              const cashRate = Number(data.cashRate || 0);
+
+              const isSuperSa = user?.role === 'Super Admin';
+              let allocationsQuery = supabase.from('stock_allocations').select('*');
+              if (!isSuperSa && user?.branch_id) {
+                allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
+              }
+              
+              let branchUserIds: string[] = [];
+              if (!isSuperSa && user?.branch_id) {
+                const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
+                if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
+              }
+              if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
+              
+              let entriesQuery = supabase.from('ledger_entries').select('*');
+              if (!isSuperSa && user?.branch_id) {
+                entriesQuery = entriesQuery.in('staff_id', branchUserIds);
+              }
+              
+              const [allocationsRes, entriesRes] = await Promise.all([
+                allocationsQuery,
+                entriesQuery
+              ]);
+
+              const metalType = isSilver ? 'Silver' : 'Gold';
+
+              if (!isBuy) {
+                // Selling: Validation for Pure Metal Stock
+                const totalAllocatedPure = (allocationsRes.data || []).filter((a: any) => a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+                const totalPureGiven = (entriesRes.data || []).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
+                const totalPureReceived = (entriesRes.data || []).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_in) || 0) : (Number(e.pure_silver_in) || 0)), 0);
+                const currentPureStock = totalAllocatedPure + totalPureReceived - totalPureGiven;
+
+                if (calculatedPure > currentPureStock) {
+                  const msg = user?.role === 'Admin'
+                    ? "Required stock is not present, kindly talk to the Super Admin."
+                    : "Required stock is not present, kindly talk to the Admin.";
+                  triggerBlueToast(msg);
+                  return;
+                }
+              } else {
+                // Buying: Validation for Cash Stock
+                const totalAllocatedCash = (allocationsRes.data || []).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+                const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+                const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
+
+                if (totalAmount > currentCashStock) {
+                  const msg = user?.role === 'Admin'
+                    ? "Required cash stock is not present, kindly talk to the Super Admin."
+                    : "Required cash stock is not present, kindly talk to the Admin.";
+                  triggerBlueToast(msg);
+                  return;
+                }
+              }
+
+              // 1. Create Ledger Entry
+              const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+              const ledgerEntry: any = {
+                id: entryId,
+                date: dateStr,
+                iso_date: isoDateStr,
+                customer_name: data.customerName || 'Walk-in Customer',
+                transaction_type: isBuy ? 'Buy' : 'Sell',
+                status: 'Completed',
+                purity: data.purity || '',
+                staff_id: user?.id || '',
+                pure_gold_out: 0,
+                pure_silver_out: 0,
+                pure_gold_in: 0,
+                pure_silver_in: 0,
+                impure_gold_in: 0,
+                impure_silver_in: 0,
+                cash_paid: isBuy ? totalAmount : 0,
+                cash_received: isBuy ? 0 : totalAmount,
+                cash_rate_per_gram: cashRate,
+                cash_amount: totalAmount,
+                pending_pure_liability: false,
+                pending_cash_liability: false
+              };
+
+              if (isSilver) {
+                if (isBuy) {
+                  ledgerEntry.impure_silver_in = Number(data.impureWeight || 0);
+                  ledgerEntry.pure_silver_in = calculatedPure;
+                } else {
+                  ledgerEntry.pure_silver_out = calculatedPure;
+                }
+              } else {
+                if (isBuy) {
+                  ledgerEntry.impure_gold_in = Number(data.impureWeight || 0);
+                  ledgerEntry.pure_gold_in = calculatedPure;
+                } else {
+                  ledgerEntry.pure_gold_out = calculatedPure;
+                }
+              }
+
+              const { error: ledgerError } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+              if (ledgerError) throw ledgerError;
+
+              // 2. Create Transaction Entry
+              const newTxn = {
+                id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                customer_id: generatedCustomerId,
+                customer_name: data.customerName || 'Walk-in Customer',
+                metal: data.metal || 'Gold',
+                type: 'Cash',
+                work_type: isBuy ? 'Buy' : 'Sell',
+                amount: String(totalAmount),
+                date: dateStr,
+                iso_date: isoDateStr,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'Paid',
+                details: `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Pure Weight: ${calculatedPure}g at ₹${cashRate}/g.`,
+                created_by: user?.id || '',
+                pure_weight: String(calculatedPure),
+                impure_weight: String(data.impureWeight || 0),
+                purity_percentage: data.purity || '',
+                cash_rate_per_gram: cashRate,
+                is_cash_exchange: true
+              };
+
+              const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
+              if (txnError) throw txnError;
+
+              toast.success(`${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} registered successfully.`);
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
             // Rule 1: Marking & Shouldering Bypass tasks table, write directly to transactions
             if (data.workType === 'MARKING' || data.workType === 'SHOULDERING') {
               const newTxn = {

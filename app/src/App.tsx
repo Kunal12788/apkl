@@ -309,18 +309,19 @@ function AppContent() {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'ledger_entries', payload } }));
 
-         const newRecord = payload.new;
-         if (payload.eventType === 'INSERT' && newRecord) {
-            if (newRecord.transaction_type === 'Exchange' || newRecord.transaction_type === 'Tunch Only') {
-               const isSelf = newRecord.staff_id === user.id;
-               const actor = isSelf ? 'You' : `Staff (${newRecord.staff_id})`;
-               triggerBlueToast(
-                 `${actor} registered a new pure metal exchange ledger entry for ${newRecord.customer_name}.`,
-                 'Exchange Registered',
-                 'task'
-               );
-            }
-         }
+          const newRecord = payload.new;
+          if (payload.eventType === 'INSERT' && newRecord) {
+             if (['Exchange', 'Tunch Only', 'Buy', 'Sell'].includes(newRecord.transaction_type)) {
+                const isSelf = newRecord.staff_id === user.id;
+                const actor = isSelf ? 'You' : `Staff (${newRecord.staff_id})`;
+                const actionLabel = newRecord.transaction_type === 'Exchange' ? 'pure metal exchange' : newRecord.transaction_type.toLowerCase();
+                triggerBlueToast(
+                  `${actor} registered a new ${actionLabel} ledger entry for ${newRecord.customer_name}.`,
+                  `${newRecord.transaction_type} Registered`,
+                  'task'
+                );
+             }
+          }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
 import { supabase } from '../supabaseClient';
 
-type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING';
+type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING' | 'BUY_SELL';
 
 interface Customer {
   id: string;
@@ -72,7 +72,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     pointSuggestion: 'Gold', totalWeight: '',
     pendingPureLiability: false,
     pendingCashLiability: false,
-    cashHandlingMode: 'Front'
+    cashHandlingMode: 'Front',
+    cashRate: '',
+    cashAmount: ''
   });
 
   const [pieceCategories, setPieceCategories] = useState<Record<string, string>>({
@@ -230,6 +232,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         if (!formData.pointsUsed.trim()) e.pointsUsed = 'Required';
         if (!formData.fee.trim()) e.fee = 'Required';
       }
+    if (workType === 'BUY_SELL') {
+      if (!formData.impureWeight.trim()) e.impureWeight = 'Required';
+      if (!formData.purity.trim()) e.purity = 'Required';
+      if (!formData.cashRate.trim()) e.cashRate = 'Required';
     }
     
     if (numPieces > 0 && (workType === 'TUNCH' || workType === 'MARKING' || workType === 'SHOULDERING')) {
@@ -276,8 +282,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         console.error('Failed to get task count for serial ID', e);
       }
 
+      const calcPure = getActualPureWeight(formData.impureWeight, formData.purity);
+      const activePure = workType === 'BUY_SELL' ? (formData.pureWeight.trim() || calcPure) : formData.pureWeight;
+      const rateNum = parseFloat(formData.cashRate) || 0;
+      const calcTotal = parseFloat(activePure) && rateNum ? (parseFloat(activePure) * rateNum).toFixed(2) : '0';
+      const finalAmt = workType === 'BUY_SELL' ? (formData.cashAmount.trim() || calcTotal) : formData.cashAmount;
+
       onSuccess({ 
         ...formData, 
+        pureWeight: activePure,
+        cashAmount: finalAmt,
         workType, 
         pieceCategories,
         images: urls,
@@ -492,12 +506,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 <p className="text-[12px] text-on-surface-variant mt-1">Select the operation to begin.</p>
               </div>
               <div className="space-y-3">
-                {([
+                {((user?.role === 'Admin' || user?.role === 'Super Admin') ? [
+                  { type: 'BUY_SELL' as WorkType, icon: 'swap_horizontal_circle', title: 'Buy and Sell', desc: 'Direct gold/silver purchase or sale', accent: 'border-l-emerald-500', iconBg: 'bg-emerald-50 text-emerald-600' }
+                ] : [
                   { type: 'TUNCH' as WorkType, icon: 'science', title: 'Tunch', desc: 'Purity testing & gold exchange', accent: 'border-l-secondary', iconBg: 'bg-secondary/10 text-secondary' },
                   { type: 'MARKING' as WorkType, icon: 'verified', title: 'Marking', desc: 'Logo hallmarking & branding', accent: 'border-l-tertiary-container', iconBg: 'bg-tertiary-container/20 text-tertiary' },
                   { type: 'SHOULDERING' as WorkType, icon: 'precision_manufacturing', title: 'Shouldering', desc: 'Precision soldering work', accent: 'border-l-error', iconBg: 'bg-error/10 text-error' },
                 ]).map(({ type, icon, title, desc, accent, iconBg }) => (
-                  <button key={type} onClick={() => { setWorkType(type); setStep(2); }}
+                  <button key={type} onClick={() => { 
+                    setWorkType(type); 
+                    if (type === 'BUY_SELL') {
+                      setFormData(f => ({ ...f, settlementCondition: 'Buy' }));
+                    }
+                    setStep(2); 
+                  }}
                     className={`w-full luxury-card p-5 flex items-center gap-4 text-left active:scale-[0.98] transition-all border-l-4 ${accent} hover:shadow-lg group`}>
                     <div className={`w-12 h-12 rounded-2xl ${iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>
                       <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
@@ -914,6 +936,72 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 )}
               </>)}
 
+              {workType === 'BUY_SELL' && (<>
+                <SectionCard title="Transaction Type" icon="swap_horiz" color="bg-emerald-500/5 text-emerald-600">
+                  <div>
+                    <label className={lbl}>Operation Type *</label>
+                    <ToggleBtn options={['Buy', 'Sell']} value={formData.settlementCondition} onChange={v => up('settlementCondition', v)} />
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Metal Parameters" icon="balance" color="bg-primary/5 text-primary">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Weight (g) *</label>
+                      <input className={inp(errors.impureWeight)} placeholder="e.g. 10.00" value={formData.impureWeight} onChange={e => up('impureWeight', e.target.value)} />
+                      {errMsg('impureWeight')}
+                    </div>
+                    <div>
+                      <label className={lbl}>Purity (%) *</label>
+                      <input className={inp(errors.purity)} placeholder="e.g. 99.50" value={formData.purity} onChange={e => up('purity', e.target.value)} />
+                      {errMsg('purity')}
+                    </div>
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Calculated Pure Weight" icon="calculate" color="bg-secondary/5 text-secondary">
+                  <div>
+                    <label className={lbl}>Calculated Weight (g)</label>
+                    <div className="w-full h-12 bg-secondary/5 border border-secondary/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-secondary">
+                      {getActualPureWeight(formData.impureWeight, formData.purity) || '0.000'} g
+                    </div>
+                  </div>
+                  <div>
+                    <label className={lbl}>Manually Override Pure Weight (g) (Optional)</label>
+                    <input className={inp(errors.pureWeight)} placeholder="e.g. 9.95" value={formData.pureWeight} onChange={e => up('pureWeight', e.target.value)} />
+                  </div>
+                </SectionCard>
+
+                <SectionCard title="Pricing & Cash" icon="payments" color="bg-emerald-500/5 text-emerald-600">
+                  <div>
+                    <label className={lbl}>Price Per Gram (₹) *</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                      <input className={`${inp(errors.cashRate)} pl-8 font-bold text-secondary`} placeholder="e.g. 7000" value={formData.cashRate} onChange={e => up('cashRate', e.target.value)} />
+                    </div>
+                    {errMsg('cashRate')}
+                  </div>
+                  <div className="mt-3">
+                    <label className={lbl}>Calculated Total Cash</label>
+                    <div className="w-full h-12 bg-emerald-500/5 border border-emerald-500/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-emerald-600">
+                      ₹ {(() => {
+                        const calcPure = getActualPureWeight(formData.impureWeight, formData.purity);
+                        const activePure = formData.pureWeight.trim() || calcPure;
+                        const rateNum = parseFloat(formData.cashRate) || 0;
+                        return parseFloat(activePure) && rateNum ? (parseFloat(activePure) * rateNum).toLocaleString('en-IN') : '0.00';
+                      })()}
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    <label className={lbl}>Manually Override Total Cash (₹) (Optional)</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                      <input className={`${inp(errors.cashAmount)} pl-8 font-bold text-secondary`} placeholder="e.g. 69650" value={formData.cashAmount} onChange={e => up('cashAmount', e.target.value)} />
+                    </div>
+                  </div>
+                </SectionCard>
+              </>)}
+
 
 
               {Object.keys(errors).length > 0 && (
@@ -972,13 +1060,28 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         ['Suggestion', `${formData.pointSuggestion} Points`]
                       ])
                     ] : []),
+                    ...(workType === 'BUY_SELL' ? [
+                      ['Type', formData.settlementCondition],
+                      ['Metal', formData.metal],
+                      ['Weight', `${formData.impureWeight}g`],
+                      ['Purity', `${formData.purity}%`],
+                      ['Pure Weight', `${formData.pureWeight || getActualPureWeight(formData.impureWeight, formData.purity)}g`],
+                      ['Price per gram', `₹${formData.cashRate}/g`],
+                      ['Total Amount', `₹${(() => {
+                        const calcPure = getActualPureWeight(formData.impureWeight, formData.purity);
+                        const activePure = formData.pureWeight.trim() || calcPure;
+                        const rateNum = parseFloat(formData.cashRate) || 0;
+                        const calcTotal = parseFloat(activePure) && rateNum ? (parseFloat(activePure) * rateNum).toFixed(2) : '0';
+                        return formData.cashAmount.trim() || calcTotal;
+                      })()}`]
+                    ] : []),
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between items-center py-1 border-b border-outline-variant/10 last:border-0">
                       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">{label}</span>
                       <span className="text-[13px] font-semibold text-primary">{value}</span>
                     </div>
                   ))}
-                  {!isCollection && (
+                  {!isCollection && workType !== 'BUY_SELL' && (
                     <div className="pt-2 flex justify-between items-center">
                       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee ({formData.feePaymentMode})</p>
                       <p className="font-headline text-2xl font-bold text-tertiary">₹ {formData.fee}</p>
@@ -1011,9 +1114,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                   <span className="material-symbols-outlined text-tertiary text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>workspace_premium</span>
                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-tertiary">Checkpoint 2 · Final</p>
                 </div>
-                <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Operation</span><span className="text-[13px] font-semibold text-primary">{workType}</span></div>
+                <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Operation</span><span className="text-[13px] font-semibold text-primary">{workType === 'BUY_SELL' ? `${formData.settlementCondition} ${formData.metal}` : workType}</span></div>
                 <div className="flex justify-between items-center py-1"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">Client</span><span className="text-[13px] font-semibold text-primary">{formData.customerName}</span></div>
-                {!isCollection && (
+                {workType === 'BUY_SELL' ? (
+                  <div className="pt-3 border-t border-[#C9A646]/20 flex justify-between items-center mt-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Cash {formData.settlementCondition === 'Buy' ? 'Paid' : 'Received'}</p>
+                    <p className="font-headline text-[22px] font-bold text-emerald-600">
+                      ₹ {(() => {
+                        const calcPure = getActualPureWeight(formData.impureWeight, formData.purity);
+                        const activePure = formData.pureWeight.trim() || calcPure;
+                        const rateNum = parseFloat(formData.cashRate) || 0;
+                        const calcTotal = parseFloat(activePure) && rateNum ? (parseFloat(activePure) * rateNum).toFixed(2) : '0';
+                        const totalStr = formData.cashAmount.trim() || calcTotal;
+                        return parseFloat(totalStr) ? parseFloat(totalStr).toLocaleString('en-IN') : '0.00';
+                      })()}
+                    </p>
+                  </div>
+                ) : !isCollection && (
                   <div className="pt-3 border-t border-[#C9A646]/20 flex justify-between items-center mt-2">
                     <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Authorized Fee ({formData.feePaymentMode})</p>
                     <p className="font-headline text-[22px] font-bold text-tertiary">₹ {formData.fee}</p>
