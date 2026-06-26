@@ -315,7 +315,7 @@ export const StaffLedgerScreen: React.FC = () => {
         let cash = 0;
         allTx.forEach((tx: any) => {
           const type = tx.type?.trim().toLowerCase() || '';
-          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.isCashExchange) {
             const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
             cash += Number(amtStr) || 0;
           }

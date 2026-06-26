@@ -75,6 +75,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       details: settlementVal,
       createdBy: task.created_by,
       createdAt: task.created_at,
+      isCashExchange: isCash,
       staffSubmittedAt: task.staff_submitted_at,
       adminSubmittedAt: task.admin_submitted_at
     };
@@ -168,6 +169,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       details: settlementVal,
       createdBy: task.created_by,
       createdAt: task.created_at,
+      isCashExchange: isCash,
       staffSubmittedAt: task.staff_submitted_at,
       adminSubmittedAt: task.admin_submitted_at
     };
