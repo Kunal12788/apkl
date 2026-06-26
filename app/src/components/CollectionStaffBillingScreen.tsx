@@ -382,7 +382,9 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             <div className="flex justify-between items-center relative z-10">
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
-                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>₹ {txn.amount}</p>
+                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
+                  {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount}`}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
@@ -630,9 +632,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
       
       cust.ledger.push(t);
-      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const amtNum = t.isCashExchange ? 0 : (parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0);
       if (t.status === 'Unpaid') {
-        cust.activeJobs += 1;
+        if (!t.isCashExchange) {
+          cust.activeJobs += 1;
+        }
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
         cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString()}`;
       } else {
@@ -853,7 +857,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-headline text-base font-bold text-primary">₹ {txn.amount}</p>
+                          <p className="font-headline text-base font-bold text-primary">
+                            {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount}`}
+                          </p>
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                           }`}>
@@ -898,7 +904,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>₹ {txn.amount.replace(/₹/g, '').trim()}</p>
+                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>
+                          {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount.replace(/₹/g, '').trim()}`}
+                        </p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${

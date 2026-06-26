@@ -1707,6 +1707,34 @@ export const StaffTasksScreen: React.FC = () => {
         };
 
         await supabase.from('transactions').insert([newTxn]);
+
+        if (isCashSettlement) {
+          const payoutTxn = {
+            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+            customer_id: task.customerId || 'CUST-COL',
+            customer_name: task.customerName,
+            task_id: task.id,
+            customer_phone: task.customerPhone || '',
+            customer_address: task.customerAddress || '',
+            metal: task.metal || 'Gold',
+            type: 'Cash',
+            work_type: task.workType || 'Tunch',
+            amount: String(finalCashAmount),
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: new Date().toISOString().split('T')[0],
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'Paid',
+            details: `Cash payout for completed Tunch metal purchase. Pure weight: ${task.pureWeight || '0'}g at ₹${finalCashRate || '0'}/g.`,
+            piece_type: task.productType || 'Jewellery',
+            impure_weight: task.impureWeight || task.totalWeight || task.weight || '',
+            pure_weight: task.pureWeight || '',
+            purity_percentage: task.purity || '',
+            created_by: user?.id || '',
+            is_cash_exchange: true
+          };
+
+          await supabase.from('transactions').insert([payoutTxn]);
+        }
       }
 
       showToast('Task approved & completed! Billings & Ledger updated.');
