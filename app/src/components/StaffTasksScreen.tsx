@@ -1286,28 +1286,26 @@ export const StaffTasksScreen: React.FC = () => {
 
       await supabase.from('tasks').update(taskUpdates).eq('id', task.id);
 
-      // Charge service fee immediately for Only Tunch tasks (when moving to Settlement status)
-      if (task.workType === 'Tunch' && (details.settlementCondition || task.settlementCondition || 'Only Tunch') === 'Only Tunch') {
-        const feeAmount = Number(details.serviceFee || 0);
-        if (feeAmount > 0) {
-          const isSilver = task.metal === 'Silver';
-          const feeTxn = {
-            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-            customer_id: task.customerId || 'CUST-COL',
-            customer_name: task.customerName,
-            metal: isSilver ? 'Silver' : 'Gold',
-            type: modeStr,
-            work_type: 'Tunch',
-            amount: String(feeAmount),
-            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-            iso_date: new Date().toISOString().split('T')[0],
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'Paid',
-            details: 'Service Fee (Tunch Only)',
-            created_by: user?.id || ''
-          };
-          await supabase.from('transactions').insert([feeTxn]);
-        }
+      // Charge service fee immediately (when moving to Settlement or progressing)
+      const feeAmount = Number(details.serviceFee || 0);
+      if (feeAmount > 0) {
+        const isSilver = task.metal === 'Silver';
+        const feeTxn = {
+          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          customer_id: task.customerId || 'CUST-COL',
+          customer_name: task.customerName,
+          metal: isSilver ? 'Silver' : 'Gold',
+          type: details.paymentMode || 'Cash',
+          work_type: task.workType || 'Tunch',
+          amount: String(feeAmount),
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Paid',
+          details: `Service Fee (${task.workType})`,
+          created_by: user?.id || ''
+        };
+        await supabase.from('transactions').insert([feeTxn]);
       }
 
       setTasks(prev => prev.map(t => t.id === task.id ? {
@@ -1473,7 +1471,7 @@ export const StaffTasksScreen: React.FC = () => {
         (txRes.data || []).forEach((tx: any) => {
           const isRelevant = tx.created_by === adminId || tx.createdBy === adminId || tx.staff_submitted_at !== null;
           const type = tx.type?.trim().toLowerCase() || '';
-          if (isRelevant && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+          if (isRelevant && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.is_cash_exchange && !tx.isCashExchange) {
             const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
             billingCash += Number(amtStr) || 0;
           }
@@ -1489,7 +1487,7 @@ export const StaffTasksScreen: React.FC = () => {
         let billingCash = 0;
         (txRes.data || []).forEach((tx: any) => {
           const type = tx.type?.trim().toLowerCase() || '';
-          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.is_cash_exchange && !tx.isCashExchange) {
             const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
             billingCash += Number(amtStr) || 0;
           }
@@ -1684,7 +1682,7 @@ export const StaffTasksScreen: React.FC = () => {
       }
 
       // 3. Create billing transaction
-      if (!task.wasSettlementCategory) {
+      if (task.workType !== 'Tunch' && !task.wasSettlementCategory) {
         const newTxn = {
           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
           customer_id: task.customerId || 'CUST-COL',
@@ -1712,8 +1710,9 @@ export const StaffTasksScreen: React.FC = () => {
         };
 
         await supabase.from('transactions').insert([newTxn]);
-
-        if (isCashSettlement) {
+      }
+      
+      if (isCashSettlement) {
           const payoutTxn = {
             id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
             customer_id: task.customerId || 'CUST-COL',
@@ -1740,7 +1739,6 @@ export const StaffTasksScreen: React.FC = () => {
 
           await supabase.from('transactions').insert([payoutTxn]);
         }
-      }
 
       showToast('Task approved & completed! Billings & Ledger updated.');
       handleCloseModal();
