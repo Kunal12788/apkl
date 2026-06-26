@@ -500,7 +500,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         <p className={val}>{task.cashHandlingMode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}</p>
                       </div>
                     )}
-                    {task.settlementCondition === 'Cash' && isAdminOrSuper && (
+                    {task.settlementCondition?.toLowerCase().includes('cash') && isAdminOrSuper && (
                       <div className="grid grid-cols-2 gap-2 mt-1 pt-1 border-t border-outline-variant/5">
                         <div>
                           <span className={lbl}>Cash Rate / Gram</span>
@@ -1508,6 +1508,9 @@ export const StaffTasksScreen: React.FC = () => {
         return;
       }
 
+      const finalCashAmount = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
+      const finalCashRate = cashRate ? Number(cashRate) : 0;
+
       const updatedCondition = task.settlementCondition?.toLowerCase().includes('cash') 
         ? `${task.settlementCondition} - [Collected] ${modeStr} ₹${finalPrice}` 
         : `[Collected] ${modeStr} - ₹${finalPrice}`;
@@ -1516,21 +1519,23 @@ export const StaffTasksScreen: React.FC = () => {
       await supabase.from('tasks').update({ 
         status: 'Completed', 
         progress_percentage: 100,
-        settlement_condition: updatedCondition
+        settlement_condition: updatedCondition,
+        cash_rate_per_gram: finalCashRate,
+        cash_amount: finalCashAmount
       }).eq('id', task.id);
       
       setTasks(prev => prev.map(t => t.id === task.id ? { 
         ...t, 
         status: 'Completed', 
         progressPercentage: 100,
-        settlementCondition: updatedCondition 
+        settlementCondition: updatedCondition,
+        cashRatePerGram: finalCashRate,
+        cashAmount: finalCashAmount
       } : t));
 
       // 2. Insert ledger entries based on cash handling mode
       const handlingMode = task.cashHandlingMode || 'Front';
       const isCashSettlement = task.settlementCondition?.toLowerCase().includes('cash');
-      const finalCashAmount = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
-      const finalCashRate = cashRate ? Number(cashRate) : 0;
       const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
       const isOnlyTunch = task.settlementCondition?.includes('Only Tunch');
 

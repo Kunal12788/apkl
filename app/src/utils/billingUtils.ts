@@ -31,8 +31,14 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
     const dateStr = task.created_at ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : task.date_given || '';
     const timeStr = task.created_at ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const settlementVal = task.settlement_condition || '';
-    const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
-    const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
+    const isCash = settlementVal.toLowerCase().includes('cash');
+    let amount = '0';
+    if (isCash && (task.cash_amount !== null && task.cash_amount !== undefined)) {
+      amount = String(task.cash_amount);
+    } else {
+      const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
+      amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
+    }
     const isPaid = settlementVal.toLowerCase().includes('[collected]') || settlementVal.toLowerCase().includes('paid');
 
     const colStaffPaidVal = task.col_staff_paid !== null && task.col_staff_paid !== undefined ? !!task.col_staff_paid : isPaid;
@@ -117,8 +123,14 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     const dateStr = task.created_at ? new Date(task.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : task.date_given || '';
     const timeStr = task.created_at ? new Date(task.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     const settlementVal = task.settlement_condition || '';
-    const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
-    const amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
+    const isCash = settlementVal.toLowerCase().includes('cash');
+    let amount = '0';
+    if (isCash && (task.cash_amount !== null && task.cash_amount !== undefined)) {
+      amount = String(task.cash_amount);
+    } else {
+      const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
+      amount = amountMatch ? amountMatch[1].replace(/,/g, '') : '0';
+    }
     const isPaid = settlementVal.toLowerCase().includes('[collected]') || settlementVal.toLowerCase().includes('paid');
 
     const colStaffPaidVal = task.col_staff_paid !== null && task.col_staff_paid !== undefined ? !!task.col_staff_paid : isPaid;
