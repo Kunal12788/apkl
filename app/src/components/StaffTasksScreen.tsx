@@ -2347,13 +2347,34 @@ export const StaffTasksScreen: React.FC = () => {
                     } else if (isCashMode) {
                       ledgerUpdates.transaction_type = 'Exchange';
                       ledgerUpdates.status = 'Completed';
-                      ledgerUpdates.cash_paid = cashToPay;
+                      ledgerUpdates.cash_paid = 0;
                       if (isSilver) {
                         ledgerUpdates.impure_silver_in = impure;
                       } else {
                         ledgerUpdates.impure_gold_in = impure;
                       }
                       
+                      // Create Admin ledger entry to deduct cash
+                      const adminEntryId = `LGR-A-${Math.floor(1000 + Math.random() * 9000)}`;
+                      const adminLedgerEntry: any = {
+                        id: adminEntryId,
+                        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                        iso_date: new Date().toISOString().split('T')[0],
+                        customer_name: selectedSettlement.customer_name,
+                        transaction_type: 'Exchange',
+                        status: 'Completed',
+                        purity: String(purity),
+                        cash_paid: cashToPay,
+                        cash_received: 0,
+                        cash_rate_per_gram: 0,
+                        cash_amount: cashToPay,
+                        staff_id: user?.id || '',
+                        pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+                        impure_gold_in: 0, impure_silver_in: 0,
+                        pending_cash_liability: false
+                      };
+                      await supabase.from('ledger_entries').insert([adminLedgerEntry]);
+
                       // Also create a billing transaction
                       const newTxn = {
                         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,

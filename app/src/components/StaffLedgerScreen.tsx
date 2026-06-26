@@ -711,8 +711,29 @@ export const StaffLedgerScreen: React.FC = () => {
         updates.pending_pure_liability = false;
       }
       if (selectedEntry.status === 'Pending Cash' || selectedEntry.pendingCashLiability) {
-        updates.cash_paid = selectedEntry.cashAmount || 0;
+        updates.cash_paid = 0;
         updates.pending_cash_liability = false;
+
+        // Create Admin ledger entry to deduct cash
+        const adminEntryId = `LGR-A-${Math.floor(1000 + Math.random() * 9000)}`;
+        const adminLedgerEntry: any = {
+          id: adminEntryId,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          customer_name: selectedEntry.customerName,
+          transaction_type: 'Exchange',
+          status: 'Completed',
+          purity: selectedEntry.purity || '',
+          cash_paid: selectedEntry.cashAmount || 0,
+          cash_received: 0,
+          cash_rate_per_gram: selectedEntry.cashRatePerGram || 0,
+          cash_amount: selectedEntry.cashAmount || 0,
+          staff_id: user?.id || '',
+          pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
+          impure_gold_in: 0, impure_silver_in: 0,
+          pending_cash_liability: false
+        };
+        await supabase.from('ledger_entries').insert([adminLedgerEntry]);
       }
 
       const { error } = await supabase
