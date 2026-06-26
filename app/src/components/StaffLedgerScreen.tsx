@@ -412,8 +412,9 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) + totalPureReceived - totalPureGiven;
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
-  const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
-  
+  const role = user?.role;
+  const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
+  const currentCashStock = isNonAdmin ? billingCash : totalAllocatedCash + totalCashReceived - totalCashPaid;
 
   const combinedHistory = React.useMemo(() => {
     const history: any[] = [];
@@ -1160,7 +1161,10 @@ export const StaffLedgerScreen: React.FC = () => {
                       <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">
-                          Allocated Cash: {fmt(totalAllocatedCash)} • Cash Collected: {fmt(totalCashReceived + billingCash)} • Outflow: {fmt(totalCashPaid)}
+                          {isNonAdmin 
+                            ? `Service Fees Collected: ${fmt(billingCash)}`
+                            : `Allocated Cash: ${fmt(totalAllocatedCash)} • Cash Collected: ${fmt(totalCashReceived)} • Outflow: ${fmt(totalCashPaid)}`
+                          }
                         </p>
                       </div>
                     </div>

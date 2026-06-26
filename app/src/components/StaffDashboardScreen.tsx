@@ -12,6 +12,7 @@ export const StaffDashboardScreen: React.FC = () => {
   const { user, isFullyAuthenticated } = useSession();
   const userId = user?.id || '';
   const isAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
+  const isNonAdmin = !isAdminOrSuper;
   
   const userName = user?.name || '';
   
@@ -433,6 +434,7 @@ export const StaffDashboardScreen: React.FC = () => {
       if (monthFilter && !tx.isoDate?.startsWith(monthFilter)) return;
 
       if (tx.status === 'Paid' || tx.status === 'Fully Paid') {
+        if (tx.isCashExchange || tx.is_cash_exchange) return; // Exclude cash given/exchanged
         const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
         const amt = Number(amtStr) || 0;
         
@@ -582,52 +584,54 @@ export const StaffDashboardScreen: React.FC = () => {
           )}
 
         {/* 3. Third Section: Job Revenue Analytics */}
-        <section className="space-y-3 relative z-10">
-          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Job Revenue Analytics</h3>
-          <div className="grid grid-cols-1 gap-3">
-            <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-tertiary-fixed/30 to-tertiary-fixed/10 flex items-center justify-center text-tertiary border border-tertiary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl glow-icon">science</span>
+        {isNonAdmin && (
+          <section className="space-y-3 relative z-10">
+            <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1">Job Revenue Analytics</h3>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-tertiary-fixed/30 to-tertiary-fixed/10 flex items-center justify-center text-tertiary border border-tertiary/20 shadow-inner">
+                    <span className="material-symbols-outlined text-xl glow-icon">science</span>
+                  </div>
+                  <span className="font-headline font-bold text-primary text-sm tracking-wide">TUNCH</span>
                 </div>
-                <span className="font-headline font-bold text-primary text-sm tracking-wide">TUNCH</span>
-              </div>
-              <div className="text-right z-10">
-                <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹{revenue.tunch.toLocaleString('en-IN')}</p>
-              </div>
-              <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">science</span>
-            </div>
-            
-            <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary-fixed/30 to-secondary-fixed/10 flex items-center justify-center text-secondary border border-secondary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl glow-icon">verified</span>
+                <div className="text-right z-10">
+                  <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
+                  <p className="font-headline text-lg font-bold text-primary">₹{revenue.tunch.toLocaleString('en-IN')}</p>
                 </div>
-                <span className="font-headline font-bold text-primary text-sm tracking-wide">MARKING</span>
+                <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">science</span>
               </div>
-              <div className="text-right z-10">
-                <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹{revenue.marking.toLocaleString('en-IN')}</p>
-              </div>
-              <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">new_releases</span>
-            </div>
-            
-            <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-fixed/30 to-primary-fixed/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
-                  <span className="material-symbols-outlined text-xl glow-icon">precision_manufacturing</span>
+              
+              <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-secondary-fixed/30 to-secondary-fixed/10 flex items-center justify-center text-secondary border border-secondary/20 shadow-inner">
+                    <span className="material-symbols-outlined text-xl glow-icon">verified</span>
+                  </div>
+                  <span className="font-headline font-bold text-primary text-sm tracking-wide">MARKING</span>
                 </div>
-                <span className="font-headline font-bold text-primary text-sm tracking-wide">SHOULDERING</span>
+                <div className="text-right z-10">
+                  <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
+                  <p className="font-headline text-lg font-bold text-primary">₹{revenue.marking.toLocaleString('en-IN')}</p>
+                </div>
+                <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">new_releases</span>
               </div>
-              <div className="text-right z-10">
-                <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
-                <p className="font-headline text-lg font-bold text-primary">₹{revenue.shouldering.toLocaleString('en-IN')}</p>
+              
+              <div className="luxury-card p-4 flex items-center justify-between relative overflow-hidden">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-fixed/30 to-primary-fixed/10 flex items-center justify-center text-primary border border-primary/20 shadow-inner">
+                    <span className="material-symbols-outlined text-xl glow-icon">precision_manufacturing</span>
+                  </div>
+                  <span className="font-headline font-bold text-primary text-sm tracking-wide">SHOULDERING</span>
+                </div>
+                <div className="text-right z-10">
+                  <p className="text-[9px] text-outline uppercase font-bold mb-0.5">Revenue</p>
+                  <p className="font-headline text-lg font-bold text-primary">₹{revenue.shouldering.toLocaleString('en-IN')}</p>
+                </div>
+                <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">precision_manufacturing</span>
               </div>
-              <span className="material-symbols-outlined absolute right-2 text-6xl text-primary/[0.03] -bottom-4 rotate-12">precision_manufacturing</span>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 4. TASK SOURCE */}
         <section className="space-y-3 relative z-10">
