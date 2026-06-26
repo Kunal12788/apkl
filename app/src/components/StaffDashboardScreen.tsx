@@ -215,13 +215,19 @@ export const StaffDashboardScreen: React.FC = () => {
         const filteredLedger = ledgerData
           ? (isSuperSa 
               ? ledgerData 
-              : ledgerData.filter((e: any) => branchUserIds.includes(e.staff_id) && filterBySubmission(e)))
+              : ledgerData.filter((e: any) => {
+                  if (user?.role === 'Admin') return branchUserIds.includes(e.staff_id) && filterBySubmission(e);
+                  return e.staff_id === userId && filterBySubmission(e);
+                }))
           : [];
 
         const filteredTasks = tasksData
           ? (isSuperSa 
               ? tasksData 
-              : tasksData.filter((t: any) => branchUserIds.includes(t.created_by) && filterBySubmission(t)))
+              : tasksData.filter((t: any) => {
+                  if (user?.role === 'Admin') return branchUserIds.includes(t.created_by) && filterBySubmission(t);
+                  return t.created_by === userId && filterBySubmission(t);
+                }))
           : [];
 
         const filteredAllocations = allocationsData
@@ -386,8 +392,13 @@ export const StaffDashboardScreen: React.FC = () => {
         let filteredTx = txData || [];
         let filteredTasks = tasksData || [];
         if (!isSuperSa && user?.branch_id) {
-          filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
-          filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          if (user?.role === 'Admin') {
+            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+          } else {
+            filteredTx = filteredTx.filter((t: any) => t.created_by === userId || t.createdBy === userId);
+            filteredTasks = filteredTasks.filter((t: any) => t.created_by === userId || t.createdBy === userId);
+          }
         }
         const activeTx = filteredTx.filter((t: any) => filterBySubmission(t));
         const activeTasksForBilling = filteredTasks.filter((t: any) => filterBySubmission(t));
@@ -521,52 +532,54 @@ export const StaffDashboardScreen: React.FC = () => {
 
 
 
-          <>
-            {/* 1. Top Section: TOTAL AMOUNT COLLECTED hero card */}
-            <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
-              <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">TOTAL AMOUNT COLLECTED</h3>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
-                    <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>
+          {isAdminOrSuper && (
+            <>
+              {/* 1. Top Section: TOTAL AMOUNT COLLECTED hero card */}
+              <section className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-br from-[#003366] via-[#002244] to-[#001e40] shadow-2xl border border-white/5 glow-primary z-10">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-white/10 to-transparent rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                <div className="absolute bottom-0 right-10 w-48 h-48 bg-white/[0.02] -mb-24 -mr-12 rounded-full border border-white/10 pointer-events-none"></div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-[#F6C358] font-extrabold mb-4">TOTAL AMOUNT COLLECTED</h3>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-headline text-3xl font-bold text-[#F6C358] drop-shadow-[0_0_8px_rgba(246,195,88,0.4)]">₹</span>
+                      <span className="font-headline font-extrabold text-white tracking-tight" style={fitText((cashCollection + upiCollection).toLocaleString('en-IN'), 9, 3.0, 1.75)}>{(cashCollection + upiCollection).toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
+                    <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">payments</span>
+                    <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance_wallet</span>
                   </div>
                 </div>
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 flex items-center justify-center text-[#F6C358] border border-white/20 shadow-xl backdrop-blur-xl relative overflow-hidden">
-                  <span className="material-symbols-outlined text-3xl drop-shadow-[0_0_10px_rgba(246,195,88,0.5)] z-10">payments</span>
-                  <span className="material-symbols-outlined absolute text-5xl opacity-10 -bottom-2 -right-2">account_balance_wallet</span>
+              </section>
+  
+              {/* 2. Second Section: Side-by-side breakdown of Cash and UPI */}
+              <section className="grid grid-cols-2 gap-4 relative z-10">
+                <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F6C358]"></div>
+                  <div className="flex justify-between items-start mb-1.5">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Cash Collection</p>
+                    <span className="material-symbols-outlined text-sm text-[#F6C358] opacity-60">payments</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-bold text-[#F6C358]">₹</span>
+                    <span className="font-headline font-bold text-primary" style={fitText(cashCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{cashCollection.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-              </div>
-            </section>
-
-            {/* 2. Second Section: Side-by-side breakdown of Cash and UPI */}
-            <section className="grid grid-cols-2 gap-4 relative z-10">
-              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#F6C358]"></div>
-                <div className="flex justify-between items-start mb-1.5">
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">Cash Collection</p>
-                  <span className="material-symbols-outlined text-sm text-[#F6C358] opacity-60">payments</span>
+                <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+                  <div className="flex justify-between items-start mb-1.5">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">UPI Collection</p>
+                    <span className="material-symbols-outlined text-sm text-secondary opacity-60">qr_code_2</span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-xs font-bold text-secondary">₹</span>
+                    <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xs font-bold text-[#F6C358]">₹</span>
-                  <span className="font-headline font-bold text-primary" style={fitText(cashCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{cashCollection.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl p-5 border border-[#003366]/5 shadow-sm relative overflow-hidden luxury-card">
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
-                <div className="flex justify-between items-start mb-1.5">
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-[0.15em]">UPI Collection</p>
-                  <span className="material-symbols-outlined text-sm text-secondary opacity-60">qr_code_2</span>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xs font-bold text-secondary">₹</span>
-                  <span className="font-headline font-bold text-primary" style={fitText(upiCollection.toLocaleString('en-IN'), 8, 1.25, 0.95)}>{upiCollection.toLocaleString('en-IN')}</span>
-                </div>
-              </div>
-            </section>
-          </>
+              </section>
+            </>
+          )}
 
         {/* 3. Third Section: Job Revenue Analytics */}
         <section className="space-y-3 relative z-10">

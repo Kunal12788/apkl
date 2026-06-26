@@ -198,10 +198,11 @@ export const StaffLedgerScreen: React.FC = () => {
       let tasksQuery = supabase.from('tasks').select('*');
 
       if (!isSuperSa && user?.branch_id) {
-        entriesQuery = entriesQuery.in('staff_id', branchUserIds);
         if (user?.role === 'Admin') {
+          entriesQuery = entriesQuery.in('staff_id', branchUserIds);
           allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
         } else {
+          entriesQuery = entriesQuery.eq('staff_id', userId);
           allocationsQuery = allocationsQuery.eq('staff_id', userId);
         }
       }
@@ -306,8 +307,13 @@ export const StaffLedgerScreen: React.FC = () => {
         let filteredTx = txRes.data || [];
         let filteredTasks = tasksRes.data || [];
         if (!isSuperSa && user?.branch_id) {
-          filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
-          filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+          if (user?.role === 'Admin') {
+            filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by) || branchUserIds.includes(t.createdBy));
+            filteredTasks = filteredTasks.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
+          } else {
+            filteredTx = filteredTx.filter((t: any) => t.created_by === userId || t.createdBy === userId);
+            filteredTasks = filteredTasks.filter((t: any) => t.created_by === userId || t.createdBy === userId);
+          }
         }
 
         const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
