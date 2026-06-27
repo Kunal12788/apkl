@@ -21,10 +21,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     ? cachedTasks.filter((t: any) => {
         const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
         if (isBelong) {
-          if (t.status === 'Completed' && t.work_type === 'Tunch' && t.settlement_condition?.toLowerCase().includes('only tunch')) {
-            return true;
-          }
-          return !t.staff_submitted_at;
+          return !t.admin_submitted_at;
         }
         return false;
       }).map((t: any) => ({
@@ -37,14 +34,11 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   if (!cachedBillingTx) {
     const cachedTx = getCachedData('tx_data', Infinity);
     if (cachedTx && cachedTasks) {
-      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser && !t.staff_submitted_at);
+      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser && !t.admin_submitted_at);
       let filteredTasks = cachedTasks.filter((t: any) => {
         const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
         if (isBelong) {
-          if (t.status === 'Completed' && t.work_type === 'Tunch' && t.settlement_condition?.toLowerCase().includes('only tunch')) {
-            return true;
-          }
-          return !t.staff_submitted_at;
+          return !t.admin_submitted_at;
         }
         return false;
       });
@@ -64,11 +58,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   const showSubmitted = filterDate && filterDate < todayStr;
   const filterBySubmission = (item: any) => {
     if (showSubmitted) return true;
-    const isOnlyTunch = (item.status === 'Completed' || item.status === 'Settlement') &&
-      ((item.category || item.workType || '').toUpperCase() === 'TUNCH') &&
-      ((item.settlementCondition || '').toLowerCase().includes('only tunch'));
-    if (isOnlyTunch) return true;
-    return !item.staff_submitted_at && !item.staffSubmittedAt && !item.admin_submitted_at && !item.adminSubmittedAt;
+    return !item.admin_submitted_at && !item.adminSubmittedAt;
   };
 
   useEffect(() => {
@@ -162,7 +152,9 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     status: t.status,
     isoDate: t.isoDate,
     time: t.dateGiven || t.isoDate,
-    settlementCondition: t.settlementCondition
+    settlementCondition: t.settlementCondition,
+    adminSubmittedAt: t.adminSubmittedAt || t.admin_submitted_at,
+    admin_submitted_at: t.admin_submitted_at || t.adminSubmittedAt
   }));
 
   const billedItems = activeBillingTx.map((t: any) => ({
@@ -173,7 +165,9 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     status: 'Completed',
     isoDate: t.isoDate || t.iso_date,
     time: t.timestamp || t.date || 'Just Now',
-    settlementCondition: t.details || ''
+    settlementCondition: t.details || '',
+    adminSubmittedAt: t.adminSubmittedAt || t.admin_submitted_at,
+    admin_submitted_at: t.admin_submitted_at || t.adminSubmittedAt
   }));
 
   const unifiedDashboardItems = [...pendingTasks, ...billedItems].filter((item: any) => {
@@ -218,12 +212,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   // 2. Calculate status stats dynamically
   let pendingCount = unifiedDashboardItems.filter(t => t.status === 'Pending').length;
   let progressCount = unifiedDashboardItems.filter(t => t.status === 'In Progress').length;
-  let completedCount = unifiedDashboardItems.filter(t => {
-    if (t.status !== 'Completed') return false;
-    const isTunch = (t.category || '').toUpperCase() === 'TUNCH';
-    const isOnlyTunch = (t.settlementCondition || '').toLowerCase().includes('only tunch');
-    return isTunch && isOnlyTunch;
-  }).length;
+  let completedCount = unifiedDashboardItems.filter(t => t.status === 'Completed').length;
 
   const statusStats = [
     { label: 'Pending', value: pendingCount.toString(), color: 'bg-error/10 text-error' },

@@ -479,7 +479,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
       try {
         const [usersRes, _branchUsersRes, txRes, tasksRes] = await Promise.all([
-          supabase.from('users').select('id, name, role'),
+          supabase.from('users').select('id, name, role, branch_id'),
           user?.branch_id
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
             : Promise.resolve({ data: null, error: null }),
@@ -607,7 +607,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
     const hasDateSearch = startDate || endDate;
     transactions.forEach(t => {
-      if (!hasDateSearch && t.staffSubmittedAt) {
+      if (!hasDateSearch && t.adminSubmittedAt) {
         return;
       }
       let cust = customers.find(c => {
@@ -699,7 +699,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
     let matchesSubmission = true;
     if (!startDate && !endDate) {
-      matchesSubmission = !txn.staffSubmittedAt;
+      matchesSubmission = !txn.adminSubmittedAt;
     }
 
     return matchesText && matchesDate && matchesSubmission;
