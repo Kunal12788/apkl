@@ -481,7 +481,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
             : Promise.resolve({ data: null, error: null }),
           supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-          supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false })
+          supabase.from('tasks').select('*').order('created_at', { ascending: false })
         ]);
 
         const allUsers = usersRes.data;
