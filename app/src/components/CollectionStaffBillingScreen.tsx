@@ -43,6 +43,8 @@ interface Transaction {
   details: string;
   createdBy?: string;
   created_by?: string;
+  cashRatePerGram?: string;
+  cashAmount?: string;
 }
 
 interface DbCustomer {
@@ -881,6 +883,30 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                           </span>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3 mt-3 bg-surface-container/10 px-2 pb-2 rounded-b-2xl">
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
+                        </div>
+                        {txn.pureWeight && (
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px] text-outline">workspace_premium</span>
+                            <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pureWeight}g Pure</span>
+                          </div>
+                        )}
+                        {txn.cashRatePerGram && (
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px] text-outline">currency_rupee</span>
+                            <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.cashRatePerGram}/g</span>
+                          </div>
+                        )}
+                        {txn.cashAmount && (
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px] text-outline">account_balance_wallet</span>
+                            <span className="text-[9px] text-outline font-bold uppercase tracking-wider">₹{txn.cashAmount} Total</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ));
                 })()}
@@ -952,6 +978,18 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[12px] text-outline">workspace_premium</span>
                           <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pureWeight}g Pure</span>
+                        </div>
+                      )}
+                      {txn.cashRatePerGram && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">currency_rupee</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.cashRatePerGram}/g</span>
+                        </div>
+                      )}
+                      {txn.cashAmount && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">account_balance_wallet</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">₹{txn.cashAmount} Total</span>
                         </div>
                       )}
                       {txn.workType === 'Marking' && txn.caratMarking && (

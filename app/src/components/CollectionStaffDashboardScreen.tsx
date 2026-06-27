@@ -35,7 +35,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     const cachedTx = getCachedData('tx_data', Infinity);
     if (cachedTx && cachedTasks) {
       let filteredTasks = cachedTasks.filter((t: any) => {
-        const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
+        const isBelong = t.created_by === currentUser;
         if (isBelong) {
           return !t.admin_submitted_at;
         }
@@ -74,7 +74,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           supabase
             .from('tasks')
             .select('*')
-            .or(`created_by.eq.${currentUser},assigned_to.eq.${currentUser}`)
+            .eq('created_by', currentUser)
             .order('created_at', { ascending: false }),
           supabase
             .from('transactions')
@@ -103,7 +103,7 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
 
           // Merge tasks back into in-memory cache
           const allTasks = getCachedData('tasks_data') || [];
-          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser && t.assigned_to !== currentUser);
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
           setCachedData('tasks_data', [...otherTasks, ...tasksData]);
         }
 

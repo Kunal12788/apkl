@@ -314,13 +314,13 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     const loadTasks = async () => {
       if (!isFullyAuthenticated) return;
       try {
-        const { data, error } = await supabase.from('tasks').select('*').or(`created_by.eq.${currentUser},assigned_to.eq.${currentUser}`).order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('tasks').select('*').eq('created_by', currentUser).order('created_at', { ascending: false });
         if (error) throw error;
         
         if (data) {
           // Merge tasks back into in-memory cache
           const allTasks = getCachedData('tasks_data') || [];
-          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser && t.assigned_to !== currentUser);
+          const otherTasks = allTasks.filter((t: any) => t.created_by !== currentUser);
           setCachedData('tasks_data', [...otherTasks, ...data]);
 
           const activeTasks = data.filter((t: any) => {

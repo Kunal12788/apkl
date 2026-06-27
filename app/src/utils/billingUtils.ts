@@ -121,7 +121,9 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       isCashExchange: !!t.is_cash_exchange,
       taskId: t.task_id,
       staffSubmittedAt: t.staff_submitted_at,
-      adminSubmittedAt: t.admin_submitted_at
+      adminSubmittedAt: t.admin_submitted_at,
+      cashRatePerGram: t.cash_rate_per_gram,
+      cashAmount: t.cash_amount
     };
   });
 
@@ -177,7 +179,9 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       isCashExchange: isCash,
       taskId: task.id,
       staffSubmittedAt: task.staff_submitted_at,
-      adminSubmittedAt: task.admin_submitted_at
+      adminSubmittedAt: task.admin_submitted_at,
+      cashRatePerGram: task.cash_rate_per_gram,
+      cashAmount: task.cash_amount
     };
   });
 
