@@ -1360,12 +1360,21 @@ export const StaffTasksScreen: React.FC = () => {
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
           newLedgerEntry.status = 'Pending Pure';
+          newLedgerEntry.pending_pure_liability = true;
           if (task.metal === 'Silver') {
             newLedgerEntry.impure_silver_in = finalImpure;
-            newLedgerEntry.pure_silver_due = finalPure;
+            newLedgerEntry.pure_silver_out = finalPure;
+            newLedgerEntry.pure_silver_due = 0;
+            newLedgerEntry.pure_gold_out = 0;
+            newLedgerEntry.pure_gold_due = 0;
+            newLedgerEntry.impure_gold_in = 0;
           } else {
             newLedgerEntry.impure_gold_in = finalImpure;
-            newLedgerEntry.pure_gold_due = finalPure;
+            newLedgerEntry.pure_gold_out = finalPure;
+            newLedgerEntry.pure_gold_due = 0;
+            newLedgerEntry.pure_silver_out = 0;
+            newLedgerEntry.pure_silver_due = 0;
+            newLedgerEntry.impure_silver_in = 0;
           }
           await supabase.from('ledger_entries').insert([newLedgerEntry]);
         } else if (condition === 'Cash') {
@@ -1649,34 +1658,56 @@ export const StaffTasksScreen: React.FC = () => {
             }
             await supabase.from('ledger_entries').insert([adminEntry]);
           } else {
-            // Non-cash (Pure Gold / Pure Silver): Single Admin entry
-            const ledgerEntry: any = {
-              id: entryId,
-              date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-              iso_date: isoDateStr,
-              customer_name: task.customerName,
-              transaction_type: 'Exchange',
-              status: 'Completed',
-              purity: task.purity || '',
-              cash_paid: 0,
-              cash_received: 0,
-              cash_rate_per_gram: 0,
-              cash_amount: 0,
-              staff_id: user?.id || '',
-              pure_gold_out: 0, pure_silver_out: 0, pure_gold_due: 0, pure_silver_due: 0,
-              pending_cash_liability: false
-            };
+            // Non-cash (Pure Gold / Pure Silver): Update Staff's existing Pending Pure ledger entry, 
+            // set status to Completed and pending_pure_liability to false.
+            const { data: staffEntries } = await supabase
+              .from('ledger_entries')
+              .select('id')
+              .eq('customer_name', task.customerName)
+              .eq('status', 'Pending Pure')
+              .eq('pending_pure_liability', true)
+              .order('created_at', { ascending: false })
+              .limit(1);
 
-            if (isSilver) {
-              ledgerEntry.impure_silver_in = Number(task.impureWeight || 0);
-              ledgerEntry.pure_silver_out = Number(task.pureWeight || 0);
-              ledgerEntry.impure_gold_in = 0;
+            if (staffEntries && staffEntries.length > 0) {
+              await supabase.from('ledger_entries').update({
+                status: 'Completed',
+                pending_pure_liability: false
+              }).eq('id', staffEntries[0].id);
             } else {
-              ledgerEntry.impure_gold_in = Number(task.impureWeight || 0);
-              ledgerEntry.pure_gold_out = Number(task.pureWeight || 0);
-              ledgerEntry.impure_silver_in = 0;
+              // Fallback: If not found, create a Staff entry directly as Completed
+              const staffUserId = (task.assignedTo && task.assignedTo !== 'Staff') ? task.assignedTo : (task.createdBy || '');
+              const staffEntry: any = {
+                id: `LGR-S-${Math.floor(1000 + Math.random() * 9000)}`,
+                date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                iso_date: isoDateStr,
+                customer_name: task.customerName,
+                transaction_type: 'Exchange',
+                status: 'Completed',
+                purity: task.purity || '',
+                cash_paid: 0,
+                cash_received: 0,
+                cash_rate_per_gram: 0,
+                cash_amount: 0,
+                staff_id: staffUserId,
+                pending_pure_liability: false,
+                pure_gold_due: 0, pure_silver_due: 0,
+                pending_cash_liability: false
+              };
+
+              if (isSilver) {
+                staffEntry.impure_silver_in = Number(task.impureWeight || 0);
+                staffEntry.pure_silver_out = Number(task.pureWeight || 0);
+                staffEntry.impure_gold_in = 0;
+                staffEntry.pure_gold_out = 0;
+              } else {
+                staffEntry.impure_gold_in = Number(task.impureWeight || 0);
+                staffEntry.pure_gold_out = Number(task.pureWeight || 0);
+                staffEntry.impure_silver_in = 0;
+                staffEntry.pure_silver_out = 0;
+              }
+              await supabase.from('ledger_entries').insert([staffEntry]);
             }
-            await supabase.from('ledger_entries').insert([ledgerEntry]);
           }
         }
       }
