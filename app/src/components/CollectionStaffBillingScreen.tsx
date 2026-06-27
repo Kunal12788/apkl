@@ -20,7 +20,7 @@ interface Transaction {
   customerPhone?: string;
   customerAddress?: string;
   type: 'UPI' | 'Cash' | 'Service Fee';
-  workType: 'Tunch' | 'Marking' | 'Shouldering';
+  workType: 'Tunch' | 'Marking' | 'Shouldering' | 'Buy' | 'Sell';
   amount: string;
   date: string;
   isoDate: string;
@@ -74,6 +74,8 @@ const getWorkIcon = (workType: string) => {
     case 'Tunch': return 'science';
     case 'Marking': return 'verified';
     case 'Shouldering': return 'precision_manufacturing';
+    case 'Buy': return 'shopping_cart';
+    case 'Sell': return 'sell';
     default: return 'work';
   }
 };
@@ -83,6 +85,8 @@ const getWorkColor = (workType: string) => {
     case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
     case 'Marking': return 'text-secondary bg-secondary-fixed/30';
     case 'Shouldering': return 'text-primary bg-primary-fixed/30';
+    case 'Buy': return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
+    case 'Sell': return 'text-amber-600 bg-amber-500/10 border border-amber-500/20';
     default: return 'text-outline bg-surface-container';
   }
 };
@@ -383,7 +387,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
                 <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
-                  {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount}`}
+                  ₹ {txn.amount}
                 </p>
               </div>
               <div className="text-right">
@@ -510,8 +514,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
 
         const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
-        setCachedData('colstaff_billing_tx', allTx);
-        setTransactions(allTx);
+        const myTx = allTx.filter((t: any) => t.createdBy === currentUser);
+        setCachedData('colstaff_billing_tx', myTx);
+        setTransactions(myTx);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }
@@ -632,11 +637,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
       
       cust.ledger.push(t);
-      const amtNum = t.isCashExchange ? 0 : (parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0);
+      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       if (t.status === 'Unpaid') {
-        if (!t.isCashExchange) {
-          cust.activeJobs += 1;
-        }
+        cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
         cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString()}`;
       } else {
@@ -654,7 +657,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
     });
 
-    return customers;
+    return customers.filter(c => c.ledger.length > 0);
   }, [dbCustomers, transactions]);
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
@@ -858,7 +861,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-headline text-base font-bold text-primary">
-                            {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount}`}
+                            ₹ {txn.amount}
                           </p>
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
@@ -905,7 +908,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>
-                          {txn.isCashExchange ? '[Restricted]' : `₹ ${txn.amount.replace(/₹/g, '').trim()}`}
+                          ₹ {txn.amount.replace(/₹/g, '').trim()}
                         </p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
@@ -921,17 +924,23 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                     <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">build</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType}</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType === 'Buy' ? 'Buy (Cash)' : txn.workType === 'Sell' ? 'Sell (Cash)' : txn.workType}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
                         <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
                       </div>
                       
-                      {txn.workType === 'Tunch' && txn.impureWeight && (
+                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.impureWeight && (
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
                           <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
+                        </div>
+                      )}
+                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.pureWeight && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">workspace_premium</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pureWeight}g Pure</span>
                         </div>
                       )}
                       {txn.workType === 'Marking' && txn.caratMarking && (

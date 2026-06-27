@@ -497,7 +497,7 @@ export const StaffBillingScreen: React.FC = () => {
   const [historyDateFilter, setHistoryDateFilter] = useState('');
   
   const role = user?.role;
-  const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
+  const isNonAdmin = role === 'Staff';
   const filterBySubmission = (item: any) => {
     if (role === 'Staff' || role === 'Collection Staff') {
       return !item.staffSubmittedAt && !item.staff_submitted_at && !item.adminSubmittedAt && !item.admin_submitted_at;
