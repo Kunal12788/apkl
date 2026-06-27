@@ -84,8 +84,8 @@ const getWorkColor = (workType: string) => {
     case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
     case 'Marking': return 'text-secondary bg-secondary-fixed/30';
     case 'Shouldering': return 'text-primary bg-primary-fixed/30';
-    case 'Buy': return 'text-emerald-600 bg-emerald-50';
-    case 'Sell': return 'text-amber-600 bg-amber-50';
+    case 'Buy': return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
+    case 'Sell': return 'text-amber-600 bg-amber-500/10 border border-amber-500/20';
     default: return 'text-outline bg-surface-container';
   }
 };
@@ -912,17 +912,23 @@ export const StaffBillingScreen: React.FC = () => {
                     <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">build</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType}</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType === 'Buy' ? 'Buy (Cash)' : txn.workType === 'Sell' ? 'Sell (Cash)' : txn.workType}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
                         <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
                       </div>
                       
-                      {txn.workType === 'Tunch' && txn.impureWeight && (
+                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.impureWeight && (
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
                           <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
+                        </div>
+                      )}
+                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.pureWeight && (
+                        <div className="flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-outline">workspace_premium</span>
+                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pureWeight}g Pure</span>
                         </div>
                       )}
                       {txn.workType === 'Marking' && txn.caratMarking && (

@@ -102,8 +102,6 @@ const getWorkIcon = (workType: string) => {
     case 'Tunch': return 'science';
     case 'Marking': return 'verified';
     case 'Shouldering': return 'precision_manufacturing';
-    case 'Buy': return 'shopping_cart';
-    case 'Sell': return 'sell';
     default: return 'work';
   }
 };
@@ -113,8 +111,6 @@ const getWorkColor = (workType: string) => {
     case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
     case 'Marking': return 'text-secondary bg-secondary-fixed/30';
     case 'Shouldering': return 'text-primary bg-primary-fixed/30';
-    case 'Buy': return 'text-emerald-600 bg-emerald-50';
-    case 'Sell': return 'text-amber-600 bg-amber-50';
     default: return 'text-outline bg-surface-container';
   }
 };
@@ -1757,7 +1753,7 @@ export const StaffTasksScreen: React.FC = () => {
             customer_address: task.customerAddress || '',
             metal: task.metal || 'Gold',
             type: 'Cash',
-            work_type: 'Buy',
+            work_type: task.workType || 'Tunch',
             amount: String(finalCashAmount),
             date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
             iso_date: new Date().toISOString().split('T')[0],
@@ -2420,7 +2416,7 @@ export const StaffTasksScreen: React.FC = () => {
                         task_id: selectedSettlement.isTask ? selectedSettlement.id : null,
                         metal: isSilver ? 'Silver' : 'Gold',
                         type: 'Cash',
-                        work_type: 'Buy',
+                        work_type: 'Tunch',
                         amount: String(cashToPay),
                         date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
                         iso_date: new Date().toISOString().split('T')[0],

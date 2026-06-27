@@ -9,7 +9,8 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
 
     return {
       metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
-      customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee', workType: t.work_type,
+      customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee',
+      workType: t.is_cash_exchange ? 'Buy' : t.work_type,
       amount: `₹${Number(t.amount).toLocaleString('en-IN')}`,
       date: t.date || (t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
       isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
@@ -57,7 +58,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       customerPhone: task.customer_phone,
       customerAddress: task.customer_address,
       type: settlementVal.toLowerCase().includes('upi') ? 'UPI' : (settlementVal.toLowerCase().includes('cash') ? 'Cash' : 'Service Fee'),
-      workType: task.work_type || 'Tunch',
+      workType: isCash ? 'Buy' : (task.work_type || 'Tunch'),
       amount: `₹${Number(amount).toLocaleString('en-IN')}`,
       date: dateStr,
       isoDate: task.created_at ? task.created_at.split('T')[0] : '',
@@ -101,7 +102,8 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
 
     return {
       metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
-      customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee', workType: t.work_type,
+      customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee',
+      workType: t.is_cash_exchange ? 'Buy' : t.work_type,
       amount: Number(t.amount).toLocaleString('en-IN'),
       date: t.date || (t.created_at ? new Date(t.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
       isoDate: t.iso_date || (t.created_at ? t.created_at.split('T')[0] : ''),
@@ -150,7 +152,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       customerPhone: task.customer_phone,
       customerAddress: task.customer_address,
       type: settlementVal.toLowerCase().includes('upi') ? 'UPI' : (settlementVal.toLowerCase().includes('cash') ? 'Cash' : 'Service Fee'),
-      workType: task.work_type || 'Tunch',
+      workType: isCash ? 'Buy' : (task.work_type || 'Tunch'),
       amount: Number(amount).toLocaleString('en-IN'),
       date: dateStr,
       isoDate: task.created_at ? task.created_at.split('T')[0] : '',
