@@ -188,14 +188,14 @@ export const GlobalFAB: React.FC = () => {
 
               if (isSilver) {
                 if (isBuy) {
-                  ledgerEntry.impure_silver_in = Number(data.impureWeight || 0);
+                  ledgerEntry.impure_silver_in = 0;
                   ledgerEntry.pure_silver_in = calculatedPure;
                 } else {
                   ledgerEntry.pure_silver_out = calculatedPure;
                 }
               } else {
                 if (isBuy) {
-                  ledgerEntry.impure_gold_in = Number(data.impureWeight || 0);
+                  ledgerEntry.impure_gold_in = 0;
                   ledgerEntry.pure_gold_in = calculatedPure;
                 } else {
                   ledgerEntry.pure_gold_out = calculatedPure;
