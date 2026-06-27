@@ -1250,6 +1250,11 @@ export const StaffTasksScreen: React.FC = () => {
 
         if (condition === 'Only Tunch') {
           nextStatus = 'Settlement';
+        } else if (condition === 'Cash') {
+          nextStatus = 'Settlement';
+        } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
+          nextStatus = 'Completed';
+          progress = 100;
         }
       } else {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
@@ -1265,6 +1270,12 @@ export const StaffTasksScreen: React.FC = () => {
 
       if (nextStatus === 'Settlement') {
         taskUpdates.was_settlement_category = true;
+      }
+
+      const condition = task.workType === 'Tunch' ? (details.settlementCondition || task.settlementCondition || 'Only Tunch') : '';
+      if (task.workType === 'Tunch' && (condition === 'Pure Gold' || condition === 'Pure Silver')) {
+        taskUpdates.was_settlement_category = true;
+        taskUpdates.pending_pure_liability = true;
       }
 
       if (task.workType === 'Tunch') {
@@ -1329,7 +1340,8 @@ export const StaffTasksScreen: React.FC = () => {
         settlementCondition: updatedCondition,
         status: nextStatus,
         progressPercentage: progress,
-        wasSettlementCategory: nextStatus === 'Settlement' ? true : t.wasSettlementCategory
+        wasSettlementCategory: taskUpdates.was_settlement_category || t.wasSettlementCategory,
+        pendingPureLiability: taskUpdates.pending_pure_liability || t.pendingPureLiability
       } : t));
 
       // Handle Ledger Entry if Tunch Work
