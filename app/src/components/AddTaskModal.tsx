@@ -701,7 +701,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                   </div>
                   {formData.settlementCondition === 'Cash' && (
                     <div className="mt-4 pt-4 border-t border-outline-variant/20">
-                      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-2 block">Cash Handling Mode *</label>
+                      <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-2 block">Impure Metal Custody *</label>
                       <div className="flex gap-2">
                         {['Front', 'Back'].map(mode => (
                           <button 
@@ -709,7 +709,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                             onClick={() => up('cashHandlingMode', mode)}
                             className={`flex-grow py-2.5 rounded-xl text-[11px] font-bold border transition-all ${formData.cashHandlingMode === mode ? 'button-gradient text-white border-transparent shadow-sm' : 'bg-white border-outline-variant/30 text-on-surface-variant hover:border-secondary/40 hover:text-secondary'}`}
                           >
-                            {mode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}
+                            {mode === 'Front' ? 'Staff (Kept with Staff)' : 'Admin (Kept with Admin)'}
                           </button>
                         ))}
                       </div>

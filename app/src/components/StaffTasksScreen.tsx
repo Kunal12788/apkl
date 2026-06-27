@@ -496,8 +496,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     </div>
                     {task.cashHandlingMode && (
                       <div>
-                        <span className={lbl}>Cash Handling Mode</span>
-                        <p className={val}>{task.cashHandlingMode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}</p>
+                        <span className={lbl}>Impure Metal Custody</span>
+                        <p className={val}>{task.cashHandlingMode === 'Front' ? 'Staff (Kept with Staff)' : 'Admin (Kept with Admin)'}</p>
                       </div>
                     )}
                     {task.settlementCondition?.toLowerCase().includes('cash') && isAdminOrSuper && (
@@ -609,7 +609,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                   {settlementInput === 'Cash' && (
                     <div className="mt-3">
-                      <span className={lbl}>Cash Handling Mode *</span>
+                      <span className={lbl}>Impure Metal Custody *</span>
                       <div className="flex gap-2 mt-1">
                         {['Front', 'Back'].map(mode => (
                           <button 
@@ -617,7 +617,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                             onClick={() => setCashHandlingMode(mode as 'Front' | 'Back')}
                             className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${cashHandlingMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
                           >
-                            {mode === 'Front' ? 'Front (Staff Ledger)' : 'Back (Admin Ledger)'}
+                            {mode === 'Front' ? 'Staff (Kept with Staff)' : 'Admin (Kept with Admin)'}
                           </button>
                         ))}
                       </div>
@@ -2166,9 +2166,13 @@ export const StaffTasksScreen: React.FC = () => {
                       })()}
                     </p>
                     <p className="text-[8.5px] text-outline font-medium mt-1">
-                      {selectedSettlement.task?.pendingPureLiability 
-                        ? 'This will create a liability for Admin allocation from Live Pure Stock.' 
-                        : 'This will be deducted directly from Live Pure Stock.'}
+                      {(() => {
+                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                        const metalStr = isSilver ? 'Silver' : 'Gold';
+                        return selectedSettlement.task?.pendingPureLiability 
+                          ? `This will create a liability for Admin allocation from Admin Pure ${metalStr} Stock.` 
+                          : `This will be deducted directly from Admin Pure ${metalStr} Stock.`;
+                      })()}
                     </p>
                   </div>
                 )}

@@ -1132,7 +1132,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Pure Stock</p>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">{isAdminOrSuper ? 'Admin' : 'Staff'} Pure {activeMetal} Stock</p>
                         <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.0)}>{fmtG(currentPureStock)}</p>
@@ -1145,7 +1145,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Impure Stock</p>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">{isAdminOrSuper ? 'Admin' : 'Staff'} Impure {activeMetal} Stock</p>
                         <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">blur_on</span>
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.0)}>{fmtG(currentImpureStock)}</p>
@@ -1159,7 +1159,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-emerald-500 shadow-lg mb-6">
                     <div className="p-5">
                       <div className="flex justify-between items-center mb-2">
-                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Live Cash Stock</p>
+                        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">{isAdminOrSuper ? 'Admin' : 'Staff'} Cash Stock</p>
                         <span className="material-symbols-outlined text-emerald-500 glow-icon text-lg">payments</span>
                       </div>
                       <p className="font-headline font-bold text-primary" style={fitText(fmt(currentCashStock), 8, 1.5, 1.0)}>{fmt(currentCashStock)}</p>

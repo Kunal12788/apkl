@@ -1408,7 +1408,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-secondary shadow-lg">
                   <div className="p-5">
                     <div className="flex justify-between items-center mb-2">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure Stock</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Pure {activeMetal} Stock</p>
                       <span className="material-symbols-outlined text-secondary glow-icon text-lg">diamond</span>
                     </div>
                     <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentPureStock), 8, 1.5, 1.05)}>{fmtG(currentPureStock)}</p>
@@ -1433,7 +1433,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
                 <div className="luxury-card overflow-hidden bg-white border-l-4 border-l-[#755b00] shadow-lg">
                   <div className="p-5">
                     <div className="flex justify-between items-center mb-2">
-                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure Stock</p>
+                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-outline">Super Impure {activeMetal} Stock</p>
                       <span className="material-symbols-outlined text-[#755b00] glow-icon text-lg">local_fire_department</span>
                     </div>
                     <p className="font-headline font-bold text-primary" style={fitText(fmtG(currentImpureStock), 8, 1.5, 1.05)}>{fmtG(currentImpureStock)}</p>

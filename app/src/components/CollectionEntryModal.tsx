@@ -365,10 +365,14 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
                       <div>
                         <label className={lbl}>Settlement Condition</label>
                         <div className="grid grid-cols-3 gap-2">
-                           {['Tunch', 'Cash Front', 'Cash Back'].map(mode => (
-                             <button key={mode} onClick={() => up('paymentMode', mode)}
-                               className={`py-2 rounded-lg text-[9px] font-bold uppercase border transition-all ${formData.paymentMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}>
-                               {mode}
+                           {[
+                             { value: 'Tunch', label: 'Tunch' },
+                             { value: 'Cash Front', label: 'Cash (Staff)' },
+                             { value: 'Cash Back', label: 'Cash (Admin)' }
+                           ].map(item => (
+                             <button key={item.value} onClick={() => up('paymentMode', item.value)}
+                               className={`py-2 rounded-lg text-[9px] font-bold uppercase border transition-all ${formData.paymentMode === item.value ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}>
+                               {item.label}
                              </button>
                            ))}
                         </div>
