@@ -41,6 +41,7 @@ interface Transaction {
   
   details: string;
   createdBy?: string;
+  created_by?: string;
 }
 
 interface DbCustomer {
@@ -49,6 +50,7 @@ interface DbCustomer {
   phone: string;
   address: string;
   status: string;
+  created_by?: string;
 }
 
 interface Customer {
@@ -66,6 +68,7 @@ interface Customer {
   ledger: Transaction[];
   phone?: string;
   address?: string;
+  created_by?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -535,8 +538,11 @@ export const StaffBillingScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
-  const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string }>>(
+  const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string; branch_id?: string | null }>>(
     getCachedData('users_map', Infinity) || {}
+  );
+  const [branches, setBranches] = useState<any[]>(
+    getCachedData('branches_list', Infinity) || []
   );
 
   React.useEffect(() => {
@@ -545,23 +551,30 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
-        const [usersRes, branchUsersRes, txRes, tasksRes] = await Promise.all([
-          supabase.from('users').select('id, name, role'),
+        const [usersRes, branchUsersRes, txRes, tasksRes, branchesRes] = await Promise.all([
+          supabase.from('users').select('id, name, role, branch_id'),
           (!isSuperSa && user?.branch_id)
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
             : Promise.resolve({ data: null, error: null }),
           supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-          supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false })
+          supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false }),
+          supabase.from('branches').select('*')
         ]);
 
         const allUsers = usersRes.data;
         if (allUsers) {
-          const uMap: Record<string, { name: string; role: string }> = {};
+          const uMap: Record<string, { name: string; role: string; branch_id?: string | null }> = {};
           allUsers.forEach((u: any) => {
-            uMap[u.id] = { name: u.name, role: u.role };
+            uMap[u.id] = { name: u.name, role: u.role, branch_id: u.branch_id };
           });
           setUsersMap(uMap);
           setCachedData('users_map', uMap);
+        }
+
+        const allBranches = branchesRes.data;
+        if (allBranches) {
+          setBranches(allBranches);
+          setCachedData('branches_list', allBranches);
         }
 
         let branchUserIds: string[] = [];
@@ -618,11 +631,11 @@ export const StaffBillingScreen: React.FC = () => {
         if (newDbHash !== oldDbHash) {
           setCachedData('db_customers_hash', newDbHash);
           setCachedData('db_customers', data);
-          if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
-            setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
-          } else {
-            setDbCustomers(data);
-          }
+        }
+        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
+          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
+        } else {
+          setDbCustomers(data);
         }
       }
     };
@@ -714,7 +727,8 @@ export const StaffBillingScreen: React.FC = () => {
           workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
           ledger: [],
           phone: c.phone,
-          address: c.address
+          address: c.address,
+          created_by: c.created_by
         });
     });
 
@@ -755,7 +769,8 @@ export const StaffBillingScreen: React.FC = () => {
           workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
           ledger: [],
           phone: t.customerPhone,
-          address: t.customerAddress
+          address: t.customerAddress,
+          created_by: t.createdBy || t.created_by
         };
         customers.push(cust);
       }
@@ -784,6 +799,14 @@ export const StaffBillingScreen: React.FC = () => {
 
     return customers;
   }, [dbCustomers, transactions]);
+
+  const getCustomerBranchName = (created_by?: string) => {
+    if (!created_by) return 'Unassigned';
+    const creator = usersMap[created_by];
+    if (!creator || !creator.branch_id) return 'Unassigned';
+    const b = branches.find(br => br.id === creator.branch_id);
+    return b ? b.name : 'Unassigned';
+  };
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
   const selectedTransaction = transactions.find(t => t.id === transactionId) || null;
@@ -1003,23 +1026,61 @@ export const StaffBillingScreen: React.FC = () => {
                </div>
             )}
 
-            <div className="space-y-3">
-              {filteredCustomers.map(customer => (
-                <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
-                      {customer.initials}
+            <div className="space-y-6">
+              {isSuperSa ? (
+                (() => {
+                  const groups: Record<string, typeof filteredCustomers> = {};
+                  filteredCustomers.forEach(customer => {
+                    const bName = getCustomerBranchName(customer.created_by);
+                    if (!groups[bName]) groups[bName] = [];
+                    groups[bName].push(customer);
+                  });
+
+                  return Object.keys(groups).sort().map(bName => (
+                    <div key={bName} className="space-y-3">
+                      <h4 className="font-label text-[11px] uppercase tracking-[0.2em] text-secondary font-bold px-1 flex items-center gap-2 mt-4 first:mt-0">
+                        <span className="material-symbols-outlined text-sm">domain</span>
+                        {bName}
+                      </h4>
+                      <div className="space-y-3">
+                        {groups[bName].map(customer => (
+                          <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
+                            <div className="flex items-center gap-4">
+                              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
+                                {customer.initials}
+                              </div>
+                              <div>
+                                <p className="font-headline font-bold text-primary text-[15px]">{customer.name}</p>
+                                <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{customer.id} • {customer.activeJobs} Jobs</p>
+                              </div>
+                            </div>
+                            <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-outline group-hover:bg-primary group-hover:text-white transition-colors premium-shadow">
+                              <span className="material-symbols-outlined text-sm">chevron_right</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-headline font-bold text-primary text-[15px]">{customer.name}</p>
-                      <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{customer.id} • {customer.activeJobs} Jobs</p>
+                  ));
+                })()
+              ) : (
+                filteredCustomers.map(customer => (
+                  <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
+                        {customer.initials}
+                      </div>
+                      <div>
+                        <p className="font-headline font-bold text-primary text-[15px]">{customer.name}</p>
+                        <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{customer.id} • {customer.activeJobs} Jobs</p>
+                      </div>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-outline group-hover:bg-primary group-hover:text-white transition-colors premium-shadow">
+                      <span className="material-symbols-outlined text-sm">chevron_right</span>
                     </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-surface flex items-center justify-center text-outline group-hover:bg-primary group-hover:text-white transition-colors premium-shadow">
-                    <span className="material-symbols-outlined text-sm">chevron_right</span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
               {filteredCustomers.length === 0 && (
                 <div className="p-8 text-center text-outline text-sm font-medium">No customers found.</div>
               )}

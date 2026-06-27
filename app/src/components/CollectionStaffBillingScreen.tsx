@@ -42,6 +42,7 @@ interface Transaction {
   
   details: string;
   createdBy?: string;
+  created_by?: string;
 }
 
 interface DbCustomer {
@@ -50,6 +51,7 @@ interface DbCustomer {
   phone: string;
   address: string;
   status: string;
+  created_by?: string;
 }
 
 interface Customer {
@@ -67,6 +69,7 @@ interface Customer {
   };
   phone?: string;
   address?: string;
+  created_by?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -555,8 +558,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           if (newDbHash !== oldDbHash) {
             setCachedData('col_db_customers_hash', newDbHash);
             setCachedData('db_customers', data);
-            setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
           }
+          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
         } else {
           setDbCustomers([]);
         }
@@ -595,7 +598,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
           ledger: [],
           phone: c.phone,
-          address: c.address
+          address: c.address,
+          created_by: c.created_by
         });
     });
 
@@ -635,7 +639,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
           ledger: [],
           phone: t.customerPhone,
-          address: t.customerAddress
+          address: t.customerAddress,
+          created_by: t.createdBy || t.created_by
         };
         customers.push(cust);
       }
