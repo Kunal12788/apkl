@@ -938,15 +938,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
               </>)}
 
               {workType === 'BUY_SELL' && (<>
-                <SectionCard title="Transaction Type" icon="swap_horiz" color="bg-emerald-500/5 text-emerald-600">
-                  <div>
-                    <label className={lbl}>Operation Type *</label>
-                    <ToggleBtn options={['Buy', 'Sell']} value={formData.settlementCondition} onChange={v => {
-                      up('settlementCondition', v);
-                    }} />
-                  </div>
-                </SectionCard>
-
                 <SectionCard title="Metal Parameters" icon="balance" color="bg-primary/5 text-primary">
                   <div>
                     <label className={lbl}>Weight of Pure {formData.metal} (g) *</label>
