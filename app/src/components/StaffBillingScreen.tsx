@@ -42,6 +42,8 @@ interface Transaction {
   details: string;
   createdBy?: string;
   created_by?: string;
+  cashRatePerGram?: string;
+  cashAmount?: string;
 }
 
 interface DbCustomer {
@@ -186,8 +188,6 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   
-  const isNonAdmin = user?.role === 'Staff' || user?.role === 'Collection Staff';
-
   if (!isOpen || !txn) return null;
 
   const creator = txn.createdBy ? usersMap[txn.createdBy] : null;
@@ -374,7 +374,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
               <div>
                 <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
                 <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
-                  {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                  {txn.amount}
                 </p>
               </div>
               <div className="text-right">
@@ -385,6 +385,22 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
               </div>
             </div>
           </div>
+
+          {txn.isCashExchange && (
+            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2 text-left animate-fade-in">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Cash Details</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className={lbl}>Cash Rate / Gram</span>
+                  <p className={val}>₹{txn.cashRatePerGram || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className={lbl}>Total Cash Amount</span>
+                  <p className={val}>₹{txn.cashAmount || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
 
@@ -500,7 +516,6 @@ export const StaffBillingScreen: React.FC = () => {
   const [historyDateFilter, setHistoryDateFilter] = useState('');
   
   const role = user?.role;
-  const isNonAdmin = role === 'Staff';
   const filterBySubmission = (item: any) => {
     if (role === 'Staff' || role === 'Collection Staff') {
       return !item.staffSubmittedAt && !item.staff_submitted_at && !item.adminSubmittedAt && !item.admin_submitted_at;
@@ -532,9 +547,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const cachedStaffTx = getCachedData('staff_billing_tx', Infinity) || [];
 
-  const initialTransactions = isNonAdmin 
-    ? cachedStaffTx.filter((t: any) => !t.isCashExchange)
-    : cachedStaffTx;
+  const initialTransactions = cachedStaffTx;
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
@@ -604,7 +617,7 @@ export const StaffBillingScreen: React.FC = () => {
 
         const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
         setCachedData('staff_billing_tx', allTx);
-        const finalTx = isNonAdmin ? allTx.filter((t: any) => !t.isCashExchange) : allTx;
+        const finalTx = allTx;
         setTransactions(finalTx);
       } catch (err) {
         console.error('Error fetching billing data:', err);
@@ -781,11 +794,9 @@ export const StaffBillingScreen: React.FC = () => {
       }
       
       cust.ledger.push(t);
-      const amtNum = (isNonAdmin && t.isCashExchange) ? 0 : (parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0);
+      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       if (t.status === 'Unpaid') {
-        if (!(isNonAdmin && t.isCashExchange)) {
-          cust.activeJobs += 1;
-        }
+        cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
         cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
       } else {
@@ -924,7 +935,7 @@ export const StaffBillingScreen: React.FC = () => {
                       </div>
                       <div className="text-right">
                         <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>
-                          {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                          {txn.amount}
                         </p>
                         <div className="flex items-center justify-end gap-1 mt-1">
                           {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
@@ -1254,14 +1265,14 @@ export const StaffBillingScreen: React.FC = () => {
                         </div>
                         <div className="text-right">
                           <p className={`font-headline text-base font-black ${isPending ? 'text-error' : 'text-primary'}`}>
-                            {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.amount}
+                            {txn.amount}
                           </p>
                           <p className="text-[8px] font-bold text-outline uppercase tracking-widest mt-1 opacity-70">{txn.id}</p>
                         </div>
                       </div>
                       <div className="pl-14 pr-2 flex justify-between items-center mt-2.5">
                         <p className={`text-[11px] font-medium leading-relaxed truncate ${isPending ? 'text-error/80' : 'text-outline'}`}>
-                          {(isNonAdmin && txn.isCashExchange) ? '[Restricted]' : txn.details}
+                          {txn.details}
                         </p>
                         <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-tertiary/10 text-tertiary'}`}>
                           {txn.status}

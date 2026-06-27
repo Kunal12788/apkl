@@ -25,7 +25,9 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       isCashExchange: !!t.is_cash_exchange,
       taskId: t.task_id,
       staffSubmittedAt: t.staff_submitted_at,
-      adminSubmittedAt: t.admin_submitted_at
+      adminSubmittedAt: t.admin_submitted_at,
+      cashRatePerGram: t.cash_rate_per_gram,
+      cashAmount: t.cash_amount
     };
   });
 
@@ -80,7 +82,9 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       isCashExchange: isCash,
       taskId: task.id,
       staffSubmittedAt: task.staff_submitted_at,
-      adminSubmittedAt: task.admin_submitted_at
+      adminSubmittedAt: task.admin_submitted_at,
+      cashRatePerGram: task.cash_rate_per_gram,
+      cashAmount: task.cash_amount
     };
   });
 

@@ -536,13 +536,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
 
         const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
-        const myTaskIds = new Set(filteredTasks.filter((task: any) => task.created_by === currentUser).map((task: any) => task.id));
-        const myTx = allTx.filter((t: any) => 
-          t.createdBy === currentUser || 
-          (t.taskId && myTaskIds.has(t.taskId))
-        );
-        setCachedData('colstaff_billing_tx', myTx);
-        setTransactions(myTx);
+        setCachedData('colstaff_billing_tx', allTx);
+        setTransactions(allTx);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }
