@@ -1882,7 +1882,7 @@ export const StaffTasksScreen: React.FC = () => {
               
               <div className="space-y-4">
                 {filteredTasks.map((task) => {
-                  const isCash = task.settlementCondition?.toLowerCase().includes('cash');
+                  const isCash = task.settlementCondition?.toLowerCase().startsWith('cash');
                   return (
                   <div 
                     key={task.id} 
