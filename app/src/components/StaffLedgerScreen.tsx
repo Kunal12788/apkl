@@ -414,7 +414,9 @@ export const StaffLedgerScreen: React.FC = () => {
   const currentImpureStock = totalImpureReceived - totalImpureRefined; // Impure has no initial allocation
   const role = user?.role;
   const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
-  const currentCashStock = (isNonAdmin ? billingCash : 0) + totalAllocatedCash + totalCashReceived - totalCashPaid;
+  const currentCashStock = isNonAdmin 
+    ? billingCash + totalAllocatedCash 
+    : totalAllocatedCash + totalCashReceived - totalCashPaid;
 
   const combinedHistory = React.useMemo(() => {
     const history: any[] = [];
@@ -1166,7 +1168,7 @@ export const StaffLedgerScreen: React.FC = () => {
                       <div className="flex justify-between items-center mt-1">
                         <p className="text-[8px] uppercase tracking-widest font-bold text-outline">
                           {isNonAdmin 
-                            ? `Service Fees Collected: ${fmt(billingCash)}`
+                            ? `Allocated Cash: ${fmt(totalAllocatedCash)} • Service Fees: ${fmt(billingCash)}`
                             : `Allocated Cash: ${fmt(totalAllocatedCash)} • Cash Collected: ${fmt(totalCashReceived)} • Outflow: ${fmt(totalCashPaid)}`
                           }
                         </p>
