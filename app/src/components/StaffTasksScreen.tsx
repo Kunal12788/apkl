@@ -2413,6 +2413,7 @@ export const StaffTasksScreen: React.FC = () => {
                         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
                         customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
                         customer_name: selectedSettlement.customer_name,
+                        task_id: selectedSettlement.isTask ? selectedSettlement.id : null,
                         metal: isSilver ? 'Silver' : 'Gold',
                         type: 'Cash',
                         work_type: 'Tunch',
