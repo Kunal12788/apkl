@@ -1123,9 +1123,12 @@ export const StaffTasksScreen: React.FC = () => {
 
   const filteredTasks = tasks.filter(t => {
      const isReopenedCashTask = t.status === 'Pending' && (t.settlementCondition?.toLowerCase().includes('cash') || false) && (t.purity !== null && t.purity !== '' && t.purity !== undefined);
+     const isOnlyTunch = t.settlementCondition?.toLowerCase().includes('only tunch') || false;
      
      let matchesTab = t.status === activeTab;
-     if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
+     if (activeTab === 'Settlement') {
+       matchesTab = t.status === 'Settlement' && isOnlyTunch;
+     } else if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
        if (activeTab === 'In Progress') {
          matchesTab = t.status === 'In Progress' || isReopenedCashTask;
        } else if (activeTab === 'Pending') {
@@ -1250,11 +1253,6 @@ export const StaffTasksScreen: React.FC = () => {
 
         if (condition === 'Only Tunch') {
           nextStatus = 'Settlement';
-        } else if (condition === 'Cash') {
-          nextStatus = 'Settlement';
-        } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
-          nextStatus = 'Completed';
-          progress = 100;
         }
       } else {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
