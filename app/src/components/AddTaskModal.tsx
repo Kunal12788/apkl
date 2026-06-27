@@ -699,7 +699,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       </button>
                     ))}
                   </div>
-                  {formData.settlementCondition === 'Cash' && (
+                  {formData.settlementCondition === 'Cash' && !isCollection && (
                     <div className="mt-4 pt-4 border-t border-outline-variant/20">
                       <label className="text-[10px] font-bold uppercase tracking-[0.14em] text-outline mb-2 block">Impure Metal Custody *</label>
                       <div className="flex gap-2">
