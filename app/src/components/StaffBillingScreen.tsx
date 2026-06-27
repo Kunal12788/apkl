@@ -551,7 +551,7 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
-        const [usersRes, branchUsersRes, txRes, tasksRes, branchesRes] = await Promise.all([
+        const [usersRes, _branchUsersRes, txRes, tasksRes, branchesRes] = await Promise.all([
           supabase.from('users').select('id, name, role, branch_id'),
           (!isSuperSa && user?.branch_id)
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
@@ -578,10 +578,13 @@ export const StaffBillingScreen: React.FC = () => {
         }
 
         let branchUserIds: string[] = [];
-        const bUsers = branchUsersRes.data;
-        if (!isSuperSa && user?.branch_id && bUsers) {
-          branchUserIds = bUsers.map((bu: any) => bu.id);
-          setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+        if (!isSuperSa && allUsers) {
+          branchUserIds = allUsers
+            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
+            .map((u: any) => u.id);
+          if (user?.branch_id) {
+            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+          }
         }
         if (branchUserIds.length === 0) {
           branchUserIds = [currentUserId];
@@ -612,15 +615,17 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
       
       let branchUserIds: string[] = [];
-      const isSuperSa = user?.role === 'Super Admin';
-      if (!isSuperSa && user?.branch_id) {
-        const { data: bUsers } = await supabase
+      if (!isSuperSa) {
+        const { data: uList } = await supabase
           .from('users')
-          .select('id')
-          .eq('branch_id', user.branch_id);
-        if (bUsers) {
-          branchUserIds = bUsers.map((bu: any) => bu.id);
-          setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+          .select('id, role, branch_id');
+        if (uList) {
+          branchUserIds = uList
+            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
+            .map((u: any) => u.id);
+          if (user?.branch_id) {
+            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+          }
         }
       }
 

@@ -478,7 +478,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     const loadBillingData = async () => {
       if (!isFullyAuthenticated) return;
       try {
-        const [usersRes, branchUsersRes, txRes, tasksRes] = await Promise.all([
+        const [usersRes, _branchUsersRes, txRes, tasksRes] = await Promise.all([
           supabase.from('users').select('id, name, role'),
           user?.branch_id
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
@@ -498,10 +498,13 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         }
 
         let branchUserIds: string[] = [];
-        const bUsers = branchUsersRes.data;
-        if (user?.branch_id && bUsers) {
-          branchUserIds = bUsers.map((bu: any) => bu.id);
-          setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+        if (allUsers) {
+          branchUserIds = allUsers
+            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
+            .map((u: any) => u.id);
+          if (user?.branch_id) {
+            setCachedData(`branch_users_${user.branch_id}`, branchUserIds);
+          }
         }
         if (branchUserIds.length === 0) {
           branchUserIds = [currentUser];
@@ -534,14 +537,13 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
       try {
         let branchUserIds: string[] = [];
-        if (user?.branch_id) {
-          const { data: bUsers, error: buError } = await supabase
-            .from('users')
-            .select('id')
-            .eq('branch_id', user.branch_id);
-          if (!buError && bUsers) {
-            branchUserIds = bUsers.map((bu: any) => bu.id);
-          }
+        const { data: uList } = await supabase
+          .from('users')
+          .select('id, role, branch_id');
+        if (uList) {
+          branchUserIds = uList
+            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
+            .map((u: any) => u.id);
         }
         if (branchUserIds.length === 0) {
           branchUserIds = [currentUser];

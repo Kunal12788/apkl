@@ -95,13 +95,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
       let branchUserIds: string[] = [];
       const isSuperSa = user?.role === 'Super Admin';
-      if (!isSuperSa && user?.branch_id) {
-        const { data: bUsers } = await supabase
+      if (!isSuperSa) {
+        const { data: uList } = await supabase
           .from('users')
-          .select('id')
-          .eq('branch_id', user.branch_id);
-        if (bUsers) {
-          branchUserIds = bUsers.map((bu: any) => bu.id);
+          .select('id, role, branch_id');
+        if (uList) {
+          branchUserIds = uList
+            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
+            .map((u: any) => u.id);
         }
       }
 
