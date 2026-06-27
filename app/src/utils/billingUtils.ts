@@ -23,6 +23,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       createdBy: t.created_by,
       createdAt: t.created_at,
       isCashExchange: !!t.is_cash_exchange,
+      taskId: t.task_id,
       staffSubmittedAt: t.staff_submitted_at,
       adminSubmittedAt: t.admin_submitted_at
     };
@@ -77,6 +78,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       createdBy: task.created_by,
       createdAt: task.created_at,
       isCashExchange: isCash,
+      taskId: task.id,
       staffSubmittedAt: task.staff_submitted_at,
       adminSubmittedAt: task.admin_submitted_at
     };
@@ -117,6 +119,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       createdBy: t.created_by,
       createdAt: t.created_at,
       isCashExchange: !!t.is_cash_exchange,
+      taskId: t.task_id,
       staffSubmittedAt: t.staff_submitted_at,
       adminSubmittedAt: t.admin_submitted_at
     };
@@ -172,6 +175,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       createdBy: task.created_by,
       createdAt: task.created_at,
       isCashExchange: isCash,
+      taskId: task.id,
       staffSubmittedAt: task.staff_submitted_at,
       adminSubmittedAt: task.admin_submitted_at
     };

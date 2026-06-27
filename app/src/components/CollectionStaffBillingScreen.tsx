@@ -514,7 +514,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         filteredTx = filteredTx.filter((t: any) => !t.created_by || branchUserIds.includes(t.created_by));
 
         const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
-        const myTx = allTx.filter((t: any) => t.createdBy === currentUser);
+        const myTaskIds = new Set(filteredTasks.filter((task: any) => task.created_by === currentUser).map((task: any) => task.id));
+        const myTx = allTx.filter((t: any) => 
+          t.createdBy === currentUser || 
+          (t.taskId && myTaskIds.has(t.taskId))
+        );
         setCachedData('colstaff_billing_tx', myTx);
         setTransactions(myTx);
       } catch (err) {
