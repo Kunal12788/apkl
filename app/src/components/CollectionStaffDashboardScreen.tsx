@@ -34,13 +34,18 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
   if (!cachedBillingTx) {
     const cachedTx = getCachedData('tx_data', Infinity);
     if (cachedTx && cachedTasks) {
-      let filteredTx = cachedTx.filter((t: any) => t.created_by === currentUser && !t.admin_submitted_at);
       let filteredTasks = cachedTasks.filter((t: any) => {
         const isBelong = t.created_by === currentUser || t.assigned_to === currentUser;
         if (isBelong) {
           return !t.admin_submitted_at;
         }
         return false;
+      });
+      const myTaskIds = new Set(filteredTasks.filter((t: any) => t.created_by === currentUser).map((t: any) => t.id));
+      let filteredTx = cachedTx.filter((t: any) => {
+        const isMine = t.created_by === currentUser;
+        const isMyTask = t.task_id && myTaskIds.has(t.task_id);
+        return (isMine || isMyTask) && !t.admin_submitted_at;
       });
       cachedBillingTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
     }
@@ -74,12 +79,22 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           supabase
             .from('transactions')
             .select('*')
-            .eq('created_by', currentUser)
+            .is('admin_submitted_at', null)
             .order('created_at', { ascending: false })
         ]);
 
-        const tasksData = tasksRes.data;
+        const tasksData = tasksRes.data || [];
         const taskError = tasksRes.error;
+        const myTaskIdsRaw = new Set(tasksData.filter((t: any) => t.created_by === currentUser).map((t: any) => t.id));
+        
+        const txDataRaw = txRes.data || [];
+        const txData = txDataRaw.filter((t: any) => {
+          const isMine = t.created_by === currentUser;
+          const isMyTask = t.task_id && myTaskIdsRaw.has(t.task_id);
+          return isMine || isMyTask;
+        });
+        const txError = txRes.error;
+
         if (!taskError && tasksData) {
           const activeTasks = tasksData.filter((t: any) => filterBySubmission(t));
           setTasks(activeTasks.map((t: any) => ({
@@ -92,18 +107,20 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
           setCachedData('tasks_data', [...otherTasks, ...tasksData]);
         }
 
-        const txData = txRes.data;
-        const txError = txRes.error;
         if (!txError && txData) {
           // Merge transactions back into in-memory cache
           const allTx = getCachedData('tx_data') || [];
-          const otherTx = allTx.filter((t: any) => t.created_by !== currentUser);
+          const otherTx = allTx.filter((t: any) => {
+            const isMine = t.created_by === currentUser;
+            const isMyTask = t.task_id && myTaskIdsRaw.has(t.task_id);
+            return !(isMine || isMyTask);
+          });
           setCachedData('tx_data', [...otherTx, ...txData]);
         }
 
         // --- Precompute Billing screen transactions and update state to trigger re-render ---
-        let filteredTx = txRes.data || [];
-        let filteredTasks = tasksRes.data || [];
+        let filteredTx = txData;
+        let filteredTasks = tasksData;
         const activeTx = filteredTx.filter((t: any) => filterBySubmission(t));
         const activeTasksForBilling = filteredTasks.filter((t: any) => filterBySubmission(t));
         const allTx = computeCollectionStaffBillingTransactions(activeTx, activeTasksForBilling);
