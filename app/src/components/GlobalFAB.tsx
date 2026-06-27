@@ -530,12 +530,12 @@ export const GlobalFAB: React.FC = () => {
                 staffLedgerEntry.cash_rate_per_gram = 0;
                 if (data.metal === 'Silver') {
                   staffLedgerEntry.impure_silver_in = Number(data.impureWeight || 0);
-                  staffLedgerEntry.pure_silver_in = Number(data.pureWeight || 0);
+                  staffLedgerEntry.pure_silver_in = 0;
                   staffLedgerEntry.pure_gold_in = 0;
                   staffLedgerEntry.impure_gold_in = 0;
                 } else {
                   staffLedgerEntry.impure_gold_in = Number(data.impureWeight || 0);
-                  staffLedgerEntry.pure_gold_in = Number(data.pureWeight || 0);
+                  staffLedgerEntry.pure_gold_in = 0;
                   staffLedgerEntry.pure_silver_in = 0;
                   staffLedgerEntry.impure_silver_in = 0;
                 }

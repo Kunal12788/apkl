@@ -1381,12 +1381,12 @@ export const StaffTasksScreen: React.FC = () => {
             newLedgerEntry.cash_rate_per_gram = 0;
             if (task.metal === 'Silver') {
               newLedgerEntry.impure_silver_in = finalImpure;
-              newLedgerEntry.pure_silver_in = finalPure;
+              newLedgerEntry.pure_silver_in = 0;
               newLedgerEntry.pure_gold_in = 0;
               newLedgerEntry.impure_gold_in = 0;
             } else {
               newLedgerEntry.impure_gold_in = finalImpure;
-              newLedgerEntry.pure_gold_in = finalPure;
+              newLedgerEntry.pure_gold_in = 0;
               newLedgerEntry.pure_silver_in = 0;
               newLedgerEntry.impure_silver_in = 0;
             }
@@ -1582,12 +1582,12 @@ export const StaffTasksScreen: React.FC = () => {
             };
             if (isSilver) {
               staffEntry.impure_silver_in = Number(task.impureWeight || 0);
-              staffEntry.pure_silver_in = Number(task.pureWeight || 0);
+              staffEntry.pure_silver_in = 0;
               staffEntry.impure_gold_in = 0;
               staffEntry.pure_gold_in = 0;
             } else {
               staffEntry.impure_gold_in = Number(task.impureWeight || 0);
-              staffEntry.pure_gold_in = Number(task.pureWeight || 0);
+              staffEntry.pure_gold_in = 0;
               staffEntry.impure_silver_in = 0;
               staffEntry.pure_silver_in = 0;
             }
@@ -1638,12 +1638,12 @@ export const StaffTasksScreen: React.FC = () => {
 
             if (isSilver) {
               adminEntry.impure_silver_in = Number(task.impureWeight || 0);
-              adminEntry.pure_silver_in = Number(task.pureWeight || 0);
+              adminEntry.pure_silver_in = 0;
               adminEntry.impure_gold_in = 0;
               adminEntry.pure_gold_in = 0;
             } else {
               adminEntry.impure_gold_in = Number(task.impureWeight || 0);
-              adminEntry.pure_gold_in = Number(task.pureWeight || 0);
+              adminEntry.pure_gold_in = 0;
               adminEntry.impure_silver_in = 0;
               adminEntry.pure_silver_in = 0;
             }
