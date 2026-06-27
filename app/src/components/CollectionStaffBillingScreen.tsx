@@ -404,6 +404,22 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             </div>
           </div>
 
+          {txn.isCashExchange && (
+            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2 text-left animate-fade-in">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Cash Details</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className={lbl}>Cash Rate / Gram</span>
+                  <p className={val}>₹{txn.cashRatePerGram || 'N/A'}</p>
+                </div>
+                <div>
+                  <span className={lbl}>Total Cash Amount</span>
+                  <p className={val}>₹{txn.cashAmount || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         <div className="mt-4 space-y-2">

@@ -38,6 +38,8 @@ interface Task {
   createdAt?: string;
   purity?: string;
   wasSettlementCategory?: boolean;
+  cashRatePerGram?: string;
+  cashAmount?: string;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -219,6 +221,30 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ isOpen, onCl
             </div>
           )}
 
+          {task.settlementCondition && (
+            <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2 text-left">
+              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Settlement details</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="col-span-2">
+                  <span className={lbl}>Settlement Mode</span>
+                  <p className={val}>{task.settlementCondition}</p>
+                </div>
+                {task.settlementCondition.toLowerCase().includes('cash') && (
+                  <>
+                    <div>
+                      <span className={lbl}>Cash Rate / Gram</span>
+                      <p className={val}>₹{task.cashRatePerGram || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={lbl}>Total Cash Amount</span>
+                      <p className={val}>₹{task.cashAmount || 'N/A'}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Section 3: Schedule Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
@@ -302,7 +328,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
         dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
         pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
         logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
-        createdAt: t.created_at, purity: t.purity
+        createdAt: t.created_at, purity: t.purity,
+        cashRatePerGram: t.cash_rate_per_gram, cashAmount: t.cash_amount
       }))
     : [];
 
@@ -335,7 +362,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
               dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
               pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
               logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
-              createdAt: t.created_at, purity: t.purity, wasSettlementCategory: t.was_settlement_category
+              createdAt: t.created_at, purity: t.purity, wasSettlementCategory: t.was_settlement_category,
+              cashRatePerGram: t.cash_rate_per_gram, cashAmount: t.cash_amount
           })));
         } else {
           setTasks([]);
@@ -388,7 +416,8 @@ export const CollectionStaffTasksScreen: React.FC = () => {
                   dateGiven: t.date_given, isoDate: t.iso_date, estimatedCompletion: t.estimated_completion, notes: t.notes, broughtBy: t.brought_by,
                   pieces: t.pieces, productType: t.product_type, impureWeight: t.impure_weight, pureWeight: t.pure_weight, settlementCondition: t.settlement_condition,
                   logoName: t.logo_name, carat: t.carat, pointSuggestion: t.point_suggestion, createdBy: t.created_by, images: t.images || [], auditImages: t.audit_images || [],
-                  createdAt: t.created_at, purity: t.purity
+                  createdAt: t.created_at, purity: t.purity,
+                  cashRatePerGram: t.cash_rate_per_gram, cashAmount: t.cash_amount
                 } : old));
              }
           }

@@ -1780,7 +1780,9 @@ export const StaffTasksScreen: React.FC = () => {
             pure_weight: task.pureWeight || '',
             purity_percentage: task.purity || '',
             created_by: user?.id || '',
-            is_cash_exchange: true
+            is_cash_exchange: true,
+            cash_rate_per_gram: finalCashRate,
+            cash_amount: finalCashAmount
           };
 
           await supabase.from('transactions').insert([payoutTxn]);
@@ -2424,6 +2426,7 @@ export const StaffTasksScreen: React.FC = () => {
                       await supabase.from('ledger_entries').insert([adminLedgerEntry]);
 
                       // Also create a billing transaction
+                      const calculatedRate = calculatedPure > 0 ? (cashToPay / calculatedPure) : 0;
                       const newTxn = {
                         id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
                         customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
@@ -2443,7 +2446,9 @@ export const StaffTasksScreen: React.FC = () => {
                         pure_weight: String(calculatedPure),
                         purity_percentage: String(purity),
                         created_by: user?.id || '',
-                        is_cash_exchange: true
+                        is_cash_exchange: true,
+                        cash_rate_per_gram: calculatedRate,
+                        cash_amount: cashToPay
                       };
                       await supabase.from('transactions').insert([newTxn]);
                     } else {
