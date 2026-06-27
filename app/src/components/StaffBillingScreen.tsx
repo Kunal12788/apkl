@@ -747,7 +747,7 @@ export const StaffBillingScreen: React.FC = () => {
         if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
           return c.id === t.customerId;
         }
-        if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
+        if (c.name.trim().toLowerCase() !== t.customerName.trim().toLowerCase()) return false;
         
         const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
         const cP = normPhone(c.phone);
@@ -854,7 +854,7 @@ export const StaffBillingScreen: React.FC = () => {
   };
 
   const filteredTransactions = transactions.filter(matchesSearch);
-  const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredCustomers = dynamicCustomers.filter(c => c.name.trim().toLowerCase().includes(searchQuery.trim().toLowerCase()) || c.id.trim().toLowerCase().includes(searchQuery.trim().toLowerCase()));
   const pendingCustomers = dbCustomers.filter(c => c.status === 'Pending');
 
   return (

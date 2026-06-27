@@ -197,7 +197,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     const e: Record<string, string> = {};
     if (!formData.customerName.trim()) e.customerName = 'Required';
     else {
-      const match = customers.find(c => c.name.toLowerCase() === formData.customerName.trim().toLowerCase());
+      const match = customers.find(c => c.name.trim().toLowerCase() === formData.customerName.trim().toLowerCase());
       if (!match) e.customerName = 'Must select an approved customer';
     }
     const numPieces = parseInt(formData.pieces) || 0;
@@ -586,7 +586,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     {errMsg('customerName')}
                     {showDropdown && formData.customerName && (
                        <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).map(c => (
+                          {customers.filter(c => c.name.trim().toLowerCase().includes(formData.customerName.trim().toLowerCase())).map(c => (
                              <div key={c.id} className="px-4 py-2 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10"
                                 onClick={() => {
                                    up('customerName', c.name);
@@ -597,10 +597,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                 }}
                              >
                                 <p className="text-sm font-bold text-primary">{c.name}</p>
-                                <p className="text-[10px] text-outline">{c.phone}</p>
+                                <p className="text-[10px] text-outline">
+                                   {c.phone ? `${c.phone}` : ''}
+                                   {c.phone && c.address ? ' • ' : ''}
+                                   {c.address ? `${c.address}` : ''}
+                                </p>
                              </div>
                           ))}
-                          {customers.filter(c => c.name.toLowerCase().includes(formData.customerName.toLowerCase())).length === 0 && (
+                          {customers.filter(c => c.name.trim().toLowerCase().includes(formData.customerName.trim().toLowerCase())).length === 0 && (
                              <div className="px-4 py-3 text-center">
                                 <p className="text-xs text-outline">Customer not found</p>
                              </div>
@@ -618,7 +622,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <input className={inp(errors.phone)} placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => up('phone', e.target.value)} />
                     {errMsg('phone')}
                   </div>
-                  {formData.customerName && !customers.some(c => c.name.toLowerCase() === formData.customerName.toLowerCase()) && (
+                  {formData.customerName && !customers.some(c => c.name.trim().toLowerCase() === formData.customerName.trim().toLowerCase()) && (
                      <div className="pt-2 animate-fade-in">
                         <button 
                           type="button"

@@ -614,7 +614,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         if (c.id && t.customerId && c.id !== 'CUST-COL' && t.customerId !== 'CUST-COL') {
           return c.id === t.customerId;
         }
-        if (c.name.toLowerCase() !== t.customerName.toLowerCase()) return false;
+        if (c.name.trim().toLowerCase() !== t.customerName.trim().toLowerCase()) return false;
         
         const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
         const cP = normPhone(c.phone);
@@ -672,7 +672,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   }, [dbCustomers, transactions]);
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
-  const filteredCustomers = dynamicCustomers.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredCustomers = dynamicCustomers.filter(c => c.name.trim().toLowerCase().includes(searchQuery.trim().toLowerCase()));
   
   const matchesSearch = (txn: Transaction) => {
     let matchesText = true;
