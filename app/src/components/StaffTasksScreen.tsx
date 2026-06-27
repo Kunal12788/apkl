@@ -1294,6 +1294,7 @@ export const StaffTasksScreen: React.FC = () => {
           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
           customer_id: task.customerId || 'CUST-COL',
           customer_name: task.customerName,
+          task_id: task.id,
           metal: isSilver ? 'Silver' : 'Gold',
           type: details.paymentMode || 'Cash',
           work_type: task.workType || 'Tunch',
@@ -1303,7 +1304,11 @@ export const StaffTasksScreen: React.FC = () => {
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           status: 'Paid',
           details: `Service Fee (${task.workType})`,
-          created_by: user?.id || ''
+          created_by: user?.id || '',
+          impure_weight: details.impureWeight || task.impureWeight || null,
+          pure_weight: details.pureWeight || task.pureWeight || null,
+          purity_percentage: details.purity || task.purity || null,
+          piece_type: task.productType || null
         };
         await supabase.from('transactions').insert([feeTxn]);
       }
