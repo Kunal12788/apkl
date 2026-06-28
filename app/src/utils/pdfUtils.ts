@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -32,10 +32,10 @@ export const generateCustomerPDFReport = async (customer: any, behavior: any) =>
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Name: ${customer.name}`, 14, 65);
-    doc.text(`ID: ${customer.id}`, 14, 72);
-    doc.text(`Phone: ${customer.phone || 'N/A'}`, 14, 79);
-    doc.text(`Address: ${customer.address || 'N/A'}`, 14, 86);
+    doc.text(`Name: ${customer?.name || 'Unknown'}`, 14, 65);
+    doc.text(`ID: ${customer?.id || 'Unknown'}`, 14, 72);
+    doc.text(`Phone: ${customer?.phone || 'N/A'}`, 14, 79);
+    doc.text(`Address: ${customer?.address || 'N/A'}`, 14, 86);
     
     // Account Summary
     doc.setFontSize(14);
@@ -44,8 +44,8 @@ export const generateCustomerPDFReport = async (customer: any, behavior: any) =>
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Active Jobs: ${customer.activeJobs}`, 120, 65);
-    doc.text(`Outstanding Dues: ${customer.outstanding}`, 120, 72);
+    doc.text(`Active Jobs: ${customer?.activeJobs || 0}`, 120, 65);
+    doc.text(`Outstanding Dues: ${customer?.outstanding || '0'}`, 120, 72);
     
     // Behavior Section
     doc.setFontSize(14);
@@ -54,25 +54,25 @@ export const generateCustomerPDFReport = async (customer: any, behavior: any) =>
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Rating: ${behavior.level} (${behavior.score}/100)`, 14, 115);
-    doc.text(`On-Time Rate: ${behavior.onTimeRate}%`, 14, 122);
-    doc.text(`Avg Delay: ${behavior.avgDaysToPay} days`, 14, 129);
-    doc.text(`Max Delay: ${behavior.maxDelay} days`, 14, 136);
+    doc.text(`Rating: ${behavior?.level || 'N/A'} (${behavior?.score || 0}/100)`, 14, 115);
+    doc.text(`On-Time Rate: ${behavior?.onTimeRate || 0}%`, 14, 122);
+    doc.text(`Avg Delay: ${behavior?.avgDaysToPay || 0} days`, 14, 129);
+    doc.text(`Max Delay: ${behavior?.maxDelay || 0} days`, 14, 136);
     
     // Transactions Table
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Transaction Ledger', 14, 155);
     
-    const tableData = customer.ledger.map((txn: any) => [
-      txn.date,
-      txn.workType,
-      txn.amount.replace(/[^0-9.]/g, ''), // Clean currency
-      txn.status,
-      txn.details ? txn.details.substring(0, 40) + '...' : 'N/A'
+    const tableData = (customer?.ledger || []).map((txn: any) => [
+      txn.date || '',
+      txn.workType || '',
+      String(txn.amount || '0').replace(/[^0-9.]/g, ''), // Clean currency
+      txn.status || '',
+      txn.details ? String(txn.details).substring(0, 40) + '...' : 'N/A'
     ]);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 160,
       head: [['Date', 'Type', 'Amount (INR)', 'Status', 'Details']],
       body: tableData,
