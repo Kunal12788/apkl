@@ -5,7 +5,9 @@ import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { computeCollectionStaffBillingTransactions, analyzeCustomerBehavior } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks } from '../utils/storageUtils';
+import { generateCustomerPDFReport } from '../utils/pdfUtils';
 import { NotificationBell } from './NotificationBell';
+import toast from 'react-hot-toast';
 
 type TabView = 'all' | 'customer';
 
@@ -830,9 +832,27 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           const behavior = analyzeCustomerBehavior(selectedCustomer.ledger, payments, policy);
           return (
             <div className="space-y-6 animate-fade-in">
-               <button onClick={() => setSearchParams({ tab: 'customer' })} className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
-               <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
-             </button>
+             <header className="flex justify-between items-start">
+               <button onClick={() => setSearchParams({ tab: 'customer' })} className="flex items-center gap-1.5 text-[10px] font-bold text-outline uppercase tracking-widest hover:text-primary transition-colors">
+                 <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
+               </button>
+               {user?.role === 'Super Admin' && (
+                 <button 
+                   onClick={async () => {
+                     const toastId = toast.loading('Generating PDF...');
+                     try {
+                       await generateCustomerPDFReport(selectedCustomer, behavior);
+                     } finally {
+                       toast.dismiss(toastId);
+                     }
+                   }} 
+                   className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors shadow-sm flex items-center gap-1.5"
+                 >
+                   <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                   Download PDF
+                 </button>
+               )}
+             </header>
               {/* Customer Header card */}
               <div className="luxury-card p-6 bg-white border border-outline-variant/15 relative overflow-hidden">
                 <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full -mr-10 -mt-10 blur-xl pointer-events-none"></div>

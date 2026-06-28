@@ -5,7 +5,9 @@ import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions, analyzeCustomerBehavior } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks, deleteStorageImagesByUrls } from '../utils/storageUtils';
+import { generateCustomerPDFReport } from '../utils/pdfUtils';
 import { NotificationBell } from './NotificationBell';
+import toast from 'react-hot-toast';
 
 type TabView = 'all' | 'customer';
 
@@ -1624,9 +1626,25 @@ export const StaffBillingScreen: React.FC = () => {
               </button>
               <div className="flex items-center gap-3">
                 {user?.role === 'Super Admin' && (
-                  <button onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.name)} className="px-4 py-2 bg-error/10 text-error border border-error/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-error/20 transition-colors shadow-sm">
-                    Delete Customer
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={async () => {
+                        const toastId = toast.loading('Generating PDF...');
+                        try {
+                          await generateCustomerPDFReport(selectedCustomer, behavior);
+                        } finally {
+                          toast.dismiss(toastId);
+                        }
+                      }} 
+                      className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+                      Download PDF
+                    </button>
+                    <button onClick={() => handleDeleteCustomer(selectedCustomer.id, selectedCustomer.name)} className="px-4 py-2 bg-error/10 text-error border border-error/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-error/20 transition-colors shadow-sm">
+                      Delete Customer
+                    </button>
+                  </div>
                 )}
                   <NotificationBell />
               </div>
