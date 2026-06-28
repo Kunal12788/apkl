@@ -116,7 +116,9 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           supabase.from('transactions').select('*'),
           supabase.from('tasks').select('*'),
           supabase.from('customers').select('*'),
-          supabase.from('stock_allocations').select('*')
+          supabase.from('stock_allocations').select('*'),
+          supabase.from('payments').select('*'),
+          supabase.from('app_settings').select('*')
         ];
 
         // Only fetch Super Admin specific logs/tables if the user is a Super Admin
@@ -134,8 +136,10 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
         const tasksRes = fetchResults[2];
         const customersRes = fetchResults[3];
         const allocationsRes = fetchResults[4];
-        const saLedgerRes = isSuperAdmin ? fetchResults[5] : null;
-        const transfersRes = isSuperAdmin ? fetchResults[6] : null;
+        const paymentsRes = fetchResults[5];
+        const appSettingsRes = fetchResults[6];
+        const saLedgerRes = isSuperAdmin ? fetchResults[7] : null;
+        const transfersRes = isSuperAdmin ? fetchResults[8] : null;
 
         // Warm up in-memory cache so all dashboard views render instantly with 100% data visible on mount
         if (ledgerRes.data) {
@@ -143,6 +147,8 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           setCachedData('ledger_entries_all', ledgerRes.data);
         }
         if (txRes.data) setCachedData('tx_data', txRes.data);
+        if (paymentsRes.data) setCachedData('payments_data', paymentsRes.data);
+        if (appSettingsRes.data) setCachedData('app_settings_all', appSettingsRes.data);
         if (tasksRes.data) setCachedData('tasks_data', tasksRes.data);
         if (customersRes.data) {
           setCachedData('db_customers', customersRes.data);

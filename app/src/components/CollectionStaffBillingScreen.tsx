@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
-import { computeCollectionStaffBillingTransactions } from '../utils/billingUtils';
+import { computeCollectionStaffBillingTransactions, analyzeCustomerBehavior } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks } from '../utils/storageUtils';
 import { NotificationBell } from './NotificationBell';
 
@@ -552,21 +552,26 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const cachedColStaffTx = getCachedData('colstaff_billing_tx', Infinity) || [];
   const [transactions, setTransactions] = useState<Transaction[]>(cachedColStaffTx);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
-
-
-
+  const [payments, setPayments] = useState<any[]>(getCachedData('payments_data', Infinity) || []);
+  const [policy, setPolicy] = useState<{ excellent: number; good: number; fine: number; poor: number }>(() => {
+    const cachedSettings = getCachedData('app_settings_all', Infinity);
+    const row = cachedSettings?.find((s: any) => s.key === 'customer_behavior_policy');
+    return row?.value || { excellent: 7, good: 14, fine: 30, poor: 60 };
+  });
 
   useEffect(() => {
     const loadBillingData = async () => {
       if (!isFullyAuthenticated) return;
       try {
-        const [usersRes, _branchUsersRes, txRes, tasksRes] = await Promise.all([
+        const [usersRes, _branchUsersRes, txRes, tasksRes, paymentsRes, settingsRes] = await Promise.all([
           supabase.from('users').select('id, name, role, branch_id'),
           user?.branch_id
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
             : Promise.resolve({ data: null, error: null }),
           supabase.from('transactions').select('*').order('created_at', { ascending: false }),
-          supabase.from('tasks').select('*').order('created_at', { ascending: false })
+          supabase.from('tasks').select('*').order('created_at', { ascending: false }),
+          supabase.from('payments').select('*').order('created_at', { ascending: false }),
+          supabase.from('app_settings').select('*')
         ]);
 
         const allUsers = usersRes.data;
@@ -577,6 +582,19 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           });
           setUsersMap(uMap);
           setCachedData('users_map', uMap);
+        }
+
+        if (paymentsRes.data) {
+          setPayments(paymentsRes.data);
+          setCachedData('payments_data', paymentsRes.data);
+        }
+
+        if (settingsRes.data) {
+          setCachedData('app_settings_all', settingsRes.data);
+          const row = settingsRes.data.find((s: any) => s.key === 'customer_behavior_policy');
+          if (row?.value) {
+            setPolicy(row.value);
+          }
         }
 
         let branchUserIds: string[] = [];
@@ -808,9 +826,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           </div>
         )}
 
-        {selectedCustomer ? (
-          <div className="space-y-6 animate-fade-in">
-             <button onClick={() => setSearchParams({ tab: 'customer' })} className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
+        {selectedCustomer ? (() => {
+          const behavior = analyzeCustomerBehavior(selectedCustomer.ledger, payments, policy);
+          return (
+            <div className="space-y-6 animate-fade-in">
+               <button onClick={() => setSearchParams({ tab: 'customer' })} className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
              </button>
               {/* Customer Header card */}
@@ -884,6 +904,98 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Payment Behavior Profile */}
+              <div className="luxury-card p-5 bg-white border border-outline-variant/10 space-y-4 relative overflow-hidden">
+                <div className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]">insights</span>
+                    <h3 className="font-headline font-bold text-primary text-[14px]">Payment Behavior Profile</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-bold text-outline uppercase tracking-wider bg-surface-container/50 px-2.5 py-1 rounded-full border border-outline-variant/5">
+                      Active Policy: Excellent &le; {policy.excellent}d
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
+                  {/* Score & Level Badge */}
+                  <div className="space-y-1.5 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`material-symbols-outlined font-black text-lg ${
+                        behavior.level === 'Excellent' ? 'text-emerald-500' :
+                        behavior.level === 'Good' ? 'text-teal-500' :
+                        behavior.level === 'Fine' ? 'text-amber-500' :
+                        behavior.level === 'Poor' ? 'text-orange-500' : 'text-red-600'
+                      }`}>{
+                        behavior.level === 'Excellent' ? 'verified' :
+                        behavior.level === 'Good' ? 'recommend' :
+                        behavior.level === 'Fine' ? 'info' :
+                        behavior.level === 'Poor' ? 'warning' : 'dangerous'
+                      }</span>
+                      <span className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                        behavior.level === 'Excellent' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                        behavior.level === 'Good' ? 'bg-teal-50 text-teal-600 border border-teal-200' :
+                        behavior.level === 'Fine' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                        behavior.level === 'Poor' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                        'bg-red-50 text-red-600 border border-red-200'
+                      }`}>
+                        {behavior.level} Rating
+                      </span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-2xl font-black text-primary leading-none">{behavior.score}</p>
+                      <p className="text-xs font-bold text-outline">/ 100</p>
+                    </div>
+                  </div>
+
+                  {/* Score progress bar */}
+                  <div className="flex-1 w-full space-y-1">
+                    <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-outline">
+                      <span>Performance Score</span>
+                      <span>{behavior.score >= 90 ? 'Excellent credit' : behavior.score >= 75 ? 'Good standing' : behavior.score >= 55 ? 'Satisfactory' : behavior.score >= 30 ? 'High Risk' : 'Disabled Credit'}</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-outline-variant/10 shadow-inner">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-1000 ${
+                          behavior.level === 'Excellent' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                          behavior.level === 'Good' ? 'bg-gradient-to-r from-teal-500 to-teal-400' :
+                          behavior.level === 'Fine' ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
+                          behavior.level === 'Poor' ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                          'bg-gradient-to-r from-red-600 to-red-500'
+                        }`}
+                        style={{ width: `${behavior.score}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Behavior Description text */}
+                <p className="text-[11px] leading-relaxed text-outline/90 bg-surface-container/30 px-3.5 py-2.5 rounded-xl border border-outline-variant/10">
+                  {behavior.level === 'Excellent' && "Consistently clears outstanding dues well within policy limits or resolves payments immediately. Highly reliable credit behavior."}
+                  {behavior.level === 'Good' && "Clears dues promptly with minor delays. Good payment discipline with low risk."}
+                  {behavior.level === 'Fine' && "Resolves dues within moderate clearance limits. Satisfactory standing but requires regular follow-ups."}
+                  {behavior.level === 'Poor' && "Frequently delays dues settlement beyond the policy limits. High-risk client, caution advised on further credit."}
+                  {behavior.level === 'Impossible' && "Dues highly overdue for extended periods. Critical clearance defaults. Credit option should be suspended."}
+                </p>
+
+                {/* Key Metrics Grid */}
+                <div className="grid grid-cols-3 gap-2.5 text-center">
+                  <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider">On-Time Rate</p>
+                    <p className={`font-headline text-sm font-extrabold ${behavior.onTimeRate >= 80 ? 'text-emerald-600' : behavior.onTimeRate >= 60 ? 'text-amber-600' : 'text-error'}`}>{behavior.onTimeRate}%</p>
+                  </div>
+                  <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Avg Dues Age</p>
+                    <p className="font-headline text-sm font-extrabold text-primary">{behavior.avgDaysToPay}d</p>
+                  </div>
+                  <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Max Delay</p>
+                    <p className={`font-headline text-sm font-extrabold ${behavior.maxDelay <= policy.excellent ? 'text-primary' : behavior.maxDelay <= policy.good ? 'text-amber-600' : 'text-error'}`}>{behavior.maxDelay}d</p>
+                  </div>
+                </div>
               </div>
 
               {/* Dues Status Banner */}
@@ -995,8 +1107,10 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                   });
                 })()}
               </div>
-          </div>
-        ) : activeTab === 'all' ? (
+            </div>
+          );
+        })()
+       : activeTab === 'all' ? (
           <div className="space-y-4 animate-fade-in">
             <SearchAndFilterSection 
               placeholder="Search by weight, purity, ID..." 

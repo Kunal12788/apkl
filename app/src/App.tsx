@@ -326,6 +326,14 @@ function AppContent() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, (payload: any) => {
+         clearAllDataCaches();
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'payments', payload } }));
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'app_settings' }, (payload: any) => {
+         clearAllDataCaches();
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'app_settings', payload } }));
+      })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
          const newMsg = payload.new;
          if (newMsg && newMsg.receiver_id === user.id && !newMsg.is_read) {

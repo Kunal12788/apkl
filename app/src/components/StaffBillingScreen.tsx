@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
-import { computeStaffBillingTransactions } from '../utils/billingUtils';
+import { computeStaffBillingTransactions, analyzeCustomerBehavior } from '../utils/billingUtils';
 import { deleteStorageImagesForTasks, deleteStorageImagesByUrls } from '../utils/storageUtils';
 import { NotificationBell } from './NotificationBell';
 
@@ -978,6 +978,14 @@ export const StaffBillingScreen: React.FC = () => {
   const [branches, setBranches] = useState<any[]>(
     getCachedData('branches_list', Infinity) || []
   );
+  const [payments, setPayments] = useState<any[]>(getCachedData('payments_data', Infinity) || []);
+  const [policy, setPolicy] = useState<{ excellent: number; good: number; fine: number; poor: number }>(() => {
+    const cachedSettings = getCachedData('app_settings_all', Infinity);
+    const row = cachedSettings?.find((s: any) => s.key === 'customer_behavior_policy');
+    return row?.value || { excellent: 7, good: 14, fine: 30, poor: 60 };
+  });
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [savingPolicy, setSavingPolicy] = useState(false);
 
   React.useEffect(() => {
     const loadBillingData = async () => {
@@ -985,14 +993,16 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
-        const [usersRes, _branchUsersRes, txRes, tasksRes, branchesRes] = await Promise.all([
+        const [usersRes, _branchUsersRes, txRes, tasksRes, branchesRes, paymentsRes, settingsRes] = await Promise.all([
           supabase.from('users').select('id, name, role, branch_id'),
           (!isSuperSa && user?.branch_id)
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
             : Promise.resolve({ data: null, error: null }),
           supabase.from('transactions').select('*').order('created_at', { ascending: false }),
           supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false }),
-          supabase.from('branches').select('*')
+          supabase.from('branches').select('*'),
+          supabase.from('payments').select('*').order('created_at', { ascending: false }),
+          supabase.from('app_settings').select('*')
         ]);
 
         const allUsers = usersRes.data;
@@ -1009,6 +1019,19 @@ export const StaffBillingScreen: React.FC = () => {
         if (allBranches) {
           setBranches(allBranches);
           setCachedData('branches_list', allBranches);
+        }
+
+        if (paymentsRes.data) {
+          setPayments(paymentsRes.data);
+          setCachedData('payments_data', paymentsRes.data);
+        }
+
+        if (settingsRes.data) {
+          setCachedData('app_settings_all', settingsRes.data);
+          const row = settingsRes.data.find((s: any) => s.key === 'customer_behavior_policy');
+          if (row?.value) {
+            setPolicy(row.value);
+          }
         }
 
         let branchUserIds: string[] = [];
@@ -1534,8 +1557,10 @@ export const StaffBillingScreen: React.FC = () => {
         )}
 
         {/* View: Particular Customer Detail */}
-        {selectedCustomer && (
-          <div className="animate-fade-in space-y-6">
+        {selectedCustomer && (() => {
+          const behavior = analyzeCustomerBehavior(selectedCustomer.ledger, payments, policy);
+          return (
+            <div className="animate-fade-in space-y-6">
             <header className="flex justify-between items-start">
               <button onClick={() => { setSearchQuery(''); setStartDate(''); setEndDate(''); navigate(-1); }} className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-outline hover:text-primary transition-colors">
                 <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Directory
@@ -1621,6 +1646,108 @@ export const StaffBillingScreen: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Payment Behavior Profile */}
+            <div className="luxury-card p-5 bg-white border border-outline-variant/10 space-y-4 relative overflow-hidden">
+              <div className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[20px]">insights</span>
+                  <h3 className="font-headline font-bold text-primary text-[14px]">Payment Behavior Profile</h3>
+                </div>
+                <div className="flex items-center gap-2">
+                  {user?.role === 'Super Admin' ? (
+                    <button 
+                      onClick={() => setShowPolicyModal(true)} 
+                      className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[10px]">settings</span>
+                      Configure Policy
+                    </button>
+                  ) : (
+                    <span className="text-[9px] font-bold text-outline uppercase tracking-wider bg-surface-container/50 px-2.5 py-1 rounded-full border border-outline-variant/5">
+                      Active Policy: Excellent &le; {policy.excellent}d
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center justify-between">
+                {/* Score & Level Badge */}
+                <div className="space-y-1.5 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`material-symbols-outlined font-black text-lg ${
+                      behavior.level === 'Excellent' ? 'text-emerald-500' :
+                      behavior.level === 'Good' ? 'text-teal-500' :
+                      behavior.level === 'Fine' ? 'text-amber-500' :
+                      behavior.level === 'Poor' ? 'text-orange-500' : 'text-red-600'
+                    }`}>{
+                      behavior.level === 'Excellent' ? 'verified' :
+                      behavior.level === 'Good' ? 'recommend' :
+                      behavior.level === 'Fine' ? 'info' :
+                      behavior.level === 'Poor' ? 'warning' : 'dangerous'
+                    }</span>
+                    <span className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
+                      behavior.level === 'Excellent' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                      behavior.level === 'Good' ? 'bg-teal-50 text-teal-600 border border-teal-200' :
+                      behavior.level === 'Fine' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                      behavior.level === 'Poor' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                      'bg-red-50 text-red-600 border border-red-200'
+                    }`}>
+                      {behavior.level} Rating
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <p className="text-2xl font-black text-primary leading-none">{behavior.score}</p>
+                    <p className="text-xs font-bold text-outline">/ 100</p>
+                  </div>
+                </div>
+
+                {/* Score progress bar */}
+                <div className="flex-1 w-full space-y-1">
+                  <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-outline">
+                    <span>Performance Score</span>
+                    <span>{behavior.score >= 90 ? 'Excellent credit' : behavior.score >= 75 ? 'Good standing' : behavior.score >= 55 ? 'Satisfactory' : behavior.score >= 30 ? 'High Risk' : 'Disabled Credit'}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-outline-variant/10 shadow-inner">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        behavior.level === 'Excellent' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' :
+                        behavior.level === 'Good' ? 'bg-gradient-to-r from-teal-500 to-teal-400' :
+                        behavior.level === 'Fine' ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
+                        behavior.level === 'Poor' ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                        'bg-gradient-to-r from-red-600 to-red-500'
+                      }`}
+                      style={{ width: `${behavior.score}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Behavior Description text */}
+              <p className="text-[11px] leading-relaxed text-outline/90 bg-surface-container/30 px-3.5 py-2.5 rounded-xl border border-outline-variant/10">
+                {behavior.level === 'Excellent' && "Consistently clears outstanding dues well within policy limits or resolves payments immediately. Highly reliable credit behavior."}
+                {behavior.level === 'Good' && "Clears dues promptly with minor delays. Good payment discipline with low risk."}
+                {behavior.level === 'Fine' && "Resolves dues within moderate clearance limits. Satisfactory standing but requires regular follow-ups."}
+                {behavior.level === 'Poor' && "Frequently delays dues settlement beyond the policy limits. High-risk client, caution advised on further credit."}
+                {behavior.level === 'Impossible' && "Dues highly overdue for extended periods. Critical clearance defaults. Credit option should be suspended."}
+              </p>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-3 gap-2.5 text-center">
+                <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-wider">On-Time Rate</p>
+                  <p className={`font-headline text-sm font-extrabold ${behavior.onTimeRate >= 80 ? 'text-emerald-600' : behavior.onTimeRate >= 60 ? 'text-amber-600' : 'text-error'}`}>{behavior.onTimeRate}%</p>
+                </div>
+                <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Avg Dues Age</p>
+                  <p className="font-headline text-sm font-extrabold text-primary">{behavior.avgDaysToPay}d</p>
+                </div>
+                <div className="bg-surface-container/30 p-2.5 rounded-xl border border-outline-variant/10 space-y-0.5">
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-wider">Max Delay</p>
+                  <p className={`font-headline text-sm font-extrabold ${behavior.maxDelay <= policy.excellent ? 'text-primary' : behavior.maxDelay <= policy.good ? 'text-amber-600' : 'text-error'}`}>{behavior.maxDelay}d</p>
+                </div>
+              </div>
             </div>
 
             {/* Dues Status Banner */}
@@ -1724,7 +1851,8 @@ export const StaffBillingScreen: React.FC = () => {
               })()}
             </div>
           </div>
-        )}
+        );
+      })()}
       </main>
 
       <BillingDetailsModal 
@@ -1753,6 +1881,112 @@ export const StaffBillingScreen: React.FC = () => {
             // Success
           }}
         />
+      )}
+
+      {/* Super Admin Policy Limits Modal */}
+      {showPolicyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in px-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-outline-variant/20 shadow-2xl relative animate-scale-up space-y-6">
+            <header className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
+              <div>
+                <h3 className="font-headline font-bold text-primary text-base">Clearance Policy Settings</h3>
+                <p className="text-[10px] text-outline font-semibold">Configure customer credit evaluation levels</p>
+              </div>
+              <button 
+                onClick={() => setShowPolicyModal(false)} 
+                className="w-8 h-8 rounded-full bg-surface-container/50 flex items-center justify-center text-outline hover:bg-surface-container hover:text-primary transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </header>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const form = e.currentTarget;
+              const newPolicy = {
+                excellent: parseInt((form.elements.namedItem('excellent') as HTMLInputElement).value) || 7,
+                good: parseInt((form.elements.namedItem('good') as HTMLInputElement).value) || 14,
+                fine: parseInt((form.elements.namedItem('fine') as HTMLInputElement).value) || 30,
+                poor: parseInt((form.elements.namedItem('poor') as HTMLInputElement).value) || 60
+              };
+              
+              if (newPolicy.excellent >= newPolicy.good || newPolicy.good >= newPolicy.fine || newPolicy.fine >= newPolicy.poor) {
+                alert("Clearance limits must be in increasing order (Excellent < Good < Fine < Poor).");
+                return;
+              }
+              
+              setSavingPolicy(true);
+              try {
+                const { error } = await supabase
+                  .from('app_settings')
+                  .upsert({ key: 'customer_behavior_policy', value: newPolicy, updated_at: new Date().toISOString() });
+                if (error) throw error;
+                setPolicy(newPolicy);
+                setShowPolicyModal(false);
+                alert("Scoring policy limits updated successfully!");
+              } catch (err: any) {
+                console.error(err);
+                alert(`Failed to save policy: ${err.message || err}`);
+              } finally {
+                setSavingPolicy(false);
+              }
+            }} className="space-y-4 text-left">
+              {[
+                { name: 'excellent', label: 'Excellent Clearance (Days)', defaultVal: policy.excellent },
+                { name: 'good', label: 'Good Clearance (Days)', defaultVal: policy.good },
+                { name: 'fine', label: 'Fine Clearance (Days)', defaultVal: policy.fine },
+                { name: 'poor', label: 'Poor Clearance (Days)', defaultVal: policy.poor }
+              ].map((field) => {
+                const [val, setVal] = React.useState(field.defaultVal);
+                return (
+                  <div key={field.name} className="space-y-1.5">
+                    <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{field.label}</label>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button" 
+                        onClick={() => setVal(Math.max(1, val - 1))}
+                        className="w-10 h-10 rounded-xl bg-surface-container border border-outline-variant/30 font-bold text-primary hover:bg-surface-bright active:scale-95 transition-all text-sm"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="number" 
+                        name={field.name}
+                        value={val}
+                        onChange={e => setVal(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="flex-1 w-full bg-white border border-outline-variant/30 rounded-xl py-2.5 text-center font-extrabold text-sm text-primary focus:outline-none focus:border-primary transition-all"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setVal(val + 1)}
+                        className="w-10 h-10 rounded-xl bg-surface-container border border-outline-variant/30 font-bold text-primary hover:bg-surface-bright active:scale-95 transition-all text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              <div className="pt-4 flex gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowPolicyModal(false)}
+                  className="flex-1 py-3 bg-surface-container text-outline border border-outline-variant/30 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-surface transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={savingPolicy}
+                  className="flex-1 py-3 bg-primary text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-primary-dark transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {savingPolicy ? 'Saving...' : 'Save Settings'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Bottom Nav Bar */}

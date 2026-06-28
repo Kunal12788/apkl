@@ -217,3 +217,151 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
   });
   return merged;
 };
+
+export interface BehaviorAnalysis {
+  score: number;
+  level: 'Excellent' | 'Good' | 'Fine' | 'Poor' | 'Impossible';
+  onTimeRate: number;
+  avgDaysToPay: number;
+  maxDelay: number;
+  totalDuesCount: number;
+  lateDuesCount: number;
+  overdueDuesCount: number;
+}
+
+export const analyzeCustomerBehavior = (
+  ledger: any[],
+  payments: any[],
+  policy: { excellent: number; good: number; fine: number; poor: number } = { excellent: 7, good: 14, fine: 30, poor: 60 }
+): BehaviorAnalysis => {
+  // Filter out payment receipts or zero-amount items
+  const billingItems = ledger.filter(
+    (t: any) => t.workType !== 'Dues Payment' && t.status !== 'Awaiting Staff' && t.status !== 'Awaiting Collection Staff'
+  );
+
+  if (billingItems.length === 0) {
+    return {
+      score: 100,
+      level: 'Excellent',
+      onTimeRate: 100,
+      avgDaysToPay: 0,
+      maxDelay: 0,
+      totalDuesCount: 0,
+      lateDuesCount: 0,
+      overdueDuesCount: 0
+    };
+  }
+
+  let totalDuesCount = 0;
+  let onTimeDuesCount = 0;
+  let lateDuesCount = 0;
+  let overdueDuesCount = 0;
+  
+  let totalDaysToPay = 0;
+  let resolvedDuesCount = 0;
+  let maxDelay = 0;
+  
+  let scoreDeduction = 0;
+  const now = new Date();
+
+  billingItems.forEach((item: any) => {
+    const createdDate = item.createdAt ? new Date(item.createdAt) : (item.isoDate ? new Date(item.isoDate) : now);
+    const amtStr = typeof item.amount === 'string' ? item.amount.replace(/[^\d.]/g, '') : item.amount;
+    const amt = parseFloat(amtStr) || 0;
+    
+    if (amt <= 0) return;
+
+    totalDuesCount++;
+
+    const isFullyPaid = item.status === 'Fully Paid';
+    
+    if (isFullyPaid) {
+      // Find payments that cleared this item
+      const matchingPayments = payments.filter((p: any) => {
+        try {
+          const allocs = typeof p.allocations === 'string' ? JSON.parse(p.allocations) : p.allocations;
+          return Array.isArray(allocs) && allocs.some((a: any) => a.id === item.id);
+        } catch {
+          return false;
+        }
+      });
+
+      if (matchingPayments.length === 0) {
+        // Paid immediately
+        onTimeDuesCount++;
+        resolvedDuesCount++;
+      } else {
+        // Find latest payment date
+        let latestPaymentDate = createdDate;
+        matchingPayments.forEach((p: any) => {
+          const pDate = new Date(p.created_at);
+          if (pDate > latestPaymentDate) {
+            latestPaymentDate = pDate;
+          }
+        });
+
+        const diffTime = Math.max(0, latestPaymentDate.getTime() - createdDate.getTime());
+        const days = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        totalDaysToPay += days;
+        resolvedDuesCount++;
+
+        if (days <= policy.excellent) {
+          onTimeDuesCount++;
+        } else {
+          lateDuesCount++;
+          const delay = days - policy.excellent;
+          if (delay > maxDelay) maxDelay = delay;
+          
+          // Deduct based on limits
+          if (days <= policy.good) scoreDeduction += 5;
+          else if (days <= policy.fine) scoreDeduction += 12;
+          else if (days <= policy.poor) scoreDeduction += 25;
+          else scoreDeduction += 40;
+        }
+      }
+    } else {
+      // Unpaid / Partially Paid
+      const diffTime = Math.max(0, now.getTime() - createdDate.getTime());
+      const days = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (days <= policy.excellent) {
+        onTimeDuesCount++;
+      } else {
+        overdueDuesCount++;
+        const delay = days - policy.excellent;
+        if (delay > maxDelay) maxDelay = delay;
+
+        // Deduct based on overdue limits (higher penalty for current unpaid dues)
+        if (days <= policy.good) scoreDeduction += 8;
+        else if (days <= policy.fine) scoreDeduction += 20;
+        else if (days <= policy.poor) scoreDeduction += 35;
+        else scoreDeduction += 50;
+      }
+    }
+  });
+
+  const score = Math.max(0, Math.round(100 - scoreDeduction));
+  
+  let level: 'Excellent' | 'Good' | 'Fine' | 'Poor' | 'Impossible' = 'Excellent';
+  if (score >= 90) level = 'Excellent';
+  else if (score >= 75) level = 'Good';
+  else if (score >= 55) level = 'Fine';
+  else if (score >= 30) level = 'Poor';
+  else level = 'Impossible';
+
+  const onTimeRate = totalDuesCount > 0 ? Math.round((onTimeDuesCount / totalDuesCount) * 100) : 100;
+  const avgDaysToPay = resolvedDuesCount > 0 ? Math.round((totalDaysToPay / resolvedDuesCount) * 10) / 10 : 0;
+
+  return {
+    score,
+    level,
+    onTimeRate,
+    avgDaysToPay,
+    maxDelay,
+    totalDuesCount,
+    lateDuesCount,
+    overdueDuesCount
+  };
+};
+
