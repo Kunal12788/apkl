@@ -20,7 +20,7 @@ interface Transaction {
   customerPhone?: string;
   customerAddress?: string;
   type: 'UPI' | 'Cash' | 'Service Fee';
-  workType: 'Tunch' | 'Marking' | 'Shouldering' | 'Buy' | 'Sell';
+  workType: 'Tunch' | 'Marking' | 'Shouldering' | 'Buy' | 'Sell' | 'Dues Payment';
   amount: string;
   date: string;
   isoDate: string;
@@ -83,6 +83,7 @@ const getWorkIcon = (workType: string) => {
     case 'Shouldering': return 'precision_manufacturing';
     case 'Buy': return 'shopping_cart';
     case 'Sell': return 'sell';
+    case 'Dues Payment': return 'payments';
     default: return 'work';
   }
 };
@@ -94,6 +95,7 @@ const getWorkColor = (workType: string) => {
     case 'Shouldering': return 'text-primary bg-primary-fixed/30';
     case 'Buy': return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
     case 'Sell': return 'text-amber-600 bg-amber-500/10 border border-amber-500/20';
+    case 'Dues Payment': return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
     default: return 'text-outline bg-surface-container';
   }
 };
@@ -205,6 +207,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   const [isPaying, setIsPaying] = useState(false);
 
   if (!isOpen || !txn) return null;
+
+  const isDuesPayment = txn.workType === 'Dues Payment';
 
   const creator = txn.createdBy ? usersMap[txn.createdBy] : null;
   const broughtByText = (() => {
@@ -338,60 +342,94 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             </div>
           </div>
 
-          {/* Section 2: Work Specifications */}
-          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2">
-            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">Work Details</p>
-            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-              <div>
-                <span className={lbl}>Work Type</span>
-                <p className={`${val} uppercase text-secondary`}>{txn.workType}</p>
+          {/* Section 2: Work Specifications or Payment Details */}
+          <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2 text-left">
+            <p className="text-[8px] font-black uppercase tracking-[0.15em] text-primary mb-1">
+              {isDuesPayment ? 'Payment Details' : 'Work Details'}
+            </p>
+            {isDuesPayment ? (
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-outline font-semibold">Payment Category:</span>
+                  <span className="font-bold text-secondary">Dues Settlement</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-outline font-semibold">Payment Method:</span>
+                  <span className="font-bold text-secondary">{txn.type}</span>
+                </div>
+                <div className="border-t border-outline-variant/10 pt-2 mt-2">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1 block">Allocation Breakdown</span>
+                  <p className="text-xs font-semibold text-primary leading-relaxed whitespace-pre-line">{txn.details}</p>
+                </div>
               </div>
-              {txn.pieceType && (
+            ) : (
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
                 <div>
-                  <span className={lbl}>Piece Type</span>
-                  <p className={val}>{txn.pieceType}</p>
+                  <span className={lbl}>Work Type</span>
+                  <p className={`${val} uppercase text-secondary`}>{txn.workType}</p>
                 </div>
-              )}
-              {txn.purityPercentage && (
-                <div>
-                  <span className={lbl}>Purity</span>
-                  <p className={val}>{txn.purityPercentage}</p>
-                </div>
-              )}
-              {txn.impureWeight && txn.workType !== 'Shouldering' && (
-                <div>
-                  <span className={lbl}>
-                    {txn.workType === 'Marking' ? 'Weight' : 'Impure Weight'}
-                  </span>
-                  <p className={val}>{txn.impureWeight}g</p>
-                </div>
-              )}
-              {txn.pureWeight && (
-                <div>
-                  <span className={lbl}>Pure Weight</span>
-                  <p className={val}>{txn.pureWeight}g</p>
-                </div>
-              )}
-              {txn.caratMarking && txn.workType !== 'Tunch' && txn.workType !== 'Shouldering' && (
-                <div>
-                  <span className={lbl}>Carat Marking</span>
-                  <p className={val}>{txn.caratMarking}</p>
-                </div>
-              )}
-              {txn.pointsCount !== undefined && txn.pointsCount !== null && txn.workType !== 'Tunch' && txn.workType !== 'Marking' && (
-                <div className="col-span-2">
-                  <span className={lbl}>Solder Points</span>
-                  <p className={val}>{txn.pointsCount} ({txn.pointsType || 'Gold'})</p>
-                </div>
-              )}
-            </div>
+                {txn.pieceType && (
+                  <div>
+                    <span className={lbl}>Piece Type</span>
+                    <p className={val}>{txn.pieceType}</p>
+                  </div>
+                )}
+                {txn.purityPercentage && (
+                  <div>
+                    <span className={lbl}>Purity</span>
+                    <p className={val}>{txn.purityPercentage}</p>
+                  </div>
+                )}
+                {txn.impureWeight && txn.workType !== 'Shouldering' && (
+                  <div>
+                    <span className={lbl}>
+                      {txn.workType === 'Marking' ? 'Weight' : 'Impure Weight'}
+                    </span>
+                    <p className={val}>{txn.impureWeight}g</p>
+                  </div>
+                )}
+                {txn.pureWeight && (
+                  <div>
+                    <span className={lbl}>Pure Weight</span>
+                    <p className={val}>{txn.pureWeight}g</p>
+                  </div>
+                )}
+                {txn.caratMarking && txn.workType !== 'Tunch' && txn.workType !== 'Shouldering' && (
+                  <div>
+                    <span className={lbl}>Carat Marking</span>
+                    <p className={val}>{txn.caratMarking}</p>
+                  </div>
+                )}
+                {txn.pointsCount !== undefined && txn.pointsCount !== null && txn.workType !== 'Tunch' && txn.workType !== 'Marking' && (
+                  <div className="col-span-2">
+                    <span className={lbl}>Solder Points</span>
+                    <p className={val}>{txn.pointsCount} ({txn.pointsType || 'Gold'})</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Section 3: Settlement Summary Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
              <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
              
-             {txn.paidAmount && txn.paidAmount > 0 && (parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) > txn.paidAmount ? (
+             {isDuesPayment ? (
+               <div className="flex justify-between items-center relative z-10 text-left">
+                 <div>
+                   <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount Received</p>
+                   <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
+                     ₹ {Number(txn.amount.replace(/[^\d.]/g, '')).toLocaleString('en-IN')}
+                   </p>
+                 </div>
+                 <div className="text-right">
+                   <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>Dues Payment</p>
+                   <p className="text-[10px] mt-0.5 font-medium text-emerald-400">
+                     Settled & Cleared
+                   </p>
+                 </div>
+               </div>
+             ) : txn.paidAmount && txn.paidAmount > 0 && (parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) > txn.paidAmount ? (
                <div className="relative z-10 space-y-2 text-left">
                  <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
                    <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Settlement Type</p>
@@ -685,6 +723,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
       
       cust.ledger.push(t);
+      if (t.workType === 'Dues Payment') return;
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       const paidAmtNum = t.paidAmount || 0;
       if (t.status === 'Unpaid') {
@@ -901,16 +940,18 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                     );
                   }
 
-                  return filteredLedger.map(txn => (
-                    <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
-                      <div className={`absolute left-0 top-0 bottom-0 w-1 ${txn.status === 'Unpaid' ? 'bg-error' : 'bg-tertiary'}`}></div>
+                  return filteredLedger.map(txn => {
+                    const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid';
+                    return (
+                      <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
+                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPending ? 'bg-error' : 'bg-tertiary'}`}></div>
                       <div className="flex justify-between items-start pl-2">
                         <div className="flex items-center gap-3">
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getWorkColor(txn.workType)}`}>
                             <span className="material-symbols-outlined text-xl">{getWorkIcon(txn.workType)}</span>
                           </div>
                           <div>
-                            <p className="font-headline font-bold text-sm text-primary">{txn.workType} Assignment</p>
+                            <p className="font-headline font-bold text-sm text-primary">{txn.workType === 'Dues Payment' ? 'Dues Payment' : `${txn.workType} Assignment`}</p>
                             <p className="text-[9px] text-outline font-medium tracking-wide uppercase">{txn.id} • {txn.date}</p>
                           </div>
                         </div>
@@ -950,7 +991,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  ));
+                  );
+                  });
                 })()}
               </div>
           </div>
@@ -969,7 +1011,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             
             <div className="space-y-3">
               {filteredTransactions.map((txn) => {
-                const isPending = txn.status === 'Unpaid';
+                const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid';
                 
                 return (
                   <div key={txn.id} onClick={() => setSelectedTxn(txn)} className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-0.5 border ${isPending ? 'border-error/20 bg-error/5' : 'border-[#003366]/5 bg-white'}`}>
