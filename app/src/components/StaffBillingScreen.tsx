@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
@@ -44,6 +44,8 @@ interface Transaction {
   created_by?: string;
   cashRatePerGram?: string;
   cashAmount?: string;
+  paidAmount?: number;
+  createdAt?: string;
 }
 
 interface DbCustomer {
@@ -370,20 +372,44 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
           {/* Section 3: Settlement Summary Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
-            <div className="flex justify-between items-center relative z-10">
-              <div>
-                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
-                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
-                  {txn.amount}
-                </p>
+            
+            {txn.paidAmount && txn.paidAmount > 0 && (parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) > txn.paidAmount ? (
+              <div className="relative z-10 space-y-2 text-left">
+                <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
+                  <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Settlement Type</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Charge:</span>
+                  <span className="font-bold">{txn.amount}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Paid Amount:</span>
+                  <span className="font-bold text-emerald-400">₹{txn.paidAmount.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-white/10 pt-1.5">
+                  <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Remaining Due:</span>
+                  <span className="font-headline font-black text-sm text-error">
+                    ₹{((parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) - txn.paidAmount).toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
-                <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                  {txn.status === 'Paid' ? 'Paid & Cleared' : 'Payment Due'}
-                </p>
+            ) : (
+              <div className="flex justify-between items-center relative z-10 text-left">
+                <div>
+                  <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
+                  <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
+                    {txn.amount}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                  <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                    {txn.status === 'Paid' || txn.status === 'Fully Paid' ? 'Paid & Cleared' : 'Payment Due'}
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {txn.isCashExchange && (
@@ -506,6 +532,318 @@ const AddCustomerModal: React.FC<AddCustomerModalProps> = ({ isOpen, onClose, on
   );
 };
 
+interface RecordPaymentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  customer: Customer;
+  userId: string;
+  onSuccess: () => void;
+}
+
+const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ isOpen, onClose, customer, userId, onSuccess }) => {
+  const [amountReceived, setAmountReceived] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash'>('UPI');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Filter ledger for items with outstanding dues
+  const unpaidItems = useMemo(() => {
+    return customer.ledger.filter(txn => txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Awaiting Staff' || txn.status === 'Awaiting Collection Staff');
+  }, [customer.ledger]);
+
+  // Track allocation inputs
+  const [allocations, setAllocations] = useState<Record<string, string>>({});
+
+  // Reset or pre-fill allocations on open
+  useEffect(() => {
+    if (isOpen) {
+      setAmountReceived('');
+      setAllocations({});
+    }
+  }, [isOpen]);
+
+  // FIFO Auto-Allocation logic
+  const handleAmountReceivedChange = (val: string) => {
+    setAmountReceived(val);
+    const amount = parseFloat(val) || 0;
+    if (amount <= 0) {
+      setAllocations({});
+      return;
+    }
+
+    let remaining = amount;
+    const newAllocations: Record<string, string> = {};
+
+    // Sort unpaid items by date (oldest first)
+    const sorted = [...unpaidItems].sort((a, b) => {
+      const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return timeA - timeB; // Oldest first
+    });
+
+    sorted.forEach(item => {
+      const totalAmt = parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0;
+      const paidAmt = item.paidAmount || 0;
+      const due = Math.max(0, totalAmt - paidAmt);
+
+      if (remaining > 0 && due > 0) {
+        const alloc = Math.min(remaining, due);
+        newAllocations[item.id] = alloc.toString();
+        remaining -= alloc;
+      } else {
+        newAllocations[item.id] = '0';
+      }
+    });
+
+    setAllocations(newAllocations);
+  };
+
+  if (!isOpen) return null;
+
+  const totalAllocated = Object.values(allocations).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  const totalAmtRecv = parseFloat(amountReceived) || 0;
+  const isOutOfSync = Math.abs(totalAllocated - totalAmtRecv) > 0.01;
+
+  const handleManualAllocChange = (itemId: string, val: string) => {
+    setAllocations(prev => ({
+      ...prev,
+      [itemId]: val
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (totalAmtRecv <= 0) return alert('Please enter a valid amount received.');
+    if (isOutOfSync) {
+      if (!window.confirm(`Warning: The sum of allocations (₹${totalAllocated}) does not match the Total Amount Received (₹${totalAmtRecv}). Do you want to adjust the Total Amount Received to ₹${totalAllocated} and proceed?`)) {
+        return;
+      }
+    }
+
+    const finalAmount = isOutOfSync ? totalAllocated : totalAmtRecv;
+    setIsSubmitting(true);
+
+    try {
+      const paymentId = `PAY-${Math.floor(1000 + Math.random() * 9000)}`;
+      const allocationArray = Object.entries(allocations)
+        .map(([id, amt]) => ({ id, amount: parseFloat(amt) || 0 }))
+        .filter(alloc => alloc.amount > 0);
+
+      // 1. Insert Payment record
+      const newPayment = {
+        id: paymentId,
+        customer_id: customer.id,
+        customer_name: customer.name,
+        amount: finalAmount,
+        payment_method: paymentMethod,
+        recorded_by: userId,
+        allocations: allocationArray
+      };
+
+      const { error: payErr } = await supabase.from('payments').insert([newPayment]);
+      if (payErr) throw payErr;
+
+      // 2. Process allocations
+      for (const alloc of allocationArray) {
+        const isTask = alloc.id.startsWith('TASK-');
+        const taskId = isTask ? alloc.id.replace('TASK-', '') : null;
+
+        if (!isTask) {
+          // Update existing transaction
+          const { data: txn } = await supabase
+            .from('transactions')
+            .select('amount, paid_amount')
+            .eq('id', alloc.id)
+            .single();
+
+          if (txn) {
+            const currentPaid = parseFloat(txn.paid_amount || '0') || 0;
+            const newPaid = currentPaid + alloc.amount;
+            const totalAmt = parseFloat(txn.amount) || 0;
+
+            const updates: any = {
+              paid_amount: newPaid
+            };
+            if (newPaid >= totalAmt) {
+              updates.status = 'Fully Paid';
+              updates.staff_paid = true;
+              updates.col_staff_paid = true;
+            } else {
+              updates.status = 'Partially Paid';
+            }
+
+            await supabase.from('transactions').update(updates).eq('id', alloc.id);
+          }
+        } else if (taskId) {
+          // Convert completed task to transaction
+          const { data: task } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('id', taskId)
+            .single();
+
+          if (task) {
+            const settlementVal = task.settlement_condition || '';
+            const isCash = settlementVal.toLowerCase().includes('cash');
+            let taskAmt = 0;
+            if (isCash && task.cash_amount !== null) {
+              taskAmt = Number(task.cash_amount);
+            } else {
+              const amountMatch = settlementVal.match(/[₹?](\d[\d,]*)/);
+              taskAmt = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+            }
+
+            const newTxnId = `TXN-${Math.floor(1000 + Math.random() * 9000)}`;
+            const isFullyPaid = alloc.amount >= taskAmt;
+
+            const newTxn = {
+              id: newTxnId,
+              customer_id: task.customer_id || 'CUST-COL',
+              customer_name: task.customer_name,
+              task_id: task.id,
+              customer_phone: task.customer_phone || '',
+              customer_address: task.customer_address || '',
+              metal: task.metal || 'Gold',
+              type: paymentMethod,
+              work_type: task.work_type || 'Tunch',
+              amount: taskAmt.toString(),
+              paid_amount: alloc.amount,
+              date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+              iso_date: new Date().toISOString().split('T')[0],
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              status: isFullyPaid ? 'Fully Paid' : 'Partially Paid',
+              staff_paid: isFullyPaid,
+              col_staff_paid: isFullyPaid,
+              details: `Partially paid via lump sum. ${task.work_type} task completed. Settlement: ${settlementVal}`.trim(),
+              piece_type: task.product_type || '',
+              impure_weight: task.impure_weight || task.total_weight || task.weight || '',
+              pure_weight: task.pure_weight || '',
+              purity_percentage: task.purity || '',
+              points_count: task.point_suggestion ? parseInt(task.point_suggestion) : null,
+              points_type: task.point_suggestion ? (task.point_suggestion.toLowerCase().includes('silver') ? 'Silver' : 'Gold') : (task.metal === 'Silver' ? 'Silver' : 'Gold'),
+              carat_marking: task.carat || '',
+              created_by: userId
+            };
+
+            await supabase.from('transactions').insert([newTxn]);
+            
+            // Mark task as completed
+            await supabase.from('tasks').update({
+              status: 'Completed',
+              progress_percentage: 100,
+              staff_paid: isFullyPaid,
+              col_staff_paid: isFullyPaid
+            }).eq('id', taskId);
+          }
+        }
+      }
+
+      window.dispatchEvent(new Event('databaseSync'));
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      console.error(err);
+      alert('Failed to record payment: ' + (err.message || err));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const inp = "w-full bg-surface-container border border-outline-variant/30 rounded-xl px-4 py-3 text-sm font-medium text-primary placeholder-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all";
+  const lbl = "text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block ml-1";
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-[#001e40]/40 backdrop-blur-sm animate-fade-in">
+      <div className="absolute inset-0" onClick={onClose} />
+      <div className="bg-white w-full max-w-md rounded-[2rem] p-6 shadow-[0_20px_50px_rgba(0,30,64,0.25)] relative z-10 border border-outline-variant/10 animate-modal-up flex flex-col justify-between overflow-hidden" style={{ maxHeight: '90vh' }}>
+        <h3 className="font-headline text-xl font-bold text-primary mb-4 flex items-center gap-2 shrink-0">
+          <span className="material-symbols-outlined text-secondary">payments</span>
+          Record Dues Payment
+        </h3>
+        
+        <form onSubmit={handleSubmit} className="space-y-4 flex-grow overflow-y-auto hide-scrollbar pr-1">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={lbl}>Total Received (₹) *</label>
+              <input 
+                type="number" 
+                className={inp} 
+                placeholder="e.g. 5000" 
+                value={amountReceived} 
+                onChange={e => handleAmountReceivedChange(e.target.value)} 
+                required 
+              />
+            </div>
+            <div>
+              <label className={lbl}>Payment Method</label>
+              <select 
+                className={inp} 
+                value={paymentMethod} 
+                onChange={e => setPaymentMethod(e.target.value as any)}
+              >
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="border-t border-outline-variant/20 pt-3 space-y-2">
+            <p className="text-[9px] font-black uppercase tracking-wider text-outline mb-2">Dues Allocation (FIFO Auto-Filled)</p>
+            <div className="space-y-3 max-h-[35vh] overflow-y-auto pr-1">
+              {unpaidItems.map(item => {
+                const totalAmt = parseFloat(item.amount.replace(/[^\d.]/g, '')) || 0;
+                const paidAmt = item.paidAmount || 0;
+                const due = Math.max(0, totalAmt - paidAmt);
+                return (
+                  <div key={item.id} className="flex justify-between items-center gap-4 bg-surface-container/30 border border-outline-variant/10 p-3 rounded-xl text-left">
+                    <div className="flex-grow min-w-0">
+                      <p className="text-xs font-bold text-primary truncate">{item.workType} ({item.id})</p>
+                      <p className="text-[9px] text-outline font-semibold uppercase mt-0.5">{item.date} • Due: ₹{due.toLocaleString()}</p>
+                    </div>
+                    <div className="w-28 shrink-0 relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-outline">₹</span>
+                      <input 
+                        type="number" 
+                        value={allocations[item.id] || ''} 
+                        onChange={e => handleManualAllocChange(item.id, e.target.value)}
+                        placeholder="0" 
+                        className="w-full bg-white border border-outline-variant/30 rounded-lg pl-6 pr-2 py-1.5 text-xs font-bold text-primary focus:outline-none focus:border-primary text-right"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              {unpaidItems.length === 0 && (
+                <p className="text-xs text-outline text-center py-4">No unpaid items found.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-outline-variant/20 pt-3 space-y-1.5 shrink-0 text-left">
+            <div className="flex justify-between text-xs font-bold text-outline">
+              <span>Total Dues Outstanding:</span>
+              <span className="text-primary">{customer.outstanding}</span>
+            </div>
+            <div className="flex justify-between text-xs font-bold text-outline">
+              <span>Total Allocated:</span>
+              <span className={isOutOfSync ? "text-error" : "text-emerald-600"}>₹{totalAllocated.toLocaleString()}</span>
+            </div>
+            {isOutOfSync && (
+              <p className="text-[9px] text-error font-semibold uppercase tracking-wider text-center bg-error/5 py-1.5 rounded-lg border border-error/15">
+                Warning: Allocations do not match Received Amount!
+              </p>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-2 shrink-0">
+            <button type="button" onClick={onClose} className="flex-1 py-3 bg-surface-container text-primary font-bold text-xs uppercase tracking-widest rounded-xl hover:bg-surface-variant transition-colors">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="flex-grow flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-bold text-xs uppercase tracking-widest rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-colors shadow-lg shadow-emerald-500/20">{isSubmitting ? 'Recording...' : 'Record Payment'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const StaffBillingScreen: React.FC = () => {
   const navigate = useNavigate();
   const { user, isFullyAuthenticated } = useSession();
@@ -551,6 +889,7 @@ export const StaffBillingScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [usersMap, setUsersMap] = useState<Record<string, { name: string; role: string; branch_id?: string | null }>>(
     getCachedData('users_map', Infinity) || {}
   );
@@ -795,13 +1134,20 @@ export const StaffBillingScreen: React.FC = () => {
       
       cust.ledger.push(t);
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const paidAmtNum = t.paidAmount || 0;
       if (t.status === 'Unpaid') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString()}`;
+        cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString('en-IN')}`;
+      } else if (t.status === 'Partially Paid') {
+        cust.activeJobs += 1;
+        const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+        cust.outstanding = `₹${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+        cust.paid = `₹${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else {
         const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
-        cust.paid = `₹${(paidNum + amtNum).toLocaleString()}`;
+        cust.paid = `₹${(paidNum + amtNum).toLocaleString('en-IN')}`;
       }
       
       if (t.workType === 'Tunch') {
@@ -1207,6 +1553,17 @@ export const StaffBillingScreen: React.FC = () => {
               </div>
             </div>
 
+            {/* Direct Dues Payment Action */}
+            {['Admin', 'Super Admin'].includes(user?.role || '') && selectedCustomer.outstanding !== '₹0' && selectedCustomer.outstanding !== '₹ 0' && (
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 mt-2 text-center"
+              >
+                <span className="material-symbols-outlined text-sm">payments</span>
+                Record Dues Payment
+              </button>
+            )}
+
             <div className="space-y-3">
               <div className="flex justify-between items-center px-1">
                 <h3 className="font-label text-[10px] uppercase tracking-[0.25em] text-outline font-extrabold">Intake History</h3>
@@ -1302,6 +1659,18 @@ export const StaffBillingScreen: React.FC = () => {
         onClose={() => setShowAddCustomerModal(false)}
         onAdd={handleAddDirectCustomer}
       />
+
+      {selectedCustomer && (
+        <RecordPaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          customer={selectedCustomer}
+          userId={user?.id || ''}
+          onSuccess={() => {
+            // Success
+          }}
+        />
+      )}
 
       {/* Bottom Nav Bar */}
       <nav className="fixed bottom-0 w-full z-50 bg-white border-t border-outline-variant/20 flex justify-around items-center px-4 pt-3 pb-8 shadow-[0_-4px_20px_rgba(0,30,64,0.05)]">

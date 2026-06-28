@@ -45,6 +45,8 @@ interface Transaction {
   created_by?: string;
   cashRatePerGram?: string;
   cashAmount?: string;
+  paidAmount?: number;
+  createdAt?: string;
 }
 
 interface DbCustomer {
@@ -387,21 +389,45 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
           {/* Section 3: Settlement Summary Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
-            <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
-            <div className="flex justify-between items-center relative z-10">
-              <div>
-                <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
-                <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
-                  ₹ {txn.amount}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
-                <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                  {txn.status === 'Paid' ? 'Paid & Cleared' : 'Payment Due'}
-                </p>
-              </div>
-            </div>
+             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
+             
+             {txn.paidAmount && txn.paidAmount > 0 && (parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) > txn.paidAmount ? (
+               <div className="relative z-10 space-y-2 text-left">
+                 <div className="flex justify-between items-center border-b border-white/10 pb-1.5">
+                   <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Settlement Type</p>
+                   <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                   <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Charge:</span>
+                   <span className="font-bold">₹ {txn.amount.replace(/₹/g, '').trim()}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs">
+                   <span style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Paid Amount:</span>
+                   <span className="font-bold text-emerald-400">₹ {txn.paidAmount.toLocaleString('en-IN')}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs border-t border-white/10 pt-1.5">
+                   <span style={{ color: '#ffffff', fontWeight: 'bold' }}>Remaining Due:</span>
+                   <span className="font-headline font-black text-sm text-error">
+                     ₹ {((parseFloat(txn.amount.replace(/[^\d.]/g, '')) || 0) - txn.paidAmount).toLocaleString('en-IN')}
+                   </span>
+                 </div>
+               </div>
+             ) : (
+               <div className="flex justify-between items-center relative z-10 text-left">
+                 <div>
+                   <p className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'rgba(255, 255, 255, 0.7)' }}>Total Amount</p>
+                   <p className="font-headline text-lg font-black mt-0.5" style={{ color: '#ffffff' }}>
+                     ₹ {txn.amount.replace(/₹/g, '').trim()}
+                   </p>
+                 </div>
+                 <div className="text-right">
+                   <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
+                   <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
+                     {txn.status === 'Paid' || txn.status === 'Fully Paid' ? 'Paid & Cleared' : 'Payment Due'}
+                   </p>
+                 </div>
+               </div>
+             )}
           </div>
 
           {txn.isCashExchange && (
@@ -660,13 +686,20 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       
       cust.ledger.push(t);
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const paidAmtNum = t.paidAmount || 0;
       if (t.status === 'Unpaid') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString()}`;
+        cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString('en-IN')}`;
+      } else if (t.status === 'Partially Paid') {
+        cust.activeJobs += 1;
+        const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+        cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+        cust.paid = `₹ ${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else {
         const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
-        cust.paid = `₹ ${(paidNum + amtNum).toLocaleString()}`;
+        cust.paid = `₹ ${(paidNum + amtNum).toLocaleString('en-IN')}`;
       }
       
       const pcs = parseInt(t.pieces || '1') || 1;

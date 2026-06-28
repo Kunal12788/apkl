@@ -2,10 +2,18 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
   const txTaskIds = new Set<string>();
   const txEntries = txData.map((t: any) => {
     if (t.task_id) txTaskIds.add(t.task_id);
+    const amtNum = Number(t.amount) || 0;
+    const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Fully Paid';
-    else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
-    else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
+    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+      computedStatus = 'Fully Paid';
+    } else if (paidNum > 0 && paidNum < amtNum) {
+      computedStatus = 'Partially Paid';
+    } else if (t.col_staff_paid && !t.staff_paid) {
+      computedStatus = 'Awaiting Staff';
+    } else if (!t.col_staff_paid && t.staff_paid) {
+      computedStatus = 'Awaiting Collection Staff';
+    }
 
     return {
       metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
@@ -18,6 +26,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       status: computedStatus,
       colStaffPaid: !!t.col_staff_paid,
       staffPaid: !!t.staff_paid,
+      paidAmount: paidNum,
       impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
       createdBy: t.created_by,
@@ -69,6 +78,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       status: computedStatus,
       colStaffPaid: colStaffPaidVal,
       staffPaid: staffPaidVal,
+      paidAmount: 0,
       impureWeight: task.impure_weight || task.total_weight,
       pureWeight: task.pure_weight,
       purityPercentage: task.purity,
@@ -101,10 +111,18 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
   const txTaskIds = new Set<string>();
   const txEntries = txData.map((t: any) => {
     if (t.task_id) txTaskIds.add(t.task_id);
+    const amtNum = Number(t.amount) || 0;
+    const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid)) computedStatus = 'Fully Paid';
-    else if (t.col_staff_paid && !t.staff_paid) computedStatus = 'Awaiting Staff';
-    else if (!t.col_staff_paid && t.staff_paid) computedStatus = 'Awaiting Collection Staff';
+    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+      computedStatus = 'Fully Paid';
+    } else if (paidNum > 0 && paidNum < amtNum) {
+      computedStatus = 'Partially Paid';
+    } else if (t.col_staff_paid && !t.staff_paid) {
+      computedStatus = 'Awaiting Staff';
+    } else if (!t.col_staff_paid && t.staff_paid) {
+      computedStatus = 'Awaiting Collection Staff';
+    }
 
     return {
       metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
@@ -117,6 +135,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       status: computedStatus,
       colStaffPaid: !!t.col_staff_paid,
       staffPaid: !!t.staff_paid,
+      paidAmount: paidNum,
       impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
       pieces: t.pieces || '1',
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
@@ -169,6 +188,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
       status: computedStatus,
       colStaffPaid: colStaffPaidVal,
       staffPaid: staffPaidVal,
+      paidAmount: 0,
       impureWeight: task.impure_weight || task.total_weight,
       pureWeight: task.pure_weight,
       purityPercentage: task.purity,
