@@ -301,7 +301,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'
           }`}>
-            {txn.status === 'Fully Paid' ? 'Paid' : txn.status}
+            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
           </span>
         </div>
 
@@ -443,7 +443,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                 <div className="text-right">
                   <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
                   <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                    {txn.status === 'Paid' || txn.status === 'Fully Paid' ? 'Paid & Cleared' : 'Payment Due'}
+                    {txn.status === 'Paid' || txn.status === 'Fully Paid' ? (txn.workType === 'Buy' ? 'Settled & Cleared' : 'Paid & Cleared') : 'Payment Due'}
                   </p>
                 </div>
               </div>
@@ -1395,7 +1395,7 @@ export const StaffBillingScreen: React.FC = () => {
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                           }`}>
-                            {txn.status === 'Fully Paid' ? 'Paid' : txn.status}
+                            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
                           </span>
                         </div>
                       </div>
@@ -1899,7 +1899,7 @@ export const StaffBillingScreen: React.FC = () => {
                           {txn.details}
                         </p>
                         <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-tertiary/10 text-tertiary'}`}>
-                          {txn.status}
+                          {(txn.status === 'Fully Paid' || txn.status === 'Paid' || txn.status === 'Completed') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
                         </span>
                       </div>
                     </div>
