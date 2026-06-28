@@ -985,6 +985,7 @@ export const StaffBillingScreen: React.FC = () => {
     return row?.value || { excellent: 7, good: 14, fine: 30, poor: 60 };
   });
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [formPolicy, setFormPolicy] = useState<{ excellent: number; good: number; fine: number; poor: number } | null>(null);
   const [savingPolicy, setSavingPolicy] = useState(false);
 
   React.useEffect(() => {
@@ -1658,7 +1659,7 @@ export const StaffBillingScreen: React.FC = () => {
                 <div className="flex items-center gap-2">
                   {user?.role === 'Super Admin' ? (
                     <button 
-                      onClick={() => setShowPolicyModal(true)} 
+                      onClick={() => { setFormPolicy(policy); setShowPolicyModal(true); }} 
                       className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[10px]">settings</span>
@@ -1884,7 +1885,7 @@ export const StaffBillingScreen: React.FC = () => {
       )}
 
       {/* Super Admin Policy Limits Modal */}
-      {showPolicyModal && (
+      {showPolicyModal && formPolicy && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in px-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md border border-outline-variant/20 shadow-2xl relative animate-scale-up space-y-6">
             <header className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
@@ -1902,15 +1903,7 @@ export const StaffBillingScreen: React.FC = () => {
 
             <form onSubmit={async (e) => {
               e.preventDefault();
-              const form = e.currentTarget;
-              const newPolicy = {
-                excellent: parseInt((form.elements.namedItem('excellent') as HTMLInputElement).value) || 7,
-                good: parseInt((form.elements.namedItem('good') as HTMLInputElement).value) || 14,
-                fine: parseInt((form.elements.namedItem('fine') as HTMLInputElement).value) || 30,
-                poor: parseInt((form.elements.namedItem('poor') as HTMLInputElement).value) || 60
-              };
-              
-              if (newPolicy.excellent >= newPolicy.good || newPolicy.good >= newPolicy.fine || newPolicy.fine >= newPolicy.poor) {
+              if (formPolicy.excellent >= formPolicy.good || formPolicy.good >= formPolicy.fine || formPolicy.fine >= formPolicy.poor) {
                 alert("Clearance limits must be in increasing order (Excellent < Good < Fine < Poor).");
                 return;
               }
@@ -1919,9 +1912,9 @@ export const StaffBillingScreen: React.FC = () => {
               try {
                 const { error } = await supabase
                   .from('app_settings')
-                  .upsert({ key: 'customer_behavior_policy', value: newPolicy, updated_at: new Date().toISOString() });
+                  .upsert({ key: 'customer_behavior_policy', value: formPolicy, updated_at: new Date().toISOString() });
                 if (error) throw error;
-                setPolicy(newPolicy);
+                setPolicy(formPolicy);
                 setShowPolicyModal(false);
                 alert("Scoring policy limits updated successfully!");
               } catch (err: any) {
@@ -1932,33 +1925,36 @@ export const StaffBillingScreen: React.FC = () => {
               }
             }} className="space-y-4 text-left">
               {[
-                { name: 'excellent', label: 'Excellent Clearance (Days)', defaultVal: policy.excellent },
-                { name: 'good', label: 'Good Clearance (Days)', defaultVal: policy.good },
-                { name: 'fine', label: 'Fine Clearance (Days)', defaultVal: policy.fine },
-                { name: 'poor', label: 'Poor Clearance (Days)', defaultVal: policy.poor }
+                { name: 'excellent', label: 'Excellent Clearance (Days)' },
+                { name: 'good', label: 'Good Clearance (Days)' },
+                { name: 'fine', label: 'Fine Clearance (Days)' },
+                { name: 'poor', label: 'Poor Clearance (Days)' }
               ].map((field) => {
-                const [val, setVal] = React.useState(field.defaultVal);
+                const key = field.name as keyof typeof policy;
+                const val = formPolicy[key];
                 return (
                   <div key={field.name} className="space-y-1.5">
                     <label className="text-[11px] font-bold text-outline uppercase tracking-wider">{field.label}</label>
                     <div className="flex items-center gap-2">
                       <button 
                         type="button" 
-                        onClick={() => setVal(Math.max(1, val - 1))}
+                        onClick={() => setFormPolicy(prev => prev ? { ...prev, [key]: Math.max(1, prev[key] - 1) } : null)}
                         className="w-10 h-10 rounded-xl bg-surface-container border border-outline-variant/30 font-bold text-primary hover:bg-surface-bright active:scale-95 transition-all text-sm"
                       >
                         -
                       </button>
                       <input 
                         type="number" 
-                        name={field.name}
                         value={val}
-                        onChange={e => setVal(Math.max(1, parseInt(e.target.value) || 1))}
+                        onChange={e => {
+                          const parsed = Math.max(1, parseInt(e.target.value) || 1);
+                          setFormPolicy(prev => prev ? { ...prev, [key]: parsed } : null);
+                        }}
                         className="flex-1 w-full bg-white border border-outline-variant/30 rounded-xl py-2.5 text-center font-extrabold text-sm text-primary focus:outline-none focus:border-primary transition-all"
                       />
                       <button 
                         type="button" 
-                        onClick={() => setVal(val + 1)}
+                        onClick={() => setFormPolicy(prev => prev ? { ...prev, [key]: prev[key] + 1 } : null)}
                         className="w-10 h-10 rounded-xl bg-surface-container border border-outline-variant/30 font-bold text-primary hover:bg-surface-bright active:scale-95 transition-all text-sm"
                       >
                         +
