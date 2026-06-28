@@ -642,6 +642,44 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ isOpen, onClose
       const { error: payErr } = await supabase.from('payments').insert([newPayment]);
       if (payErr) throw payErr;
 
+      // 1.5 Insert into ledger_entries (Admin Cash Stock)
+      const ledgerEntry = {
+        type: 'IN',
+        category: 'Customer Dues Payment',
+        metal: 'N/A',
+        amount: finalAmount,
+        description: `Received dues payment from ${customer.name}. Payment ID: ${paymentId}`,
+        date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        staff_id: userId,
+        created_by: userId,
+      };
+      const { error: ledgerErr } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+      if (ledgerErr) console.error("Ledger entry error:", ledgerErr);
+
+      // 1.6 Insert into transactions so it shows up in "All Transactions"
+      const paymentTxnId = `TXN-PAY-${Math.floor(1000 + Math.random() * 9000)}`;
+      const paymentTxn = {
+        id: paymentTxnId,
+        customer_id: customer.id,
+        customer_name: customer.name,
+        metal: 'Gold',
+        type: paymentMethod,
+        work_type: 'Tunch',
+        amount: "0",
+        cash_amount: finalAmount.toString(),
+        paid_amount: finalAmount,
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        iso_date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'Fully Paid',
+        staff_paid: true,
+        col_staff_paid: true,
+        details: `Payment Receipt: Received lump sum payment of ₹${finalAmount.toLocaleString('en-IN')} towards outstanding dues.`,
+        created_by: userId
+      };
+      await supabase.from('transactions').insert([paymentTxn]);
+
       // 2. Process allocations
       for (const alloc of allocationArray) {
         const isTask = alloc.id.startsWith('TASK-');

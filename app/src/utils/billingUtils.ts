@@ -5,10 +5,10 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
     const amtNum = Number(t.amount) || 0;
     const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
-      computedStatus = 'Fully Paid';
-    } else if (paidNum > 0 && paidNum < amtNum) {
+    if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
+    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+      computedStatus = 'Fully Paid';
     } else if (t.col_staff_paid && !t.staff_paid) {
       computedStatus = 'Awaiting Staff';
     } else if (!t.col_staff_paid && t.staff_paid) {
@@ -114,10 +114,10 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     const amtNum = Number(t.amount) || 0;
     const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
-      computedStatus = 'Fully Paid';
-    } else if (paidNum > 0 && paidNum < amtNum) {
+    if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
+    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+      computedStatus = 'Fully Paid';
     } else if (t.col_staff_paid && !t.staff_paid) {
       computedStatus = 'Awaiting Staff';
     } else if (!t.col_staff_paid && t.staff_paid) {
