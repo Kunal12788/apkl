@@ -1218,18 +1218,48 @@ export const CollectionStaffBillingScreen: React.FC = () => {
               <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search customers..." className="w-full bg-white border border-outline-variant/30 rounded-full py-3.5 pl-12 pr-4 text-sm font-medium text-primary luxury-card focus:outline-none" />
             </div>
             <div className="space-y-3">
-              {filteredCustomers.map(customer => (
+              {filteredCustomers.map(customer => {
+                const behavior = analyzeCustomerBehavior(customer.ledger, payments, policy);
+                return (
                 <div key={customer.id} onClick={() => setSearchParams({ tab: 'customer', customerId: customer.id })} className="luxury-card p-4 flex items-center justify-between group cursor-pointer active:scale-[0.98] transition-all bg-white border border-outline-variant/10">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary font-bold text-sm">{customer.initials}</div>
+                    <div className="w-12 h-12 rounded-full bg-primary-container/10 flex items-center justify-center text-primary font-bold text-sm relative">
+                      {customer.initials}
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${
+                        behavior.level === 'Excellent' ? 'bg-emerald-500 text-white' :
+                        behavior.level === 'Good' ? 'bg-blue-500 text-white' :
+                        behavior.level === 'Fine' ? 'bg-amber-500 text-white' :
+                        behavior.level === 'Poor' ? 'bg-orange-500 text-white' :
+                        'bg-red-500 text-white'
+                      }`}>
+                        <span className="material-symbols-outlined text-[9px]" style={{ fontVariationSettings: '"FILL" 1' }}>
+                          {behavior.level === 'Excellent' ? 'star' :
+                           behavior.level === 'Good' ? 'thumb_up' :
+                           behavior.level === 'Fine' ? 'remove' :
+                           behavior.level === 'Poor' ? 'warning' :
+                           'error'}
+                        </span>
+                      </div>
+                    </div>
                     <div>
-                      <p className="font-bold text-primary">{customer.name}</p>
+                      <p className="font-bold text-primary flex items-center gap-1.5">
+                        {customer.name}
+                        <span className={`text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded ${
+                          behavior.level === 'Excellent' ? 'bg-emerald-100 text-emerald-700' :
+                          behavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
+                          behavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
+                          behavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                          'bg-red-100 text-red-700'
+                        }`}>
+                          {behavior.score}
+                        </span>
+                      </p>
                       <p className="text-[9px] text-outline uppercase font-bold mt-0.5">Outstanding Dues: {customer.outstanding}</p>
                     </div>
                   </div>
                   <span className="material-symbols-outlined text-outline group-hover:text-primary">chevron_right</span>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         )}

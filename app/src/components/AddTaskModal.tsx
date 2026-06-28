@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
 import { supabase } from '../supabaseClient';
+import type { BehaviorAnalysis } from '../utils/billingUtils';
+import { analyzeCustomerBehavior, computeStaffBillingTransactions } from '../utils/billingUtils';
 
 type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING' | 'BUY_SELL';
 
@@ -88,6 +90,41 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  const [customerBehavior, setCustomerBehavior] = useState<BehaviorAnalysis | null>(null);
+  const [isFetchingBehavior, setIsFetchingBehavior] = useState(false);
+
+  React.useEffect(() => {
+    const fetchBehavior = async () => {
+      if (!formData.customerId || !isOpen) {
+        setCustomerBehavior(null);
+        return;
+      }
+      setIsFetchingBehavior(true);
+      try {
+        const [, txnRes, policyRes] = await Promise.all([
+          supabase.from('ledger_entries').select('*').eq('customer_name', formData.customerName),
+          supabase.from('transactions').select('*').eq('customer_id', formData.customerId),
+          supabase.from('app_settings').select('settings').eq('id', 1).single()
+        ]);
+        
+        // Try getting tasks by customer name as well to calculate the combined ledger
+        const { data: tasksData } = await supabase.from('tasks').select('*').eq('customer_name', formData.customerName);
+        
+        const combinedLedger = computeStaffBillingTransactions(txnRes.data || [], tasksData || []);
+        const policy = policyRes.data?.settings?.behaviorPolicy || { excellent: 7, good: 14, fine: 30, poor: 60 };
+        
+        const behavior = analyzeCustomerBehavior(combinedLedger, txnRes.data || [], policy);
+        setCustomerBehavior(behavior);
+      } catch (err) {
+        console.error('Error fetching customer behavior', err);
+        setCustomerBehavior(null);
+      } finally {
+        setIsFetchingBehavior(false);
+      }
+    };
+    fetchBehavior();
+  }, [formData.customerId, formData.customerName, isOpen]);
 
   React.useEffect(() => {
     const fetchCustomers = async () => {
@@ -622,6 +659,51 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <input className={inp(errors.phone)} placeholder="+91 XXXXX XXXXX" value={formData.phone} onChange={e => up('phone', e.target.value)} />
                     {errMsg('phone')}
                   </div>
+                  {formData.customerId && (
+                    <div className="pt-2 animate-fade-in">
+                      {isFetchingBehavior ? (
+                        <div className="w-full h-12 flex items-center justify-center bg-surface-container/50 rounded-xl">
+                          <span className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></span>
+                        </div>
+                      ) : customerBehavior ? (
+                        <div className={`p-3 rounded-xl border ${
+                          customerBehavior.level === 'Excellent' ? 'bg-emerald-50 border-emerald-200' :
+                          customerBehavior.level === 'Good' ? 'bg-blue-50 border-blue-200' :
+                          customerBehavior.level === 'Fine' ? 'bg-amber-50 border-amber-200' :
+                          customerBehavior.level === 'Poor' ? 'bg-orange-50 border-orange-200' :
+                          'bg-red-50 border-red-200'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Payment Behavior</span>
+                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                              customerBehavior.level === 'Excellent' ? 'bg-emerald-100 text-emerald-700' :
+                              customerBehavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
+                              customerBehavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
+                              customerBehavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {customerBehavior.level}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-end mt-2">
+                            <div>
+                              <p className={`text-[18px] font-black ${
+                                customerBehavior.level === 'Excellent' ? 'text-emerald-700' :
+                                customerBehavior.level === 'Good' ? 'text-blue-700' :
+                                customerBehavior.level === 'Fine' ? 'text-amber-700' :
+                                customerBehavior.level === 'Poor' ? 'text-orange-700' :
+                                'text-red-700'
+                              }`}>{customerBehavior.score}<span className="text-[12px] opacity-70">/100</span></p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[9px] text-outline font-medium">On-Time Rate: <span className="font-bold text-primary">{customerBehavior.onTimeRate}%</span></p>
+                              <p className="text-[9px] text-outline font-medium">Avg Delay: <span className="font-bold text-primary">{customerBehavior.avgDaysToPay}d</span></p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                   {formData.customerName && !customers.some(c => c.name.trim().toLowerCase() === formData.customerName.trim().toLowerCase()) && (
                      <div className="pt-2 animate-fade-in">
                         <button 

@@ -1512,14 +1512,42 @@ export const StaffBillingScreen: React.FC = () => {
                         {bName}
                       </h4>
                       <div className="space-y-3">
-                        {groups[bName].map(customer => (
+                        {groups[bName].map(customer => {
+                          const behavior = analyzeCustomerBehavior(customer.ledger, payments, policy);
+                          return (
                           <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
                             <div className="flex items-center gap-4">
-                              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
+                              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner relative">
                                 {customer.initials}
+                                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${
+                                  behavior.level === 'Excellent' ? 'bg-emerald-500 text-white' :
+                                  behavior.level === 'Good' ? 'bg-blue-500 text-white' :
+                                  behavior.level === 'Fine' ? 'bg-amber-500 text-white' :
+                                  behavior.level === 'Poor' ? 'bg-orange-500 text-white' :
+                                  'bg-red-500 text-white'
+                                }`}>
+                                  <span className="material-symbols-outlined text-[9px]" style={{ fontVariationSettings: '"FILL" 1' }}>
+                                    {behavior.level === 'Excellent' ? 'star' :
+                                     behavior.level === 'Good' ? 'thumb_up' :
+                                     behavior.level === 'Fine' ? 'remove' :
+                                     behavior.level === 'Poor' ? 'warning' :
+                                     'error'}
+                                  </span>
+                                </div>
                               </div>
                               <div>
-                                <p className="font-headline font-bold text-primary text-[15px]">{customer.name}</p>
+                                <p className="font-headline font-bold text-primary text-[15px] flex items-center gap-1.5">
+                                  {customer.name}
+                                  <span className={`text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded ${
+                                    behavior.level === 'Excellent' ? 'bg-emerald-100 text-emerald-700' :
+                                    behavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
+                                    behavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
+                                    behavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                                    'bg-red-100 text-red-700'
+                                  }`}>
+                                    {behavior.score}
+                                  </span>
+                                </p>
                                 <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{customer.id} • {customer.activeJobs} Jobs</p>
                               </div>
                             </div>
@@ -1527,20 +1555,48 @@ export const StaffBillingScreen: React.FC = () => {
                               <span className="material-symbols-outlined text-sm">chevron_right</span>
                             </div>
                           </div>
-                        ))}
+                        )})}
                       </div>
                     </div>
                   ));
                 })()
               ) : (
-                filteredCustomers.map(customer => (
+                filteredCustomers.map(customer => {
+                  const behavior = analyzeCustomerBehavior(customer.ledger, payments, policy);
+                  return (
                   <div key={customer.id} onClick={() => { setSearchQuery(''); setSearchParams({ customerId: customer.id, tab: activeTab }); }} className="luxury-card p-4 flex items-center justify-between cursor-pointer group hover:bg-surface-bright">
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner">
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-primary-fixed/60 to-primary-fixed/20 flex items-center justify-center text-primary font-bold text-sm border border-primary/10 shadow-inner relative">
                         {customer.initials}
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white flex items-center justify-center shadow-sm ${
+                          behavior.level === 'Excellent' ? 'bg-emerald-500 text-white' :
+                          behavior.level === 'Good' ? 'bg-blue-500 text-white' :
+                          behavior.level === 'Fine' ? 'bg-amber-500 text-white' :
+                          behavior.level === 'Poor' ? 'bg-orange-500 text-white' :
+                          'bg-red-500 text-white'
+                        }`}>
+                          <span className="material-symbols-outlined text-[9px]" style={{ fontVariationSettings: '"FILL" 1' }}>
+                            {behavior.level === 'Excellent' ? 'star' :
+                             behavior.level === 'Good' ? 'thumb_up' :
+                             behavior.level === 'Fine' ? 'remove' :
+                             behavior.level === 'Poor' ? 'warning' :
+                             'error'}
+                          </span>
+                        </div>
                       </div>
                       <div>
-                        <p className="font-headline font-bold text-primary text-[15px]">{customer.name}</p>
+                        <p className="font-headline font-bold text-primary text-[15px] flex items-center gap-1.5">
+                          {customer.name}
+                          <span className={`text-[8px] font-black uppercase tracking-widest px-1 py-0.5 rounded ${
+                            behavior.level === 'Excellent' ? 'bg-emerald-100 text-emerald-700' :
+                            behavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
+                            behavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
+                            behavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>
+                            {behavior.score}
+                          </span>
+                        </p>
                         <p className="text-[9px] text-outline font-bold tracking-widest uppercase mt-0.5">{customer.id} • {customer.activeJobs} Jobs</p>
                       </div>
                     </div>
@@ -1548,7 +1604,7 @@ export const StaffBillingScreen: React.FC = () => {
                       <span className="material-symbols-outlined text-sm">chevron_right</span>
                     </div>
                   </div>
-                ))
+                )})
               )}
               {filteredCustomers.length === 0 && (
                 <div className="p-8 text-center text-outline text-sm font-medium">No customers found.</div>
