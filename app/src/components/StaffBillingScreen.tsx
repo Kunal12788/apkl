@@ -70,6 +70,8 @@ interface Customer {
     tunch: number;
     marking: number;
     shouldering: number;
+    buy: number;
+    sell: number;
   };
   ledger: Transaction[];
   phone?: string;
@@ -176,6 +178,8 @@ const SearchAndFilterSection = ({
       <FilterChip label="UPI" icon="qr_code_2" value="UPI" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <FilterChip label="Tunch" icon="science" value="Tunch" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
       <FilterChip label="Marking" icon="verified" value="Marking" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Buy" icon="shopping_cart" value="Buy" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      <FilterChip label="Sell" icon="sell" value="Sell" searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
     </div>
   </div>
 );
@@ -1190,7 +1194,7 @@ export const StaffBillingScreen: React.FC = () => {
           activeJobs: 0,
           outstanding: '₹0',
           paid: '₹0',
-          workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+          workBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
           ledger: [],
           phone: c.phone,
           address: c.address,
@@ -1225,20 +1229,21 @@ export const StaffBillingScreen: React.FC = () => {
 
       if (!cust) {
         const initials = t.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-        cust = {
+        const newCust: Customer = {
           id: t.customerId || 'CUST-COL',
           name: t.customerName,
           initials: initials || 'C',
           activeJobs: 0,
           outstanding: '₹0',
           paid: '₹0',
-          workBreakdown: { tunch: 0, marking: 0, shouldering: 0 },
+          workBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
           ledger: [],
           phone: t.customerPhone,
           address: t.customerAddress,
           created_by: t.createdBy || t.created_by
         };
-        customers.push(cust);
+        customers.push(newCust);
+        cust = newCust;
       }
       
       cust.ledger.push(t);
@@ -1266,6 +1271,10 @@ export const StaffBillingScreen: React.FC = () => {
         cust.workBreakdown.marking += 1;
       } else if (t.workType === 'Shouldering') {
         cust.workBreakdown.shouldering += 1;
+      } else if (t.workType === 'Buy') {
+        cust.workBreakdown.buy += 1;
+      } else if (t.workType === 'Sell') {
+        cust.workBreakdown.sell += 1;
       }
     });
 
@@ -1681,7 +1690,7 @@ export const StaffBillingScreen: React.FC = () => {
             </div>
 
             {/* Total Pieces breakdowns separately */}
-            <div className="grid grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
               {[
                 { 
                   label: 'Tunch Pcs', 
@@ -1700,6 +1709,18 @@ export const StaffBillingScreen: React.FC = () => {
                   val: selectedCustomer.workBreakdown.shouldering, 
                   icon: 'precision_manufacturing', 
                   iconColor: 'bg-primary/10 text-primary'
+                },
+                { 
+                  label: 'Buy Jobs', 
+                  val: selectedCustomer.workBreakdown.buy, 
+                  icon: 'shopping_cart', 
+                  iconColor: 'bg-emerald-500/10 text-emerald-600'
+                },
+                { 
+                  label: 'Sell Jobs', 
+                  val: selectedCustomer.workBreakdown.sell, 
+                  icon: 'sell', 
+                  iconColor: 'bg-amber-500/10 text-amber-600'
                 }
               ].map((breakdown, idx) => (
                 <div 

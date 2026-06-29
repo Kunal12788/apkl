@@ -181,6 +181,8 @@ export const generateCustomerPDFReport = async (
     doc.text(`Assaying / Tunch Jobs: ${customer?.workBreakdown?.tunch || 0}`, 120, 103);
     doc.text(`Hallmarking / Marking Jobs: ${customer?.workBreakdown?.marking || 0}`, 120, 109);
     doc.text(`Soldering / Shouldering Jobs: ${customer?.workBreakdown?.shouldering || 0}`, 120, 115);
+    doc.text(`Bullion Purchase (Buy): ${customer?.workBreakdown?.buy || 0}`, 120, 121);
+    doc.text(`Bullion Sales (Sell): ${customer?.workBreakdown?.sell || 0}`, 120, 127);
 
     // Conditionally Render Behavior Profile (Only if Super Admin Report is Selected)
     if (reportType === 'super_admin') {
@@ -258,9 +260,9 @@ export const generateCustomerPDFReport = async (
       head: [['Date & Time', 'Job ID', 'Metal', 'Impure Wt', 'Purity', 'Pure Wt', 'Fee', 'Clearance Status', 'Assayed By']],
       body: tunchData.length > 0 ? tunchData : [['-', 'No assaying / tunch records found', '-', '-', '-', '-', '-', '-', '-']],
       theme: 'grid',
-      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: 7.5, textColor: [40, 40, 40] },
-      columnStyles: { 1: { cellWidth: 20 }, 7: { cellWidth: 28 } }
+      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      styles: { fontSize: 6.8, textColor: [40, 40, 40], cellPadding: 1, overflow: 'linebreak' },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 16 }, 7: { cellWidth: 32 } }
     });
 
     // -------------------------------------------------------------------------
@@ -302,9 +304,9 @@ export const generateCustomerPDFReport = async (
       head: [['Date & Time', 'Job ID', 'Category', 'Pieces Type', 'Marking', 'Points Suggest', 'Fee', 'Clearance Status', 'Marked By']],
       body: markingData.length > 0 ? markingData : [['-', 'No marking or shouldering records found', '-', '-', '-', '-', '-', '-', '-']],
       theme: 'grid',
-      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: 7.5, textColor: [40, 40, 40] },
-      columnStyles: { 1: { cellWidth: 20 }, 7: { cellWidth: 28 } }
+      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      styles: { fontSize: 6.8, textColor: [40, 40, 40], cellPadding: 1, overflow: 'linebreak' },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 16 }, 7: { cellWidth: 32 } }
     });
 
     // -------------------------------------------------------------------------
@@ -347,9 +349,9 @@ export const generateCustomerPDFReport = async (
       head: [['Date & Time', 'Tx ID', 'Operation', 'Metal', 'Purity', 'Pure Weight', 'Rate/Gram', 'Amount', 'Settlement', 'Traded By']],
       body: tradeData.length > 0 ? tradeData : [['-', 'No bullion trading records found', '-', '-', '-', '-', '-', '-', '-', '-']],
       theme: 'grid',
-      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: 7.5, textColor: [40, 40, 40] },
-      columnStyles: { 1: { cellWidth: 20 }, 8: { cellWidth: 28 } }
+      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      styles: { fontSize: 6.8, textColor: [40, 40, 40], cellPadding: 1, overflow: 'linebreak' },
+      columnStyles: { 0: { cellWidth: 22 }, 1: { cellWidth: 16 }, 8: { cellWidth: 32 } }
     });
 
     // -------------------------------------------------------------------------
@@ -385,8 +387,9 @@ export const generateCustomerPDFReport = async (
       head: [['Date & Time', 'Receipt ID', 'Method', 'Allocation Details', 'Amount Settled', 'Collected By']],
       body: paymentData.length > 0 ? paymentData : [['-', 'No dues settlement records found', '-', '-', '-', '-']],
       theme: 'grid',
-      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-      styles: { fontSize: 7.5, textColor: [40, 40, 40] }
+      headStyles: { fillColor: [0, 30, 64], textColor: 255, fontStyle: 'bold', fontSize: 7.5 },
+      styles: { fontSize: 6.8, textColor: [40, 40, 40], cellPadding: 1.2, overflow: 'linebreak' },
+      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 20 }, 3: { cellWidth: 50 } }
     });
 
     // -------------------------------------------------------------------------
