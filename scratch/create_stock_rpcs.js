@@ -3,11 +3,11 @@ const { Client } = pkg;
 
 async function createStockRpcs() {
   const client = new Client({
-    user: 'postgres.quqcfbairoevddjcxiyi',
-    host: 'aws-1-ap-south-1.pooler.supabase.com',
-    database: 'postgres',
-    password: 'MZZ+6GY4bznXSpj',
-    port: 6543,
+    user: process.env.DB_USER || 'postgres.quqcfbairoevddjcxiyi',
+    host: process.env.DB_HOST || 'aws-1-ap-south-1.pooler.supabase.com',
+    database: process.env.DB_NAME || 'postgres',
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '6543'),
     ssl: { rejectUnauthorized: false }
   });
 
@@ -40,6 +40,11 @@ async function createStockRpcs() {
         
         v_result json;
       BEGIN
+        -- Authorization check
+        IF public.get_my_role() != 'Super Admin' AND public.get_my_branch_id() != p_branch_id::text THEN
+          RAISE EXCEPTION 'Access Denied: You cannot view stock of another branch.';
+        END IF;
+
         -- 1. Allocations
         SELECT COALESCE(SUM(pure_weight), 0) INTO v_alloc_pure_gold
         FROM public.stock_allocations
@@ -109,6 +114,11 @@ async function createStockRpcs() {
         v_impure_silver_stock numeric := 0;
         v_cash_stock numeric := 0;
       BEGIN
+        -- Authorization check
+        IF public.get_my_role() != 'Super Admin' THEN
+          RAISE EXCEPTION 'Access Denied: Only Super Admin can view super admin stock.';
+        END IF;
+
         SELECT 
           COALESCE(SUM(pure_gold_change), 0),
           COALESCE(SUM(pure_silver_change), 0),

@@ -175,8 +175,7 @@ export const SuperAdminStaffScreen: React.FC = () => {
         email: hireForm.email,
         phone: hireForm.phone || null,
         role: hireForm.role,
-        branch_id: hireForm.branch_id ? hireForm.branch_id : null,
-        passkey: hireForm.passkey
+        branch_id: hireForm.branch_id ? hireForm.branch_id : null
       };
 
       const { error: dbError } = await supabase.from('users').insert([newUser]);
@@ -195,8 +194,8 @@ export const SuperAdminStaffScreen: React.FC = () => {
 
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editForm.name || !editForm.email || !editForm.passkey) {
-      setSubmitError('Name, Email, and Passkey are required.');
+    if (!editForm.name || !editForm.email) {
+      setSubmitError('Name and Email are required.');
       return;
     }
     
@@ -696,10 +695,11 @@ export const SuperAdminStaffScreen: React.FC = () => {
                 </div>
                 
                 <div className="space-y-1">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">Encryption Passkey</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-outline px-1">New Encryption Passkey (Optional)</label>
                   <input 
-                    type="text" required
+                    type="text"
                     value={editForm.passkey} onChange={e => setEditForm({...editForm, passkey: e.target.value})}
+                    placeholder="Leave blank to keep current password"
                     className="w-full bg-surface-container-lowest border border-outline-variant/30 rounded-xl py-3 px-4 text-sm font-bold text-primary focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none transition-all"
                   />
                 </div>

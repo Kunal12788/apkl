@@ -1,3 +1,5 @@
+import { supabase } from '../supabaseClient';
+
 export const sendActivityNotification = async (
   action: 'login' | 'logout',
   userEmail: string,
@@ -5,6 +7,9 @@ export const sendActivityNotification = async (
   userRole: string
 ) => {
   try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || '';
+
     // In local development, Vite serves the app on a specific port, 
     // but the Vercel API might not be running unless we use Vercel CLI.
     // In production, /api/notify will resolve automatically.
@@ -15,6 +20,7 @@ export const sendActivityNotification = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({
         action,

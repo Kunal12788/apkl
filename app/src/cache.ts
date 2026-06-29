@@ -1,10 +1,30 @@
 export const appCache: Record<string, { data: any; timestamp: number }> = {};
 
+const XOR_KEY = 'aurora_secure_salt_99';
+const xorEncryptDecrypt = (input: string): string => {
+  let output = '';
+  for (let i = 0; i < input.length; i++) {
+    output += String.fromCharCode(input.charCodeAt(i) ^ XOR_KEY.charCodeAt(i % XOR_KEY.length));
+  }
+  return output;
+};
+
+const encrypt = (text: string) => {
+  const xor = xorEncryptDecrypt(text);
+  return btoa(unescape(encodeURIComponent(xor)));
+};
+
+const decrypt = (cipher: string) => {
+  const decoded = decodeURIComponent(escape(atob(cipher)));
+  return xorEncryptDecrypt(decoded);
+};
+
 // Load initial cache from localStorage to survive page refreshes
 try {
   const stored = localStorage.getItem('aurora_app_cache');
   if (stored) {
-    const parsed = JSON.parse(stored);
+    const decrypted = decrypt(stored);
+    const parsed = JSON.parse(decrypted);
     Object.assign(appCache, parsed);
   }
 } catch (e) {
@@ -16,7 +36,8 @@ const saveCacheToStorage = () => {
   if (saveTimeout) clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
     try {
-      localStorage.setItem('aurora_app_cache', JSON.stringify(appCache));
+      const encrypted = encrypt(JSON.stringify(appCache));
+      localStorage.setItem('aurora_app_cache', encrypted);
     } catch (e) {
       console.error('Failed to save cache to localStorage', e);
     }

@@ -6,11 +6,11 @@ async function run() {
   console.log(`Connecting to Supabase Database pooler at ${host}...`);
 
   const client = new Client({
-    user: 'postgres.quqcfbairoevddjcxiyi',
+    user: process.env.DB_USER || 'postgres.quqcfbairoevddjcxiyi',
     host: host,
-    database: 'postgres',
-    password: 'MZZ+6GY4bznXSpj',
-    port: 6543,
+    database: process.env.DB_NAME || 'postgres',
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '6543'),
     ssl: { rejectUnauthorized: false }
   });
 

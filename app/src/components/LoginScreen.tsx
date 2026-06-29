@@ -7,19 +7,6 @@ import { triggerAppleToast } from './AppleToast';
 import { requestOSNotificationPermission, sendOSNotification } from '../utils/osNotifications';
 import { computeCollectionStaffBillingTransactions, computeStaffBillingTransactions } from '../utils/billingUtils';
 
-const guessRoleFromEmail = (email: string) => {
-  const emailLower = email.toLowerCase().trim();
-  if (emailLower === 'ssrcreations41@gmail.com' || emailLower.includes('super') || emailLower.includes('director')) {
-    return { id: 'SUPER-temp', name: 'Chief Super Admin', role: 'Super Admin' };
-  }
-  if (emailLower === 'vikram@auroradivine.com' || emailLower.includes('coll') || emailLower.includes('courier')) {
-    return { id: 'COLL-temp', name: 'Collection Staff', role: 'Collection Staff' };
-  }
-  if (emailLower === 'k9836282432@gmail.com' || emailLower.includes('admin')) {
-    return { id: 'ADMIN-temp', name: 'Branch Admin', role: 'Admin' };
-  }
-  return { id: 'STAFF-temp', name: 'Staff Member', role: 'Staff' };
-};
 
 export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => void }> = ({ onForgotKey, onLogin }) => {
   const { login, logout, authError } = useSession();
@@ -57,21 +44,7 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
     setIsAuthenticating(true);
     setHasError(false);
     
-    // 1. Instantly guess the role and log in optimistically (isFullyAuthenticated = false)
-    const guessed = guessRoleFromEmail(emailLower);
-    login({
-      id: guessed.id,
-      name: guessed.name,
-      role: guessed.role,
-      email: emailLower,
-      phone: '',
-      branch_id: null
-    }, false);
-
-    // 2. Instantly transition to the Dashboard (0ms delay)
-    onLogin();
-
-    // 3. Authenticate and query fresh data in the background
+    // Authenticate and query fresh data
     (async () => {
       try {
         const { data: authData, error: authErrorRes } = await supabase.auth.signInWithPassword({
@@ -189,6 +162,9 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
           branch_id: userData.branch_id || null
         }, true);
 
+        // Transition to Dashboard
+        onLogin();
+
         // Log the login activity asynchronously in the background
         (async () => {
           try {
@@ -290,8 +266,22 @@ export const LoginScreen: React.FC<{ onForgotKey: () => void; onLogin: () => voi
             
             <div className="flex flex-col gap-4 relative z-10">
               <button disabled={isAuthenticating} onClick={handleInitialize} className={`w-full h-12 ${hasError ? 'bg-error text-on-error shadow-[0_8px_20px_rgba(186,26,26,0.15)] hover:shadow-[0_10px_24px_rgba(186,26,26,0.25)] hover:bg-[#a01616]' : 'button-gradient text-on-primary'} rounded-full font-label-caps text-[12px] font-bold tracking-widest flex items-center justify-center gap-2 active:scale-[0.98] transition-all duration-200 btn-shimmer-effect ease-in-out disabled:opacity-50`}>
-                {hasError ? 'ACCESS DENIED' : 'INITIALIZE SESSION'}
-                <span className="material-symbols-outlined text-[16px]">{hasError ? 'warning' : 'arrow_forward'}</span>
+                {isAuthenticating ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                    <span>VERIFYING SECURE KEY...</span>
+                  </>
+                ) : hasError ? (
+                  <>
+                    <span>ACCESS DENIED</span>
+                    <span className="material-symbols-outlined text-[16px]">warning</span>
+                  </>
+                ) : (
+                  <>
+                    <span>INITIALIZE SESSION</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </>
+                )}
               </button>
               <div className="flex justify-between items-center px-2">
                 <a onClick={(e) => { e.preventDefault(); onForgotKey(); }} className="font-label-caps text-[10px] font-semibold text-secondary hover:text-primary transition-all uppercase tracking-wider ease-in-out cursor-pointer">Forgot Key</a>

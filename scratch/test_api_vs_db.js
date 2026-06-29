@@ -25,11 +25,11 @@ async function testPerformance() {
 
   // 2. Test Direct DB connection (Port 6543)
   const client = new Client({
-    user: 'postgres.quqcfbairoevddjcxiyi',
-    host: 'aws-1-ap-south-1.pooler.supabase.com',
-    database: 'postgres',
-    password: 'MZZ+6GY4bznXSpj',
-    port: 6543,
+    user: process.env.DB_USER || 'postgres.quqcfbairoevddjcxiyi',
+    host: process.env.DB_HOST || 'aws-1-ap-south-1.pooler.supabase.com',
+    database: process.env.DB_NAME || 'postgres',
+    password: process.env.DB_PASSWORD,
+    port: parseInt(process.env.DB_PORT || '6543'),
     ssl: { rejectUnauthorized: false }
   });
   
