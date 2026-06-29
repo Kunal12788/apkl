@@ -989,6 +989,7 @@ export const StaffBillingScreen: React.FC = () => {
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [formPolicy, setFormPolicy] = useState<{ excellent: number; good: number; fine: number; poor: number } | null>(null);
   const [savingPolicy, setSavingPolicy] = useState(false);
+  const [showPdfOptions, setShowPdfOptions] = useState<{ customer: any; behavior: any } | null>(null);
 
   React.useEffect(() => {
     const loadBillingData = async () => {
@@ -1628,14 +1629,7 @@ export const StaffBillingScreen: React.FC = () => {
                 {user?.role === 'Super Admin' && (
                   <div className="flex gap-2">
                     <button 
-                      onClick={async () => {
-                        const toastId = toast.loading('Generating PDF...');
-                        try {
-                          await generateCustomerPDFReport(selectedCustomer, behavior);
-                        } finally {
-                          toast.dismiss(toastId);
-                        }
-                      }} 
+                      onClick={() => setShowPdfOptions({ customer: selectedCustomer, behavior })} 
                       className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-colors shadow-sm flex items-center gap-1.5"
                     >
                       <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
@@ -2055,6 +2049,69 @@ export const StaffBillingScreen: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Report Type Modal */}
+      {showPdfOptions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 border border-outline-variant/10 shadow-2xl space-y-4">
+            <div>
+              <h3 className="font-headline font-bold text-primary text-base">Select Statement Format</h3>
+              <p className="text-xs text-outline mt-1 font-medium">Choose how you want to export this ledger file.</p>
+            </div>
+            
+            <div className="space-y-2">
+              <button 
+                onClick={async () => {
+                  const data = showPdfOptions;
+                  setShowPdfOptions(null);
+                  const toastId = toast.loading('Generating Super Admin Report...');
+                  try {
+                    await generateCustomerPDFReport(data.customer, data.behavior, usersMap, 'super_admin');
+                  } finally {
+                    toast.dismiss(toastId);
+                  }
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-outline-variant/15 hover:bg-slate-50 transition-colors flex items-start gap-3 active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-primary text-[20px] mt-0.5">admin_panel_settings</span>
+                <div>
+                  <p className="text-xs font-bold text-primary">Super Admin Report</p>
+                  <p className="text-[10px] text-outline mt-0.5 font-medium">Includes internal credit behavior ratings and delay metrics.</p>
+                </div>
+              </button>
+
+              <button 
+                onClick={async () => {
+                  const data = showPdfOptions;
+                  setShowPdfOptions(null);
+                  const toastId = toast.loading('Generating Customer Report...');
+                  try {
+                    await generateCustomerPDFReport(data.customer, data.behavior, usersMap, 'customer');
+                  } finally {
+                    toast.dismiss(toastId);
+                  }
+                }}
+                className="w-full text-left p-3.5 rounded-xl border border-outline-variant/15 hover:bg-slate-50 transition-colors flex items-start gap-3 active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-secondary text-[20px] mt-0.5">person</span>
+                <div>
+                  <p className="text-xs font-bold text-primary">Customer Statement</p>
+                  <p className="text-[10px] text-outline mt-0.5 font-medium">Clean billing statement ready for sharing. Excludes score metrics.</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-2.5 pt-2 border-t border-outline-variant/5">
+              <button 
+                onClick={() => setShowPdfOptions(null)}
+                className="flex-1 py-3 text-xs font-bold text-outline uppercase tracking-wider hover:bg-slate-50 rounded-xl transition-all border border-outline-variant/10 text-center cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
