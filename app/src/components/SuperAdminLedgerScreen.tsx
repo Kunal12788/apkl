@@ -5,6 +5,8 @@ import { getCachedData, setCachedData, clearAllDataCaches } from '../cache';
 import { fitText } from '../utils';
 import { clearAllStorageImages } from '../utils/storageUtils';
 import { NotificationBell } from './NotificationBell';
+import toast from 'react-hot-toast';
+import { generateCorporatePDFReport } from '../utils/pdfCorporateUtils';
 
 interface RefiningTransfer {
   metal: 'Gold' | 'Silver';
@@ -609,6 +611,47 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
+  const handleDownloadCorporateReport = async () => {
+    const toastId = toast.loading('Compiling corporate audit data...');
+    try {
+      const [
+        allocationsRes,
+        transactionsRes,
+        tasksRes,
+        usersRes,
+        branchesRes
+      ] = await Promise.all([
+        supabase.from('stock_allocations').select('*'),
+        supabase.from('transactions').select('*'),
+        supabase.from('tasks').select('*'),
+        supabase.from('users').select('*'),
+        supabase.from('branches').select('*')
+      ]);
+
+      if (allocationsRes.error) throw allocationsRes.error;
+      if (transactionsRes.error) throw transactionsRes.error;
+      if (tasksRes.error) throw tasksRes.error;
+      if (usersRes.error) throw usersRes.error;
+      if (branchesRes.error) throw branchesRes.error;
+
+      await generateCorporatePDFReport({
+        saLedger,
+        allocations: allocationsRes.data || [],
+        transactions: transactionsRes.data || [],
+        tasks: tasksRes.data || [],
+        users: usersRes.data || [],
+        branches: branchesRes.data || [],
+        branchReports
+      });
+      toast.success('Corporate report downloaded successfully.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to compile corporate audit report.');
+    } finally {
+      toast.dismiss(toastId);
+    }
+  };
+
   const currentPureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.pureGoldChange : e.pureSilverChange), 0), [saLedger, activeMetal]);
   const currentImpureStock = React.useMemo(() => saLedger.reduce((s, e) => s + (activeMetal === 'Gold' ? e.impureGoldChange : e.impureSilverChange), 0), [saLedger, activeMetal]);
   const currentCashStock = React.useMemo(() => saLedger.reduce((s, e) => s + e.cashChange, 0), [saLedger]);
@@ -1109,6 +1152,14 @@ export const SuperAdminLedgerScreen: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell />
+            <button 
+              onClick={handleDownloadCorporateReport}
+              className="px-4 py-2 bg-[#003366]/10 text-[#003366] border border-[#003366]/20 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#003366]/20 transition-colors shadow-sm flex items-center gap-1.5 shrink-0"
+              title="Download Consolidated Corporate Audit PDF"
+            >
+              <span className="material-symbols-outlined text-[14px]">picture_as_pdf</span>
+              Download Report
+            </button>
             <button 
               onClick={async () => {
                 if (window.confirm("Are you sure you want to permanently delete all corporate records, reports, transactions, ledger entries, tasks, and stock allocations across all roles? This cannot be undone!")) {
