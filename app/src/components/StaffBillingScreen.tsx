@@ -2099,7 +2099,7 @@ export const StaffBillingScreen: React.FC = () => {
 
             {/* Customer Wallet Card (Admin/Super Admin only) */}
             {['Admin', 'Super Admin'].includes(user?.role || '') && (
-              <div className="luxury-card p-5 bg-[#001e40] text-white border border-[#002b5c] space-y-4 relative overflow-hidden">
+              <div className="wallet-luxury-card p-5 space-y-4 relative overflow-hidden">
                 <div className="absolute right-0 top-0 w-32 h-32 bg-primary/20 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none"></div>
                 <div className="flex justify-between items-center border-b border-white/10 pb-3 relative z-10">
                   <div className="flex items-center gap-2">
@@ -2121,17 +2121,17 @@ export const StaffBillingScreen: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 relative z-10 text-center">
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Cash Balance</p>
+                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Cash Balance</p>
                     <p className="font-headline text-base font-extrabold text-emerald-400">₹{(selectedCustomer.advance_cash || 0).toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Pure Gold</p>
+                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Pure Gold</p>
                     <p className="font-headline text-base font-extrabold text-amber-400">{(selectedCustomer.advance_pure_gold || 0).toFixed(3)}g</p>
                   </div>
-                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Pure Silver</p>
-                    <p className="font-headline text-base font-extrabold text-slate-200">{(selectedCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
+                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Pure Silver</p>
+                    <p className="font-headline text-base font-extrabold text-slate-100">{(selectedCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
                   </div>
                 </div>
               </div>
