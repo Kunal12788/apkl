@@ -194,6 +194,12 @@ function AppContent() {
   useEffect(() => {
     if (!user) return;
 
+    const checkSameBranch = async (creatorId: string) => {
+      if (creatorId === user.id) return false;
+      const { data: u } = await supabase.from('users').select('branch_id').eq('id', creatorId).maybeSingle();
+      return !!(u && u.branch_id === user.branch_id);
+    };
+
     const realtimeChannel = supabase.channel('system_realtime_events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
          const newRecord = payload.new;
@@ -208,7 +214,7 @@ function AppContent() {
             }
          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, async (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'transactions', payload } }));
          
@@ -216,28 +222,35 @@ function AppContent() {
          const oldRecord = payload.old;
 
          if (payload.eventType === 'INSERT' && newRecord) {
-            const creatorText = newRecord.created_by === user.id ? 'You' : `User (${newRecord.created_by})`;
-            triggerBlueToast(
-              `${creatorText} registered a new ${newRecord.work_type} transaction for ${newRecord.customer_name}.`,
-              'Work Creation',
-              'task'
-            );
-         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const wasUnpaid = oldRecord.status === 'Unpaid';
-            const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
-            const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
-            const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
-
-            if ((wasUnpaid && isPaid) || staffPaidJustNow || colStaffPaidJustNow) {
-               let msg = `Payment cleared for ${newRecord.customer_name}: ${newRecord.amount}`;
-               if (newRecord.status === 'Fully Paid' || (newRecord.staff_paid && newRecord.col_staff_paid)) {
-                 msg = `Payment Fully Cleared: ${newRecord.customer_name} (₹${newRecord.amount})`;
-               } else if (staffPaidJustNow) {
-                 msg = `Payment approved by Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
-               } else if (colStaffPaidJustNow) {
-                 msg = `Payment collected by Field Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
+            if (newRecord.created_by !== user.id) {
+               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+               if (sameBranch) {
+                  triggerBlueToast(
+                    `A new ${newRecord.work_type} transaction has been registered for ${newRecord.customer_name}.`,
+                    'Work Creation',
+                    'task'
+                  );
                }
-               triggerBlueToast(msg, 'Payment Received', 'success');
+            }
+         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+            if (sameBranch) {
+               const wasUnpaid = oldRecord.status === 'Unpaid';
+               const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
+               const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
+               const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
+
+               if ((wasUnpaid && isPaid) || staffPaidJustNow || colStaffPaidJustNow) {
+                  let msg = `Payment cleared for ${newRecord.customer_name}: ${newRecord.amount}`;
+                  if (newRecord.status === 'Fully Paid' || (newRecord.staff_paid && newRecord.col_staff_paid)) {
+                    msg = `Payment Fully Cleared: ${newRecord.customer_name} (₹${newRecord.amount})`;
+                  } else if (staffPaidJustNow) {
+                    msg = `Payment approved by Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
+                  } else if (colStaffPaidJustNow) {
+                    msg = `Payment collected by Field Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
+                  }
+                  triggerBlueToast(msg, 'Payment Received', 'success');
+               }
             }
          }
       })
@@ -249,36 +262,42 @@ function AppContent() {
          const oldRecord = payload.old;
 
          if (payload.eventType === 'INSERT' && newRecord) {
-            const creatorText = newRecord.created_by === user.id ? 'You' : `User (${newRecord.created_by})`;
-            triggerBlueToast(
-              `${creatorText} created a new ${newRecord.work_type} task for ${newRecord.customer_name}.`,
-              'Task Registered',
-              'task'
-            );
-         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
-            const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');
-            const completedJustNow = oldRecord.status !== 'Completed' && newRecord.status === 'Completed';
-            const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
-            const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
-
-            if (verifiedJustNow) {
-               const verifier = newRecord.assigned_to === user.id ? 'You' : 'Staff';
-               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified by ${verifier}.`, 'Task Verified', 'success');
-            } else if (processedJustNow) {
-               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
-            } else if (completedJustNow) {
-               triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
-            } else if (staffPaidJustNow || colStaffPaidJustNow) {
-               let msg = `Task payment updated for ${newRecord.customer_name}`;
-               if (newRecord.staff_paid && newRecord.col_staff_paid) {
-                 msg = `Task payment Fully Cleared for ${newRecord.customer_name}`;
-               } else if (staffPaidJustNow) {
-                 msg = `Task payment approved by Staff: ${newRecord.customer_name}`;
-               } else if (colStaffPaidJustNow) {
-                 msg = `Task payment collected by Field Staff: ${newRecord.customer_name}`;
+            if (newRecord.created_by !== user.id) {
+               const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+               if (sameBranch) {
+                  triggerBlueToast(
+                    `New ${newRecord.work_type} task registered for ${newRecord.customer_name}.`,
+                    'Task Registered',
+                    'task'
+                  );
                }
-               triggerBlueToast(msg, 'Payment Received', 'success');
+            }
+         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
+            const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+            if (sameBranch) {
+               const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
+               const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');
+               const completedJustNow = oldRecord.status !== 'Completed' && newRecord.status === 'Completed';
+               const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
+               const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
+
+               if (verifiedJustNow && newRecord.assigned_to !== user.id) {
+                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified.`, 'Task Verified', 'success');
+               } else if (processedJustNow && newRecord.created_by !== user.id) {
+                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
+               } else if (completedJustNow && newRecord.created_by !== user.id) {
+                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
+               } else if ((staffPaidJustNow || colStaffPaidJustNow) && newRecord.created_by !== user.id) {
+                  let msg = `Task payment updated for ${newRecord.customer_name}`;
+                  if (newRecord.staff_paid && newRecord.col_staff_paid) {
+                    msg = `Task payment Fully Cleared for ${newRecord.customer_name}`;
+                  } else if (staffPaidJustNow) {
+                    msg = `Task payment approved by Staff: ${newRecord.customer_name}`;
+                  } else if (colStaffPaidJustNow) {
+                    msg = `Task payment collected by Field Staff: ${newRecord.customer_name}`;
+                  }
+                  triggerBlueToast(msg, 'Payment Received', 'success');
+               }
             }
          }
       })
@@ -296,30 +315,31 @@ function AppContent() {
             if (Number(newRecord.pure_weight || 0) > 0) detailsText += `${newRecord.pure_weight}g Pure Metal `;
             if (Number(newRecord.cash_amount || 0) > 0) detailsText += `₹${newRecord.cash_amount} Cash`;
 
-            if (isSelfAllocated) {
-               triggerBlueToast(`You successfully allocated stock: ${detailsText}`, 'Stock Allocated', 'allocation');
-            } else if (isAllocatedToMe) {
+            if (isAllocatedToMe) {
                triggerBlueToast(`You have been allocated stock: ${detailsText}`, 'Stock Allocation Received', 'allocation');
-            } else if (myBranch && !newRecord.staff_id) {
+            } else if (myBranch && !newRecord.staff_id && !isSelfAllocated) {
                triggerBlueToast(`Your branch received a stock allocation: ${detailsText}`, 'Branch Stock Allocation', 'allocation');
+            } else if (user.role === 'Super Admin' && !isSelfAllocated) {
+               triggerBlueToast(`Stock allocated: ${detailsText}`, 'Stock Allocated', 'allocation');
             }
          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, async (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'ledger_entries', payload } }));
 
           const newRecord = payload.new;
           if (payload.eventType === 'INSERT' && newRecord) {
-             if (['Exchange', 'Tunch Only', 'Buy', 'Sell'].includes(newRecord.transaction_type)) {
-                const isSelf = newRecord.staff_id === user.id;
-                const actor = isSelf ? 'You' : `Staff (${newRecord.staff_id})`;
-                const actionLabel = newRecord.transaction_type === 'Exchange' ? 'pure metal exchange' : newRecord.transaction_type.toLowerCase();
-                triggerBlueToast(
-                  `${actor} registered a new ${actionLabel} ledger entry for ${newRecord.customer_name}.`,
-                  `${newRecord.transaction_type} Registered`,
-                  'task'
-                );
+             if (newRecord.staff_id !== user.id && ['Exchange', 'Tunch Only', 'Buy', 'Sell'].includes(newRecord.transaction_type)) {
+                const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.staff_id));
+                if (sameBranch) {
+                   const actionLabel = newRecord.transaction_type === 'Exchange' ? 'pure metal exchange' : newRecord.transaction_type.toLowerCase();
+                   triggerBlueToast(
+                     `A new ${actionLabel} ledger entry was registered for ${newRecord.customer_name}.`,
+                     `${newRecord.transaction_type} Registered`,
+                     'task'
+                   );
+                }
              }
           }
       })
@@ -351,12 +371,16 @@ function AppContent() {
          const newRecord = payload.new;
          if (payload.eventType === 'INSERT' && newRecord) {
             const isSelfSubmitted = newRecord.staff_id === user.id;
-            const submitter = isSelfSubmitted ? 'You' : `Staff member (${newRecord.staff_id})`;
-            triggerBlueToast(
-              `${submitter} submitted the daily report for branch ${newRecord.branch_name}.`,
-              'Daily Report Submitted',
-              'report'
-            );
+            if (!isSelfSubmitted) {
+               const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+               if (sameBranch) {
+                  triggerBlueToast(
+                    `Daily report submitted for branch ${newRecord.branch_name}.`,
+                    'Daily Report Submitted',
+                    'report'
+                  );
+               }
+            }
          }
       })
       .subscribe();

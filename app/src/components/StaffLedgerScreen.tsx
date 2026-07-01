@@ -212,7 +212,7 @@ export const StaffLedgerScreen: React.FC = () => {
       if (user?.role === 'Admin' && user?.branch_id && staffUserIds.length > 0) {
         const [uEntries, uAlloc, uTx, uTasks] = await Promise.all([
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
-          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('branch_id', user.branch_id).is('staff_submitted_at', null),
+          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
           supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
         ]);
@@ -367,12 +367,17 @@ export const StaffLedgerScreen: React.FC = () => {
     };
     window.addEventListener('databaseSync', handleSync);
 
+    const pollInterval = setInterval(() => {
+      fetchEntries();
+    }, 2000);
+
     return () => {
       supabase.removeChannel(allocationsSub);
       supabase.removeChannel(ledgerSub);
       supabase.removeChannel(txSub);
       supabase.removeChannel(tasksSub);
       window.removeEventListener('databaseSync', handleSync);
+      clearInterval(pollInterval);
     };
   }, [user?.branch_id, isSuperSa, startDate, user?.role]);
 
@@ -1102,7 +1107,7 @@ export const StaffLedgerScreen: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {(user?.role === 'Staff' || user?.role === 'Collection Staff' || user?.role === 'Admin') && (() => {
+                    {(user?.role === 'Staff' || user?.role === 'Admin') && (() => {
                       const isBtnDisabled = (user?.role === 'Admin' && hasUnsubmittedStaffData) || !hasActiveDataToSubmit;
                       return (
                         <div className="flex flex-col items-end gap-1">

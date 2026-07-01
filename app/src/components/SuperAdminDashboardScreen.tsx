@@ -174,8 +174,14 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     };
 
     window.addEventListener('databaseSync', handleSync);
+
+    const pollInterval = setInterval(() => {
+      fetchData();
+    }, 2000);
+
     return () => {
       window.removeEventListener('databaseSync', handleSync);
+      clearInterval(pollInterval);
     };
   }, [userId, isFullyAuthenticated]);
 

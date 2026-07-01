@@ -237,7 +237,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
     }
   };
 
-   useEffect(() => {
+  useEffect(() => {
     fetchData();
 
     const saLedgerSub = supabase.channel('public:super_admin_ledger')
@@ -264,11 +264,16 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       })
       .subscribe();
 
+    const pollInterval = setInterval(() => {
+      fetchData();
+    }, 2000);
+
     return () => {
       supabase.removeChannel(saLedgerSub);
       supabase.removeChannel(transfersSub);
       supabase.removeChannel(entriesSub);
       supabase.removeChannel(reportsSub);
+      clearInterval(pollInterval);
     };
   }, []);
 

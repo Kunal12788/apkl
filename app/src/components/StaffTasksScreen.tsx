@@ -226,7 +226,7 @@ interface TaskDetailsModalProps {
     broughtBy?: string;
     cashHandlingMode?: 'Front' | 'Back';
   }) => void;
-  onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string) => void;
+  onFinalizePricing?: (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string, walletAction?: 'Giveaway' | 'Wallet') => void;
 }
 
 const extractFee = (settlementCondition?: string) => {
@@ -268,6 +268,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [cashHandlingMode, setCashHandlingMode] = useState<'Front' | 'Back'>('Front');
   const [cashRateInput, setCashRateInput] = useState('');
   const [cashAmountInputState, setCashAmountInputState] = useState('');
+  const [walletActionInput, setWalletActionInput] = useState<'Giveaway' | 'Wallet'>('Giveaway');
 
   const [piecesInput, setPiecesInput] = useState('');
   const [totalWeightInput, setTotalWeightInput] = useState('');
@@ -805,6 +806,27 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </div>
               )}
 
+              {(task.settlementCondition?.toLowerCase().includes('cash') || settlementInput === 'Cash') && task.customerId && task.customerId !== 'CUST-COL' && (
+                <div className="mt-2">
+                  <span className={lbl}>Payout Destination *</span>
+                  <div className="flex gap-2 mt-1">
+                    {[
+                      { mode: 'Giveaway', label: 'Giveaway' },
+                      { mode: 'Wallet', label: 'Transfer to Wallet' }
+                    ].map(({ mode, label }) => (
+                      <button 
+                        type="button"
+                        key={mode} 
+                        onClick={() => setWalletActionInput(mode as 'Giveaway' | 'Wallet')}
+                        className={`flex-grow py-2 rounded-lg text-[10px] font-bold border transition-colors ${walletActionInput === mode ? 'bg-tertiary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-tertiary/40'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {!(task.settlementCondition?.toLowerCase().includes('cash') || settlementInput === 'Cash') && (
                 <div>
                   <span className={lbl}>Payment Mode *</span>
@@ -940,7 +962,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   alert('Please enter cash rate and total cash amount.');
                   return;
                 }
-                onFinalizePricing?.(task, finalPriceInput, paymentModeInput, cashRateInput, cashAmountInputState);
+                onFinalizePricing?.(task, finalPriceInput, paymentModeInput, cashRateInput, cashAmountInputState, walletActionInput);
               }}
               className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
@@ -1069,8 +1091,14 @@ export const StaffTasksScreen: React.FC = () => {
     };
 
     window.addEventListener('databaseSync', handleSync);
+
+    const pollInterval = setInterval(() => {
+      loadTasks();
+    }, 2000);
+
     return () => {
       window.removeEventListener('databaseSync', handleSync);
+      clearInterval(pollInterval);
     };
   }, [isAdminOrSuper, isFullyAuthenticated]);
 
@@ -1439,7 +1467,7 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string) => {
+  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string, walletAction?: 'Giveaway' | 'Wallet') => {
     try {
       const modeStr = paymentMode || 'Cash';
       const isSilver = task.metal === 'Silver';
@@ -1537,7 +1565,7 @@ export const StaffTasksScreen: React.FC = () => {
       let isTransferredToWallet = false;
 
       if (task.settlementCondition?.toLowerCase().includes('cash') && finalCashAmount > 0 && task.customerId && task.customerId !== 'CUST-COL') {
-        const transferToWallet = window.confirm(`Transfer the cash payout amount of ₹${finalCashAmount.toLocaleString('en-IN')} directly to the customer's wallet as a deposit instead of paying cash immediately?`);
+        const transferToWallet = walletAction === 'Wallet';
         if (transferToWallet) {
           isTransferredToWallet = true;
           ledgerCashPaid = 0;
@@ -2627,8 +2655,8 @@ export const StaffTasksScreen: React.FC = () => {
                     setIsSubmittingSettlement(false);
                   }
                 }}
-                disabled={isSubmittingSettlement}
-                className="flex-grow flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5"
+                disabled={isSubmittingSettlement || newSettlementMode === 'Only Tunch'}
+                className={`flex-grow flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-[10px] uppercase tracking-[0.15em] rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5 ${newSettlementMode === 'Only Tunch' ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {isSubmittingSettlement ? (
                   <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>

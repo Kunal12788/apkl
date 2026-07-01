@@ -1458,8 +1458,15 @@ export const StaffBillingScreen: React.FC = () => {
       loadDbCustomers();
     };
     window.addEventListener('databaseSync', handleSync);
+
+    const pollInterval = setInterval(() => {
+      loadBillingData();
+      loadDbCustomers();
+    }, 2000);
+
     return () => {
       window.removeEventListener('databaseSync', handleSync);
+      clearInterval(pollInterval);
     };
   }, [isFullyAuthenticated, user?.id, user?.branch_id]);
 

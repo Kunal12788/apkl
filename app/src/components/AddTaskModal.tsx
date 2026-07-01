@@ -222,7 +222,17 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   if (!isOpen) return null;
 
   const up = (key: string, val: string) => {
-    setFormData(f => ({ ...f, [key]: val }));
+    setFormData(f => {
+      const next = { ...f, [key]: val };
+      if (key === 'metal') {
+        if (val === 'Silver' && f.settlementCondition === 'Pure Gold') {
+          next.settlementCondition = 'Pure Silver';
+        } else if (val === 'Gold' && f.settlementCondition === 'Pure Silver') {
+          next.settlementCondition = 'Pure Gold';
+        }
+      }
+      return next;
+    });
     if (errors[key]) setErrors(e => { const n = {...e}; delete n[key]; return n; });
     
     if (key === 'pieces') {
@@ -828,7 +838,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
 
                 <SectionCard title="Settlement Condition" icon="handshake" color="bg-surface-container text-on-surface-variant">
                   <div className="space-y-2">
-                    {['Only Tunch', 'Pure Gold', 'Cash'].map(cond => (
+                    {['Only Tunch', formData.metal === 'Silver' ? 'Pure Silver' : 'Pure Gold', 'Cash'].map(cond => (
                       <button key={cond} onClick={() => up('settlementCondition', cond)}
                         className={`w-full h-11 px-4 rounded-full text-[12px] font-semibold text-left transition-all flex items-center gap-2.5 ${formData.settlementCondition === cond ? 'button-gradient text-white shadow-md' : 'bg-surface-container text-on-surface-variant border border-outline-variant/20 hover:bg-surface-container-high'}`}>
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${formData.settlementCondition === cond ? 'bg-white' : 'bg-outline-variant'}`} />

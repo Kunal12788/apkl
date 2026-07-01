@@ -330,44 +330,7 @@ export const GlobalFAB: React.FC = () => {
             if (data.workType === 'TUNCH' && (data.settlementCondition === 'Pure Gold' || data.settlementCondition === 'Pure Silver')) {
               const calculatedPure = Number(data.pureWeight || 0);
 
-              // Stock Validation
-              if (!data.pendingPureLiability) {
-                const isSuperSa = user?.role === 'Super Admin';
-                let allocationsQuery = supabase.from('stock_allocations').select('*');
-                if (!isSuperSa && user?.branch_id) {
-                  allocationsQuery = allocationsQuery.eq('branch_id', user.branch_id);
-                }
-                
-                let branchUserIds: string[] = [];
-                if (!isSuperSa && user?.branch_id) {
-                  const { data: bUsers } = await supabase.from('users').select('id').eq('branch_id', user.branch_id);
-                  if (bUsers) branchUserIds = bUsers.map((bu: any) => bu.id);
-                }
-                if (branchUserIds.length === 0) branchUserIds = [user?.id || ''];
-                
-                let entriesQuery = supabase.from('ledger_entries').select('*');
-                if (!isSuperSa && user?.branch_id) {
-                  entriesQuery = entriesQuery.in('staff_id', branchUserIds);
-                }
-                
-                const [allocationsRes, entriesRes] = await Promise.all([
-                  allocationsQuery,
-                  entriesQuery
-                ]);
-
-                const metalType = isSilver ? 'Silver' : 'Gold';
-                const totalAllocatedPure = (allocationsRes.data || []).filter((a: any) => a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
-                const totalPureGiven = (entriesRes.data || []).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
-                const currentPureStock = totalAllocatedPure - totalPureGiven;
-
-                if (calculatedPure > currentPureStock) {
-                  const msg = user?.role === 'Admin'
-                    ? "Required stock is not present, kindly talk to the Super Admin."
-                    : "Required stock is not present, kindly talk to the Admin.";
-                  triggerBlueToast(msg);
-                  return;
-                }
-              }
+              // Stock Validation bypassed as per user request to directly execute without creating task or admin verification
 
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
 

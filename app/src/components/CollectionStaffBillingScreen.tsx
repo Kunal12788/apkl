@@ -678,8 +678,15 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       loadDbCustomers();
     };
     window.addEventListener('databaseSync', handleSync);
+
+    const pollInterval = setInterval(() => {
+      loadBillingData();
+      loadDbCustomers();
+    }, 2000);
+
     return () => {
       window.removeEventListener('databaseSync', handleSync);
+      clearInterval(pollInterval);
     };
   }, [isFullyAuthenticated, currentUser, user?.branch_id]);
 

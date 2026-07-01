@@ -11,6 +11,28 @@ interface AppleToastProps {
 }
 
 export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type }) => {
+  const [dragStart, setDragStart] = React.useState<number | null>(null);
+  const [translateX, setTranslateX] = React.useState(0);
+
+  const handleStart = (clientX: number) => {
+    setDragStart(clientX);
+  };
+
+  const handleMove = (clientX: number) => {
+    if (dragStart === null) return;
+    setTranslateX(clientX - dragStart);
+  };
+
+  const handleEnd = () => {
+    if (dragStart === null) return;
+    if (Math.abs(translateX) > 80) {
+      toast.dismiss(t.id);
+    } else {
+      setTranslateX(0);
+    }
+    setDragStart(null);
+  };
+
   // Select icon based on type
   const getIcon = () => {
     switch (type) {
@@ -34,14 +56,23 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
 
   return (
     <div
+      onTouchStart={e => handleStart(e.touches[0].clientX)}
+      onTouchMove={e => handleMove(e.touches[0].clientX)}
+      onTouchEnd={handleEnd}
+      onMouseDown={e => handleStart(e.clientX)}
+      onMouseMove={e => { if (e.buttons === 1) handleMove(e.clientX); }}
+      onMouseUp={handleEnd}
+      onMouseLeave={handleEnd}
       className={`${
         t.visible ? 'ios-animate-enter' : 'ios-animate-leave'
-      } w-[358px] sm:w-[360px] max-w-full bg-[#003366]/90 border border-white/15 rounded-[22px] pointer-events-auto flex flex-col overflow-hidden`}
+      } w-[358px] sm:w-[360px] max-w-full bg-[#003366]/90 border border-white/15 rounded-[22px] pointer-events-auto flex flex-col overflow-hidden select-none cursor-grab active:cursor-grabbing`}
       style={{
         WebkitBackdropFilter: 'saturate(180%) blur(24px)',
         backdropFilter: 'saturate(180%) blur(24px)',
         boxShadow: '0 16px 40px -8px rgba(0, 0, 0, 0.3), 0 4px 16px -2px rgba(0, 0, 0, 0.15), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
         fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', Roboto, sans-serif",
+        transform: `translateX(${translateX}px)`,
+        transition: dragStart === null ? 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'none',
       }}
     >
       <div className="flex items-start gap-3.5 p-4">

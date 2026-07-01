@@ -428,9 +428,15 @@ export const CollectionStaffTasksScreen: React.FC = () => {
     
     window.addEventListener('taskCreated', handleTaskCreated);
     window.addEventListener('databaseSync', handleSync);
+
+    const pollInterval = setInterval(() => {
+      loadTasks();
+    }, 2000);
+
     return () => {
        window.removeEventListener('taskCreated', handleTaskCreated);
        window.removeEventListener('databaseSync', handleSync);
+       clearInterval(pollInterval);
     };
   }, [isFullyAuthenticated, currentUser]);
 

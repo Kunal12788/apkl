@@ -151,9 +151,14 @@ export const CollectionStaffDashboardScreen: React.FC = () => {
     window.addEventListener('taskCreated', handleTaskCreated);
     window.addEventListener('databaseSync', loadData);
 
+    const pollInterval = setInterval(() => {
+      loadData();
+    }, 2000);
+
     return () => {
        window.removeEventListener('taskCreated', handleTaskCreated);
        window.removeEventListener('databaseSync', loadData);
+       clearInterval(pollInterval);
     };
   }, [currentUser, isFullyAuthenticated]);
 
