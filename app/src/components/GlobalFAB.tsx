@@ -161,6 +161,8 @@ export const GlobalFAB: React.FC = () => {
                 }
               }
 
+              const depositToWallet = !!data.depositToWallet;
+
               // 1. Create Ledger Entry
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
               const ledgerEntry: any = {
@@ -191,19 +193,78 @@ export const GlobalFAB: React.FC = () => {
                   ledgerEntry.impure_silver_in = 0;
                   ledgerEntry.pure_silver_in = calculatedPure;
                 } else {
-                  ledgerEntry.pure_silver_out = calculatedPure;
+                  ledgerEntry.pure_silver_out = depositToWallet ? 0 : calculatedPure;
                 }
               } else {
                 if (isBuy) {
                   ledgerEntry.impure_gold_in = 0;
                   ledgerEntry.pure_gold_in = calculatedPure;
                 } else {
-                  ledgerEntry.pure_gold_out = calculatedPure;
+                  ledgerEntry.pure_gold_out = depositToWallet ? 0 : calculatedPure;
                 }
               }
 
               const { error: ledgerError } = await supabase.from('ledger_entries').insert([ledgerEntry]);
               if (ledgerError) throw ledgerError;
+
+              // Perform wallet deposit if requested
+              if (depositToWallet && generatedCustomerId && generatedCustomerId !== 'CUST-COL') {
+                const { data: custData } = await supabase
+                  .from('customers')
+                  .select('advance_cash, advance_pure_gold, advance_pure_silver')
+                  .eq('id', generatedCustomerId)
+                  .maybeSingle();
+
+                if (isBuy) {
+                  const currentAdvance = custData ? Number(custData.advance_cash || 0) : 0;
+                  await supabase
+                    .from('customers')
+                    .update({ advance_cash: currentAdvance + totalAmount })
+                    .eq('id', generatedCustomerId);
+
+                  const advId = `ADV-FAB-${Math.floor(1000 + Math.random() * 9000)}`;
+                  await supabase
+                    .from('customer_advances')
+                    .insert([{
+                      id: advId,
+                      customer_id: generatedCustomerId,
+                      customer_name: data.customerName || 'Walk-in Customer',
+                      type: 'Deposit',
+                      asset_type: 'Cash',
+                      amount: totalAmount,
+                      details: `Auto-deposit from Buy transaction ${entryId}`,
+                      created_by: user?.id
+                    }]);
+                } else {
+                  if (isSilver) {
+                    const currentAdvance = custData ? Number(custData.advance_pure_silver || 0) : 0;
+                    await supabase
+                      .from('customers')
+                      .update({ advance_pure_silver: currentAdvance + calculatedPure })
+                      .eq('id', generatedCustomerId);
+                  } else {
+                    const currentAdvance = custData ? Number(custData.advance_pure_gold || 0) : 0;
+                    await supabase
+                      .from('customers')
+                      .update({ advance_pure_gold: currentAdvance + calculatedPure })
+                      .eq('id', generatedCustomerId);
+                  }
+
+                  const advId = `ADV-FAB-${Math.floor(1000 + Math.random() * 9000)}`;
+                  await supabase
+                    .from('customer_advances')
+                    .insert([{
+                      id: advId,
+                      customer_id: generatedCustomerId,
+                      customer_name: data.customerName || 'Walk-in Customer',
+                      type: 'Deposit',
+                      asset_type: isSilver ? 'Pure Silver' : 'Pure Gold',
+                      amount: calculatedPure,
+                      details: `Auto-deposit from Sell transaction ${entryId}`,
+                      created_by: user?.id
+                    }]);
+                }
+              }
 
               // 2. Create Transaction Entry
               const newTxn = {
@@ -218,7 +279,9 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: 'Paid',
-                details: `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Pure Weight: ${calculatedPure}g at ₹${cashRate}/g.`,
+                details: depositToWallet
+                  ? `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Yield auto-deposited to customer wallet. Pure Weight: ${calculatedPure}g.`
+                  : `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Pure Weight: ${calculatedPure}g at ₹${cashRate}/g.`,
                 created_by: user?.id || '',
                 pure_weight: String(calculatedPure),
                 impure_weight: String(data.impureWeight || 0),

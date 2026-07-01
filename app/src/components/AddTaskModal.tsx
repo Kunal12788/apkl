@@ -84,7 +84,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     pendingCashLiability: false,
     cashHandlingMode: 'Front',
     cashRate: '',
-    cashAmount: ''
+    cashAmount: '',
+    depositToWallet: false
   });
 
   const [pieceCategories, setPieceCategories] = useState<Record<string, string>>({
@@ -389,7 +390,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       setTaskImages({});
       setUploadingSlots({});
       setUploadedUrls({});
-      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front', cashRate: '', cashAmount: '' });
+      setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front', cashRate: '', cashAmount: '', depositToWallet: false });
       onClose();
     } catch (err) {
       console.error("Upload error:", err);
@@ -1127,6 +1128,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     </div>
                     {errMsg('cashAmount')}
                   </div>
+
+                  {formData.customerId && formData.customerId !== 'CUST-COL' && (
+                    <div className="mt-4 pt-3 border-t border-outline-variant/10 flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        id="depositToWallet"
+                        checked={formData.depositToWallet}
+                        onChange={e => setFormData(f => ({ ...f, depositToWallet: e.target.checked }))}
+                        className="w-4.5 h-4.5 text-[#003366] border-outline-variant/30 rounded focus:ring-primary/20"
+                      />
+                      <label htmlFor="depositToWallet" className="text-[11px] font-bold text-primary cursor-pointer select-none">
+                        {formData.settlementCondition === 'Buy'
+                          ? `Deposit cash payout of ₹${Number(formData.cashAmount || 0).toLocaleString('en-IN')} to customer wallet`
+                          : `Deposit ${parseFloat(formData.pureWeight || '0').toFixed(3)}g Pure ${formData.metal} to customer wallet`}
+                      </label>
+                    </div>
+                  )}
                 </SectionCard>
               </>)}
 
