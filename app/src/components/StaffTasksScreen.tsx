@@ -1533,6 +1533,45 @@ export const StaffTasksScreen: React.FC = () => {
       const finalCashAmount = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
       const finalCashRate = cashRate ? Number(cashRate) : 0;
 
+      let ledgerCashPaid = finalCashAmount;
+      let isTransferredToWallet = false;
+
+      if (task.settlementCondition?.toLowerCase().includes('cash') && finalCashAmount > 0 && task.customerId && task.customerId !== 'CUST-COL') {
+        const transferToWallet = window.confirm(`Transfer the cash payout amount of ₹${finalCashAmount.toLocaleString('en-IN')} directly to the customer's wallet as a deposit instead of paying cash immediately?`);
+        if (transferToWallet) {
+          isTransferredToWallet = true;
+          ledgerCashPaid = 0;
+
+          const { data: custData } = await supabase
+            .from('customers')
+            .select('advance_cash')
+            .eq('id', task.customerId)
+            .maybeSingle();
+          
+          const currentAdvance = custData ? Number(custData.advance_cash || 0) : 0;
+          const newAdvance = currentAdvance + finalCashAmount;
+
+          await supabase
+            .from('customers')
+            .update({ advance_cash: newAdvance })
+            .eq('id', task.customerId);
+
+          const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+          await supabase
+            .from('customer_advances')
+            .insert([{
+              id: advId,
+              customer_id: task.customerId,
+              customer_name: task.customerName,
+              type: 'Deposit',
+              asset_type: 'Cash',
+              amount: finalCashAmount,
+              details: `Auto-deposit from completed Buy task ${task.id}`,
+              created_by: user?.id
+            }]);
+        }
+      }
+
       const updatedCondition = task.settlementCondition?.toLowerCase().includes('cash') 
         ? `${task.settlementCondition} - [Collected] ${modeStr} ₹${finalPrice}` 
         : `[Collected] ${modeStr} - ₹${finalPrice}`;
@@ -1627,7 +1666,7 @@ export const StaffTasksScreen: React.FC = () => {
             transaction_type: 'Exchange',
             status: 'Completed',
             purity: task.purity || '',
-            cash_paid: finalCashAmount,
+            cash_paid: ledgerCashPaid,
             cash_received: 0,
             cash_rate_per_gram: finalCashRate,
             cash_amount: finalCashAmount,
@@ -1651,7 +1690,7 @@ export const StaffTasksScreen: React.FC = () => {
               transaction_type: 'Exchange',
               status: 'Completed',
               purity: task.purity || '',
-              cash_paid: finalCashAmount,
+              cash_paid: ledgerCashPaid,
               cash_received: 0,
               cash_rate_per_gram: finalCashRate,
               cash_amount: finalCashAmount,
@@ -1774,7 +1813,9 @@ export const StaffTasksScreen: React.FC = () => {
             iso_date: new Date().toISOString().split('T')[0],
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             status: 'Paid',
-            details: `Cash payout for completed Tunch metal purchase. Pure weight: ${task.pureWeight || '0'}g at ₹${finalCashRate || '0'}/g.`,
+            details: isTransferredToWallet
+              ? `Transferred ₹${finalCashAmount.toLocaleString('en-IN')} to customer wallet. Cash payout for completed metal purchase. Pure weight: ${task.pureWeight || '0'}g.`
+              : `Cash payout for completed Tunch metal purchase. Pure weight: ${task.pureWeight || '0'}g at ₹${finalCashRate || '0'}/g.`,
             piece_type: task.productType || 'Jewellery',
             impure_weight: task.impureWeight || task.totalWeight || task.weight || '',
             pure_weight: task.pureWeight || '',
@@ -2404,6 +2445,43 @@ export const StaffTasksScreen: React.FC = () => {
                         ledgerUpdates.impure_gold_in = impure;
                       }
                       
+                      let ledgerCashPaid = cashToPay;
+                      let isTransferredToWallet = false;
+                      const customerId = selectedSettlement.task?.customerId;
+                      if (customerId && customerId !== 'CUST-COL') {
+                        const transferToWallet = window.confirm(`Transfer the cash payout amount of ₹${cashToPay.toLocaleString('en-IN')} directly to the customer's wallet as a deposit instead of paying cash immediately?`);
+                        if (transferToWallet) {
+                          isTransferredToWallet = true;
+                          ledgerCashPaid = 0;
+
+                          const { data: custData } = await supabase
+                            .from('customers')
+                            .select('advance_cash')
+                            .eq('id', customerId)
+                            .maybeSingle();
+                          
+                          const currentAdvance = custData ? Number(custData.advance_cash || 0) : 0;
+                          await supabase
+                            .from('customers')
+                            .update({ advance_cash: currentAdvance + cashToPay })
+                            .eq('id', customerId);
+
+                          const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+                          await supabase
+                            .from('customer_advances')
+                            .insert([{
+                              id: advId,
+                              customer_id: customerId,
+                              customer_name: selectedSettlement.customer_name,
+                              type: 'Deposit',
+                              asset_type: 'Cash',
+                              amount: cashToPay,
+                              details: `Auto-deposit from settlement ${selectedSettlement.id}`,
+                              created_by: user?.id
+                            }]);
+                        }
+                      }
+
                       // Create Admin ledger entry to deduct cash
                       const adminEntryId = `LGR-A-${Math.floor(1000 + Math.random() * 9000)}`;
                       const adminLedgerEntry: any = {
@@ -2414,7 +2492,7 @@ export const StaffTasksScreen: React.FC = () => {
                         transaction_type: 'Exchange',
                         status: 'Completed',
                         purity: String(purity),
-                        cash_paid: cashToPay,
+                        cash_paid: ledgerCashPaid,
                         cash_received: 0,
                         cash_rate_per_gram: 0,
                         cash_amount: cashToPay,
@@ -2440,7 +2518,9 @@ export const StaffTasksScreen: React.FC = () => {
                         iso_date: new Date().toISOString().split('T')[0],
                         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                         status: 'Paid',
-                        details: `Cash settlement for completed Tunch gold. Original Entry ID: ${ledgerEntryId}`,
+                        details: isTransferredToWallet 
+                          ? `Transferred ₹${cashToPay.toLocaleString('en-IN')} to customer wallet. Cash settlement for completed Tunch metal purchase.` 
+                          : `Cash settlement for completed Tunch gold. Original Entry ID: ${ledgerEntryId}`,
                         piece_type: 'Jewellery',
                         impure_weight: String(impure),
                         pure_weight: String(calculatedPure),
@@ -2452,6 +2532,50 @@ export const StaffTasksScreen: React.FC = () => {
                       };
                       await supabase.from('transactions').insert([newTxn]);
                     } else {
+                      let isTransferredToWallet = false;
+                      const customerId = selectedSettlement.task?.customerId;
+                      if (customerId && customerId !== 'CUST-COL') {
+                        const metalStr = isSilver ? 'Silver' : 'Gold';
+                        const transferToWallet = window.confirm(`Transfer the pure metal yield of ${calculatedPure.toFixed(3)}g Pure ${metalStr} directly to the customer's wallet as a deposit instead of giving it away?`);
+                        if (transferToWallet) {
+                          isTransferredToWallet = true;
+
+                          const { data: custData } = await supabase
+                            .from('customers')
+                            .select('advance_pure_gold, advance_pure_silver')
+                            .eq('id', customerId)
+                            .maybeSingle();
+                          
+                          if (isSilver) {
+                            const currentAdvance = custData ? Number(custData.advance_pure_silver || 0) : 0;
+                            await supabase
+                              .from('customers')
+                              .update({ advance_pure_silver: currentAdvance + calculatedPure })
+                              .eq('id', customerId);
+                          } else {
+                            const currentAdvance = custData ? Number(custData.advance_pure_gold || 0) : 0;
+                            await supabase
+                              .from('customers')
+                              .update({ advance_pure_gold: currentAdvance + calculatedPure })
+                              .eq('id', customerId);
+                          }
+
+                          const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+                          await supabase
+                            .from('customer_advances')
+                            .insert([{
+                              id: advId,
+                              customer_id: customerId,
+                              customer_name: selectedSettlement.customer_name,
+                              type: 'Deposit',
+                              asset_type: isSilver ? 'Pure Silver' : 'Pure Gold',
+                              amount: calculatedPure,
+                              details: `Auto-deposit from completed Tunch task ${selectedSettlement.id}`,
+                              created_by: user?.id
+                            }]);
+                        }
+                      }
+
                       ledgerUpdates.transaction_type = 'Exchange';
                       const isPending = !!selectedSettlement.task?.pendingPureLiability;
                       ledgerUpdates.status = isPending ? 'Pending Pure' : 'Completed';
@@ -2461,7 +2585,7 @@ export const StaffTasksScreen: React.FC = () => {
                           ledgerUpdates.pure_silver_out = 0;
                         } else {
                           ledgerUpdates.pure_silver_due = 0;
-                          ledgerUpdates.pure_silver_out = calculatedPure;
+                          ledgerUpdates.pure_silver_out = isTransferredToWallet ? 0 : calculatedPure;
                         }
                         ledgerUpdates.pure_gold_due = 0;
                         ledgerUpdates.pure_gold_out = 0;
@@ -2472,7 +2596,7 @@ export const StaffTasksScreen: React.FC = () => {
                           ledgerUpdates.pure_gold_out = 0;
                         } else {
                           ledgerUpdates.pure_gold_due = 0;
-                          ledgerUpdates.pure_gold_out = calculatedPure;
+                          ledgerUpdates.pure_gold_out = isTransferredToWallet ? 0 : calculatedPure;
                         }
                         ledgerUpdates.pure_silver_due = 0;
                         ledgerUpdates.pure_silver_out = 0;

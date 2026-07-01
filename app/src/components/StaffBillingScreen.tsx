@@ -57,6 +57,9 @@ interface DbCustomer {
   address: string;
   status: string;
   created_by?: string;
+  advance_cash?: number;
+  advance_pure_gold?: number;
+  advance_pure_silver?: number;
 }
 
 interface Customer {
@@ -77,6 +80,9 @@ interface Customer {
   phone?: string;
   address?: string;
   created_by?: string;
+  advance_cash?: number;
+  advance_pure_gold?: number;
+  advance_pure_silver?: number;
 }
 
 const getWorkIcon = (workType: string) => {
@@ -995,6 +1001,340 @@ export const StaffBillingScreen: React.FC = () => {
   const [savingPolicy, setSavingPolicy] = useState(false);
   const [showPdfOptions, setShowPdfOptions] = useState<{ customer: any; behavior: any } | null>(null);
 
+  // Customer Wallet State
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [walletCustomer, setWalletCustomer] = useState<Customer | null>(null);
+  const [walletLogs, setWalletLogs] = useState<any[]>([]);
+  const [loadingWalletLogs, setLoadingWalletLogs] = useState(false);
+
+  const [walletTab, setWalletTab] = useState<'history' | 'action' | 'adjust'>('history');
+  const [walletType, setWalletType] = useState<'Deposit' | 'Withdrawal'>('Deposit');
+  const [walletAsset, setWalletAsset] = useState<'Cash' | 'Pure Gold' | 'Pure Silver'>('Cash');
+  const [walletAmount, setWalletAmount] = useState('');
+  const [walletDetails, setWalletDetails] = useState('');
+  const [isSubmittingWallet, setIsSubmittingWallet] = useState(false);
+
+  // Adjustment state variables
+  const [selectedAdjTxId, setSelectedAdjTxId] = useState<string>('');
+  const [adjMetalRate, setAdjMetalRate] = useState<string>(''); // For adjusting metal converting to cash
+  const [adjWeightAmount, setAdjWeightAmount] = useState<string>(''); // grams of gold/silver
+
+  const loadWalletLogs = async (customerId: string) => {
+    try {
+      setLoadingWalletLogs(true);
+      const { data, error } = await supabase
+        .from('customer_advances')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setWalletLogs(data || []);
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setLoadingWalletLogs(false);
+    }
+  };
+
+  const handleWalletTxnSubmit = async () => {
+    if (!walletCustomer) return;
+    const amt = parseFloat(walletAmount);
+    if (!amt || isNaN(amt) || amt <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    
+    if (walletType === 'Withdrawal') {
+      const balance = walletAsset === 'Cash' 
+        ? walletCustomer.advance_cash 
+        : walletAsset === 'Pure Gold' 
+          ? walletCustomer.advance_pure_gold 
+          : walletCustomer.advance_pure_silver;
+      if (amt > (balance || 0)) {
+        alert(`Insufficient funds. Available balance is only ${walletAsset === 'Cash' ? '₹' + (balance || 0).toLocaleString('en-IN') : (balance || 0) + 'g'}.`);
+        return;
+      }
+    }
+
+    const confirmMsg = `Confirm ${walletType} of ${walletAsset === 'Cash' ? '₹' + amt.toLocaleString('en-IN') : amt + 'g ' + walletAsset}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setIsSubmittingWallet(true);
+    try {
+      const factor = walletType === 'Deposit' ? 1 : -1;
+      const currentCash = walletCustomer.advance_cash || 0;
+      const currentGold = walletCustomer.advance_pure_gold || 0;
+      const currentSilver = walletCustomer.advance_pure_silver || 0;
+
+      let newCash = currentCash;
+      let newGold = currentGold;
+      let newSilver = currentSilver;
+
+      if (walletAsset === 'Cash') newCash += factor * amt;
+      else if (walletAsset === 'Pure Gold') newGold += factor * amt;
+      else if (walletAsset === 'Pure Silver') newSilver += factor * amt;
+
+      const { error: custErr } = await supabase
+        .from('customers')
+        .update({
+          advance_cash: newCash,
+          advance_pure_gold: newGold,
+          advance_pure_silver: newSilver
+        })
+        .eq('id', walletCustomer.id);
+      if (custErr) throw custErr;
+
+      const advId = `ADV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const { error: advErr } = await supabase
+        .from('customer_advances')
+        .insert([{
+          id: advId,
+          customer_id: walletCustomer.id,
+          customer_name: walletCustomer.name,
+          type: walletType,
+          asset_type: walletAsset,
+          amount: amt,
+          details: walletDetails || `${walletType} of ${walletAsset === 'Cash' ? '₹' + amt : amt + 'g'}`,
+          created_by: user?.id
+        }]);
+      if (advErr) throw advErr;
+
+      const ledgerEntryId = `LGR-ADV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const ledgerEntry: any = {
+        id: ledgerEntryId,
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        iso_date: new Date().toISOString().split('T')[0],
+        customer_name: walletCustomer.name,
+        transaction_type: walletType === 'Deposit' ? 'Customer Advance Deposit' : 'Customer Advance Withdrawal',
+        status: 'Completed',
+        staff_id: user?.id,
+        details: walletDetails || `${walletType} of ${walletAsset === 'Cash' ? '₹' + amt : amt + 'g'}`
+      };
+
+      if (walletAsset === 'Cash') {
+        if (walletType === 'Deposit') {
+          ledgerEntry.cash_received = amt;
+          ledgerEntry.cash_paid = 0;
+        } else {
+          ledgerEntry.cash_received = 0;
+          ledgerEntry.cash_paid = amt;
+        }
+      } else if (walletAsset === 'Pure Gold') {
+        if (walletType === 'Deposit') {
+          ledgerEntry.pure_gold_in = amt;
+          ledgerEntry.pure_gold_out = 0;
+        } else {
+          ledgerEntry.pure_gold_in = 0;
+          ledgerEntry.pure_gold_out = amt;
+        }
+      } else if (walletAsset === 'Pure Silver') {
+        if (walletType === 'Deposit') {
+          ledgerEntry.pure_silver_in = amt;
+          ledgerEntry.pure_silver_out = 0;
+        } else {
+          ledgerEntry.pure_silver_in = 0;
+          ledgerEntry.pure_silver_out = amt;
+        }
+      }
+
+      const { error: ledgerErr } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+      if (ledgerErr) throw ledgerErr;
+
+      setDbCustomers(prev => prev.map(c => c.id === walletCustomer.id ? {
+        ...c,
+        advance_cash: newCash,
+        advance_pure_gold: newGold,
+        advance_pure_silver: newSilver
+      } : c));
+
+      setWalletCustomer(prev => prev ? {
+        ...prev,
+        advance_cash: newCash,
+        advance_pure_gold: newGold,
+        advance_pure_silver: newSilver
+      } : null);
+
+      alert(`${walletType} processed successfully.`);
+      setWalletAmount('');
+      setWalletDetails('');
+      loadWalletLogs(walletCustomer.id);
+      window.dispatchEvent(new Event('databaseSync'));
+    } catch(err: any) {
+      console.error(err);
+      alert("Failed to process transaction: " + err.message);
+    } finally {
+      setIsSubmittingWallet(false);
+    }
+  };
+
+  const handleWalletAdjustSubmit = async () => {
+    if (!walletCustomer || !selectedAdjTxId) return;
+    
+    const targetTx = walletCustomer.ledger.find(t => t.id === selectedAdjTxId);
+    if (!targetTx) {
+      alert("Selected transaction not found.");
+      return;
+    }
+
+    const txAmt = parseFloat(targetTx.amount.replace(/[^\d.]/g, '')) || 0;
+    const txPaid = targetTx.paidAmount || 0;
+    const remainingDue = txAmt - txPaid;
+
+    if (remainingDue <= 0) {
+      alert("This transaction is already fully paid.");
+      return;
+    }
+
+    setIsSubmittingWallet(true);
+    try {
+      const currentCash = walletCustomer.advance_cash || 0;
+      const currentGold = walletCustomer.advance_pure_gold || 0;
+      const currentSilver = walletCustomer.advance_pure_silver || 0;
+
+      let adjustValueInCash = 0;
+      let newCash = currentCash;
+      let newGold = currentGold;
+      let newSilver = currentSilver;
+      let details = "";
+
+      if (walletAsset === 'Cash') {
+        const amt = parseFloat(walletAmount);
+        if (!amt || isNaN(amt) || amt <= 0) {
+          alert("Please enter a valid cash amount to adjust.");
+          setIsSubmittingWallet(false);
+          return;
+        }
+        if (amt > currentCash) {
+          alert(`Insufficient cash balance. Available: ₹${currentCash}`);
+          setIsSubmittingWallet(false);
+          return;
+        }
+        if (amt > remainingDue) {
+          alert(`Adjustment amount (₹${amt}) cannot exceed remaining due (₹${remainingDue}).`);
+          setIsSubmittingWallet(false);
+          return;
+        }
+
+        adjustValueInCash = amt;
+        newCash -= amt;
+        details = `Adjusted ₹${amt} Cash against due ${targetTx.id}`;
+
+      } else {
+        const weight = parseFloat(adjWeightAmount);
+        const rate = parseFloat(adjMetalRate);
+
+        if (!weight || isNaN(weight) || weight <= 0) {
+          alert("Please enter a valid weight in grams.");
+          setIsSubmittingWallet(false);
+          return;
+        }
+        if (!rate || isNaN(rate) || rate <= 0) {
+          alert("Please enter a valid market rate per gram.");
+          setIsSubmittingWallet(false);
+          return;
+        }
+
+        const maxAvailableWeight = walletAsset === 'Pure Gold' ? currentGold : currentSilver;
+        if (weight > maxAvailableWeight) {
+          alert(`Insufficient metal balance. Available: ${maxAvailableWeight}g`);
+          setIsSubmittingWallet(false);
+          return;
+        }
+
+        const calculatedCashValue = weight * rate;
+        if (calculatedCashValue > remainingDue) {
+          alert(`Calculated adjustment value (₹${calculatedCashValue.toLocaleString('en-IN')}) cannot exceed remaining due (₹${remainingDue}). Adjust a smaller weight.`);
+          setIsSubmittingWallet(false);
+          return;
+        }
+
+        adjustValueInCash = calculatedCashValue;
+        if (walletAsset === 'Pure Gold') newGold -= weight;
+        else newSilver -= weight;
+        details = `Adjusted ${weight}g Pure ${walletAsset === 'Pure Gold' ? 'Gold' : 'Silver'} at ₹${rate}/g against due ${targetTx.id}`;
+      }
+
+      const confirmAdjust = window.confirm(`Confirm adjusting ₹${adjustValueInCash.toLocaleString('en-IN')} towards transaction ${targetTx.id}? This will deduct from the customer's wallet.`);
+      if (!confirmAdjust) {
+        setIsSubmittingWallet(false);
+        return;
+      }
+
+      const { error: custErr } = await supabase
+        .from('customers')
+        .update({
+          advance_cash: newCash,
+          advance_pure_gold: newGold,
+          advance_pure_silver: newSilver
+        })
+        .eq('id', walletCustomer.id);
+      if (custErr) throw custErr;
+
+      const advId = `ADV-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
+      const { error: advErr } = await supabase
+        .from('customer_advances')
+        .insert([{
+          id: advId,
+          customer_id: walletCustomer.id,
+          customer_name: walletCustomer.name,
+          type: 'Adjustment',
+          asset_type: walletAsset,
+          amount: walletAsset === 'Cash' ? parseFloat(walletAmount) : parseFloat(adjWeightAmount),
+          details,
+          created_by: user?.id
+        }]);
+      if (advErr) throw advErr;
+
+      const newPaidAmount = txPaid + adjustValueInCash;
+      const isFullyPaid = Math.abs(newPaidAmount - txAmt) < 0.01 || newPaidAmount >= txAmt;
+      const computedStatus = isFullyPaid ? 'Fully Paid' : 'Partially Paid';
+
+      if (targetTx.id.startsWith('TASK-')) {
+        const rawTaskId = targetTx.id.replace('TASK-', '');
+        await supabase.from('tasks').update({
+          status: 'Completed',
+          progress_percentage: 100,
+          col_staff_paid: isFullyPaid,
+          staff_paid: isFullyPaid
+        }).eq('id', rawTaskId);
+      } else {
+        await supabase.from('transactions').update({
+          paid_amount: newPaidAmount,
+          status: computedStatus,
+          staff_paid: isFullyPaid,
+          col_staff_paid: isFullyPaid
+        }).eq('id', targetTx.id);
+      }
+
+      const paymentId = `PAY-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
+      const allocationArray = [{ id: targetTx.id, amount: adjustValueInCash }];
+      const newPayment = {
+        id: paymentId,
+        customer_id: walletCustomer.id,
+        customer_name: walletCustomer.name,
+        amount: adjustValueInCash,
+        payment_method: `Wallet ${walletAsset}`,
+        recorded_by: user?.id,
+        allocations: allocationArray
+      };
+      await supabase.from('payments').insert([newPayment]);
+
+      alert("Adjustment processed successfully.");
+      
+      setWalletAmount('');
+      setAdjWeightAmount('');
+      setAdjMetalRate('');
+      setSelectedAdjTxId('');
+      loadWalletLogs(walletCustomer.id);
+      window.dispatchEvent(new Event('databaseSync'));
+    } catch(err: any) {
+      console.error(err);
+      alert("Failed to adjust: " + err.message);
+    } finally {
+      setIsSubmittingWallet(false);
+    }
+  };
+
   React.useEffect(() => {
     const loadBillingData = async () => {
       // Guard database fetches until fully authenticated to prevent RLS/anonymous query errors
@@ -1198,7 +1538,10 @@ export const StaffBillingScreen: React.FC = () => {
           ledger: [],
           phone: c.phone,
           address: c.address,
-          created_by: c.created_by
+          created_by: c.created_by,
+          advance_cash: Number(c.advance_cash || 0),
+          advance_pure_gold: Number(c.advance_pure_gold || 0),
+          advance_pure_silver: Number(c.advance_pure_silver || 0)
         });
     });
 
@@ -1240,7 +1583,10 @@ export const StaffBillingScreen: React.FC = () => {
           ledger: [],
           phone: t.customerPhone,
           address: t.customerAddress,
-          created_by: t.createdBy || t.created_by
+          created_by: t.createdBy || t.created_by,
+          advance_cash: 0,
+          advance_pure_gold: 0,
+          advance_pure_silver: 0
         };
         customers.push(newCust);
         cust = newCust;
@@ -1290,6 +1636,13 @@ export const StaffBillingScreen: React.FC = () => {
   };
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
+  
+  React.useEffect(() => {
+    if (selectedCustomer && showWalletModal) {
+      setWalletCustomer(selectedCustomer);
+    }
+  }, [selectedCustomer, showWalletModal]);
+
   const selectedTransaction = transactions.find(t => t.id === transactionId) || null;
 
   const handleCloseModal = () => {
@@ -1744,6 +2097,46 @@ export const StaffBillingScreen: React.FC = () => {
               ))}
             </div>
 
+            {/* Customer Wallet Card (Admin/Super Admin only) */}
+            {['Admin', 'Super Admin'].includes(user?.role || '') && (
+              <div className="luxury-card p-5 bg-[#001e40] text-white border border-[#002b5c] space-y-4 relative overflow-hidden">
+                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/20 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none"></div>
+                <div className="flex justify-between items-center border-b border-white/10 pb-3 relative z-10">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-[#C9A646] text-[20px]">account_balance_wallet</span>
+                    <h3 className="font-headline font-bold text-[14px]">Customer Advance Wallet</h3>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setWalletCustomer(selectedCustomer);
+                      loadWalletLogs(selectedCustomer.id);
+                      setWalletTab('history');
+                      setShowWalletModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white border border-white/20 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-white/20 transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[10px]">settings_accessibility</span>
+                    Manage Wallet
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4 relative z-10 text-center">
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Cash Balance</p>
+                    <p className="font-headline text-base font-extrabold text-emerald-400">₹{(selectedCustomer.advance_cash || 0).toLocaleString('en-IN')}</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Pure Gold</p>
+                    <p className="font-headline text-base font-extrabold text-amber-400">{(selectedCustomer.advance_pure_gold || 0).toFixed(3)}g</p>
+                  </div>
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/5 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-300">Pure Silver</p>
+                    <p className="font-headline text-base font-extrabold text-slate-200">{(selectedCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Payment Behavior Profile */}
             <div className="luxury-card p-5 bg-white border border-outline-variant/10 space-y-4 relative overflow-hidden">
               <div className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
@@ -2143,6 +2536,319 @@ export const StaffBillingScreen: React.FC = () => {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Wallet Modal */}
+      {showWalletModal && walletCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in p-4">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 border border-outline-variant/10 shadow-2xl space-y-4 flex flex-col max-h-[85vh] overflow-hidden animate-modal-up">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-outline-variant/10 pb-3 shrink-0">
+              <div>
+                <h3 className="font-headline font-bold text-primary text-base flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[#C9A646]">account_balance_wallet</span>
+                  Wallet Account: {walletCustomer.name}
+                </h3>
+                <p className="text-[10px] text-outline font-bold uppercase tracking-wider mt-0.5">ID: {walletCustomer.id}</p>
+              </div>
+              <button 
+                onClick={() => setShowWalletModal(false)}
+                className="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline hover:text-primary active:scale-90 transition-transform"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            {/* Wallet Balances Quick View */}
+            <div className="grid grid-cols-3 gap-3 shrink-0 text-center bg-slate-50 p-3 rounded-2xl border border-outline-variant/10">
+              <div className="space-y-0.5">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-outline">Cash Balance</p>
+                <p className="font-headline text-sm font-extrabold text-emerald-600">₹{(walletCustomer.advance_cash || 0).toLocaleString('en-IN')}</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-outline">Pure Gold</p>
+                <p className="font-headline text-sm font-extrabold text-amber-600">{(walletCustomer.advance_pure_gold || 0).toFixed(3)}g</p>
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-[8px] font-bold uppercase tracking-wider text-outline">Pure Silver</p>
+                <p className="font-headline text-sm font-extrabold text-slate-600">{(walletCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
+              </div>
+            </div>
+
+            {/* Tab Switches */}
+            <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 gap-1">
+              {[
+                { id: 'history', label: 'History Logs', icon: 'history' },
+                { id: 'action', label: 'Deposit / Withdraw', icon: 'swap_vertical_circle' },
+                { id: 'adjust', label: 'Adjust Dues', icon: 'assignment_turned_in' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setWalletTab(tab.id as any)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${walletTab === tab.id ? 'bg-white text-primary shadow-sm' : 'text-outline hover:text-primary'}`}
+                >
+                  <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="flex-grow overflow-y-auto pr-1">
+              
+              {/* TAB 1: HISTORY LOGS */}
+              {walletTab === 'history' && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-outline">Wallet Transaction Logs</p>
+                  {loadingWalletLogs ? (
+                    <div className="text-center p-8 text-outline text-xs">Loading logs...</div>
+                  ) : walletLogs.length === 0 ? (
+                    <div className="text-center p-8 text-outline text-xs border border-dashed border-outline-variant/20 rounded-2xl">No transaction history found.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {walletLogs.map((log: any) => (
+                        <div key={log.id} className="p-3 bg-white border border-outline-variant/10 rounded-xl space-y-1">
+                          <div className="flex justify-between items-start">
+                            <span className={`text-[8.5px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                              log.type === 'Deposit' ? 'bg-emerald-50 text-emerald-600' :
+                              log.type === 'Withdrawal' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                            }`}>
+                              {log.type}
+                            </span>
+                            <span className="text-[9px] text-outline font-bold">
+                              {new Date(log.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} • {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-baseline pt-1">
+                            <p className="text-xs font-semibold text-primary">{log.details}</p>
+                            <p className={`text-xs font-extrabold shrink-0 ${log.type === 'Deposit' ? 'text-emerald-600' : 'text-red-500'}`}>
+                              {log.type === 'Deposit' ? '+' : '-'}
+                              {log.asset_type === 'Cash' ? `₹${Number(log.amount).toLocaleString('en-IN')}` : `${log.amount}g`}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 2: DEPOSIT / WITHDRAW */}
+              {walletTab === 'action' && (
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-outline">Add or Remove Funds/Metals</p>
+                  
+                  {/* Action Mode Toggle */}
+                  <div className="flex gap-2">
+                    {['Deposit', 'Withdrawal'].map(type => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setWalletType(type as any)}
+                        className={`flex-grow flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors ${walletType === type ? 'bg-primary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}
+                      >
+                        {type === 'Deposit' ? 'Deposit (Receive Extra)' : 'Withdraw (Give Back)'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Asset Type Selector */}
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Select Asset</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {['Cash', 'Pure Gold', 'Pure Silver'].map(asset => (
+                        <button
+                          key={asset}
+                          type="button"
+                          onClick={() => setWalletAsset(asset as any)}
+                          className={`py-2 rounded-xl text-xs font-bold border transition-colors ${walletAsset === asset ? 'bg-[#001e40] text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}
+                        >
+                          {asset}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Amount / Weight input */}
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">
+                      {walletAsset === 'Cash' ? 'Amount (₹) *' : 'Weight (grams) *'}
+                    </label>
+                    <input
+                      type="number"
+                      value={walletAmount}
+                      onChange={e => setWalletAmount(e.target.value)}
+                      placeholder={walletAsset === 'Cash' ? 'e.g. 5000' : 'e.g. 2.500'}
+                      className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-4 py-3 text-sm font-semibold text-primary placeholder-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+
+                  {/* Details input */}
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Remarks / Notes</label>
+                    <input
+                      type="text"
+                      value={walletDetails}
+                      onChange={e => setWalletDetails(e.target.value)}
+                      placeholder="e.g. Received extra cash during settlement, keep as advance"
+                      className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-4 py-3 text-sm font-semibold text-primary placeholder-outline focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
+                    />
+                  </div>
+
+                  {/* Submit Button */}
+                  <button
+                    onClick={handleWalletTxnSubmit}
+                    disabled={isSubmittingWallet}
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5"
+                  >
+                    {isSubmittingWallet ? (
+                      <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                        Submit Wallet Transaction
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* TAB 3: ADJUST OUTSTANDING */}
+              {walletTab === 'adjust' && (
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-outline">Adjust Dues against pending tasks</p>
+                  
+                  {/* Select Outstanding Due */}
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Select Outstanding Job / Due *</label>
+                    {(() => {
+                      const pendingTx = walletCustomer.ledger.filter(t => t.status === 'Unpaid' || t.status === 'Partially Paid');
+                      if (pendingTx.length === 0) {
+                        return <div className="text-center p-4 text-xs font-semibold text-outline bg-slate-50 rounded-xl border border-dashed">No outstanding dues to adjust!</div>;
+                      }
+                      return (
+                        <div className="space-y-2 max-h-[160px] overflow-y-auto border border-outline-variant/10 rounded-xl p-2 bg-slate-50/50">
+                          {pendingTx.map(t => {
+                            const txAmt = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+                            const txPaid = t.paidAmount || 0;
+                            const due = txAmt - txPaid;
+                            return (
+                              <div 
+                                key={t.id} 
+                                onClick={() => setSelectedAdjTxId(t.id)}
+                                className={`p-2.5 rounded-lg border transition-all cursor-pointer text-left ${selectedAdjTxId === t.id ? 'bg-[#001e40]/5 border-[#001e40] shadow-sm' : 'bg-white border-outline-variant/10 hover:border-slate-300'}`}
+                              >
+                                <div className="flex justify-between items-start">
+                                  <span className="text-[9.5px] font-extrabold text-primary">{t.id} • {t.workType} ({t.metal})</span>
+                                  <span className="text-[10px] font-extrabold text-error">Due: ₹{due.toLocaleString('en-IN')}</span>
+                                </div>
+                                <p className="text-[8.5px] text-outline mt-0.5 truncate font-medium">{t.date} • {t.details}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Only show due options if one is selected */}
+                  {selectedAdjTxId && (
+                    <div className="space-y-3.5 animate-fade-in border-t border-outline-variant/10 pt-3">
+                      
+                      {/* Asset to adjust with */}
+                      <div>
+                        <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Adjust with Wallet Asset</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {['Cash', 'Pure Gold', 'Pure Silver'].map(asset => (
+                            <button
+                              key={asset}
+                              type="button"
+                              onClick={() => {
+                                setWalletAsset(asset as any);
+                                setWalletAmount('');
+                                setAdjWeightAmount('');
+                              }}
+                              className={`py-2 rounded-xl text-xs font-bold border transition-colors ${walletAsset === asset ? 'bg-[#001e40] text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}
+                            >
+                              {asset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Input based on asset selected */}
+                      {walletAsset === 'Cash' ? (
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Cash Amount to Adjust (₹) *</label>
+                          <input
+                            type="number"
+                            value={walletAmount}
+                            onChange={e => setWalletAmount(e.target.value)}
+                            placeholder="e.g. 2000"
+                            className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-4 py-3 text-sm font-semibold text-primary focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3.5">
+                          <div>
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Metal Weight (grams) *</label>
+                            <input
+                              type="number"
+                              value={adjWeightAmount}
+                              onChange={e => setAdjWeightAmount(e.target.value)}
+                              placeholder="e.g. 1.000"
+                              className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-3 py-2.5 text-xs font-semibold text-primary focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Convert Rate (₹ / gram) *</label>
+                            <input
+                              type="number"
+                              value={adjMetalRate}
+                              onChange={e => setAdjMetalRate(e.target.value)}
+                              placeholder="e.g. 7200"
+                              className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-3 py-2.5 text-xs font-semibold text-primary focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Display calculated adjustment value */}
+                      {walletAsset !== 'Cash' && adjWeightAmount && adjMetalRate && (
+                        <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-left">
+                          <p className="text-[9px] font-bold uppercase tracking-wider text-amber-700">Calculated Adjustment Value</p>
+                          <p className="text-xs font-extrabold text-primary mt-0.5">
+                            ₹{((parseFloat(adjWeightAmount) || 0) * (parseFloat(adjMetalRate) || 0)).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Submit Adjustment Button */}
+                      <button
+                        onClick={handleWalletAdjustSubmit}
+                        disabled={isSubmittingWallet}
+                        className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all shadow-md flex items-center justify-center gap-1.5"
+                      >
+                        {isSubmittingWallet ? (
+                          <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                        ) : (
+                          <>
+                            <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                            Confirm Adjustment
+                          </>
+                        )}
+                      </button>
+
+                    </div>
+                  )}
+
+                </div>
+              )}
+
             </div>
           </div>
         </div>
