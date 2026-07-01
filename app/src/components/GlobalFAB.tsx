@@ -579,6 +579,118 @@ export const GlobalFAB: React.FC = () => {
               return;
             }
 
+            // Rule 5: Wallet Transaction
+            if (data.workType === 'WALLET_TXN') {
+              const customerId = data.customerId;
+              const type = data.walletType;
+              const asset = data.walletAsset;
+              const amount = parseFloat(data.walletAmount) || 0;
+              const remarks = data.notes || '';
+
+              if (!customerId) throw new Error('Customer ID is required for wallet transactions.');
+
+              const { data: custData, error: custErr } = await supabase
+                .from('customers')
+                .select('name, advance_cash, advance_pure_gold, advance_pure_silver')
+                .eq('id', customerId)
+                .maybeSingle();
+
+              if (custErr) throw custErr;
+              if (!custData) throw new Error('Customer details not found.');
+
+              const curCash = Number(custData.advance_cash || 0);
+              const curGold = Number(custData.advance_pure_gold || 0);
+              const curSilver = Number(custData.advance_pure_silver || 0);
+
+              let newCash = curCash;
+              let newGold = curGold;
+              let newSilver = curSilver;
+
+              if (type === 'Deposit') {
+                if (asset === 'Cash') newCash += amount;
+                else if (asset === 'Pure Gold') newGold += amount;
+                else if (asset === 'Pure Silver') newSilver += amount;
+              } else {
+                if (asset === 'Cash') {
+                  if (amount > curCash) throw new Error('Insufficient cash balance in wallet.');
+                  newCash -= amount;
+                } else if (asset === 'Pure Gold') {
+                  if (amount > curGold) throw new Error('Insufficient gold balance in wallet.');
+                  newGold -= amount;
+                } else if (asset === 'Pure Silver') {
+                  if (amount > curSilver) throw new Error('Insufficient silver balance in wallet.');
+                  newSilver -= amount;
+                }
+              }
+
+              const { error: updErr } = await supabase
+                .from('customers')
+                .update({
+                  advance_cash: newCash,
+                  advance_pure_gold: newGold,
+                  advance_pure_silver: newSilver
+                })
+                .eq('id', customerId);
+
+              if (updErr) throw updErr;
+
+              const advId = `ADV-FAB-${Math.floor(1000 + Math.random() * 9000)}`;
+              const { error: advErr } = await supabase
+                .from('customer_advances')
+                .insert([{
+                  id: advId,
+                  customer_id: customerId,
+                  customer_name: custData.name,
+                  type: type,
+                  asset_type: asset,
+                  amount: amount,
+                  details: remarks || `${type} of ${asset === 'Cash' ? '₹' + amount : amount + 'g'} from Plus menu.`,
+                  created_by: user?.id
+                }]);
+
+              if (advErr) throw advErr;
+
+              const ledgerId = `LGR-W-${Math.floor(1000 + Math.random() * 9000)}`;
+              const ledgerEntry: any = {
+                id: ledgerId,
+                date: 'Today',
+                iso_date: isoDateStr,
+                customer_name: custData.name,
+                transaction_type: type === 'Deposit' ? 'Deposit' : 'Withdrawal',
+                status: 'Completed',
+                purity: '',
+                staff_id: user?.id || '',
+                pure_gold_out: 0, pure_silver_out: 0, pure_gold_in: 0, pure_silver_in: 0,
+                impure_gold_in: 0, impure_silver_in: 0,
+                cash_paid: 0, cash_received: 0, cash_rate_per_gram: 0, cash_amount: 0,
+                pending_pure_liability: false,
+                pending_cash_liability: false
+              };
+
+              if (asset === 'Cash') {
+                if (type === 'Deposit') {
+                  ledgerEntry.cash_received = amount;
+                  ledgerEntry.cash_amount = amount;
+                } else {
+                  ledgerEntry.cash_paid = amount;
+                  ledgerEntry.cash_amount = amount;
+                }
+              } else if (asset === 'Pure Gold') {
+                if (type === 'Deposit') ledgerEntry.pure_gold_in = amount;
+                else ledgerEntry.pure_gold_out = amount;
+              } else if (asset === 'Pure Silver') {
+                if (type === 'Deposit') ledgerEntry.pure_silver_in = amount;
+                else ledgerEntry.pure_silver_out = amount;
+              }
+
+              const { error: lgrErr } = await supabase.from('ledger_entries').insert([ledgerEntry]);
+              if (lgrErr) throw lgrErr;
+
+              toast.success(`Wallet ${type} of ${asset === 'Cash' ? '₹' + amount.toLocaleString('en-IN') : amount.toFixed(3) + 'g ' + asset} logged successfully.`);
+              window.dispatchEvent(new CustomEvent('databaseSync'));
+              return;
+            }
+
           } catch (e: any) {
             console.error('Failed to create task', e);
             alert('An error occurred: ' + e.message);

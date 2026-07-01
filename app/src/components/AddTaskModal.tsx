@@ -4,7 +4,7 @@ import { supabase } from '../supabaseClient';
 import type { BehaviorAnalysis } from '../utils/billingUtils';
 import { analyzeCustomerBehavior, computeStaffBillingTransactions } from '../utils/billingUtils';
 
-type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING' | 'BUY_SELL';
+type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING' | 'BUY_SELL' | 'WALLET_TXN';
 
 interface Customer {
   id: string;
@@ -12,6 +12,9 @@ interface Customer {
   phone: string;
   address: string;
   status: string;
+  advance_cash?: number;
+  advance_pure_gold?: number;
+  advance_pure_silver?: number;
 }
 
 // Defined OUTSIDE the parent component so React never treats these
@@ -60,6 +63,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const [workType, setWorkType] = useState<WorkType | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const isCollection = user?.role === 'Collection Staff';
+
+  const [walletType, setWalletType] = useState<'Deposit' | 'Withdrawal'>('Deposit');
+  const [walletAsset, setWalletAsset] = useState<'Cash' | 'Pure Gold' | 'Pure Silver'>('Cash');
+  const [walletAmount, setWalletAmount] = useState('');
+  const [walletDetails, setWalletDetails] = useState('');
 
   const [formData, setFormData] = useState({
     metal: 'Gold',
@@ -278,6 +286,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       if (!formData.cashRate.trim()) e.cashRate = 'Required';
       if (!formData.cashAmount.trim()) e.cashAmount = 'Required';
     }
+    if (workType === 'WALLET_TXN') {
+      if (!walletAmount.trim() || isNaN(parseFloat(walletAmount)) || parseFloat(walletAmount) <= 0) {
+        e.walletAmount = 'Enter a valid amount/weight';
+      } else if (walletType === 'Withdrawal') {
+        const selectedCust = customers.find(c => c.id === formData.customerId);
+        if (selectedCust) {
+          const balance = walletAsset === 'Cash' 
+            ? Number(selectedCust.advance_cash || 0)
+            : walletAsset === 'Pure Gold'
+            ? Number(selectedCust.advance_pure_gold || 0)
+            : Number(selectedCust.advance_pure_silver || 0);
+          if (parseFloat(walletAmount) > balance) {
+            e.walletAmount = `Insufficient balance. Maximum: ${walletAsset === 'Cash' ? '₹' + balance.toLocaleString('en-IN') : balance.toFixed(3) + 'g'}`;
+          }
+        }
+      }
+    }
     
     if (numPieces > 0 && (workType === 'TUNCH' || workType === 'MARKING' || workType === 'SHOULDERING')) {
       const reqImgs = getRequiredImages(numPieces);
@@ -304,6 +329,24 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const handleFinalSubmit = async () => {
     setIsUploading(true);
     try {
+      if (workType === 'WALLET_TXN') {
+        onSuccess({
+          workType,
+          customerName: formData.customerName,
+          customerId: formData.customerId,
+          walletType,
+          walletAsset,
+          walletAmount: parseFloat(walletAmount),
+          notes: walletDetails
+        });
+        setStep(1);
+        setWorkType(null);
+        setErrors({});
+        setWalletAmount('');
+        setWalletDetails('');
+        onClose();
+        return;
+      }
       const numPieces = parseInt(formData.pieces) || 0;
       const reqImgs = getRequiredImages(numPieces);
       let urls: string[] = [];
@@ -546,7 +589,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
               <div className="space-y-3">
                 {((user?.role === 'Admin' || user?.role === 'Super Admin') ? [
                   { type: 'BUY_SELL' as WorkType, action: 'Buy', icon: 'shopping_cart', title: 'Buy', desc: 'Direct gold/silver purchase', accent: 'border-l-emerald-500', iconBg: 'bg-emerald-50 text-emerald-600' },
-                  { type: 'BUY_SELL' as WorkType, action: 'Sell', icon: 'sell', title: 'Sell', desc: 'Direct gold/silver sale', accent: 'border-l-amber-500', iconBg: 'bg-amber-50 text-amber-600' }
+                  { type: 'BUY_SELL' as WorkType, action: 'Sell', icon: 'sell', title: 'Sell', desc: 'Direct gold/silver sale', accent: 'border-l-amber-500', iconBg: 'bg-amber-50 text-amber-600' },
+                  { type: 'WALLET_TXN' as WorkType, action: undefined, icon: 'account_balance_wallet', title: 'Wallet Transaction', desc: 'Deposit/withdraw customer advance funds', accent: 'border-l-blue-500', iconBg: 'bg-blue-50 text-blue-600' }
                 ] : [
                   { type: 'TUNCH' as WorkType, action: undefined, icon: 'science', title: 'Tunch', desc: 'Purity testing & gold exchange', accent: 'border-l-secondary', iconBg: 'bg-secondary/10 text-secondary' },
                   { type: 'MARKING' as WorkType, action: undefined, icon: 'verified', title: 'Marking', desc: 'Logo hallmarking & branding', accent: 'border-l-tertiary-container', iconBg: 'bg-tertiary-container/20 text-tertiary' },
@@ -1086,6 +1130,104 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
               </>)}
 
+              {workType === 'WALLET_TXN' && (() => {
+                const selectedCust = customers.find(c => c.id === formData.customerId);
+                return (
+                  <>
+                    {selectedCust && (
+                      <div className="p-3.5 bg-slate-50 border border-outline-variant/10 rounded-2xl flex flex-col gap-1.5 text-left mb-2 animate-fade-in">
+                        <p className="text-[9px] font-bold uppercase tracking-wider text-outline">Selected Customer Active Wallet Balances</p>
+                        <div className="grid grid-cols-3 gap-2.5 text-center mt-1">
+                          <div className="p-2 bg-emerald-50 border border-emerald-100 rounded-xl">
+                            <p className="text-[7.5px] font-bold text-emerald-700 uppercase tracking-wider">Cash Balance</p>
+                            <p className="text-xs font-black text-emerald-600 mt-0.5">₹{(selectedCust.advance_cash || 0).toLocaleString('en-IN')}</p>
+                          </div>
+                          <div className="p-2 bg-amber-50 border border-amber-100 rounded-xl">
+                            <p className="text-[7.5px] font-bold text-amber-700 uppercase tracking-wider">Pure Gold</p>
+                            <p className="text-xs font-black text-amber-600 mt-0.5">{(selectedCust.advance_pure_gold || 0).toFixed(3)}g</p>
+                          </div>
+                          <div className="p-2 bg-slate-100 border border-slate-200 rounded-xl">
+                            <p className="text-[7.5px] font-bold text-slate-700 uppercase tracking-wider">Pure Silver</p>
+                            <p className="text-xs font-black text-slate-600 mt-0.5">{(selectedCust.advance_pure_silver || 0).toFixed(3)}g</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <SectionCard title="Wallet Transaction Inputs" icon="account_balance_wallet" color="bg-primary/5 text-primary">
+                      {/* Toggle Deposit / Withdrawal */}
+                      <div>
+                        <label className={lbl}>Transaction Type *</label>
+                        <div className="flex gap-2 mt-1">
+                          {['Deposit', 'Withdrawal'].map(type => (
+                            <button
+                              type="button"
+                              key={type}
+                              onClick={() => {
+                                setWalletType(type as any);
+                                if (errors.walletAmount) setErrors(e => { const n = {...e}; delete n.walletAmount; return n; });
+                              }}
+                              className={`flex-1 py-2.5 rounded-xl text-xs font-bold border transition-colors ${walletType === type ? 'button-gradient text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}
+                            >
+                              {type === 'Deposit' ? 'Deposit (Receive)' : 'Withdraw (Return)'}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Select Asset */}
+                      <div>
+                        <label className={lbl}>Select Asset *</label>
+                        <div className="grid grid-cols-3 gap-2 mt-1">
+                          {['Cash', 'Pure Gold', 'Pure Silver'].map(asset => (
+                            <button
+                              type="button"
+                              key={asset}
+                              onClick={() => {
+                                setWalletAsset(asset as any);
+                                if (errors.walletAmount) setErrors(e => { const n = {...e}; delete n.walletAmount; return n; });
+                              }}
+                              className={`py-2 rounded-xl text-xs font-bold border transition-colors ${walletAsset === asset ? 'button-gradient text-white border-transparent' : 'bg-white text-outline border-outline-variant/30'}`}
+                            >
+                              {asset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Amount / Weight */}
+                      <div>
+                        <label className={lbl}>
+                          {walletAsset === 'Cash' ? 'Amount (₹) *' : 'Weight (grams) *'}
+                        </label>
+                        <input
+                          type="number"
+                          value={walletAmount}
+                          onChange={e => {
+                            setWalletAmount(e.target.value);
+                            if (errors.walletAmount) setErrors(e => { const n = {...e}; delete n.walletAmount; return n; });
+                          }}
+                          placeholder={walletAsset === 'Cash' ? 'e.g. 5000' : 'e.g. 2.500'}
+                          className={inp(errors.walletAmount)}
+                        />
+                        {errMsg('walletAmount')}
+                      </div>
+
+                      {/* Details / Remarks */}
+                      <div>
+                        <label className={lbl}>Remarks / Notes</label>
+                        <input
+                          type="text"
+                          value={walletDetails}
+                          onChange={e => setWalletDetails(e.target.value)}
+                          placeholder="e.g. Leftover client balance"
+                          className={inp()}
+                        />
+                      </div>
+                    </SectionCard>
+                  </>
+                );
+              })()}
+
 
 
               {Object.keys(errors).length > 0 && (
@@ -1151,13 +1293,19 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       ['Price per gram', `₹${formData.cashRate}/g`],
                       ['Total Amount', `₹${Number(formData.cashAmount || 0).toLocaleString('en-IN')}`]
                     ] : []),
+                    ...(workType === 'WALLET_TXN' ? [
+                      ['Operation', 'Wallet ' + walletType],
+                      ['Asset', walletAsset],
+                      ['Amount / Weight', walletAsset === 'Cash' ? `₹${parseFloat(walletAmount).toLocaleString('en-IN')}` : `${parseFloat(walletAmount).toFixed(3)}g`],
+                      ['Remarks', walletDetails || 'N/A']
+                    ] : []),
                   ].map(([label, value]) => (
                     <div key={label} className="flex justify-between items-center py-1 border-b border-outline-variant/10 last:border-0">
                       <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-outline">{label}</span>
                       <span className="text-[13px] font-semibold text-primary">{value}</span>
                     </div>
                   ))}
-                  {!isCollection && workType !== 'BUY_SELL' && (
+                  {!isCollection && workType !== 'BUY_SELL' && workType !== 'WALLET_TXN' && (
                     <div className="pt-2 flex justify-between items-center">
                       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-outline">Total Fee ({formData.feePaymentMode})</p>
                       <p className="font-headline text-2xl font-bold text-tertiary">₹ {formData.fee}</p>
@@ -1220,10 +1368,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         {/* FOOTER */}
         {step > 1 && (
           <div className="shrink-0 px-6 pb-8 pt-4 bg-white/90 backdrop-blur-sm border-t border-outline-variant/10">
-            <button onClick={step === 4 ? handleFinalSubmit : handleNext} disabled={isUploading}
+            <button onClick={(step === 4 || (workType === 'WALLET_TXN' && step === 3)) ? handleFinalSubmit : handleNext} disabled={isUploading}
               className="w-full h-14 button-gradient text-on-primary rounded-full font-bold text-[12px] tracking-[0.15em] uppercase flex items-center justify-center gap-2.5 active:scale-[0.98] transition-all btn-shimmer-effect shadow-[0_8px_24px_rgba(0,30,64,0.2)] disabled:opacity-70">
-              {step === 2 ? 'Continue to Review' : step === 3 ? 'Proceed to Authorization' : (isUploading ? 'Uploading & Saving...' : 'Confirm & Commit Entry')}
-              {isUploading ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined text-[18px]">{step === 4 ? 'verified' : 'arrow_forward'}</span>}
+              {step === 2 ? 'Continue to Review' : (step === 3 && workType === 'WALLET_TXN') ? 'Confirm & Commit Entry' : step === 3 ? 'Proceed to Authorization' : (isUploading ? 'Uploading & Saving...' : 'Confirm & Commit Entry')}
+              {isUploading ? <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : <span className="material-symbols-outlined text-[18px]">{(step === 4 || (workType === 'WALLET_TXN' && step === 3)) ? 'verified' : 'arrow_forward'}</span>}
             </button>
           </div>
         )}
