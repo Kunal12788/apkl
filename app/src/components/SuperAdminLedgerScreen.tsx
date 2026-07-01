@@ -516,7 +516,11 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       // 1. Update refining transfer status to Processed
       const { error: transferError } = await supabase
         .from('refining_transfers')
-        .update({ status: 'Processed', refined_pure_achieved: achieved })
+        .update({ 
+          status: 'Processed', 
+          refined_pure_achieved: 0,
+          refined_pure_silver_achieved: 0
+        })
         .eq('id', selectedTransfer.id);
 
       if (transferError) throw transferError;

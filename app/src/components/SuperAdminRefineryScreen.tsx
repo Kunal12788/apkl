@@ -228,20 +228,13 @@ export const SuperAdminRefineryScreen: React.FC = () => {
       const totalExpected = pendingExpectedPure;
       const totalImpure = pendingImpureMetal;
 
-      // Update each pending transfer with proportional pure achieved
+      // Update each pending transfer status to Processed without branch allocation
       const updates = pendingTransfersInQueue.map(transfer => {
-        let proportionalPure = 0;
-        if (totalExpected > 0) {
-          proportionalPure = ((activeMetal === 'Gold' ? transfer.calculatedPureGold : (transfer.calculatedPureSilver || 0)) / totalExpected) * achieved;
-        } else if (totalImpure > 0) {
-          proportionalPure = ((activeMetal === 'Gold' ? transfer.impureGoldSent : (transfer.impureSilverSent || 0)) / totalImpure) * achieved;
-        } else {
-          proportionalPure = achieved / pendingTransfersInQueue.length;
-        }
-
-        const updateData: any = { status: 'Processed' };
-        if (activeMetal === 'Gold') updateData.refined_pure_achieved = proportionalPure;
-        else updateData.refined_pure_silver_achieved = proportionalPure;
+        const updateData = { 
+          status: 'Processed',
+          refined_pure_achieved: 0,
+          refined_pure_silver_achieved: 0
+        };
 
         return supabase
           .from('refining_transfers')
