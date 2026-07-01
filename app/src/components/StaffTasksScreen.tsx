@@ -246,6 +246,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 }) => {
   const { user } = useSession();
   const userRole = user?.role;
+  const isCreatedByCollection = task?.source === 'Collection Staff' || task?.source === 'Customer';
 
   const formatTimestamp = (isoString?: string) => {
     if (!isoString) return '';
@@ -557,173 +558,177 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
           {/* Section: Staff Processing Panel */}
           {task.status === 'In Progress' && userRole === 'Staff' && (
             <div className="rounded-2xl border border-secondary/20 p-3.5 bg-secondary-container/5 space-y-3">
-              <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
-              
-              {task.workType === 'Tunch' && (
+              {isCreatedByCollection ? (
                 <>
-                  <div className="mb-3">
-                    <span className={lbl}>Final Impure Weight (g) *</span>
-                    <input 
-                      type="number" step="0.001" 
-                      value={impureWeightInput} 
-                      onChange={e => setImpureWeightInput(e.target.value)}
-                      placeholder="e.g. 12.5" 
-                      className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div>
-                      <span className={lbl}>Purity (%) *</span>
-                      <input 
-                        type="number" step="0.1" 
-                        value={purityInput} 
-                        onChange={e => setPurityInput(e.target.value)}
-                        placeholder="e.g. 91.6" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                    <div>
-                      <span className={lbl}>Pure Output (g) *</span>
-                      <input 
-                        type="number" step="0.001" 
-                        value={pureWeightInput} 
-                        onChange={e => setPureWeightInput(e.target.value)}
-                        placeholder="e.g. 11.4" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <span className={lbl}>Settlement Condition *</span>
-                    <div className="flex gap-2 mt-1">
-                      {(task.metal === 'Silver' ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash']).map(opt => (
-                        <button 
-                          key={opt} type="button" 
-                          onClick={() => setSettlementInput(opt)}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${settlementInput === opt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {settlementInput === 'Cash' && (
-                    <div className="mt-3">
-                      <span className={lbl}>Impure Metal Custody *</span>
-                      <div className="flex gap-2 mt-1">
-                        {['Front', 'Back'].map(mode => (
-                          <button 
-                            key={mode} type="button" 
-                            onClick={() => setCashHandlingMode(mode as 'Front' | 'Back')}
-                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${cashHandlingMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                          >
-                            {mode === 'Front' ? 'Staff (Kept with Staff)' : 'Admin (Kept with Admin)'}
-                          </button>
-                        ))}
+                  <p className="text-[8px] font-black uppercase tracking-[0.15em] text-secondary">Processing details</p>
+                  
+                  {task.workType === 'Tunch' && (
+                    <>
+                      <div className="mb-3">
+                        <span className={lbl}>Final Impure Weight (g) *</span>
+                        <input 
+                          type="number" step="0.001" 
+                          value={impureWeightInput} 
+                          onChange={e => setImpureWeightInput(e.target.value)}
+                          placeholder="e.g. 12.5" 
+                          className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                        />
                       </div>
-                    </div>
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <span className={lbl}>Purity (%) *</span>
+                          <input 
+                            type="number" step="0.1" 
+                            value={purityInput} 
+                            onChange={e => setPurityInput(e.target.value)}
+                            placeholder="e.g. 91.6" 
+                            className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                          />
+                        </div>
+                        <div>
+                          <span className={lbl}>Pure Output (g) *</span>
+                          <input 
+                            type="number" step="0.001" 
+                            value={pureWeightInput} 
+                            onChange={e => setPureWeightInput(e.target.value)}
+                            placeholder="e.g. 11.4" 
+                            className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span className={lbl}>Settlement Condition *</span>
+                        <div className="flex gap-2 mt-1">
+                          {(task.metal === 'Silver' ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash']).map(opt => (
+                            <button 
+                              key={opt} type="button" 
+                              onClick={() => setSettlementInput(opt)}
+                              className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${settlementInput === opt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {settlementInput === 'Cash' && (
+                        <div className="mt-3">
+                          <span className={lbl}>Impure Metal Custody *</span>
+                          <div className="flex gap-2 mt-1">
+                            {['Front', 'Back'].map(mode => (
+                              <button 
+                                key={mode} type="button" 
+                                onClick={() => setCashHandlingMode(mode as 'Front' | 'Back')}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${cashHandlingMode === mode ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                              >
+                                {mode === 'Front' ? 'Staff (Kept with Staff)' : 'Admin (Kept with Admin)'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {task.workType === 'Marking' && (
+                    <>
+                      <div>
+                        <span className={lbl}>Final Total Weight (g) *</span>
+                        <input 
+                          type="number" step="0.001" 
+                          value={totalWeightInput} 
+                          onChange={e => setTotalWeightInput(e.target.value)}
+                          placeholder="e.g. 15.2" 
+                          className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className={lbl}>Final Pieces *</span>
+                          <input 
+                            type="number" 
+                            value={piecesInput} 
+                            onChange={e => setPiecesInput(e.target.value)}
+                            placeholder="Qty" 
+                            className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                          />
+                        </div>
+                        <div>
+                          <span className={lbl}>Logo Markings *</span>
+                          <input 
+                            type="text" 
+                            value={logoNameInput} 
+                            onChange={e => setLogoNameInput(e.target.value)}
+                            placeholder="Logo" 
+                            className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <span className={lbl}>Carat Marking *</span>
+                        <div className="flex gap-2 mt-1">
+                          {['22k', '18k', '14k', '9k'].map(k => (
+                            <button 
+                              key={k} type="button" 
+                              onClick={() => caratInput !== k && setCaratInput(k)}
+                              className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${caratInput === k ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                            >
+                              {k.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {task.workType === 'Shouldering' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <span className={lbl}>Points Used *</span>
+                          <input 
+                            type="number" 
+                            value={pointsCountInput} 
+                            onChange={e => setPointsCountInput(e.target.value)}
+                            placeholder="Solder points" 
+                            className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                          />
+                        </div>
+                        <div>
+                          <span className={lbl}>Points Type *</span>
+                          <div className="flex gap-2 mt-1">
+                            {['Gold', 'Silver'].map(pt => (
+                              <button 
+                                key={pt} type="button" 
+                                onClick={() => pointsTypeInput !== pt && setPointsTypeInput(pt)}
+                                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${pointsTypeInput === pt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                              >
+                                {pt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <span className={lbl}>Material Brought By *</span>
+                        <div className="flex gap-2 mt-1">
+                          {['Customer', 'Staff Member'].map(bb => (
+                            <button 
+                              key={bb} type="button" 
+                              onClick={() => broughtByInput !== bb && setBroughtByInput(bb)}
+                              className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${broughtByInput === bb ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                            >
+                              {bb}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   )}
                 </>
-              )}
+              ) : null}
 
-              {task.workType === 'Marking' && (
-                <>
-                  <div>
-                    <span className={lbl}>Final Total Weight (g) *</span>
-                    <input 
-                      type="number" step="0.001" 
-                      value={totalWeightInput} 
-                      onChange={e => setTotalWeightInput(e.target.value)}
-                      placeholder="e.g. 15.2" 
-                      className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className={lbl}>Final Pieces *</span>
-                      <input 
-                        type="number" 
-                        value={piecesInput} 
-                        onChange={e => setPiecesInput(e.target.value)}
-                        placeholder="Qty" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                    <div>
-                      <span className={lbl}>Logo Markings *</span>
-                      <input 
-                        type="text" 
-                        value={logoNameInput} 
-                        onChange={e => setLogoNameInput(e.target.value)}
-                        placeholder="Logo" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <span className={lbl}>Carat Marking *</span>
-                    <div className="flex gap-2 mt-1">
-                      {['22k', '18k', '14k', '9k'].map(k => (
-                        <button 
-                          key={k} type="button" 
-                          onClick={() => caratInput !== k && setCaratInput(k)}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${caratInput === k ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                        >
-                          {k.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {task.workType === 'Shouldering' && (
-                <>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <span className={lbl}>Points Used *</span>
-                      <input 
-                        type="number" 
-                        value={pointsCountInput} 
-                        onChange={e => setPointsCountInput(e.target.value)}
-                        placeholder="Solder points" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
-                    </div>
-                    <div>
-                      <span className={lbl}>Points Type *</span>
-                      <div className="flex gap-2 mt-1">
-                        {['Gold', 'Silver'].map(pt => (
-                          <button 
-                            key={pt} type="button" 
-                            onClick={() => pointsTypeInput !== pt && setPointsTypeInput(pt)}
-                            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${pointsTypeInput === pt ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                          >
-                            {pt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <span className={lbl}>Material Brought By *</span>
-                    <div className="flex gap-2 mt-1">
-                      {['Customer', 'Staff Member'].map(bb => (
-                        <button 
-                          key={bb} type="button" 
-                          onClick={() => broughtByInput !== bb && setBroughtByInput(bb)}
-                          className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-colors ${broughtByInput === bb ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                        >
-                          {bb}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="pt-2 border-t border-secondary/10 space-y-2">
+              <div className={isCreatedByCollection ? "pt-2 border-t border-secondary/10 space-y-2" : "space-y-2"}>
                 <div>
                   <span className={lbl}>Service Fee (₹) *</span>
                   <input 
@@ -936,13 +941,10 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               Complete Work
             </button>
           ) : task.status === 'Pending' && userRole === 'Staff' ? (
-            <button 
-              onClick={() => onUpdateStatus(task)}
-              className="flex-1 py-3.5 bg-gradient-to-r from-[#001e40] to-[#003366] hover:from-[#002b5c] hover:to-[#00478f] text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-[#001e40]/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">rule</span>
-              Verify Intake Data
-            </button>
+            <div className="flex-1 py-3.5 bg-slate-100 text-outline border border-outline-variant/30 font-black text-xs uppercase tracking-[0.15em] rounded-2xl flex items-center justify-center gap-1.5 cursor-not-allowed">
+              <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>
+              Awaiting Admin Verification
+            </div>
           ) : task.status === 'Pending' && isAdminOrSuper ? (
             <button 
               onClick={() => onUpdateStatus(task)}
