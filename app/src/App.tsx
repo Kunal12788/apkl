@@ -254,7 +254,7 @@ function AppContent() {
             }
          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'tasks', payload } }));
 
@@ -263,7 +263,7 @@ function AppContent() {
 
          if (payload.eventType === 'INSERT' && newRecord) {
             if (newRecord.created_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
                if (sameBranch) {
                   triggerBlueToast(
                     `New ${newRecord.work_type} task registered for ${newRecord.customer_name}.`,
@@ -273,7 +273,7 @@ function AppContent() {
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
             if (sameBranch) {
                const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
                const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');

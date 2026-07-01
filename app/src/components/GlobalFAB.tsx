@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
 import { AddTaskModal } from './AddTaskModal';
 import { useSession } from '../context/SessionContext';
@@ -94,7 +93,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
               if (taskError) throw taskError;
 
-              toast.success(`${newTask.work_type} task registered successfully as Pending verification.`);
+              triggerBlueToast(`${newTask.work_type} task registered successfully as Pending verification.`, 'Task Created', 'task');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -293,7 +292,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
               if (txnError) throw txnError;
 
-              toast.success(`${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} registered successfully.`);
+              triggerBlueToast(`${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} registered successfully.`, 'Transaction Created', 'success');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -321,7 +320,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
               if (txnError) throw txnError;
 
-              toast.success(`${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} registered directly in Billings.`);
+              triggerBlueToast(`${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} registered directly in Billings.`, 'Transaction Created', 'success');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -396,7 +395,7 @@ export const GlobalFAB: React.FC = () => {
                 await supabase.from('transactions').insert([newTxn]);
               }
 
-              toast.success('Pure metal exchange registered directly in Ledger.');
+              triggerBlueToast('Pure metal exchange registered directly in Ledger.', 'Exchange Created', 'success');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -487,7 +486,7 @@ export const GlobalFAB: React.FC = () => {
                 await supabase.from('transactions').insert([newTxn]);
               }
 
-              toast.success('Tunch Only task created and ready for Settlement.');
+              triggerBlueToast('Tunch Only task created and ready for Settlement.', 'Task Created', 'task');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -600,7 +599,7 @@ export const GlobalFAB: React.FC = () => {
                 await supabase.from('transactions').insert([newTxn]);
               }
 
-              toast.success('Tunch Cash task created. Awaiting Admin verification.');
+              triggerBlueToast('Tunch Cash task created. Awaiting Admin verification.', 'Task Created', 'task');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
@@ -712,7 +711,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: lgrErr } = await supabase.from('ledger_entries').insert([ledgerEntry]);
               if (lgrErr) throw lgrErr;
 
-              toast.success(`Wallet ${type} of ${asset === 'Cash' ? '₹' + amount.toLocaleString('en-IN') : amount.toFixed(3) + 'g ' + asset} logged successfully.`);
+              triggerBlueToast(`Wallet ${type} of ${asset === 'Cash' ? '₹' + amount.toLocaleString('en-IN') : amount.toFixed(3) + 'g ' + asset} logged successfully.`, 'Wallet Transaction Logged', 'success');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
