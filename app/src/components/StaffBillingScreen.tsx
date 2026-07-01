@@ -2099,12 +2099,11 @@ export const StaffBillingScreen: React.FC = () => {
 
             {/* Customer Wallet Card (Admin/Super Admin only) */}
             {['Admin', 'Super Admin'].includes(user?.role || '') && (
-              <div className="wallet-luxury-card p-5 space-y-4 relative overflow-hidden">
-                <div className="absolute right-0 top-0 w-32 h-32 bg-primary/20 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none"></div>
-                <div className="flex justify-between items-center border-b border-white/10 pb-3 relative z-10">
+              <div className="luxury-card p-5 bg-white border border-outline-variant/10 space-y-4 relative overflow-hidden">
+                <div className="flex justify-between items-center border-b border-outline-variant/10 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-[#C9A646] text-[20px]">account_balance_wallet</span>
-                    <h3 className="font-headline font-bold text-[14px]">Customer Advance Wallet</h3>
+                    <h3 className="font-headline font-bold text-primary text-[14px]">Customer Advance Wallet</h3>
                   </div>
                   <button 
                     onClick={() => {
@@ -2113,25 +2112,25 @@ export const StaffBillingScreen: React.FC = () => {
                       setWalletTab('history');
                       setShowWalletModal(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white border border-white/20 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-white/20 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-[9px] font-bold uppercase tracking-wider hover:bg-primary/20 transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-[10px]">settings_accessibility</span>
                     Manage Wallet
                   </button>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 relative z-10 text-center">
-                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Cash Balance</p>
-                    <p className="font-headline text-base font-extrabold text-emerald-400">₹{(selectedCustomer.advance_cash || 0).toLocaleString('en-IN')}</p>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100/80 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-emerald-700">Cash Balance</p>
+                    <p className="font-headline text-base font-extrabold text-emerald-600">₹{(selectedCustomer.advance_cash || 0).toLocaleString('en-IN')}</p>
                   </div>
-                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Pure Gold</p>
-                    <p className="font-headline text-base font-extrabold text-amber-400">{(selectedCustomer.advance_pure_gold || 0).toFixed(3)}g</p>
+                  <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-100/80 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-amber-700">Pure Gold</p>
+                    <p className="font-headline text-base font-extrabold text-amber-600">{(selectedCustomer.advance_pure_gold || 0).toFixed(3)}g</p>
                   </div>
-                  <div className="p-3 bg-white/10 rounded-xl border border-white/10 space-y-0.5">
-                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-200">Pure Silver</p>
-                    <p className="font-headline text-base font-extrabold text-slate-100">{(selectedCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <p className="text-[8px] font-bold uppercase tracking-wider text-slate-600">Pure Silver</p>
+                    <p className="font-headline text-base font-extrabold text-slate-700">{(selectedCustomer.advance_pure_silver || 0).toFixed(3)}g</p>
                   </div>
                 </div>
               </div>
