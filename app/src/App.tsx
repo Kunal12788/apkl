@@ -265,11 +265,19 @@ function AppContent() {
             if (newRecord.created_by !== user.id) {
                const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
                if (sameBranch) {
-                  triggerBlueToast(
-                    `New ${newRecord.work_type} task registered for ${newRecord.customer_name}.`,
-                    'Task Registered',
-                    'task'
-                  );
+                  if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
+                     triggerBlueToast(
+                        `New Cash task ${newRecord.id} registered for ${newRecord.customer_name}. Awaiting Admin pricing.`,
+                        'Awaiting Pricing',
+                        'info'
+                     );
+                  } else {
+                     triggerBlueToast(
+                        `New ${newRecord.work_type} task registered for ${newRecord.customer_name}.`,
+                        'Task Registered',
+                        'task'
+                     );
+                  }
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
@@ -281,8 +289,18 @@ function AppContent() {
                const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
                const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
 
-               if (verifiedJustNow && newRecord.assigned_to !== user.id) {
-                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified.`, 'Task Verified', 'success');
+               if (verifiedJustNow) {
+                  if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
+                     if (user.role === 'Admin' || user.role === 'Super Admin') {
+                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} verified & set to Cash. Awaiting Admin pricing.`, 'Awaiting Pricing', 'info');
+                     } else if (newRecord.assigned_to !== user.id) {
+                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} verified & set to Cash.`, 'Task Verified', 'success');
+                      }
+                  } else {
+                     if (newRecord.assigned_to !== user.id) {
+                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified.`, 'Task Verified', 'success');
+                     }
+                  }
                } else if (processedJustNow && newRecord.created_by !== user.id) {
                   triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
                } else if (completedJustNow && newRecord.created_by !== user.id) {
@@ -343,8 +361,35 @@ function AppContent() {
              }
           }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, async (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
+         
+         const newRecord = payload.new;
+         const oldRecord = payload.old;
+
+         if (payload.eventType === 'INSERT' && newRecord) {
+            if (newRecord.requested_by !== user.id) {
+               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.requested_by));
+               if (sameBranch && (user.role === 'Admin' || user.role === 'Super Admin')) {
+                  triggerBlueToast(
+                     `Deletion request submitted by Staff for item ${newRecord.item_id || ''}.`,
+                     'Deletion Requested',
+                     'info'
+                  );
+               }
+            }
+         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
+            if (newRecord.requested_by === user.id) {
+               const resolvedJustNow = oldRecord.status === 'Pending' && newRecord.status !== 'Pending';
+               if (resolvedJustNow) {
+                  triggerBlueToast(
+                     `Your deletion request for item ${newRecord.item_id || ''} has been ${newRecord.status.toLowerCase()}.`,
+                     `Request ${newRecord.status}`,
+                     newRecord.status === 'Approved' ? 'success' : 'info'
+                  );
+               }
+            }
+         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, (payload: any) => {
          clearAllDataCaches();
