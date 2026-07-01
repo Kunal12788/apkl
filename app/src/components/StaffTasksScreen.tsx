@@ -241,6 +241,26 @@ const extractPaymentMode = (settlementCondition?: string): 'Cash' | 'UPI' => {
   return 'Cash';
 };
 
+const formatSettlementDisplay = (settlementCondition?: string): string => {
+  if (!settlementCondition) return '';
+  const lower = settlementCondition.toLowerCase();
+  
+  if (lower.includes('only tunch')) return 'Only Tunch';
+  if (lower.includes('pure gold')) return 'Pure Gold';
+  if (lower.includes('pure silver')) return 'Pure Silver';
+  
+  if (lower.includes('cash')) {
+    if (lower.includes('upi')) {
+      const match = settlementCondition.match(/₹\s*([\d,]+)/);
+      const amount = match ? `₹${match[1]}` : '';
+      return amount ? `UPI ${amount}` : 'UPI';
+    }
+    return 'Cash Collected';
+  }
+  
+  return settlementCondition;
+};
+
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ 
   isOpen, onClose, task, onUpdateStatus, onDeleteTask, isAdminOrSuper = false, onProcessTask, onFinalizePricing 
 }) => {
@@ -485,17 +505,16 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               </div>
             )}
             {task.settlementCondition && (() => {
-                // Staff Cash Blindness: mask cash amounts in settlement condition for non-admin
-                const rawCondition = task.settlementCondition;
-                const staffBlindCondition = !isAdminOrSuper
-                  ? rawCondition.replace(/\[Collected\]\s*(Cash|UPI)\s*₹[\d,]+/gi, '[Settled]').replace(/₹[\d,]+/g, '₹***')
-                  : rawCondition;
-                return (
-                  <div className="pt-2 border-t border-outline-variant/10 mt-2 space-y-1">
-                    <div>
-                      <span className={lbl}>Settlement Mode</span>
-                      <p className={val}>{staffBlindCondition}</p>
-                    </div>
+                 const displayCondition = formatSettlementDisplay(task.settlementCondition);
+                 const staffBlindCondition = !isAdminOrSuper && displayCondition.includes('₹')
+                   ? displayCondition.replace(/₹[\d,]+/g, '₹***')
+                   : displayCondition;
+                 return (
+                   <div className="pt-2 border-t border-outline-variant/10 mt-2 space-y-1">
+                     <div>
+                       <span className={lbl}>Settlement Mode</span>
+                       <p className={val}>{staffBlindCondition}</p>
+                     </div>            
                     {task.cashHandlingMode && (
                       <div>
                         <span className={lbl}>Impure Metal Custody</span>
@@ -882,60 +901,74 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 mt-5 shrink-0 items-center">
+        <div className="flex gap-3 mt-5 items-center">
           {task.status === 'In Progress' && userRole === 'Staff' ? (
-            <button 
-              onClick={() => {
-                if (!serviceFeeInput.trim() || isNaN(Number(serviceFeeInput)) || Number(serviceFeeInput) <= 0) {
-                  alert('Please enter a valid service fee (> 0) before completing.');
-                  return;
-                }
-                if (task.workType === 'Tunch') {
-                  if (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim()) {
-                    alert('Please enter final impure weight, purity, and pure output before completing.');
-                    return;
+            task.settlementCondition?.toLowerCase().includes('cash') && !isCreatedByCollection ? (
+              <div className="flex-1 py-3.5 bg-slate-100 text-outline border border-outline-variant/30 font-black text-xs uppercase tracking-[0.15em] rounded-2xl flex items-center justify-center gap-1.5 cursor-not-allowed">
+                <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>
+                Awaiting Admin Pricing & Approval
+              </div>
+            ) : (
+              <button 
+                onClick={() => {
+                  if (isCreatedByCollection) {
+                    if (!serviceFeeInput.trim() || isNaN(Number(serviceFeeInput)) || Number(serviceFeeInput) <= 0) {
+                      alert('Please enter a valid service fee (> 0) before completing.');
+                      return;
+                    }
+                    if (task.workType === 'Tunch') {
+                      if (!impureWeightInput.trim() || !purityInput.trim() || !pureWeightInput.trim()) {
+                        alert('Please enter final impure weight, purity, and pure output before completing.');
+                        return;
+                      }
+                    } else if (task.workType === 'Marking') {
+                      if (!totalWeightInput.trim() || !piecesInput.trim() || !logoNameInput.trim()) {
+                        alert('Please enter final weight, pieces, and logo design before completing.');
+                        return;
+                      }
+                    } else if (task.workType === 'Shouldering') {
+                      if (!pointsCountInput.trim()) {
+                        alert('Please enter points used before completing.');
+                        return;
+                      }
+                    }
                   }
-                  onProcessTask?.(task, { 
-                    impureWeight: impureWeightInput, 
-                    purity: purityInput, 
-                    pureWeight: pureWeightInput, 
-                    settlementCondition: settlementInput, 
-                    serviceFee: serviceFeeInput,
-                    paymentMode: paymentModeInput,
-                    cashHandlingMode: cashHandlingMode
-                  });
-                } else if (task.workType === 'Marking') {
-                  if (!totalWeightInput.trim() || !piecesInput.trim() || !logoNameInput.trim()) {
-                    alert('Please enter final weight, pieces, and logo design before completing.');
-                    return;
+                  
+                  if (task.workType === 'Tunch') {
+                    onProcessTask?.(task, { 
+                      impureWeight: impureWeightInput, 
+                      purity: purityInput, 
+                      pureWeight: pureWeightInput, 
+                      settlementCondition: settlementInput, 
+                      serviceFee: isCreatedByCollection ? serviceFeeInput : undefined,
+                      paymentMode: isCreatedByCollection ? paymentModeInput : undefined,
+                      cashHandlingMode: cashHandlingMode
+                    });
+                  } else if (task.workType === 'Marking') {
+                    onProcessTask?.(task, {
+                      totalWeight: totalWeightInput,
+                      pieces: piecesInput,
+                      carat: caratInput,
+                      logoName: logoNameInput,
+                      serviceFee: isCreatedByCollection ? serviceFeeInput : undefined,
+                      paymentMode: isCreatedByCollection ? paymentModeInput : undefined
+                    });
+                  } else if (task.workType === 'Shouldering') {
+                    onProcessTask?.(task, {
+                      pointsCount: pointsCountInput,
+                      pointsType: pointsTypeInput,
+                      broughtBy: broughtByInput,
+                      serviceFee: isCreatedByCollection ? serviceFeeInput : undefined,
+                      paymentMode: isCreatedByCollection ? paymentModeInput : undefined
+                    });
                   }
-                  onProcessTask?.(task, {
-                    totalWeight: totalWeightInput,
-                    pieces: piecesInput,
-                    carat: caratInput,
-                    logoName: logoNameInput,
-                    serviceFee: serviceFeeInput,
-                    paymentMode: paymentModeInput
-                  });
-                } else if (task.workType === 'Shouldering') {
-                  if (!pointsCountInput.trim()) {
-                    alert('Please enter points used before completing.');
-                    return;
-                  }
-                  onProcessTask?.(task, {
-                    pointsCount: pointsCountInput,
-                    pointsType: pointsTypeInput,
-                    broughtBy: broughtByInput,
-                    serviceFee: serviceFeeInput,
-                    paymentMode: paymentModeInput
-                  });
-                }
-              }}
-              className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-emerald-700/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">check_circle</span>
-              Complete Work
-            </button>
+                }}
+                className="flex-1 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-[0.15em] rounded-2xl transition-all duration-300 shadow-md shadow-emerald-700/10 active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                Complete Work
+              </button>
+            )
           ) : task.status === 'Pending' && userRole === 'Staff' ? (
             <div className="flex-1 py-3.5 bg-slate-100 text-outline border border-outline-variant/30 font-black text-xs uppercase tracking-[0.15em] rounded-2xl flex items-center justify-center gap-1.5 cursor-not-allowed">
               <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>
@@ -1325,8 +1358,9 @@ export const StaffTasksScreen: React.FC = () => {
       const feeAmount = Number(details.serviceFee || 0);
       if (feeAmount > 0) {
         const isSilver = task.metal === 'Silver';
+        const taskNum = task.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000);
         const feeTxn = {
-          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          id: `TXN-${taskNum}`,
           customer_id: task.customerId || 'CUST-COL',
           customer_name: task.customerName,
           task_id: task.id,
@@ -1794,8 +1828,9 @@ export const StaffTasksScreen: React.FC = () => {
 
       // 3. Create billing transaction
       if (task.workType !== 'Tunch' && !task.wasSettlementCategory) {
+        const taskNum = task.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000);
         const newTxn = {
-          id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+          id: `TXN-${taskNum}`,
           customer_id: task.customerId || 'CUST-COL',
           customer_name: task.customerName,
           task_id: task.id,
@@ -1824,8 +1859,9 @@ export const StaffTasksScreen: React.FC = () => {
       }
       
       if (isCashSettlement) {
+          const taskNum = task.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000);
           const payoutTxn = {
-            id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+            id: `TXN-${taskNum}`,
             customer_id: task.customerId || 'CUST-COL',
             customer_name: task.customerName,
             task_id: task.id,
@@ -2531,8 +2567,9 @@ export const StaffTasksScreen: React.FC = () => {
 
                       // Also create a billing transaction
                       const calculatedRate = calculatedPure > 0 ? (cashToPay / calculatedPure) : 0;
+                      const taskNum = selectedSettlement.isTask ? (selectedSettlement.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000)) : Math.floor(1000 + Math.random() * 9000);
                       const newTxn = {
-                        id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                        id: `TXN-${taskNum}`,
                         customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
                         customer_name: selectedSettlement.customer_name,
                         task_id: selectedSettlement.isTask ? selectedSettlement.id : null,

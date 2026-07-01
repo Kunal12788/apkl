@@ -42,11 +42,11 @@ export const GlobalFAB: React.FC = () => {
             const dateStr = 'Today';
             const isoDateStr = new Date().toISOString().split('T')[0];
 
-            let serialId = '0001';
+            let serialId = '001';
             try {
               const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
               if (count !== null) {
-                serialId = String(count + 1).padStart(4, '0');
+                serialId = String(count + 1).padStart(3, '0');
               }
             } catch (e) {
               console.error('Failed to get task count for serial ID', e);
@@ -470,7 +470,7 @@ export const GlobalFAB: React.FC = () => {
               // Insert fee transaction if provided
               if (data.fee) {
                 const newTxn = {
-                  id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                  id: `TXN-${serialId}`,
                   customer_id: generatedCustomerId,
                   customer_name: data.customerName || 'Walk-in Customer',
                   metal: data.metal || 'Gold',
@@ -583,7 +583,7 @@ export const GlobalFAB: React.FC = () => {
               // Insert fee transaction if provided
               if (serviceFeeAmount > 0) {
                 const newTxn = {
-                  id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+                  id: `TXN-${serialId}`,
                   customer_id: generatedCustomerId,
                   customer_name: data.customerName || 'Walk-in Customer',
                   metal: data.metal || 'Gold',
