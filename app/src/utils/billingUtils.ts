@@ -220,7 +220,7 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
 
 export interface BehaviorAnalysis {
   score: number;
-  level: 'Excellent' | 'Good' | 'Fine' | 'Poor' | 'Impossible';
+  level: 'Excellent' | 'Good' | 'Fine' | 'Poor' | 'Impossible' | 'No History';
   onTimeRate: number;
   avgDaysToPay: number;
   maxDelay: number;
@@ -241,9 +241,9 @@ export const analyzeCustomerBehavior = (
 
   if (billingItems.length === 0) {
     return {
-      score: 100,
-      level: 'Excellent',
-      onTimeRate: 100,
+      score: 0,
+      level: 'No History',
+      onTimeRate: 0,
       avgDaysToPay: 0,
       maxDelay: 0,
       totalDuesCount: 0,

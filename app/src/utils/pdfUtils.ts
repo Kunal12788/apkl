@@ -213,6 +213,9 @@ export const generateCustomerPDFReport = async (
       } else if (behavior?.level === 'Fine') {
         doc.setTextColor(180, 83, 9); // Amber
         warningText = 'SATISFACTORY: General compliance, moderate delay observed.';
+      } else if (behavior?.level === 'No History') {
+        doc.setTextColor(100, 116, 139); // Slate
+        warningText = 'NO HISTORY: Client has no recorded billing history yet.';
       } else {
         doc.setTextColor(220, 38, 38); // Red
         warningText = 'HIGH RISK: Substantial delays detected. Enforce payment before further intake.';

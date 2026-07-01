@@ -671,6 +671,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                           customerBehavior.level === 'Good' ? 'bg-blue-50 border-blue-200' :
                           customerBehavior.level === 'Fine' ? 'bg-amber-50 border-amber-200' :
                           customerBehavior.level === 'Poor' ? 'bg-orange-50 border-orange-200' :
+                          customerBehavior.level === 'No History' ? 'bg-slate-50 border-slate-200' :
                           'bg-red-50 border-red-200'
                         }`}>
                           <div className="flex items-center justify-between">
@@ -680,6 +681,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                               customerBehavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
                               customerBehavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
                               customerBehavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                              customerBehavior.level === 'No History' ? 'bg-slate-100 text-slate-700' :
                               'bg-red-100 text-red-700'
                             }`}>
                               {customerBehavior.level}
@@ -692,6 +694,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                                 customerBehavior.level === 'Good' ? 'text-blue-700' :
                                 customerBehavior.level === 'Fine' ? 'text-amber-700' :
                                 customerBehavior.level === 'Poor' ? 'text-orange-700' :
+                                customerBehavior.level === 'No History' ? 'text-slate-500' :
                                 'text-red-700'
                               }`}>{customerBehavior.score}<span className="text-[12px] opacity-70">/100</span></p>
                             </div>

@@ -963,18 +963,21 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         behavior.level === 'Excellent' ? 'text-emerald-500' :
                         behavior.level === 'Good' ? 'text-teal-500' :
                         behavior.level === 'Fine' ? 'text-amber-500' :
-                        behavior.level === 'Poor' ? 'text-orange-500' : 'text-red-600'
+                        behavior.level === 'Poor' ? 'text-orange-500' :
+                        behavior.level === 'No History' ? 'text-slate-400' : 'text-red-600'
                       }`}>{
                         behavior.level === 'Excellent' ? 'verified' :
                         behavior.level === 'Good' ? 'recommend' :
                         behavior.level === 'Fine' ? 'info' :
-                        behavior.level === 'Poor' ? 'warning' : 'dangerous'
+                        behavior.level === 'Poor' ? 'warning' :
+                        behavior.level === 'No History' ? 'hourglass_empty' : 'dangerous'
                       }</span>
                       <span className={`text-xs font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${
                         behavior.level === 'Excellent' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
                         behavior.level === 'Good' ? 'bg-teal-50 text-teal-600 border border-teal-200' :
                         behavior.level === 'Fine' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
                         behavior.level === 'Poor' ? 'bg-orange-50 text-orange-600 border border-orange-200' :
+                        behavior.level === 'No History' ? 'bg-slate-50 text-slate-600 border border-slate-200' :
                         'bg-red-50 text-red-600 border border-red-200'
                       }`}>
                         {behavior.level} Rating
@@ -990,7 +993,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                   <div className="flex-1 w-full space-y-1">
                     <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-wider text-outline">
                       <span>Performance Score</span>
-                      <span>{behavior.score >= 90 ? 'Excellent credit' : behavior.score >= 75 ? 'Good standing' : behavior.score >= 55 ? 'Satisfactory' : behavior.score >= 30 ? 'High Risk' : 'Disabled Credit'}</span>
+                      <span>{behavior.level === 'No History' ? 'No History' : behavior.score >= 90 ? 'Excellent credit' : behavior.score >= 75 ? 'Good standing' : behavior.score >= 55 ? 'Satisfactory' : behavior.score >= 30 ? 'High Risk' : 'Disabled Credit'}</span>
                     </div>
                     <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-outline-variant/10 shadow-inner">
                       <div 
@@ -999,6 +1002,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                           behavior.level === 'Good' ? 'bg-gradient-to-r from-teal-500 to-teal-400' :
                           behavior.level === 'Fine' ? 'bg-gradient-to-r from-amber-500 to-amber-400' :
                           behavior.level === 'Poor' ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                          behavior.level === 'No History' ? 'bg-slate-300' :
                           'bg-gradient-to-r from-red-600 to-red-500'
                         }`}
                         style={{ width: `${behavior.score}%` }}
@@ -1014,6 +1018,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                   {behavior.level === 'Fine' && "Resolves dues within moderate clearance limits. Satisfactory standing but requires regular follow-ups."}
                   {behavior.level === 'Poor' && "Frequently delays dues settlement beyond the policy limits. High-risk client, caution advised on further credit."}
                   {behavior.level === 'Impossible' && "Dues highly overdue for extended periods. Critical clearance defaults. Credit option should be suspended."}
+                  {behavior.level === 'No History' && "No billing history available. The client has not been assigned any billable jobs yet."}
                 </p>
 
                 {/* Key Metrics Grid */}
@@ -1265,6 +1270,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         behavior.level === 'Good' ? 'bg-blue-500 text-white' :
                         behavior.level === 'Fine' ? 'bg-amber-500 text-white' :
                         behavior.level === 'Poor' ? 'bg-orange-500 text-white' :
+                        behavior.level === 'No History' ? 'bg-slate-400 text-white' :
                         'bg-red-500 text-white'
                       }`}>
                         <span className="material-symbols-outlined text-[9px]" style={{ fontVariationSettings: '"FILL" 1' }}>
@@ -1272,6 +1278,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                            behavior.level === 'Good' ? 'thumb_up' :
                            behavior.level === 'Fine' ? 'remove' :
                            behavior.level === 'Poor' ? 'warning' :
+                           behavior.level === 'No History' ? 'hourglass_empty' :
                            'error'}
                         </span>
                       </div>
@@ -1284,6 +1291,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                           behavior.level === 'Good' ? 'bg-blue-100 text-blue-700' :
                           behavior.level === 'Fine' ? 'bg-amber-100 text-amber-700' :
                           behavior.level === 'Poor' ? 'bg-orange-100 text-orange-700' :
+                          behavior.level === 'No History' ? 'bg-slate-100 text-slate-700' :
                           'bg-red-100 text-red-700'
                         }`}>
                           {behavior.score}
