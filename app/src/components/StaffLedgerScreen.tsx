@@ -170,13 +170,13 @@ export const StaffLedgerScreen: React.FC = () => {
   const fetchEntries = async () => {
     try {
       const isSuperSa = user?.role === 'Super Admin';
-      let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
+      let branchUserIds: string[] = [];
       let staffUserIds: string[] = [];
 
       if (!isSuperSa && user?.branch_id) {
         const { data: bUsers, error: buError } = await supabase
           .from('users')
-          .select('id, name, role')
+          .select('id, name, role, branch_id')
           .eq('branch_id', user.branch_id);
         if (!buError && bUsers) {
           branchUserIds = bUsers.map((bu: any) => bu.id);
@@ -658,8 +658,8 @@ export const StaffLedgerScreen: React.FC = () => {
         if (saReportError) throw saReportError;
 
         // --- 2. Admin Clearance (clear from active screens for all branch staff) ---
-        let branchUserIds: string[] = getCachedData(cacheKeyBranchUsers) || [];
-        if (user?.branch_id && branchUserIds.length === 0) {
+        let branchUserIds: string[] = [];
+        if (user?.branch_id) {
           const { data: bUsers } = await supabase
             .from('users')
             .select('id')
