@@ -1194,11 +1194,14 @@ export const StaffTasksScreen: React.FC = () => {
          matchesTab = t.status === 'Pending' && !isReopenedCashTask;
        }
      } else if (user?.role === 'Admin' || user?.role === 'Super Admin') {
-       if (activeTab === 'Pending') {
-         matchesTab = t.status === 'Pending' && t.purity !== null && t.purity !== '' && t.purity !== undefined;
-       } else if (activeTab === 'In Progress') {
-         matchesTab = t.status === 'In Progress';
-       }
+        const isPureExchange = t.settlementCondition?.toLowerCase().includes('pure gold') || t.settlementCondition?.toLowerCase().includes('pure silver');
+        if (isPureExchange) {
+          matchesTab = false;
+        } else if (activeTab === 'Pending') {
+          matchesTab = t.status === 'Pending' && t.purity !== null && t.purity !== '' && t.purity !== undefined;
+        } else if (activeTab === 'In Progress') {
+          matchesTab = t.status === 'In Progress';
+        }
      }
      
      return matchesTab && matchesSearch(t);
@@ -1312,6 +1315,9 @@ export const StaffTasksScreen: React.FC = () => {
 
         if (condition === 'Only Tunch') {
           nextStatus = 'Settlement';
+        } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
+          nextStatus = 'Completed';
+          progress = 100;
         }
       } else {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
@@ -1434,8 +1440,8 @@ export const StaffTasksScreen: React.FC = () => {
           await supabase.from('ledger_entries').insert([newLedgerEntry]);
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
-          newLedgerEntry.status = 'Pending Pure';
-          newLedgerEntry.pending_pure_liability = true;
+          newLedgerEntry.status = 'Completed';
+          newLedgerEntry.pending_pure_liability = false;
           if (task.metal === 'Silver') {
             newLedgerEntry.impure_silver_in = finalImpure;
             newLedgerEntry.pure_silver_out = finalPure;
@@ -1491,7 +1497,11 @@ export const StaffTasksScreen: React.FC = () => {
         }
       }
 
-      showToast('Task submitted to Admin for pricing & approval.');
+      if (nextStatus === 'Completed') {
+        showToast('Task completed successfully! Pure metal giveaway logged in Staff ledger.');
+      } else {
+        showToast('Task submitted to Admin for pricing & approval.');
+      }
       handleCloseModal();
     } catch (e) {
       console.error(e);
