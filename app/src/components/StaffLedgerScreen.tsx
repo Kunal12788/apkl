@@ -629,9 +629,13 @@ export const StaffLedgerScreen: React.FC = () => {
         const closingCash = openingCash + cashReceived - cashUsed;
 
         // Insert daily report
+        const validBranchId = (user?.branch_id && user.branch_id.includes('-')) 
+          ? user.branch_id 
+          : 'a3fa8cbc-25f8-4af6-bd86-66e8ae1da904';
+
         const { error: saReportError } = await supabase.from('branch_daily_reports').insert([{
           id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
-          branch_id: user?.branch_id || 'BR-DELHI',
+          branch_id: validBranchId,
           branch_name: branchName,
           staff_id: userId,
           date: 'Today',
@@ -673,7 +677,7 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
           supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
           supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
-          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null)
+          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', validBranchId).is('admin_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
@@ -682,7 +686,7 @@ export const StaffLedgerScreen: React.FC = () => {
         if (r4.error) throw r4.error;
         if (r5.error) throw r5.error;
 
-        alert('Daily report submitted and active lists cleared successfully!');
+        triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
       } else {
         // --- 3. Staff Clearance (clear from active screens for logged in staff only) ---
         const [r1, r2, r3, r4, r5] = await Promise.all([
@@ -690,7 +694,7 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('transactions').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null),
           supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('created_by', userId).is('staff_submitted_at', null).neq('status', 'Settlement'),
           supabase.from('tasks').update({ staff_submitted_at: nowStr }).eq('assigned_to', userId).is('staff_submitted_at', null).neq('status', 'Settlement'),
-          supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('branch_id', user?.branch_id).is('staff_submitted_at', null)
+          supabase.from('stock_allocations').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null)
         ]);
 
         if (r1.error) throw r1.error;
@@ -699,7 +703,7 @@ export const StaffLedgerScreen: React.FC = () => {
         if (r4.error) throw r4.error;
         if (r5.error) throw r5.error;
 
-        alert('Daily report submitted and active lists cleared successfully!');
+        triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
       }
 
       clearAllDataCaches();
