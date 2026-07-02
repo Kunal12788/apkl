@@ -558,7 +558,7 @@ export const StaffLedgerScreen: React.FC = () => {
       const { error } = await supabase.from('stock_allocations').insert(newAllocations);
       if (error) throw error;
 
-      alert("Stock successfully allocated to Staff!");
+      triggerBlueToast(`Stock allocated to ${staffName} successfully!`, 'Allocation Successful', 'allocation');
       setAllocStaffId('');
       setAllocGold('');
       setAllocSilver('');

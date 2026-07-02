@@ -6,6 +6,7 @@ import { fitText } from '../utils';
 import { clearAllStorageImages } from '../utils/storageUtils';
 import { NotificationBell } from './NotificationBell';
 import toast from 'react-hot-toast';
+import { triggerBlueToast } from './AppleToast';
 import { generateCorporatePDFReport } from '../utils/pdfCorporateUtils';
 
 interface RefiningTransfer {
@@ -501,7 +502,7 @@ export const SuperAdminLedgerScreen: React.FC = () => {
       setAllocSilverWeight('');
       setAllocCash('');
       setAllocNotes('');
-      alert('Stock successfully allocated!');
+      triggerBlueToast(`Stock allocated to branch ${allocBranchId} successfully!`, 'Allocation Successful', 'allocation');
       clearAllDataCaches();
       fetchData();
     } catch (err) {

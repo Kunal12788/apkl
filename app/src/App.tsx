@@ -262,22 +262,29 @@ function AppContent() {
          const oldRecord = payload.old;
 
          if (payload.eventType === 'INSERT' && newRecord) {
-            if (newRecord.created_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
-               if (sameBranch) {
-                  if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
-                     triggerBlueToast(
-                        `New Cash task ${newRecord.id} registered for ${newRecord.customer_name}. Awaiting Admin pricing.`,
-                        'Awaiting Pricing',
-                        'info'
-                     );
-                  } else {
-                     triggerBlueToast(
-                        `New ${newRecord.work_type} task registered for ${newRecord.customer_name}.`,
-                        'Task Registered',
-                        'task'
-                     );
-                  }
+            const isCreator = newRecord.created_by === user.id;
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+            
+            if (isCreator) {
+               triggerBlueToast(
+                  `Task ${newRecord.id} created successfully for ${newRecord.customer_name}.`,
+                  'Task Created',
+                  'task'
+               );
+            } else if (sameBranch) {
+               const creatorRole = newRecord.source || 'Staff';
+               if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
+                  triggerBlueToast(
+                     `New Cash task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}. Awaiting Admin pricing.`,
+                     'Awaiting Pricing',
+                     'info'
+                  );
+               } else {
+                  triggerBlueToast(
+                     `New ${newRecord.work_type} task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}.`,
+                     'Task Registered',
+                     'task'
+                  );
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
@@ -330,15 +337,34 @@ function AppContent() {
             const myBranch = user.branch_id && newRecord.branch_id === user.branch_id;
             
             let detailsText = '';
-            if (Number(newRecord.pure_weight || 0) > 0) detailsText += `${newRecord.pure_weight}g Pure Metal `;
-            if (Number(newRecord.cash_amount || 0) > 0) detailsText += `₹${newRecord.cash_amount} Cash`;
+            const metalStr = newRecord.metal || 'Gold';
+            if (Number(newRecord.pure_weight || 0) > 0) detailsText += `${newRecord.pure_weight}g Pure ${metalStr} `;
+            if (Number(newRecord.cash_amount || 0) > 0) detailsText += `₹${Number(newRecord.cash_amount).toLocaleString('en-IN')} Cash`;
 
-            if (isAllocatedToMe) {
-               triggerBlueToast(`You have been allocated stock: ${detailsText}`, 'Stock Allocation Received', 'allocation');
-            } else if (myBranch && !newRecord.staff_id && !isSelfAllocated) {
-               triggerBlueToast(`Your branch received a stock allocation: ${detailsText}`, 'Branch Stock Allocation', 'allocation');
+            if (isSelfAllocated) {
+               triggerBlueToast(
+                  `Stock allocation of ${detailsText} logged successfully.`,
+                  'Allocation Confirmed',
+                  'allocation'
+               );
+            } else if (isAllocatedToMe) {
+               triggerBlueToast(
+                  `You have been allocated stock: ${detailsText} by Admin.`,
+                  'Stock Received',
+                  'allocation'
+               );
+            } else if (myBranch && !newRecord.staff_id) {
+               triggerBlueToast(
+                  `Your branch received a stock allocation: ${detailsText} from Head Office.`,
+                  'Branch Stock Received',
+                  'allocation'
+               );
             } else if (user.role === 'Super Admin' && !isSelfAllocated) {
-               triggerBlueToast(`Stock allocated: ${detailsText}`, 'Stock Allocated', 'allocation');
+               triggerBlueToast(
+                  `Stock allocated to ${newRecord.branch_name || newRecord.branch_id}: ${detailsText}`,
+                  'Stock Allocated',
+                  'allocation'
+               );
             }
          }
       })
