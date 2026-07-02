@@ -182,7 +182,7 @@ export const StaffLedgerScreen: React.FC = () => {
           branchUserIds = bUsers.map((bu: any) => bu.id);
           setCachedData(cacheKeyBranchUsers, branchUserIds);
 
-          const staff = bUsers.filter((bu: any) => bu.role !== 'Admin' && bu.role !== 'Super Admin');
+          const staff = bUsers.filter((bu: any) => bu.role === 'Staff');
           setBranchStaff(staff);
           staffUserIds = staff.map((bu: any) => bu.id);
         }
