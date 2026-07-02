@@ -98,7 +98,6 @@ export const StaffLedgerScreen: React.FC = () => {
   const [selectedAllocation, setSelectedAllocation] = useState<any | null>(null);
   const [hasActiveDataToSubmit, setHasActiveDataToSubmit] = useState(false);
 
-  const [hasUnsubmittedStaffData, setHasUnsubmittedStaffData] = useState(false);
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
 
   // Admin allocation states
@@ -171,8 +170,6 @@ export const StaffLedgerScreen: React.FC = () => {
     try {
       const isSuperSa = user?.role === 'Super Admin';
       let branchUserIds: string[] = [];
-      let staffUserIds: string[] = [];
-
       if (!isSuperSa && user?.branch_id) {
         const { data: bUsers, error: buError } = await supabase
           .from('users')
@@ -184,7 +181,6 @@ export const StaffLedgerScreen: React.FC = () => {
 
           const staff = bUsers.filter((bu: any) => bu.role === 'Staff');
           setBranchStaff(staff);
-          staffUserIds = staff.map((bu: any) => bu.id);
         }
       }
 
@@ -206,21 +202,6 @@ export const StaffLedgerScreen: React.FC = () => {
           allocationsQuery = allocationsQuery.eq('staff_id', userId);
         }
       }
-
-      // Check for unsubmitted staff data (ledger entries, transactions, tasks created by staff)
-      let hasUnsubmitted = false;
-      if (user?.role === 'Admin' && user?.branch_id && staffUserIds.length > 0) {
-        const [uEntries, uTx, uTasks] = await Promise.all([
-          supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
-          supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
-          supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
-        ]);
-        const count = (uEntries.count || 0) + (uTx.count || 0) + (uTasks.count || 0);
-        if (count > 0) {
-          hasUnsubmitted = true;
-        }
-      }
-      setHasUnsubmittedStaffData(hasUnsubmitted);
 
       let hasActiveData = false;
       if (user?.role === 'Admin') {
@@ -581,11 +562,6 @@ export const StaffLedgerScreen: React.FC = () => {
       : "Are you sure you want to submit your daily ledger report? Once submitted, active lists will be cleared.";
 
     if (!window.confirm(confirmMessage)) return;
-
-    if (isAdmin && hasUnsubmittedStaffData) {
-      alert("You cannot submit the branch daily report until the branch staff has submitted their report.");
-      return;
-    }
 
     if (!hasActiveDataToSubmit) {
       alert("There is no active data to submit.");
@@ -1111,7 +1087,7 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     {(user?.role === 'Staff' || user?.role === 'Admin') && (() => {
-                      const isBtnDisabled = (user?.role === 'Admin' && hasUnsubmittedStaffData) || !hasActiveDataToSubmit;
+                      const isBtnDisabled = !hasActiveDataToSubmit;
                       return (
                         <div className="flex flex-col items-end gap-1">
                           <button 
@@ -1128,7 +1104,7 @@ export const StaffLedgerScreen: React.FC = () => {
                           </button>
                           {isBtnDisabled && (
                             <span className="text-[9px] text-error font-bold uppercase tracking-wider pl-1">
-                              {!hasActiveDataToSubmit ? 'No Active Data' : 'Awaiting Staff Submission'}
+                              No Active Data
                             </span>
                           )}
                         </div>
