@@ -454,7 +454,9 @@ function AppContent() {
             }
          }
       })
-      .subscribe();
+      .subscribe((status) => {
+         console.log('Realtime System Events Channel Status:', status);
+      });
 
     return () => {
        supabase.removeChannel(realtimeChannel);
