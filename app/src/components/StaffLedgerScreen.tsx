@@ -207,16 +207,15 @@ export const StaffLedgerScreen: React.FC = () => {
         }
       }
 
-      // Check for unsubmitted staff data
+      // Check for unsubmitted staff data (ledger entries, transactions, tasks created by staff)
       let hasUnsubmitted = false;
       if (user?.role === 'Admin' && user?.branch_id && staffUserIds.length > 0) {
-        const [uEntries, uAlloc, uTx, uTasks] = await Promise.all([
+        const [uEntries, uTx, uTasks] = await Promise.all([
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
-          supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).in('staff_id', staffUserIds).is('staff_submitted_at', null),
           supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', staffUserIds).is('staff_submitted_at', null),
         ]);
-        const count = (uEntries.count || 0) + (uAlloc.count || 0) + (uTx.count || 0) + (uTasks.count || 0);
+        const count = (uEntries.count || 0) + (uTx.count || 0) + (uTasks.count || 0);
         if (count > 0) {
           hasUnsubmitted = true;
         }
