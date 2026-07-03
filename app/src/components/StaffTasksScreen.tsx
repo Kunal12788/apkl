@@ -1879,7 +1879,7 @@ export const StaffTasksScreen: React.FC = () => {
       if (isCashSettlement) {
           const taskNum = task.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000);
           const payoutTxn = {
-            id: `TXN-${taskNum}`,
+            id: `TXN-${taskNum}-PAY`,
             customer_id: task.customerId || 'CUST-COL',
             customer_name: task.customerName,
             task_id: task.id,
@@ -2713,7 +2713,7 @@ export const StaffTasksScreen: React.FC = () => {
                       const calculatedRate = calculatedPure > 0 ? (cashToPay / calculatedPure) : 0;
                       const taskNum = selectedSettlement.isTask ? (selectedSettlement.id.split('-')[1] || Math.floor(1000 + Math.random() * 9000)) : Math.floor(1000 + Math.random() * 9000);
                       const newTxn = {
-                        id: `TXN-${taskNum}`,
+                        id: `TXN-${taskNum}-PAY`,
                         customer_id: selectedSettlement.task?.customerId || 'CUST-COL',
                         customer_name: selectedSettlement.customer_name,
                         task_id: selectedSettlement.isTask ? selectedSettlement.id : null,
