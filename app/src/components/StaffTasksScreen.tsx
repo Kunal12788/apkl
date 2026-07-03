@@ -1049,10 +1049,10 @@ export const StaffTasksScreen: React.FC = () => {
   const [currentVerificationTask, setCurrentVerificationTask] = useState<any>(null);
   const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
   const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash' | 'Only Tunch'>('Pure Gold');
-  const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
   const [stockSource, setStockSource] = useState<'Staff' | 'Admin'>('Staff');
   const [walletDepositSelected, setWalletDepositSelected] = useState<boolean>(false);
+  const [cashRateInput, setCashRateInput] = useState('');
   const showToast = (msg: string) => {
     triggerBlueToast(msg);
   };
@@ -2117,7 +2117,7 @@ export const StaffTasksScreen: React.FC = () => {
                           setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
                           setStockSource('Staff');
                           setWalletDepositSelected(false);
-                          setCashAmountInput('');
+                          setCashRateInput('');
                         }} 
                         className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
                       >
@@ -2165,7 +2165,7 @@ export const StaffTasksScreen: React.FC = () => {
                               setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
                               setStockSource('Staff');
                               setWalletDepositSelected(false);
-                              setCashAmountInput('');
+                              setCashRateInput('');
                             }}
                             className="flex-grow py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
                           >
@@ -2295,49 +2295,83 @@ export const StaffTasksScreen: React.FC = () => {
                     </p>
                   </div>
                 ) : newSettlementMode === 'Cash' ? (
-                  selectedSettlement.isTask ? (
-                    <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Workflow</span>
-                      <p className="text-xs font-semibold text-primary">
-                        This task will be moved to "In Progress" status. Admin will finalize the gold/silver pricing per gram and total payout amount.
+                  <div className="text-left space-y-3">
+                    <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Pure Metal Yield</span>
+                      <p className="text-sm font-black text-secondary">
+                        {(() => {
+                          const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                          const yieldWeight = selectedSettlement.task?.pureWeight 
+                            ? Number(selectedSettlement.task.pureWeight)
+                            : (() => {
+                                const impure = isSilver 
+                                  ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
+                                  : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
+                                const purity = parseFloat(selectedSettlement.purity) || 0;
+                                return impure * (purity / 100);
+                              })();
+                          return `${selectedSettlement.task?.pureWeight ? yieldWeight.toString() : yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
+                        })()}
                       </p>
                     </div>
-                  ) : (
-                    <div className="text-left space-y-3">
-                      <div>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Amount Paid to Customer (₹) *</span>
-                        <input 
-                          type="number" 
-                          value={cashAmountInput} 
-                          onChange={e => setCashAmountInput(e.target.value)}
-                          placeholder="e.g. 15000" 
-                          className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                        />
-                      </div>
 
-                      {selectedSettlement.task?.customerId && selectedSettlement.task?.customerId !== 'CUST-COL' && (
-                        <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-outline block">Delivery Method</span>
-                          <div className="flex gap-2">
-                            <button 
-                              type="button"
-                              onClick={() => setWalletDepositSelected(false)}
-                              className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${!walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                            >
-                              Pay Physically
-                            </button>
-                            <button 
-                              type="button"
-                              onClick={() => setWalletDepositSelected(true)}
-                              className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
-                            >
-                              Deposit to Wallet
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                    <div>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Rate per Gram (₹/g) *</span>
+                      <input 
+                        type="number" 
+                        value={cashRateInput} 
+                        onChange={e => setCashRateInput(e.target.value)}
+                        placeholder="e.g. 7200" 
+                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                      />
                     </div>
-                  )
+
+                    <div className="p-3 bg-emerald-50/40 rounded-xl border border-emerald-500/10 flex justify-between items-center">
+                      <div>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Calculated Total Payout</span>
+                        <p className="text-base font-black text-emerald-600">
+                          {(() => {
+                            const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                            const yieldWeight = selectedSettlement.task?.pureWeight 
+                              ? Number(selectedSettlement.task.pureWeight)
+                              : (() => {
+                                  const impure = isSilver 
+                                    ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
+                                    : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
+                                  const purity = parseFloat(selectedSettlement.purity) || 0;
+                                  return impure * (purity / 100);
+                                })();
+                            const rate = parseFloat(cashRateInput) || 0;
+                            const total = yieldWeight * rate;
+                            return `₹${total.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+                          })()}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-emerald-600 text-xl">payments</span>
+                    </div>
+
+                    {selectedSettlement.task?.customerId && selectedSettlement.task?.customerId !== 'CUST-COL' && (
+                      <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline block">Delivery Method</span>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setWalletDepositSelected(false)}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${!walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            Pay Physically
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setWalletDepositSelected(true)}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            Deposit to Wallet
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left space-y-2">
                     <div>
@@ -2433,10 +2467,10 @@ export const StaffTasksScreen: React.FC = () => {
               <button 
                 onClick={async () => {
                   const isCashMode = newSettlementMode === 'Cash';
-                  const cashToPay = Number(cashAmountInput || 0);
+                  const rate = parseFloat(cashRateInput) || 0;
                   
-                  if (isCashMode && !selectedSettlement.isTask && (!cashAmountInput.trim() || isNaN(cashToPay) || cashToPay <= 0)) {
-                    alert('Please enter a valid cash amount paid.');
+                  if (isCashMode && (isNaN(rate) || rate <= 0)) {
+                    alert('Please enter a valid rate per gram.');
                     return;
                   }
                   
@@ -2451,51 +2485,7 @@ export const StaffTasksScreen: React.FC = () => {
                       ? Number(selectedSettlement.task.pureWeight)
                       : impure * (purity / 100);
 
-                    // Special Task-specific flow for Cash settlement (follows cash work workflow)
-                    if (selectedSettlement.isTask && isCashMode) {
-                      let taskLedgerId = selectedSettlement.id;
-                      const { data: matchedLedger } = await supabase
-                        .from('ledger_entries')
-                        .select('id')
-                        .eq('customer_name', selectedSettlement.customer_name)
-                        .eq('transaction_type', 'Tunch Only')
-                        .eq('status', 'No Settlement')
-                        .order('created_at', { ascending: false })
-                        .limit(1)
-                        .maybeSingle();
-                      
-                      if (matchedLedger) {
-                        taskLedgerId = matchedLedger.id;
-                      }
-
-                      const taskUpdates = {
-                        status: 'Pending' as any,
-                        progress_percentage: 20,
-                        settlement_condition: 'Cash',
-                        staff_submitted_at: null,
-                        admin_submitted_at: null
-                      };
-                      await supabase.from('tasks').update(taskUpdates).eq('id', selectedSettlement.id);
-                      setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { 
-                        ...t, 
-                        ...taskUpdates, 
-                        progressPercentage: 20,
-                        staffSubmittedAt: undefined,
-                        adminSubmittedAt: undefined
-                      } : t));
-
-                      if (taskLedgerId) {
-                        await supabase.from('ledger_entries').update({
-                          transaction_type: 'Exchange',
-                          status: 'Completed',
-                          details: 'Converted to Cash Task'
-                        }).eq('id', taskLedgerId);
-                      }
-
-                      showToast('Task moved to Pending. Awaiting Admin confirmation.');
-                      setSelectedSettlement(null);
-                      return;
-                    }
+                    const cashToPay = isCashMode ? (calculatedPure * rate) : 0;
 
                     // Stock Validation for Settlement Modal
                     const isSuperSa = user?.role === 'Super Admin';
@@ -2516,7 +2506,10 @@ export const StaffTasksScreen: React.FC = () => {
                       entriesQuery = entriesQuery.in('staff_id', branchUserIds);
                     }
                     
-                    const txQuery = supabase.from('transactions').select('amount, status, type');
+                    let txQuery = supabase.from('transactions').select('amount, status, type, created_by, staff_submitted_at, admin_submitted_at');
+                    if (!isSuperSa && user?.branch_id) {
+                      txQuery = txQuery.in('created_by', branchUserIds);
+                    }
                     
                     const [allocationsRes, entriesRes, txRes] = await Promise.all([
                       allocationsQuery,
@@ -2529,20 +2522,49 @@ export const StaffTasksScreen: React.FC = () => {
                       : "Required stock is not present, kindly talk to the Admin.";
 
                     if (isCashMode) {
-                      const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-                      const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
-                      const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
-                      
-                      let billingCash = 0;
-                      (txRes.data || []).forEach((tx: any) => {
-                        const type = tx.type?.trim().toLowerCase() || '';
-                        if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-                          const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-                          billingCash += Number(amtStr) || 0;
-                        }
-                      });
-                      
-                      const currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+                      const branchAllocations = allocationsRes.data || [];
+                      const branchEntries = entriesRes.data || [];
+                      const branchTx = txRes.data || [];
+
+                      let currentCashStock = 0;
+                      const uId = user?.id || '';
+                      if (user?.role === 'Admin') {
+                        const fromSuper = branchAllocations.filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+                        const toStaffActive = branchAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+                        const totalAllocatedCash = fromSuper - toStaffActive;
+
+                        const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                        const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+
+                        let billingCash = 0;
+                        branchTx.forEach((tx: any) => {
+                          const type = tx.type?.trim().toLowerCase() || '';
+                          const isAuthorized = tx.created_by === uId || tx.staff_submitted_at !== null;
+                          if (isAuthorized && tx.admin_submitted_at === null && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+                            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+                            billingCash += Number(amtStr) || 0;
+                          }
+                        });
+
+                        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+                      } else {
+                        // Staff Cash Stock
+                        const totalAllocatedCash = branchAllocations.filter((a: any) => a.staff_id === uId).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+                        const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                        const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
+
+                        let billingCash = 0;
+                        branchTx.forEach((tx: any) => {
+                          const type = tx.type?.trim().toLowerCase() || '';
+                          if (tx.created_by === uId && tx.staff_submitted_at === null && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
+                            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
+                            billingCash += Number(amtStr) || 0;
+                          }
+                        });
+
+                        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+                      }
+
                       if (cashToPay > currentCashStock) {
                         triggerBlueToast(msg);
                         setIsSubmittingSettlement(false);
