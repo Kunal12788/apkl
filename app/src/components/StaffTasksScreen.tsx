@@ -1051,6 +1051,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [newSettlementMode, setNewSettlementMode] = useState<'Pure Gold' | 'Pure Silver' | 'Cash' | 'Only Tunch'>('Pure Gold');
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
+  const [stockSource, setStockSource] = useState<'Staff' | 'Admin'>('Staff');
   const showToast = (msg: string) => {
     triggerBlueToast(msg);
   };
@@ -2113,6 +2114,7 @@ export const StaffTasksScreen: React.FC = () => {
                             task: task
                           });
                           setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
+                          setStockSource('Staff');
                           setCashAmountInput('');
                         }} 
                         className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
@@ -2159,6 +2161,7 @@ export const StaffTasksScreen: React.FC = () => {
                                 task: task
                               });
                               setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
+                              setStockSource('Staff');
                               setCashAmountInput('');
                             }}
                             className="flex-grow py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
@@ -2264,9 +2267,11 @@ export const StaffTasksScreen: React.FC = () => {
                   {(() => {
                     const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
                     const hasOnlyTunch = selectedSettlement.task?.settlementCondition?.includes('Only Tunch') || selectedSettlement.transaction_type === 'Tunch Only';
-                    const options = hasOnlyTunch
-                      ? (isSilver ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash'])
-                      : (isSilver ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']);
+                    const options = !isAdminOrSuper
+                      ? (isSilver ? ['Pure Silver'] : ['Pure Gold'])
+                      : (hasOnlyTunch
+                        ? (isSilver ? ['Only Tunch', 'Pure Silver', 'Cash'] : ['Only Tunch', 'Pure Gold', 'Cash'])
+                        : (isSilver ? ['Pure Silver', 'Cash'] : ['Pure Gold', 'Cash']));
                     return options.map(mode => (
                       <button 
                         key={mode} type="button" 
@@ -2307,34 +2312,62 @@ export const StaffTasksScreen: React.FC = () => {
                     </div>
                   )
                 ) : (
-                  <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">
-                      {selectedSettlement.task?.pureWeight ? "Pure Metal Yield" : "Calculated Pure Metal Yield"}
-                    </span>
-                    <p className="text-sm font-black text-secondary">
-                      {(() => {
-                        const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
-                        const yieldWeight = selectedSettlement.task?.pureWeight 
-                          ? Number(selectedSettlement.task.pureWeight)
-                          : (() => {
-                              const impure = isSilver 
-                                ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
-                                : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
-                              const purity = parseFloat(selectedSettlement.purity) || 0;
-                              return impure * (purity / 100);
-                            })();
-                        return `${selectedSettlement.task?.pureWeight ? yieldWeight.toString() : yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
-                      })()}
-                    </p>
-                    <p className="text-[8.5px] text-outline font-medium mt-1">
+                  <div className="p-3 bg-surface-container/50 rounded-xl border border-outline-variant/10 text-left space-y-2">
+                    <div>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">
+                        {selectedSettlement.task?.pureWeight ? "Pure Metal Yield" : "Calculated Pure Metal Yield"}
+                      </span>
+                      <p className="text-sm font-black text-secondary">
+                        {(() => {
+                          const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
+                          const yieldWeight = selectedSettlement.task?.pureWeight 
+                            ? Number(selectedSettlement.task.pureWeight)
+                            : (() => {
+                                const impure = isSilver 
+                                  ? Number(selectedSettlement.impure_silver_in || selectedSettlement.task?.impureWeight || 0) 
+                                  : Number(selectedSettlement.impure_gold_in || selectedSettlement.task?.impureWeight || 0);
+                                const purity = parseFloat(selectedSettlement.purity) || 0;
+                                return impure * (purity / 100);
+                              })();
+                          return `${selectedSettlement.task?.pureWeight ? yieldWeight.toString() : yieldWeight.toFixed(3)}g Pure ${isSilver ? 'Silver' : 'Gold'}`;
+                        })()}
+                      </p>
+                    </div>
+
+                    <p className="text-[8.5px] text-outline font-medium">
                       {(() => {
                         const isSilver = Number(selectedSettlement.impure_silver_in || 0) > 0 || selectedSettlement.task?.metal === 'Silver';
                         const metalStr = isSilver ? 'Silver' : 'Gold';
-                        return selectedSettlement.task?.pendingPureLiability 
-                          ? `This will create a liability for Admin allocation from Admin Pure ${metalStr} Stock.` 
-                          : `This will be deducted directly from Admin Pure ${metalStr} Stock.`;
+                        if (!isAdminOrSuper) {
+                          return `This will be deducted directly from your Pure ${metalStr} Stock.`;
+                        }
+                        return stockSource === 'Admin'
+                          ? `This will be deducted directly from Admin Pure ${metalStr} Stock.`
+                          : `This will be deducted directly from Staff Pure ${metalStr} Stock.`;
                       })()}
                     </p>
+
+                    {isAdminOrSuper && (
+                      <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline block">Deduct Stock From</span>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setStockSource('Staff')}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${stockSource === 'Staff' ? 'bg-[#003366] text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-[#003366]/40'}`}
+                          >
+                            Staff Stock
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setStockSource('Admin')}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${stockSource === 'Admin' ? 'bg-[#003366] text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-[#003366]/40'}`}
+                          >
+                            Admin Stock
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2470,14 +2503,40 @@ export const StaffTasksScreen: React.FC = () => {
 
                     const isPureGoldMode = newSettlementMode === 'Pure Gold';
                     const isPureSilverMode = newSettlementMode === 'Pure Silver';
-                    if ((isPureGoldMode || isPureSilverMode) && !selectedSettlement.task?.pendingPureLiability) {
+                    if (isPureGoldMode || isPureSilverMode) {
                       const metalType = isPureSilverMode ? 'Silver' : 'Gold';
-                      const totalAllocatedPure = (allocationsRes.data || []).filter((a: any) => a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
-                      const totalPureGiven = (entriesRes.data || []).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
-                      const currentPureStock = totalAllocatedPure - totalPureGiven;
+                      let currentPureStock = 0;
+
+                      if (isAdminOrSuper && stockSource === 'Admin') {
+                        // Admin Pure Stock
+                        const branchAllocations = allocationsRes.data || [];
+                        const fromSuper = branchAllocations.filter((a: any) => a.staff_id === null && a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+                        const toStaffActive = branchAllocations.filter((a: any) => a.staff_id !== null && a.metal === metalType && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+                        const totalAllocatedPure = fromSuper - toStaffActive;
+                        
+                        const adminEntries = entriesRes.data || [];
+                        const totalPureGiven = adminEntries.filter((e: any) => e.staff_id === user?.id || e.staff_submitted_at !== null).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
+                        const totalPureReceived = adminEntries.filter((e: any) => e.staff_id === user?.id || e.staff_submitted_at !== null).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_in) || 0) : (Number(e.pure_silver_in) || 0)), 0);
+                        
+                        currentPureStock = totalAllocatedPure + totalPureReceived - totalPureGiven;
+                      } else {
+                        // Staff Pure Stock (selected original staff or logged in staff)
+                        const staffId = selectedSettlement.task?.createdBy || selectedSettlement.staff_id || user?.id || '';
+                        const branchAllocations = allocationsRes.data || [];
+                        const totalAllocatedPure = branchAllocations.filter((a: any) => a.staff_id === staffId && a.metal === metalType).reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+                        
+                        const staffEntries = entriesRes.data || [];
+                        const totalPureGiven = staffEntries.filter((e: any) => e.staff_id === staffId).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_out) || 0) : (Number(e.pure_silver_out) || 0)), 0);
+                        const totalPureReceived = staffEntries.filter((e: any) => e.staff_id === staffId).reduce((s, e) => s + (metalType === 'Gold' ? (Number(e.pure_gold_in) || 0) : (Number(e.pure_silver_in) || 0)), 0);
+                        
+                        currentPureStock = totalAllocatedPure + totalPureReceived - totalPureGiven;
+                      }
 
                       if (calculatedPure > currentPureStock) {
-                        triggerBlueToast(msg);
+                        const lowStockMsg = isAdminOrSuper && stockSource === 'Admin'
+                          ? "Required Admin pure stock is not present, kindly talk to the Super Admin."
+                          : "Required Staff pure stock is not present, kindly contact Admin for stock allocation.";
+                        triggerBlueToast(lowStockMsg);
                         setIsSubmittingSettlement(false);
                         return;
                       }
@@ -2650,27 +2709,20 @@ export const StaffTasksScreen: React.FC = () => {
                       }
 
                       ledgerUpdates.transaction_type = 'Exchange';
-                      const isPending = !!selectedSettlement.task?.pendingPureLiability;
-                      ledgerUpdates.status = isPending ? 'Pending Pure' : 'Completed';
+                      ledgerUpdates.status = 'Completed';
+                      ledgerUpdates.pending_pure_liability = false;
+                      if (isAdminOrSuper && stockSource === 'Admin') {
+                        ledgerUpdates.staff_id = user?.id;
+                      }
                       if (isSilver) {
-                        if (isPending) {
-                          ledgerUpdates.pure_silver_due = calculatedPure;
-                          ledgerUpdates.pure_silver_out = 0;
-                        } else {
-                          ledgerUpdates.pure_silver_due = 0;
-                          ledgerUpdates.pure_silver_out = isTransferredToWallet ? 0 : calculatedPure;
-                        }
+                        ledgerUpdates.pure_silver_due = 0;
+                        ledgerUpdates.pure_silver_out = isTransferredToWallet ? 0 : calculatedPure;
                         ledgerUpdates.pure_gold_due = 0;
                         ledgerUpdates.pure_gold_out = 0;
                         ledgerUpdates.impure_silver_in = impure;
                       } else {
-                        if (isPending) {
-                          ledgerUpdates.pure_gold_due = calculatedPure;
-                          ledgerUpdates.pure_gold_out = 0;
-                        } else {
-                          ledgerUpdates.pure_gold_due = 0;
-                          ledgerUpdates.pure_gold_out = isTransferredToWallet ? 0 : calculatedPure;
-                        }
+                        ledgerUpdates.pure_gold_due = 0;
+                        ledgerUpdates.pure_gold_out = isTransferredToWallet ? 0 : calculatedPure;
                         ledgerUpdates.pure_silver_due = 0;
                         ledgerUpdates.pure_silver_out = 0;
                         ledgerUpdates.impure_gold_in = impure;
@@ -2691,7 +2743,7 @@ export const StaffTasksScreen: React.FC = () => {
                       setTasks(prev => prev.map(t => t.id === selectedSettlement.id ? { ...t, status: 'Completed', progressPercentage: 100 } : t));
                     }
 
-                    showToast(isCashMode ? 'Cash settlement completed & billed successfully.' : 'Pure metal exchange settlement registered. Pending Admin allocation.');
+                    showToast(isCashMode ? 'Cash settlement completed & billed successfully.' : 'Pure metal exchange settlement completed directly.');
                     setSelectedSettlement(null);
                   } catch (e) {
                     console.error(e);
