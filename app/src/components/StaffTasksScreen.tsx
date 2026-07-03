@@ -950,16 +950,16 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                       pieces: piecesInput,
                       carat: caratInput,
                       logoName: logoNameInput,
-                      serviceFee: isCreatedByCollection ? serviceFeeInput : undefined,
-                      paymentMode: isCreatedByCollection ? paymentModeInput : undefined
+                      serviceFee: isCreatedByCollection ? serviceFeeInput : (extractFee(task.settlementCondition) || undefined),
+                      paymentMode: isCreatedByCollection ? paymentModeInput : extractPaymentMode(task.settlementCondition)
                     });
                   } else if (task.workType === 'Shouldering') {
                     onProcessTask?.(task, {
                       pointsCount: pointsCountInput,
                       pointsType: pointsTypeInput,
                       broughtBy: broughtByInput,
-                      serviceFee: isCreatedByCollection ? serviceFeeInput : undefined,
-                      paymentMode: isCreatedByCollection ? paymentModeInput : undefined
+                      serviceFee: isCreatedByCollection ? serviceFeeInput : (extractFee(task.settlementCondition) || undefined),
+                      paymentMode: isCreatedByCollection ? paymentModeInput : extractPaymentMode(task.settlementCondition)
                     });
                   }
                 }}
