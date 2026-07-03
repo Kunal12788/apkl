@@ -401,7 +401,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const isNonAdmin = role === 'Staff' || role === 'Collection Staff';
   const currentCashStock = isNonAdmin 
     ? billingCash + totalAllocatedCash 
-    : totalAllocatedCash + totalCashReceived - totalCashPaid;
+    : totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
 
   const combinedHistory = React.useMemo(() => {
     const history: any[] = [];

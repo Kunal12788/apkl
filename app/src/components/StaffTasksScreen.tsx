@@ -1445,7 +1445,8 @@ export const StaffTasksScreen: React.FC = () => {
           newLedgerEntry.pure_silver_out = 0;
           newLedgerEntry.pure_gold_due = 0;
           newLedgerEntry.pure_silver_due = 0;
-          await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          const { error: err1 } = await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          if (err1) throw err1;
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
           newLedgerEntry.status = 'Completed';
@@ -1465,7 +1466,8 @@ export const StaffTasksScreen: React.FC = () => {
             newLedgerEntry.pure_silver_due = 0;
             newLedgerEntry.impure_silver_in = 0;
           }
-          await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          const { error: err2 } = await supabase.from('ledger_entries').insert([newLedgerEntry]);
+          if (err2) throw err2;
         } else if (condition === 'Cash') {
           // Cash handling: Front = metal goes in Staff's ledger (pending cash),
           //               Back  = nothing in Staff's ledger; Admin handles everything
@@ -1488,7 +1490,8 @@ export const StaffTasksScreen: React.FC = () => {
               newLedgerEntry.pure_silver_in = 0;
               newLedgerEntry.impure_silver_in = 0;
             }
-            await supabase.from('ledger_entries').insert([newLedgerEntry]);
+            const { error: err3 } = await supabase.from('ledger_entries').insert([newLedgerEntry]);
+            if (err3) throw err3;
           } else {
             // Back mode: create a staff ledger entry for the service fee ONLY
             newLedgerEntry.transaction_type = 'Exchange';
@@ -1500,7 +1503,8 @@ export const StaffTasksScreen: React.FC = () => {
             newLedgerEntry.cash_rate_per_gram = 0;
             newLedgerEntry.pure_gold_in = 0; newLedgerEntry.impure_gold_in = 0;
             newLedgerEntry.pure_silver_in = 0; newLedgerEntry.impure_silver_in = 0;
-            await supabase.from('ledger_entries').insert([newLedgerEntry]);
+            const { error: err4 } = await supabase.from('ledger_entries').insert([newLedgerEntry]);
+            if (err4) throw err4;
           }
         }
       }
@@ -1732,7 +1736,8 @@ export const StaffTasksScreen: React.FC = () => {
               staffEntry.impure_silver_in = 0;
               staffEntry.pure_silver_in = 0;
             }
-            await supabase.from('ledger_entries').insert([staffEntry]);
+            const { error: err1 } = await supabase.from('ledger_entries').insert([staffEntry]);
+            if (err1) throw err1;
           }
 
           // Admin entry: records the cash disbursement
@@ -1753,7 +1758,8 @@ export const StaffTasksScreen: React.FC = () => {
             impure_gold_in: 0, impure_silver_in: 0,
             pending_cash_liability: false
           };
-          await supabase.from('ledger_entries').insert([adminEntry]);
+          const { error: err2 } = await supabase.from('ledger_entries').insert([adminEntry]);
+          if (err2) throw err2;
 
         } else {
           // Back mode or non-cash
@@ -1788,7 +1794,8 @@ export const StaffTasksScreen: React.FC = () => {
               adminEntry.impure_silver_in = 0;
               adminEntry.pure_silver_in = 0;
             }
-            await supabase.from('ledger_entries').insert([adminEntry]);
+             const { error: err3 } = await supabase.from('ledger_entries').insert([adminEntry]);
+             if (err3) throw err3;
           } else {
             // Non-cash (Pure Gold / Pure Silver): Update Staff's existing Pending Pure ledger entry, 
             // set status to Completed and pending_pure_liability to false.
@@ -1838,7 +1845,8 @@ export const StaffTasksScreen: React.FC = () => {
                 staffEntry.impure_silver_in = 0;
                 staffEntry.pure_silver_out = 0;
               }
-              await supabase.from('ledger_entries').insert([staffEntry]);
+              const { error: err4 } = await supabase.from('ledger_entries').insert([staffEntry]);
+              if (err4) throw err4;
             }
           }
         }
