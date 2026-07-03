@@ -1108,8 +1108,7 @@ export const StaffBillingScreen: React.FC = () => {
         customer_name: walletCustomer.name,
         transaction_type: walletType === 'Deposit' ? 'Customer Advance Deposit' : 'Customer Advance Withdrawal',
         status: 'Completed',
-        staff_id: user?.id,
-        details: walletDetails || `${walletType} of ${walletAsset === 'Cash' ? '₹' + amt : amt + 'g'}`
+        staff_id: user?.id
       };
 
       if (walletAsset === 'Cash') {
@@ -1350,8 +1349,7 @@ export const StaffBillingScreen: React.FC = () => {
         customer_name: walletCustomer.name,
         transaction_type: 'Wallet Adjustment',
         status: 'Completed',
-        staff_id: user?.id,
-        details: details || `Adjusted ₹${adjustValueInCash.toLocaleString('en-IN')} from wallet towards ${targetTx.id}`
+        staff_id: user?.id
       };
 
       if (walletAsset === 'Cash') {
