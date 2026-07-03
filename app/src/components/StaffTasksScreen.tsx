@@ -1052,6 +1052,7 @@ export const StaffTasksScreen: React.FC = () => {
   const [cashAmountInput, setCashAmountInput] = useState('');
   const [isSubmittingSettlement, setIsSubmittingSettlement] = useState(false);
   const [stockSource, setStockSource] = useState<'Staff' | 'Admin'>('Staff');
+  const [walletDepositSelected, setWalletDepositSelected] = useState<boolean>(false);
   const showToast = (msg: string) => {
     triggerBlueToast(msg);
   };
@@ -2115,6 +2116,7 @@ export const StaffTasksScreen: React.FC = () => {
                           });
                           setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
                           setStockSource('Staff');
+                          setWalletDepositSelected(false);
                           setCashAmountInput('');
                         }} 
                         className="p-5 bg-white border border-outline-variant/10 hover:bg-surface-bright luxury-card cursor-pointer transition-colors relative overflow-hidden group"
@@ -2162,6 +2164,7 @@ export const StaffTasksScreen: React.FC = () => {
                               });
                               setNewSettlementMode(task.settlementCondition?.includes('Only Tunch') ? 'Only Tunch' : (isSilver ? 'Pure Silver' : 'Pure Gold'));
                               setStockSource('Staff');
+                              setWalletDepositSelected(false);
                               setCashAmountInput('');
                             }}
                             className="flex-grow py-3 bg-secondary/10 border border-secondary/20 text-secondary rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-secondary/20 transition-colors"
@@ -2300,15 +2303,39 @@ export const StaffTasksScreen: React.FC = () => {
                       </p>
                     </div>
                   ) : (
-                    <div className="text-left">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Amount Paid to Customer (₹) *</span>
-                      <input 
-                        type="number" 
-                        value={cashAmountInput} 
-                        onChange={e => setCashAmountInput(e.target.value)}
-                        placeholder="e.g. 15000" 
-                        className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
-                      />
+                    <div className="text-left space-y-3">
+                      <div>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline mb-0.5 block">Cash Amount Paid to Customer (₹) *</span>
+                        <input 
+                          type="number" 
+                          value={cashAmountInput} 
+                          onChange={e => setCashAmountInput(e.target.value)}
+                          placeholder="e.g. 15000" 
+                          className="w-full h-9 bg-white border border-outline-variant/40 rounded-lg px-2.5 text-xs font-semibold focus:outline-none focus:border-secondary"
+                        />
+                      </div>
+
+                      {selectedSettlement.task?.customerId && selectedSettlement.task?.customerId !== 'CUST-COL' && (
+                        <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
+                          <span className="text-[9px] font-bold uppercase tracking-wider text-outline block">Delivery Method</span>
+                          <div className="flex gap-2">
+                            <button 
+                              type="button"
+                              onClick={() => setWalletDepositSelected(false)}
+                              className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${!walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                            >
+                              Pay Physically
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => setWalletDepositSelected(true)}
+                              className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                            >
+                              Deposit to Wallet
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 ) : (
@@ -2346,6 +2373,28 @@ export const StaffTasksScreen: React.FC = () => {
                           : `This will be deducted directly from Staff Pure ${metalStr} Stock.`;
                       })()}
                     </p>
+
+                    {selectedSettlement.task?.customerId && selectedSettlement.task?.customerId !== 'CUST-COL' && (
+                      <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-outline block">Delivery Method</span>
+                        <div className="flex gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => setWalletDepositSelected(false)}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${!walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            Handover Physically
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => setWalletDepositSelected(true)}
+                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold border transition-colors ${walletDepositSelected ? 'bg-secondary text-white border-transparent' : 'bg-white text-outline border-outline-variant/30 hover:border-secondary/40'}`}
+                          >
+                            Deposit to Wallet
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {isAdminOrSuper && (
                       <div className="space-y-1.5 pt-1.5 border-t border-outline-variant/10">
@@ -2577,40 +2626,36 @@ export const StaffTasksScreen: React.FC = () => {
                       }
                       
                       let ledgerCashPaid = cashToPay;
-                      let isTransferredToWallet = false;
+                      let isTransferredToWallet = walletDepositSelected;
                       const customerId = selectedSettlement.task?.customerId;
-                      if (customerId && customerId !== 'CUST-COL') {
-                        const transferToWallet = window.confirm(`Transfer the cash payout amount of ₹${cashToPay.toLocaleString('en-IN')} directly to the customer's wallet as a deposit instead of paying cash immediately?`);
-                        if (transferToWallet) {
-                          isTransferredToWallet = true;
-                          ledgerCashPaid = 0;
+                      if (isTransferredToWallet && customerId && customerId !== 'CUST-COL') {
+                        ledgerCashPaid = 0;
 
-                          const { data: custData } = await supabase
-                            .from('customers')
-                            .select('advance_cash')
-                            .eq('id', customerId)
-                            .maybeSingle();
-                          
-                          const currentAdvance = custData ? Number(custData.advance_cash || 0) : 0;
-                          await supabase
-                            .from('customers')
-                            .update({ advance_cash: currentAdvance + cashToPay })
-                            .eq('id', customerId);
+                        const { data: custData } = await supabase
+                          .from('customers')
+                          .select('advance_cash')
+                          .eq('id', customerId)
+                          .maybeSingle();
+                        
+                        const currentAdvance = custData ? Number(custData.advance_cash || 0) : 0;
+                        await supabase
+                          .from('customers')
+                          .update({ advance_cash: currentAdvance + cashToPay })
+                          .eq('id', customerId);
 
-                          const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
-                          await supabase
-                            .from('customer_advances')
-                            .insert([{
-                              id: advId,
-                              customer_id: customerId,
-                              customer_name: selectedSettlement.customer_name,
-                              type: 'Deposit',
-                              asset_type: 'Cash',
-                              amount: cashToPay,
-                              details: `Auto-deposit from settlement ${selectedSettlement.id}`,
-                              created_by: user?.id
-                            }]);
-                        }
+                        const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+                        await supabase
+                          .from('customer_advances')
+                          .insert([{
+                            id: advId,
+                            customer_id: customerId,
+                            customer_name: selectedSettlement.customer_name,
+                            type: 'Deposit',
+                            asset_type: 'Cash',
+                            amount: cashToPay,
+                            details: `Auto-deposit from settlement ${selectedSettlement.id}`,
+                            created_by: user?.id
+                          }]);
                       }
 
                       // Create Admin ledger entry to deduct cash
@@ -2664,48 +2709,43 @@ export const StaffTasksScreen: React.FC = () => {
                       };
                       await supabase.from('transactions').insert([newTxn]);
                     } else {
-                      let isTransferredToWallet = false;
+                      let isTransferredToWallet = walletDepositSelected;
                       const customerId = selectedSettlement.task?.customerId;
-                      if (customerId && customerId !== 'CUST-COL') {
-                        const metalStr = isSilver ? 'Silver' : 'Gold';
-                        const transferToWallet = window.confirm(`Transfer the pure metal yield of ${calculatedPure.toFixed(3)}g Pure ${metalStr} directly to the customer's wallet as a deposit instead of giving it away?`);
-                        if (transferToWallet) {
-                          isTransferredToWallet = true;
-
-                          const { data: custData } = await supabase
-                            .from('customers')
-                            .select('advance_pure_gold, advance_pure_silver')
-                            .eq('id', customerId)
-                            .maybeSingle();
-                          
-                          if (isSilver) {
-                            const currentAdvance = custData ? Number(custData.advance_pure_silver || 0) : 0;
-                            await supabase
-                              .from('customers')
-                              .update({ advance_pure_silver: currentAdvance + calculatedPure })
-                              .eq('id', customerId);
-                          } else {
-                            const currentAdvance = custData ? Number(custData.advance_pure_gold || 0) : 0;
-                            await supabase
-                              .from('customers')
-                              .update({ advance_pure_gold: currentAdvance + calculatedPure })
-                              .eq('id', customerId);
-                          }
-
-                          const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+                      if (isTransferredToWallet && customerId && customerId !== 'CUST-COL') {
+                        
+                        const { data: custData } = await supabase
+                          .from('customers')
+                          .select('advance_pure_gold, advance_pure_silver')
+                          .eq('id', customerId)
+                          .maybeSingle();
+                        
+                        if (isSilver) {
+                          const currentAdvance = custData ? Number(custData.advance_pure_silver || 0) : 0;
                           await supabase
-                            .from('customer_advances')
-                            .insert([{
-                              id: advId,
-                              customer_id: customerId,
-                              customer_name: selectedSettlement.customer_name,
-                              type: 'Deposit',
-                              asset_type: isSilver ? 'Pure Silver' : 'Pure Gold',
-                              amount: calculatedPure,
-                              details: `Auto-deposit from completed Tunch task ${selectedSettlement.id}`,
-                              created_by: user?.id
-                            }]);
+                            .from('customers')
+                            .update({ advance_pure_silver: currentAdvance + calculatedPure })
+                            .eq('id', customerId);
+                        } else {
+                          const currentAdvance = custData ? Number(custData.advance_pure_gold || 0) : 0;
+                          await supabase
+                            .from('customers')
+                            .update({ advance_pure_gold: currentAdvance + calculatedPure })
+                            .eq('id', customerId);
                         }
+
+                        const advId = `ADV-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
+                        await supabase
+                          .from('customer_advances')
+                          .insert([{
+                            id: advId,
+                            customer_id: customerId,
+                            customer_name: selectedSettlement.customer_name,
+                            type: 'Deposit',
+                            asset_type: isSilver ? 'Pure Silver' : 'Pure Gold',
+                            amount: calculatedPure,
+                            details: `Auto-deposit from completed Tunch task ${selectedSettlement.id}`,
+                            created_by: user?.id
+                          }]);
                       }
 
                       ledgerUpdates.transaction_type = 'Exchange';
