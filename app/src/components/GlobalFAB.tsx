@@ -297,30 +297,49 @@ export const GlobalFAB: React.FC = () => {
               return;
             }
 
-            // Rule 1: Marking & Shouldering Bypass tasks table, write directly to transactions
+            // Rule 1: Marking & Shouldering Create task in tasks table in In Progress status
             if (data.workType === 'MARKING' || data.workType === 'SHOULDERING') {
-              const newTxn = {
-                id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
-                customer_id: generatedCustomerId,
+              const isMarking = data.workType === 'MARKING';
+              const condStr = data.fee ? `Fee Suggested ₹${data.fee} (${data.feePaymentMode})` : 'Service Fee';
+              const newTask = {
+                id: taskIdGenerated,
                 customer_name: data.customerName || 'Walk-in Customer',
+                customer_id: generatedCustomerId,
                 metal: data.metal || 'Gold',
-                type: data.feePaymentMode || 'Cash',
-                work_type: data.workType === 'MARKING' ? 'Marking' : 'Shouldering',
-                amount: String(data.fee || '0'),
-                date: dateStr,
-                iso_date: isoDateStr,
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: data.feeStatus || 'Paid',
-                details: `${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} Completed. Pieces: ${data.pieces || '1'}. ${data.logoName ? 'Logo: ' + data.logoName + '.' : ''}`,
+                customer_address: data.address,
+                customer_phone: data.phone,
+                impure_weight: null,
+                purity: null,
+                pure_weight: null,
+                settlement_condition: condStr,
+                product_type: data.productType || 'Jewellery',
+                pieces: data.pieces || '1',
+                brought_by: isCollection ? 'Collection Staff' : data.broughtBy,
+                work_type: isMarking ? 'Marking' : 'Shouldering',
+                date_given: data.date,
+                status: 'In Progress',
+                progress_percentage: 50,
+                assigned_to: user?.id || 'Staff',
+                source: 'Staff',
                 created_by: user?.id || '',
-                pending_pure_liability: !!data.pendingPureLiability,
-                pending_cash_liability: !!data.pendingCashLiability
+                created_at: new Date().toISOString(),
+                iso_date: isoDateStr,
+                estimated_completion: 'Today, 06:00 PM',
+                notes: data.notes || (isMarking ? 'Created Marking task. In Progress.' : 'Created Shouldering task. In Progress.'),
+                images: data.images || [],
+                logo_name: isMarking ? (data.logoName || null) : null,
+                carat: isMarking ? (data.carat || '22k') : null,
+                point_suggestion: !isMarking && data.pointsUsed ? `${data.pointsUsed} ${data.pointSuggestion || 'Gold'} Points` : null,
+                total_weight: isMarking ? (data.totalWeight || null) : null,
+                pending_pure_liability: false,
+                pending_cash_liability: false,
+                was_settlement_category: false
               };
 
-              const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
-              if (txnError) throw txnError;
+              const { error: taskError } = await supabase.from('tasks').insert([newTask]);
+              if (taskError) throw taskError;
 
-              triggerBlueToast(`${data.workType === 'MARKING' ? 'Marking' : 'Shouldering'} registered directly in Billings.`, 'Transaction Created', 'success');
+              triggerBlueToast(`${isMarking ? 'Marking' : 'Shouldering'} task created and routed to In Progress.`, 'Task Created', 'task');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }

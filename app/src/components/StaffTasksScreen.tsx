@@ -1238,7 +1238,7 @@ export const StaffTasksScreen: React.FC = () => {
 
   const handleVerifySuccess = async (verifiedTask: any, isMismatch?: boolean, verifiedDetails?: { pieces: string; weight: string }) => {
      try {
-       const updates: any = { status: 'In Progress', progress_percentage: 40, assigned_to: user?.id || 'Staff' };
+       const updates: any = { status: 'In Progress', progress_percentage: 50, assigned_to: user?.id || 'Staff' };
        if (verifiedTask.images) {
          updates.images = verifiedTask.images;
        }
@@ -1276,7 +1276,7 @@ export const StaffTasksScreen: React.FC = () => {
          totalWeight: updates.total_weight || t.totalWeight,
          pieces: updates.pieces || t.pieces,
          auditImages: verifiedTask.audit_images,
-         progressPercentage: 40 
+         progressPercentage: 50 
        } : t));
        setVerificationOpen(false);
        showToast(isMismatch ? 'Mismatch reported! Task is now In Progress.' : 'Audit matched! Task is now In Progress.');
@@ -1325,6 +1325,8 @@ export const StaffTasksScreen: React.FC = () => {
         updatedCondition = details.serviceFee && Number(details.serviceFee) > 0 
           ? `[Collected] ${modeStr} - ₹${details.serviceFee}` 
           : 'Service Fee';
+        nextStatus = 'Completed';
+        progress = 100;
       }
 
       const taskUpdates: any = {
