@@ -94,6 +94,10 @@ const getWorkIcon = (workType: string, txn?: any) => {
   if (workType === 'Tunch' && txn) {
     const details = (txn.details || '').toLowerCase();
     const type = (txn.type || '').toLowerCase();
+    const isServiceFee = type.includes('service fee') || details.includes('service fee');
+    if (isServiceFee) {
+      return 'science';
+    }
     const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
     if (isCash) {
       return 'payments';
@@ -120,6 +124,10 @@ const getWorkColor = (workType: string, txn?: any) => {
   if (workType === 'Tunch' && txn) {
     const details = (txn.details || '').toLowerCase();
     const type = (txn.type || '').toLowerCase();
+    const isServiceFee = type.includes('service fee') || details.includes('service fee');
+    if (isServiceFee) {
+      return 'text-tertiary bg-tertiary-fixed/30';
+    }
     const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
     if (isCash) {
       return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
@@ -140,6 +148,30 @@ const getWorkColor = (workType: string, txn?: any) => {
     case 'Dues Payment': return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
     default: return 'text-outline bg-surface-container';
   }
+};
+
+const getWorkLabel = (txn: any) => {
+  if (txn.workType === 'Dues Payment') return 'Dues Payment';
+  if (txn.workType === 'Tunch') {
+    const details = (txn.details || '').toLowerCase();
+    const type = (txn.type || '').toLowerCase();
+    const isServiceFee = type.includes('service fee') || details.includes('service fee');
+    if (isServiceFee) {
+      return 'Tunch Only';
+    }
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'Buy against Tunch';
+    }
+    if (details.includes('pure gold')) {
+      return 'Pure Gold against Tunch';
+    }
+    if (details.includes('pure silver')) {
+      return 'Pure Silver against Tunch';
+    }
+    return 'Tunch Only';
+  }
+  return `${txn.workType} Work`;
 };
 
 const FilterChip = ({ label, icon, value, searchQuery, setSearchQuery }: { label: string, icon: string, value: string, searchQuery: string, setSearchQuery: (val: string) => void }) => {
@@ -1644,80 +1676,44 @@ export const StaffBillingScreen: React.FC = () => {
 
     const hasDateSearch = startDate || endDate;
 
-    // Count tasks
+    // Count pure gold/silver settled tasks (since they don't have payout transactions in tx database)
     completedTasks.forEach(task => {
-      if (hasDateSearch) {
-        const taskDate = task.created_at ? task.created_at.split('T')[0] : '';
-        if (startDate && taskDate < startDate) return;
-        if (endDate && taskDate > endDate) return;
-      }
-      let cust = customers.find(c => {
-        if (c.id && task.customer_id && c.id !== 'CUST-COL' && task.customer_id !== 'CUST-COL') {
-          return c.id === task.customer_id;
+      const cond = (task.settlement_condition || '').toLowerCase();
+      const isPureGold = cond.includes('pure gold');
+      const isPureSilver = cond.includes('pure silver');
+      if (isPureGold || isPureSilver) {
+        if (hasDateSearch) {
+          const taskDate = task.created_at ? task.created_at.split('T')[0] : '';
+          if (startDate && taskDate < startDate) return;
+          if (endDate && taskDate > endDate) return;
         }
-        if (c.name.trim().toLowerCase() !== (task.customer_name || '').trim().toLowerCase()) return false;
-        
-        const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
-        const cP = normPhone(c.phone);
-        const tP = normPhone(task.customer_phone);
-        if (cP && tP && cP !== tP) return false;
-        
-        const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
-        const cA = normAddr(c.address);
-        const tA = normAddr(task.customer_address);
-        if (cA && tA && cA !== tA) return false;
-        
-        return true;
-      });
+        let cust = customers.find(c => {
+          if (c.id && task.customer_id && c.id !== 'CUST-COL' && task.customer_id !== 'CUST-COL') {
+            return c.id === task.customer_id;
+          }
+          if (c.name.trim().toLowerCase() !== (task.customer_name || '').trim().toLowerCase()) return false;
+          
+          const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+          const cP = normPhone(c.phone);
+          const tP = normPhone(task.customer_phone);
+          if (cP && tP && cP !== tP) return false;
+          
+          const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+          const cA = normAddr(c.address);
+          const tA = normAddr(task.customer_address);
+          if (cA && tA && cA !== tA) return false;
+          
+          return true;
+        });
 
-      if (!cust) {
-        const initials = (task.customer_name || 'Walk-in Customer').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-        const newCust: Customer = {
-          id: task.customer_id || 'CUST-COL',
-          name: task.customer_name || 'Walk-in Customer',
-          initials: initials || 'C',
-          activeJobs: 0,
-          outstanding: '₹0',
-          paid: '₹0',
-          workBreakdown: { 
-            tunch: 0, 
-            marking: 0, 
-            shouldering: 0, 
-            buy: 0, 
-            sell: 0,
-            buyAgainstTunch: 0,
-            pureGoldAgainstTunch: 0,
-            pureSilverAgainstTunch: 0
-          },
-          ledger: [],
-          phone: task.customer_phone,
-          address: task.customer_address,
-          created_by: task.created_by,
-          advance_cash: 0,
-          advance_pure_gold: 0,
-          advance_pure_silver: 0
-        };
-        customers.push(newCust);
-        cust = newCust;
-      }
-
-      const wt = task.work_type || 'Tunch';
-      const pcs = Number(task.pieces || 1) || 1;
-      if (wt === 'Tunch') {
-        const cond = (task.settlement_condition || '').toLowerCase();
-        if (cond.includes('cash')) {
-          cust.workBreakdown.buyAgainstTunch += pcs;
-        } else if (cond.includes('pure gold')) {
-          cust.workBreakdown.pureGoldAgainstTunch += pcs;
-        } else if (cond.includes('pure silver')) {
-          cust.workBreakdown.pureSilverAgainstTunch += pcs;
-        } else {
-          cust.workBreakdown.tunch += pcs;
+        if (cust) {
+          const pcs = Number(task.pieces || 1) || 1;
+          if (isPureGold) {
+            cust.workBreakdown.pureGoldAgainstTunch += pcs;
+          } else {
+            cust.workBreakdown.pureSilverAgainstTunch += pcs;
+          }
         }
-      } else if (wt === 'Marking') {
-        cust.workBreakdown.marking += pcs;
-      } else if (wt === 'Shouldering') {
-        cust.workBreakdown.shouldering += pcs;
       }
     });
 
@@ -1796,7 +1792,30 @@ export const StaffBillingScreen: React.FC = () => {
       }
       
       const pcs = Number(t.pieces || 1) || 1;
-      if (t.workType === 'Buy') {
+      if (t.workType === 'Tunch') {
+        const details = (t.details || '').toLowerCase();
+        const type = (t.type || '').toLowerCase();
+        const isServiceFee = type.includes('service fee') || details.includes('service fee');
+        
+        if (isServiceFee) {
+          cust.workBreakdown.tunch += pcs;
+        } else {
+          const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
+          if (isCash) {
+            cust.workBreakdown.buyAgainstTunch += pcs;
+          } else if (details.includes('pure gold')) {
+            cust.workBreakdown.pureGoldAgainstTunch += pcs;
+          } else if (details.includes('pure silver')) {
+            cust.workBreakdown.pureSilverAgainstTunch += pcs;
+          } else {
+            cust.workBreakdown.tunch += pcs;
+          }
+        }
+      } else if (t.workType === 'Marking') {
+        cust.workBreakdown.marking += pcs;
+      } else if (t.workType === 'Shouldering') {
+        cust.workBreakdown.shouldering += pcs;
+      } else if (t.workType === 'Buy') {
         cust.workBreakdown.buy += pcs;
       } else if (t.workType === 'Sell') {
         cust.workBreakdown.sell += pcs;
@@ -1948,7 +1967,7 @@ export const StaffBillingScreen: React.FC = () => {
                     <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">build</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.workType === 'Buy' ? 'Buy (Cash)' : txn.workType === 'Sell' ? 'Sell (Cash)' : txn.workType}</span>
+                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{getWorkLabel(txn)}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
@@ -2516,7 +2535,7 @@ export const StaffBillingScreen: React.FC = () => {
                             <span className="material-symbols-outlined text-[20px]">{getWorkIcon(txn.workType, txn)}</span>
                           </div>
                           <div>
-                            <p className={`font-headline font-bold text-[13px] ${isPending ? 'text-error' : 'text-primary'}`}>{txn.workType === 'Dues Payment' ? 'Dues Payment' : `${txn.workType} Work`}</p>
+                            <p className={`font-headline font-bold text-[13px] ${isPending ? 'text-error' : 'text-primary'}`}>{getWorkLabel(txn)}</p>
                             <p className="text-[10px] font-bold text-outline tracking-wider uppercase mt-0.5">{txn.date} • {txn.timestamp}</p>
                           </div>
                         </div>
