@@ -8,15 +8,8 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function checkFakeData() {
-  const { data: tasks } = await supabase.from('tasks').select('*').limit(5);
-  console.log('Tasks:', tasks);
-
-  const { data: tx } = await supabase.from('transactions').select('*').limit(5);
-  console.log('Transactions:', tx);
-
-  const { data: ledger } = await supabase.from('ledger_entries').select('*').limit(5);
-  console.log('Ledger:', ledger);
+async function checkPublication() {
+  const { data: users, error } = await supabase.from('users').select('id, name, role, branch_id').limit(10);
+  console.log('Users:', users, 'Error:', error);
 }
-
-checkFakeData();
+checkPublication();

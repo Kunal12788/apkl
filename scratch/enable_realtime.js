@@ -20,10 +20,20 @@ async function enableRealtime() {
     // Ignore errors if they are already in the publication.
     
     const queries = [
+      `ALTER PUBLICATION supabase_realtime ADD TABLE tasks;`,
       `ALTER PUBLICATION supabase_realtime ADD TABLE stock_allocations;`,
+      `ALTER PUBLICATION supabase_realtime ADD TABLE transactions;`,
       `ALTER PUBLICATION supabase_realtime ADD TABLE ledger_entries;`,
+      `ALTER PUBLICATION supabase_realtime ADD TABLE deletion_requests;`,
+      `ALTER PUBLICATION supabase_realtime ADD TABLE branch_daily_reports;`,
       `ALTER PUBLICATION supabase_realtime ADD TABLE super_admin_ledger;`,
-      `ALTER PUBLICATION supabase_realtime ADD TABLE refining_transfers;`
+      `ALTER PUBLICATION supabase_realtime ADD TABLE refining_transfers;`,
+      `ALTER TABLE tasks REPLICA IDENTITY FULL;`,
+      `ALTER TABLE stock_allocations REPLICA IDENTITY FULL;`,
+      `ALTER TABLE transactions REPLICA IDENTITY FULL;`,
+      `ALTER TABLE ledger_entries REPLICA IDENTITY FULL;`,
+      `ALTER TABLE deletion_requests REPLICA IDENTITY FULL;`,
+      `ALTER TABLE branch_daily_reports REPLICA IDENTITY FULL;`
     ];
 
     for (const q of queries) {
@@ -31,7 +41,7 @@ async function enableRealtime() {
         await client.query(q);
         console.log(`Success: ${q}`);
       } catch (err) {
-        console.log(`Error or already exists for: ${q} -> ${err.message}`);
+        console.log(`Note: ${q} -> ${err.message}`);
       }
     }
 
