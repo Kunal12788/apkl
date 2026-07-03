@@ -90,7 +90,21 @@ interface Customer {
   advance_pure_silver?: number;
 }
 
-const getWorkIcon = (workType: string) => {
+const getWorkIcon = (workType: string, txn?: any) => {
+  if (workType === 'Tunch' && txn) {
+    const details = (txn.details || '').toLowerCase();
+    const type = (txn.type || '').toLowerCase();
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'payments';
+    }
+    if (details.includes('pure gold')) {
+      return 'workspace_premium';
+    }
+    if (details.includes('pure silver')) {
+      return 'monetization_on';
+    }
+  }
   switch(workType) {
     case 'Tunch': return 'science';
     case 'Marking': return 'verified';
@@ -102,7 +116,21 @@ const getWorkIcon = (workType: string) => {
   }
 };
 
-const getWorkColor = (workType: string) => {
+const getWorkColor = (workType: string, txn?: any) => {
+  if (workType === 'Tunch' && txn) {
+    const details = (txn.details || '').toLowerCase();
+    const type = (txn.type || '').toLowerCase();
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
+    }
+    if (details.includes('pure gold')) {
+      return 'text-yellow-600 bg-yellow-500/10 border border-yellow-500/20';
+    }
+    if (details.includes('pure silver')) {
+      return 'text-slate-500 bg-slate-400/10 border border-slate-400/20';
+    }
+  }
   switch(workType) {
     case 'Tunch': return 'text-tertiary bg-tertiary-fixed/30';
     case 'Marking': return 'text-secondary bg-secondary-fixed/30';
@@ -1894,8 +1922,8 @@ export const StaffBillingScreen: React.FC = () => {
                     
                     <div className="flex justify-between items-start mb-3 pl-1">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPending ? 'bg-error-container/30 text-error' : getWorkColor(txn.workType)}`}>
-                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType)}</span>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPending ? 'bg-error-container/30 text-error' : getWorkColor(txn.workType, txn)}`}>
+                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType, txn)}</span>
                         </div>
                         <div>
                           <p className={`font-headline font-bold text-sm ${isPending ? 'text-error' : 'text-primary'}`}>{txn.customerName}</p>
@@ -2484,8 +2512,8 @@ export const StaffBillingScreen: React.FC = () => {
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPending ? 'bg-error' : 'bg-tertiary'}`}></div>
                       <div className="flex justify-between items-start pl-2">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType)}`}>
-                            <span className="material-symbols-outlined text-[20px]">{getWorkIcon(txn.workType)}</span>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType, txn)}`}>
+                            <span className="material-symbols-outlined text-[20px]">{getWorkIcon(txn.workType, txn)}</span>
                           </div>
                           <div>
                             <p className={`font-headline font-bold text-[13px] ${isPending ? 'text-error' : 'text-primary'}`}>{txn.workType === 'Dues Payment' ? 'Dues Payment' : `${txn.workType} Work`}</p>
