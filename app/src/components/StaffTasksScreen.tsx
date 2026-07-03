@@ -1998,11 +1998,12 @@ export const StaffTasksScreen: React.FC = () => {
               <div className="space-y-4">
                 {filteredTasks.map((task) => {
                   const isCash = task.settlementCondition?.toLowerCase().startsWith('cash');
+                  const isReopenedCashTask = task.status === 'Pending' && (task.settlementCondition?.toLowerCase().includes('cash') || false) && (task.purity !== null && task.purity !== '' && task.purity !== undefined);
                   return (
                   <div 
                     key={task.id} 
                     onClick={() => {
-                      if (task.status === 'Pending') {
+                      if (task.status === 'Pending' && !isReopenedCashTask) {
                         setCurrentVerificationTask(task);
                         setVerificationOpen(true);
                       } else {
@@ -2050,7 +2051,7 @@ export const StaffTasksScreen: React.FC = () => {
                         <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
                       </div>
 
-                      {(task.status === 'Pending') && (
+                      {(task.status === 'Pending' && !isReopenedCashTask) && (
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
