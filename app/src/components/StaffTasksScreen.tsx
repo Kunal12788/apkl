@@ -903,7 +903,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5 items-center">
           {task.status === 'In Progress' && userRole === 'Staff' ? (
-            task.settlementCondition?.toLowerCase().includes('cash') && !isCreatedByCollection ? (
+            task.settlementCondition?.toLowerCase().includes('cash') && !isCreatedByCollection && task.workType === 'Tunch' ? (
               <div className="flex-1 py-3.5 bg-slate-100 text-outline border border-outline-variant/30 font-black text-xs uppercase tracking-[0.15em] rounded-2xl flex items-center justify-center gap-1.5 cursor-not-allowed">
                 <span className="material-symbols-outlined text-[16px]">hourglass_empty</span>
                 Awaiting Admin Pricing & Approval

@@ -53,8 +53,9 @@ export const GlobalFAB: React.FC = () => {
 
             const taskIdGenerated = isCollection ? `COL-${serialId}` : `TASK-${serialId}`;
 
-            // COLLECTION STAFF WORKFLOW: Always write directly to the tasks table with status 'Pending' and progress 0 (No stock validation)
+            // COLLECTION STAFF WORKFLOW: Always write directly to the tasks table with status 'Pending' (for Tunch) or 'In Progress' (for Marking/Shouldering)
             if (isCollection) {
+              const isServiceWork = data.workType === 'MARKING' || data.workType === 'SHOULDERING';
               const newTask = {
                 id: taskIdGenerated,
                 customer_name: data.customerName || 'Walk-in Customer',
@@ -71,8 +72,8 @@ export const GlobalFAB: React.FC = () => {
                 brought_by: 'Collection Staff',
                 work_type: data.workType === 'MARKING' ? 'Marking' : data.workType === 'SHOULDERING' ? 'Shouldering' : 'Tunch',
                 date_given: data.date,
-                status: 'Pending',
-                progress_percentage: 0,
+                status: isServiceWork ? 'In Progress' : 'Pending',
+                progress_percentage: isServiceWork ? 50 : 0,
                 assigned_to: 'Staff',
                 source: 'Collection Staff',
                 created_by: user?.id || '',
@@ -93,7 +94,7 @@ export const GlobalFAB: React.FC = () => {
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
               if (taskError) throw taskError;
 
-              triggerBlueToast(`${newTask.work_type} task registered successfully as Pending verification.`, 'Task Created', 'task');
+              triggerBlueToast(`${newTask.work_type} task registered successfully as ${isServiceWork ? 'In Progress' : 'Pending'} verification.`, 'Task Created', 'task');
               window.dispatchEvent(new CustomEvent('databaseSync'));
               return;
             }
