@@ -8,6 +8,7 @@ import { deleteStorageImagesForTasks, deleteStorageImagesByUrls } from '../utils
 import { generateCustomerPDFReport } from '../utils/pdfUtils';
 import { NotificationBell } from './NotificationBell';
 import toast from 'react-hot-toast';
+import { triggerBlueToast } from './AppleToast';
 
 type TabView = 'all' | 'customer';
 
@@ -1140,6 +1141,27 @@ export const StaffBillingScreen: React.FC = () => {
       const { error: ledgerErr } = await supabase.from('ledger_entries').insert([ledgerEntry]);
       if (ledgerErr) throw ledgerErr;
 
+      // Create Billing Transaction (transactions table)
+      const txnId = `TXN-ADV-${Math.floor(1000 + Math.random() * 9000)}`;
+      const isSilver = walletAsset === 'Pure Silver';
+      const billingTxn = {
+        id: txnId,
+        customer_id: walletCustomer.id,
+        customer_name: walletCustomer.name,
+        metal: isSilver ? 'Silver' : 'Gold',
+        type: walletAsset === 'Cash' ? 'Cash' : 'Exchange',
+        work_type: walletType === 'Deposit' ? 'Wallet Deposit' : 'Wallet Withdrawal',
+        amount: String(amt),
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        iso_date: new Date().toISOString().split('T')[0],
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        status: 'Paid',
+        details: walletDetails || `${walletType} of ${walletAsset === 'Cash' ? '₹' + amt : amt + 'g'}`,
+        created_by: user?.id || '',
+        pure_weight: walletAsset !== 'Cash' ? String(amt) : null
+      };
+      await supabase.from('transactions').insert([billingTxn]);
+
       setDbCustomers(prev => prev.map(c => c.id === walletCustomer.id ? {
         ...c,
         advance_cash: newCash,
@@ -1154,7 +1176,7 @@ export const StaffBillingScreen: React.FC = () => {
         advance_pure_silver: newSilver
       } : null);
 
-      alert(`${walletType} processed successfully.`);
+      triggerBlueToast(`${walletType} of ${walletAsset === 'Cash' ? '₹' + amt : amt + 'g'} processed successfully.`, 'Wallet Updated', 'success');
       setWalletAmount('');
       setWalletDetails('');
       loadWalletLogs(walletCustomer.id);
@@ -1319,7 +1341,34 @@ export const StaffBillingScreen: React.FC = () => {
       };
       await supabase.from('payments').insert([newPayment]);
 
-      alert("Adjustment processed successfully.");
+      // Create Ledger Entry for Wallet Adjustment
+      const adjLedgerId = `LGR-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
+      const adjLedgerEntry: any = {
+        id: adjLedgerId,
+        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+        iso_date: new Date().toISOString().split('T')[0],
+        customer_name: walletCustomer.name,
+        transaction_type: 'Wallet Adjustment',
+        status: 'Completed',
+        staff_id: user?.id,
+        details: details || `Adjusted ₹${adjustValueInCash.toLocaleString('en-IN')} from wallet towards ${targetTx.id}`
+      };
+
+      if (walletAsset === 'Cash') {
+        adjLedgerEntry.cash_paid = adjustValueInCash;
+        adjLedgerEntry.cash_received = 0;
+      } else if (walletAsset === 'Pure Gold') {
+        const weightVal = parseFloat(adjWeightAmount) || 0;
+        adjLedgerEntry.pure_gold_out = weightVal;
+        adjLedgerEntry.pure_gold_in = 0;
+      } else if (walletAsset === 'Pure Silver') {
+        const weightVal = parseFloat(adjWeightAmount) || 0;
+        adjLedgerEntry.pure_silver_out = weightVal;
+        adjLedgerEntry.pure_silver_in = 0;
+      }
+      await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+      triggerBlueToast("Wallet adjustment processed & ledger updated successfully.", "Adjustment Complete", "success");
       
       setWalletAmount('');
       setAdjWeightAmount('');
