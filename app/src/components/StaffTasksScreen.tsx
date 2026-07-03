@@ -1196,13 +1196,17 @@ export const StaffTasksScreen: React.FC = () => {
          matchesTab = t.status === 'Pending' && !isReopenedCashTask;
        }
      } else if (user?.role === 'Admin' || user?.role === 'Super Admin') {
-        const isPureExchange = t.settlementCondition?.toLowerCase().includes('pure gold') || t.settlementCondition?.toLowerCase().includes('pure silver');
-        if (isPureExchange) {
+        if (t.workType === 'Marking' || t.workType === 'Shouldering') {
           matchesTab = false;
-        } else if (activeTab === 'Pending') {
-          matchesTab = t.status === 'Pending' && t.purity !== null && t.purity !== '' && t.purity !== undefined;
-        } else if (activeTab === 'In Progress') {
-          matchesTab = t.status === 'In Progress';
+        } else {
+          const isPureExchange = t.settlementCondition?.toLowerCase().includes('pure gold') || t.settlementCondition?.toLowerCase().includes('pure silver');
+          if (isPureExchange) {
+            matchesTab = false;
+          } else if (activeTab === 'Pending') {
+            matchesTab = t.status === 'Pending' && t.purity !== null && t.purity !== '' && t.purity !== undefined;
+          } else if (activeTab === 'In Progress') {
+            matchesTab = t.status === 'In Progress';
+          }
         }
      }
      
