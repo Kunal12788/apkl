@@ -74,6 +74,9 @@ interface Customer {
     shouldering: number;
     buy: number;
     sell: number;
+    buyAgainstTunch: number;
+    pureGoldAgainstTunch: number;
+    pureSilverAgainstTunch: number;
   };
   phone?: string;
   address?: string;
@@ -557,6 +560,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
   const cachedColStaffTx = getCachedData('colstaff_billing_tx', Infinity) || [];
   const [transactions, setTransactions] = useState<Transaction[]>(cachedColStaffTx);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [payments, setPayments] = useState<any[]>(getCachedData('payments_data', Infinity) || []);
   const [policy, setPolicy] = useState<{ excellent: number; good: number; fine: number; poor: number }>(() => {
@@ -627,6 +631,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         const allTx = computeCollectionStaffBillingTransactions(filteredTx, filteredTasks);
         setCachedData('colstaff_billing_tx', allTx);
         setTransactions(allTx);
+        setCompletedTasks(filteredTasks);
       } catch (err) {
         console.error('Error fetching collection billing data:', err);
       }
@@ -704,7 +709,16 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           activeJobs: 0,
           outstanding: '₹ 0',
           paid: '₹ 0',
-          piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
+          piecesBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
           ledger: [],
           phone: c.phone,
           address: c.address,
@@ -713,6 +727,81 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     });
 
     const hasDateSearch = startDate || endDate;
+
+    // Count tasks
+    completedTasks.forEach(task => {
+      if (hasDateSearch) {
+        const taskDate = task.created_at ? task.created_at.split('T')[0] : '';
+        if (startDate && taskDate < startDate) return;
+        if (endDate && taskDate > endDate) return;
+      }
+      let cust = customers.find(c => {
+        if (c.id && task.customer_id && c.id !== 'CUST-COL' && task.customer_id !== 'CUST-COL') {
+          return c.id === task.customer_id;
+        }
+        if (c.name.trim().toLowerCase() !== (task.customer_name || '').trim().toLowerCase()) return false;
+        
+        const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+        const cP = normPhone(c.phone);
+        const tP = normPhone(task.customer_phone);
+        if (cP && tP && cP !== tP) return false;
+        
+        const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+        const cA = normAddr(c.address);
+        const tA = normAddr(task.customer_address);
+        if (cA && tA && cA !== tA) return false;
+        
+        return true;
+      });
+
+      if (!cust) {
+        const initials = (task.customer_name || 'Walk-in Customer').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        const newCust: Customer = {
+          id: task.customer_id || 'CUST-COL',
+          name: task.customer_name || 'Walk-in Customer',
+          initials: initials || 'C',
+          activeJobs: 0,
+          outstanding: '₹ 0',
+          paid: '₹ 0',
+          piecesBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
+          ledger: [],
+          phone: task.customer_phone,
+          address: task.customer_address,
+          created_by: task.created_by
+        };
+        customers.push(newCust);
+        cust = newCust;
+      }
+
+      const wt = task.work_type || 'Tunch';
+      const pcs = Number(task.pieces || 1) || 1;
+      if (wt === 'Tunch') {
+        const cond = (task.settlement_condition || '').toLowerCase();
+        if (cond.includes('cash')) {
+          cust.piecesBreakdown.buyAgainstTunch += pcs;
+        } else if (cond.includes('pure gold')) {
+          cust.piecesBreakdown.pureGoldAgainstTunch += pcs;
+        } else if (cond.includes('pure silver')) {
+          cust.piecesBreakdown.pureSilverAgainstTunch += pcs;
+        } else {
+          cust.piecesBreakdown.tunch += pcs;
+        }
+      } else if (wt === 'Marking') {
+        cust.piecesBreakdown.marking += pcs;
+      } else if (wt === 'Shouldering') {
+        cust.piecesBreakdown.shouldering += pcs;
+      }
+    });
+
     transactions.forEach(t => {
       if (!hasDateSearch && t.adminSubmittedAt) {
         return;
@@ -745,7 +834,16 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           activeJobs: 0,
           outstanding: '₹ 0',
           paid: '₹ 0',
-          piecesBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
+          piecesBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
           ledger: [],
           phone: t.customerPhone,
           address: t.customerAddress,
@@ -775,13 +873,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       }
       
       const pcs = parseInt(t.pieces || '1') || 1;
-      if (t.workType === 'Tunch') {
-        cust.piecesBreakdown.tunch += pcs;
-      } else if (t.workType === 'Marking') {
-        cust.piecesBreakdown.marking += pcs;
-      } else if (t.workType === 'Shouldering') {
-        cust.piecesBreakdown.shouldering += pcs;
-      } else if (t.workType === 'Buy') {
+      if (t.workType === 'Buy') {
         cust.piecesBreakdown.buy += pcs;
       } else if (t.workType === 'Sell') {
         cust.piecesBreakdown.sell += pcs;
@@ -789,7 +881,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     });
 
     return customers.filter(c => c.ledger.length > 0);
-  }, [dbCustomers, transactions]);
+  }, [dbCustomers, transactions, completedTasks]);
 
   const selectedCustomer = dynamicCustomers.find(c => c.id === customerId) || null;
   const filteredCustomers = dynamicCustomers.filter(c => c.name.trim().toLowerCase().includes(searchQuery.trim().toLowerCase()));
@@ -900,13 +992,31 @@ export const CollectionStaffBillingScreen: React.FC = () => {
               </div>
 
               {/* Total Pieces breakdowns separately */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3.5">
                 {[
                   { 
                     label: 'Tunch Pcs', 
                     val: selectedCustomer.piecesBreakdown.tunch, 
                     icon: 'science', 
                     iconColor: 'bg-tertiary/10 text-tertiary'
+                  },
+                  { 
+                    label: 'Buy against Tunch', 
+                    val: selectedCustomer.piecesBreakdown.buyAgainstTunch, 
+                    icon: 'payments', 
+                    iconColor: 'bg-emerald-500/10 text-emerald-600'
+                  },
+                  { 
+                    label: 'Pure Gold against Tunch', 
+                    val: selectedCustomer.piecesBreakdown.pureGoldAgainstTunch, 
+                    icon: 'workspace_premium', 
+                    iconColor: 'bg-yellow-500/10 text-yellow-600'
+                  },
+                  { 
+                    label: 'Pure Silver against Tunch', 
+                    val: selectedCustomer.piecesBreakdown.pureSilverAgainstTunch, 
+                    icon: 'monetization_on', 
+                    iconColor: 'bg-slate-400/10 text-slate-500'
                   },
                   { 
                     label: 'Marking Pcs', 

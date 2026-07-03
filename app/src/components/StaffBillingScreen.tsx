@@ -36,6 +36,7 @@ interface Transaction {
   pureWeight?: string;
   purityPercentage?: string;
   pieceType?: string;
+  pieces?: string;
   
   pointsCount?: number;
   pointsType?: 'Gold' | 'Silver';
@@ -76,6 +77,9 @@ interface Customer {
     shouldering: number;
     buy: number;
     sell: number;
+    buyAgainstTunch: number;
+    pureGoldAgainstTunch: number;
+    pureSilverAgainstTunch: number;
   };
   ledger: Transaction[];
   phone?: string;
@@ -982,6 +986,7 @@ export const StaffBillingScreen: React.FC = () => {
 
   const initialTransactions = cachedStaffTx;
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [completedTasks, setCompletedTasks] = useState<any[]>([]);
   const [dbCustomers, setDbCustomers] = useState<DbCustomer[]>(initialDbCust);
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -1458,6 +1463,7 @@ export const StaffBillingScreen: React.FC = () => {
         setCachedData('staff_billing_tx', allTx);
         const finalTx = allTx;
         setTransactions(finalTx);
+        setCompletedTasks(filteredTasks);
       } catch (err) {
         console.error('Error fetching billing data:', err);
       }
@@ -1588,7 +1594,16 @@ export const StaffBillingScreen: React.FC = () => {
           activeJobs: 0,
           outstanding: '₹0',
           paid: '₹0',
-          workBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
+          workBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
           ledger: [],
           phone: c.phone,
           address: c.address,
@@ -1600,6 +1615,84 @@ export const StaffBillingScreen: React.FC = () => {
     });
 
     const hasDateSearch = startDate || endDate;
+
+    // Count tasks
+    completedTasks.forEach(task => {
+      if (hasDateSearch) {
+        const taskDate = task.created_at ? task.created_at.split('T')[0] : '';
+        if (startDate && taskDate < startDate) return;
+        if (endDate && taskDate > endDate) return;
+      }
+      let cust = customers.find(c => {
+        if (c.id && task.customer_id && c.id !== 'CUST-COL' && task.customer_id !== 'CUST-COL') {
+          return c.id === task.customer_id;
+        }
+        if (c.name.trim().toLowerCase() !== (task.customer_name || '').trim().toLowerCase()) return false;
+        
+        const normPhone = (p?: string) => p ? p.replace(/[^\d]/g, '') : '';
+        const cP = normPhone(c.phone);
+        const tP = normPhone(task.customer_phone);
+        if (cP && tP && cP !== tP) return false;
+        
+        const normAddr = (a?: string) => a ? a.toLowerCase().trim().replace(/[^a-z0-9]/g, '') : '';
+        const cA = normAddr(c.address);
+        const tA = normAddr(task.customer_address);
+        if (cA && tA && cA !== tA) return false;
+        
+        return true;
+      });
+
+      if (!cust) {
+        const initials = (task.customer_name || 'Walk-in Customer').split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        const newCust: Customer = {
+          id: task.customer_id || 'CUST-COL',
+          name: task.customer_name || 'Walk-in Customer',
+          initials: initials || 'C',
+          activeJobs: 0,
+          outstanding: '₹0',
+          paid: '₹0',
+          workBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
+          ledger: [],
+          phone: task.customer_phone,
+          address: task.customer_address,
+          created_by: task.created_by,
+          advance_cash: 0,
+          advance_pure_gold: 0,
+          advance_pure_silver: 0
+        };
+        customers.push(newCust);
+        cust = newCust;
+      }
+
+      const wt = task.work_type || 'Tunch';
+      const pcs = Number(task.pieces || 1) || 1;
+      if (wt === 'Tunch') {
+        const cond = (task.settlement_condition || '').toLowerCase();
+        if (cond.includes('cash')) {
+          cust.workBreakdown.buyAgainstTunch += pcs;
+        } else if (cond.includes('pure gold')) {
+          cust.workBreakdown.pureGoldAgainstTunch += pcs;
+        } else if (cond.includes('pure silver')) {
+          cust.workBreakdown.pureSilverAgainstTunch += pcs;
+        } else {
+          cust.workBreakdown.tunch += pcs;
+        }
+      } else if (wt === 'Marking') {
+        cust.workBreakdown.marking += pcs;
+      } else if (wt === 'Shouldering') {
+        cust.workBreakdown.shouldering += pcs;
+      }
+    });
+
     transactions.forEach(t => {
       if (hasDateSearch) {
         if (startDate && t.isoDate < startDate) return;
@@ -1633,7 +1726,16 @@ export const StaffBillingScreen: React.FC = () => {
           activeJobs: 0,
           outstanding: '₹0',
           paid: '₹0',
-          workBreakdown: { tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0 },
+          workBreakdown: { 
+            tunch: 0, 
+            marking: 0, 
+            shouldering: 0, 
+            buy: 0, 
+            sell: 0,
+            buyAgainstTunch: 0,
+            pureGoldAgainstTunch: 0,
+            pureSilverAgainstTunch: 0
+          },
           ledger: [],
           phone: t.customerPhone,
           address: t.customerAddress,
@@ -1665,21 +1767,16 @@ export const StaffBillingScreen: React.FC = () => {
         cust.paid = `₹${(paidNum + amtNum).toLocaleString('en-IN')}`;
       }
       
-      if (t.workType === 'Tunch') {
-        cust.workBreakdown.tunch += 1;
-      } else if (t.workType === 'Marking') {
-        cust.workBreakdown.marking += 1;
-      } else if (t.workType === 'Shouldering') {
-        cust.workBreakdown.shouldering += 1;
-      } else if (t.workType === 'Buy') {
-        cust.workBreakdown.buy += 1;
+      const pcs = Number(t.pieces || 1) || 1;
+      if (t.workType === 'Buy') {
+        cust.workBreakdown.buy += pcs;
       } else if (t.workType === 'Sell') {
-        cust.workBreakdown.sell += 1;
+        cust.workBreakdown.sell += pcs;
       }
     });
 
     return customers;
-  }, [dbCustomers, transactions]);
+  }, [dbCustomers, transactions, completedTasks]);
 
   const getCustomerBranchName = (created_by?: string) => {
     if (!created_by) return 'Unassigned';
@@ -2103,13 +2200,31 @@ export const StaffBillingScreen: React.FC = () => {
             </div>
 
             {/* Total Pieces breakdowns separately */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3.5">
               {[
                 { 
                   label: 'Tunch Pcs', 
                   val: selectedCustomer.workBreakdown.tunch, 
                   icon: 'science', 
                   iconColor: 'bg-tertiary/10 text-tertiary'
+                },
+                { 
+                  label: 'Buy against Tunch', 
+                  val: selectedCustomer.workBreakdown.buyAgainstTunch, 
+                  icon: 'payments', 
+                  iconColor: 'bg-emerald-500/10 text-emerald-600'
+                },
+                { 
+                  label: 'Pure Gold against Tunch', 
+                  val: selectedCustomer.workBreakdown.pureGoldAgainstTunch, 
+                  icon: 'workspace_premium', 
+                  iconColor: 'bg-yellow-500/10 text-yellow-600'
+                },
+                { 
+                  label: 'Pure Silver against Tunch', 
+                  val: selectedCustomer.workBreakdown.pureSilverAgainstTunch, 
+                  icon: 'monetization_on', 
+                  iconColor: 'bg-slate-400/10 text-slate-500'
                 },
                 { 
                   label: 'Marking Pcs', 
