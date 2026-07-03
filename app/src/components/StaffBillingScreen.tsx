@@ -1939,65 +1939,33 @@ export const StaffBillingScreen: React.FC = () => {
                   <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, tab: activeTab, ...(customerId ? { customerId } : {}) })} className={`luxury-card p-4 relative overflow-hidden group cursor-pointer transition-transform hover:-translate-y-0.5 border ${isPending ? 'border-error/20 bg-error/5' : 'border-[#003366]/5 bg-white'}`}>
                     <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5 ${isPending ? 'bg-error' : 'bg-secondary'}`}></div>
                     
-                    <div className="flex justify-between items-start mb-3 pl-1">
+                    <div className="flex justify-between items-start pl-2">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isPending ? 'bg-error-container/30 text-error' : getWorkColor(txn.workType, txn)}`}>
-                          <span className="material-symbols-outlined text-xl glow-icon">{getWorkIcon(txn.workType, txn)}</span>
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${isPending ? 'bg-error-container/30 text-error group-hover:bg-error-container/50' : getWorkColor(txn.workType, txn)}`}>
+                          <span className="material-symbols-outlined text-[20px]">{getWorkIcon(txn.workType, txn)}</span>
                         </div>
                         <div>
-                          <p className={`font-headline font-bold text-sm ${isPending ? 'text-error' : 'text-primary'}`}>{txn.customerName}</p>
-                          <p className="text-[9px] text-outline font-medium tracking-wide uppercase mt-0.5">{txn.id} • {txn.date}, {txn.timestamp}</p>
+                          <p className={`font-headline font-bold text-[13px] ${isPending ? 'text-error' : 'text-primary'}`}>{getWorkLabel(txn)}</p>
+                          <p className="text-[10px] font-bold text-outline tracking-wider mt-0.5">
+                            {txn.customerName} • {txn.date}, {txn.timestamp}
+                          </p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-headline text-base font-bold tracking-tight ${isPending ? 'text-error' : 'text-primary'}`}>
+                        <p className={`font-headline text-base font-black ${isPending ? 'text-error' : 'text-primary'}`}>
                           {txn.amount}
                         </p>
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          {isPending && <span className="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>}
-                          <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                            (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                          }`}>
-                            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
-                          </span>
-                        </div>
+                        <p className="text-[8px] font-bold text-outline uppercase tracking-widest mt-1 opacity-70">{txn.id}</p>
                       </div>
                     </div>
-                  
-                    <div className="flex items-center gap-4 border-t border-outline-variant/20 pt-3">
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-outline">build</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{getWorkLabel(txn)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px] text-outline">payments</span>
-                        <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.type}</span>
-                      </div>
-                      
-                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.impureWeight && (
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px] text-outline">scale</span>
-                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.impureWeight}</span>
-                        </div>
-                      )}
-                      {(txn.workType === 'Tunch' || txn.workType === 'Buy' || txn.workType === 'Sell') && txn.pureWeight && (
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px] text-outline">workspace_premium</span>
-                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pureWeight}g Pure</span>
-                        </div>
-                      )}
-                      {txn.workType === 'Marking' && txn.caratMarking && (
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px] text-outline">verified</span>
-                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.caratMarking}</span>
-                        </div>
-                      )}
-                      {txn.workType === 'Shouldering' && txn.pointsCount && (
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[12px] text-outline">join_inner</span>
-                          <span className="text-[9px] text-outline font-bold uppercase tracking-wider">{txn.pointsCount} pts</span>
-                        </div>
-                      )}
+
+                    <div className="pl-14 pr-2 flex justify-between items-center mt-2.5">
+                      <p className={`text-[11px] font-medium leading-relaxed truncate ${isPending ? 'text-error/80' : 'text-outline'}`}>
+                        {txn.details}
+                      </p>
+                      <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-secondary/10 text-secondary'}`}>
+                        {(txn.status === 'Fully Paid' || txn.status === 'Paid' || txn.status === 'Completed') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
+                      </span>
                     </div>
                   </div>
                 );
