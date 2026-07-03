@@ -1999,11 +1999,12 @@ export const StaffTasksScreen: React.FC = () => {
                 {filteredTasks.map((task) => {
                   const isCash = task.settlementCondition?.toLowerCase().startsWith('cash');
                   const isReopenedCashTask = task.status === 'Pending' && (task.settlementCondition?.toLowerCase().includes('cash') || false) && (task.purity !== null && task.purity !== '' && task.purity !== undefined);
+                  const isStaffUser = user?.role === 'Staff' || user?.role === 'Collection Staff';
                   return (
                   <div 
                     key={task.id} 
                     onClick={() => {
-                      if (task.status === 'Pending' && !isReopenedCashTask) {
+                      if (task.status === 'Pending' && !(isReopenedCashTask && isStaffUser)) {
                         setCurrentVerificationTask(task);
                         setVerificationOpen(true);
                       } else {
@@ -2051,7 +2052,7 @@ export const StaffTasksScreen: React.FC = () => {
                         <span>Brought by: <strong className="text-primary">{task.broughtBy}</strong></span>
                       </div>
 
-                      {(task.status === 'Pending' && !isReopenedCashTask) && (
+                      {(task.status === 'Pending' && !(isReopenedCashTask && isStaffUser)) && (
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
