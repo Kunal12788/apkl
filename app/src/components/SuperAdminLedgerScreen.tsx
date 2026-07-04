@@ -191,9 +191,18 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         }, {});
         setUsersBranchMap(usersMap);
 
+        const userRolesMap = usersRes.data.reduce((acc: any, u: any) => {
+          acc[u.id] = u.role || 'Staff';
+          return acc;
+        }, {});
+
         const reportsData = reportsRes.data || [];
         const approvedReports = reportsData.filter((r: any) => r.status === 'Approved');
-        const pendingReports = reportsData.filter((r: any) => r.status === 'Submitted');
+        const pendingReports = reportsData.filter((r: any) => {
+          const isSubmitted = r.status === 'Submitted';
+          const submitterRole = userRolesMap[r.staff_id] || 'Staff';
+          return isSubmitted && submitterRole === 'Admin';
+        });
 
         setBranchReports(approvedReports);
         setCachedData('super_admin_branch_reports', approvedReports);
@@ -579,11 +588,12 @@ export const SuperAdminLedgerScreen: React.FC = () => {
         if (updateError) throw updateError;
       }
 
-      // Update the branch_daily_reports to Approved for this specific report ID
+      // Update the branch_daily_reports to Approved for all report entries of this branch and date
       const { error: reportUpdateError } = await supabase
         .from('branch_daily_reports')
         .update({ status: 'Approved' })
-        .eq('id', group.report_id);
+        .eq('branch_id', group.branch_id)
+        .eq('iso_date', group.iso_date);
 
       if (reportUpdateError) throw reportUpdateError;
 
