@@ -97,6 +97,7 @@ export const StaffLedgerScreen: React.FC = () => {
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const [selectedAllocation, setSelectedAllocation] = useState<any | null>(null);
   const [hasActiveDataToSubmit, setHasActiveDataToSubmit] = useState(false);
+  const [isStaffReportPending, setIsStaffReportPending] = useState(false);
 
   const [branchStaff, setBranchStaff] = useState<any[]>([]);
 
@@ -170,12 +171,14 @@ export const StaffLedgerScreen: React.FC = () => {
     try {
       const isSuperSa = user?.role === 'Super Admin';
       let branchUserIds: string[] = [];
+      let rawBranchUsers: any[] = [];
       if (!isSuperSa && user?.branch_id) {
         const { data: bUsers, error: buError } = await supabase
           .from('users')
           .select('id, name, role, branch_id')
           .eq('branch_id', user.branch_id);
         if (!buError && bUsers) {
+          rawBranchUsers = bUsers;
           branchUserIds = bUsers.map((bu: any) => bu.id);
           setCachedData(cacheKeyBranchUsers, branchUserIds);
 
@@ -204,6 +207,8 @@ export const StaffLedgerScreen: React.FC = () => {
       }
 
       let hasActiveData = false;
+      let staffPending = false;
+
       if (user?.role === 'Admin') {
         const [aEntries, aAlloc, aTx, aTasks] = await Promise.all([
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
@@ -216,6 +221,21 @@ export const StaffLedgerScreen: React.FC = () => {
         if (totalCount > 0 && hasTransactionsOrLedger) {
           hasActiveData = true;
         }
+
+        // Query only standard Staff users (role === 'Staff') in the branch
+        const staffIds = rawBranchUsers.filter((u: any) => u.role === 'Staff').map((u: any) => u.id);
+        if (staffIds.length > 0) {
+          const [sEntries, sAlloc, sTx, sTasks] = await Promise.all([
+            supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffIds).is('staff_submitted_at', null),
+            supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).in('staff_id', staffIds).is('staff_submitted_at', null),
+            supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffIds).is('staff_submitted_at', null),
+            supabase.from('tasks').select('id', { count: 'exact', head: true }).in('assigned_to', staffIds).is('staff_submitted_at', null),
+          ]);
+          const staffCount = (sEntries.count || 0) + (sAlloc.count || 0) + (sTx.count || 0) + (sTasks.count || 0);
+          if (staffCount > 0) {
+            staffPending = true;
+          }
+        }
       } else if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
         const [sEntries, sAlloc, sTx, sTasks] = await Promise.all([
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
@@ -227,6 +247,7 @@ export const StaffLedgerScreen: React.FC = () => {
         if (count > 0) hasActiveData = true;
       }
       setHasActiveDataToSubmit(hasActiveData);
+      setIsStaffReportPending(staffPending);
 
       // Apply clearance / submission filters
       const hasDateSearch = !!startDate;
@@ -559,6 +580,11 @@ export const StaffLedgerScreen: React.FC = () => {
 
   const handleSubmitReport = async () => {
     const isAdmin = user?.role === 'Admin';
+
+    if (isAdmin && isStaffReportPending) {
+      alert("Cannot submit branch report: standard Staff members have pending, unsubmitted report entries for today.");
+      return;
+    }
     
     const confirmMessage = isAdmin
       ? "Are you sure you want to submit the branch daily report and clear active lists? Once submitted, they will be archived."
@@ -1149,7 +1175,9 @@ export const StaffLedgerScreen: React.FC = () => {
                   </div>
                   <div className="flex gap-2">
                     {(user?.role === 'Staff' || user?.role === 'Admin') && (() => {
-                      const isBtnDisabled = !hasActiveDataToSubmit;
+                      const isBtnDisabled = user?.role === 'Admin' 
+                        ? (!hasActiveDataToSubmit || isStaffReportPending)
+                        : !hasActiveDataToSubmit;
                       return (
                         <div className="flex flex-col items-end gap-1">
                           <button 
@@ -1166,7 +1194,9 @@ export const StaffLedgerScreen: React.FC = () => {
                           </button>
                           {isBtnDisabled && (
                             <span className="text-[9px] text-error font-bold uppercase tracking-wider pl-1">
-                              No Active Data
+                              {user?.role === 'Admin' && isStaffReportPending 
+                                ? 'Staff Reports Pending' 
+                                : 'No Active Data'}
                             </span>
                           )}
                         </div>
