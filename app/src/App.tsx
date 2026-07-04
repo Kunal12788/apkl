@@ -250,7 +250,7 @@ function AppContent() {
 
          if (payload.eventType === 'INSERT' && newRecord) {
             if (newRecord.created_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
+               const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
                if (sameBranch) {
                   triggerBlueToast(
                     `A new ${newRecord.work_type} transaction has been registered for ${newRecord.customer_name}.`,
@@ -260,7 +260,7 @@ function AppContent() {
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
             if (sameBranch) {
                const wasUnpaid = oldRecord.status === 'Unpaid';
                const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
@@ -290,7 +290,7 @@ function AppContent() {
 
          if (payload.eventType === 'INSERT' && newRecord) {
             const isCreator = newRecord.created_by === user.id;
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
             const isAssignedToMe = newRecord.assigned_to === user.id || 
                ((newRecord.assigned_to === 'Staff' || newRecord.assigned_to === 'Pending') && user.role === 'Staff');
             
@@ -348,7 +348,7 @@ function AppContent() {
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
             const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to;
              
             if (sameBranch || isRelated) {
