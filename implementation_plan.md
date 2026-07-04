@@ -1,89 +1,56 @@
-# Implementation Plan - Split Cash Ledger, Staff Cash Blindness, Daily Submission & Liabilities
+# Implementation Plan - Branch-Wise Customer Work Metrics, Monetary Totals & Pure Weights in SuperAdmin
 
-This plan outlines the changes needed to implement:
-1. **Cash Settlement Routing (Front vs. Back)**: Split metal weights and cash routing depending on Staff ("Front") vs. Admin ("Back") selections.
-2. **Staff Cash Blindness**: Prevent Staff from viewing cash rates or totals in Dashboard, Ledger, Billings, and Customer History.
-3. **Daily submission / Clear screen**: Let Staff and Admin submit daily logs, causing them to clear from their respective screens unless searching by date.
-4. **Liabilities**: Add a "Pending Cash Liability" tracking card and support shortage validations.
-5. **Customer Directory Restrictions**: Filter intake history and outstanding dues according to role-based visibility rules.
-
----
-
-## User Review Required
-
-> [!IMPORTANT]
-> - Staff users will be completely restricted from seeing gold/silver cash rates or total settlement cash amounts on their Dashboard, Ledger, Billings, and Customer detail views.
-> - The new "Submit" button on the Ledger panel clears data from active views to clean operational screens. To see old data, the "Search by Date" fields must be filled.
+This plan details the modifications to the **Work Metrics** screen in the Super Admin dashboard. Currently, this screen displays operational metrics on a per-staff-member basis. The updated request is to completely restructure this screen to show aggregate operational and monetary metrics grouped by branch. These metrics will reflect total workloads, monetary values, and pure metal weights across branches for specific activities, derived from customer records, completed tasks, and transaction ledger data, with options for time filtering (month-wise, annually, lifetime, or custom).
 
 ---
 
 ## Proposed Changes
 
-### 1. Database Mapping & Calculations
-We will use existing Supabase columns (`pure_gold_in`, `pure_silver_in`, `cash_rate_per_gram`, `cash_amount`, `pending_pure_liability`, `pending_cash_liability`, `staff_submitted_at`, `admin_submitted_at`, `cash_handling_mode`) in both Frontend components and Supabase queries.
+We will modify [SuperAdminWorkScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/SuperAdminWorkScreen.tsx) to achieve the branch-wise aggregation of metrics.
 
-### 2. Components
+### [Component] SuperAdmin Dashboard
 
-#### [MODIFY] [StaffTasksScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffTasksScreen.tsx)
-- When **Cash** settlement is selected in the completion modal, prompt Staff for **Front** or **Back** handling.
-- **`handleProcessTask`**:
-  - If **Front** is chosen:
-    - Create a ledger entry under the Staff's user ID with `transaction_type = 'Exchange'`, `status = 'Pending Cash'`, `pending_cash_liability = task.pending_cash_liability`, and `pure_gold_in` or `pure_silver_in` = task's pure weight. This registers the metal in the Staff's ledger.
-  - If **Back** is chosen:
-    - Do not insert any ledger entry under the Staff's ID.
-- **`handleFinalizePricing`** (Admin approval):
-  - If handling mode is **Front**:
-    - Update the Staff's existing ledger entry to `status = (shortage ? 'Pending Cash' : 'Completed')`, `cash_rate_per_gram`, and `cash_amount`.
-    - Create a new ledger entry under the Admin's name with `cash_paid` or `cash_amount` (with status `Pending Cash` if shortage).
-  - If handling mode is **Back**:
-    - Create a single ledger entry under the Admin's name containing both metal weights (inflow) and cash amounts/payment.
-- Mask cash rates/totals if logged-in user is `Staff` or `Collection Staff`.
+#### [MODIFY] [SuperAdminWorkScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/SuperAdminWorkScreen.tsx)
 
-#### [MODIFY] [StaffLedgerScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffLedgerScreen.tsx)
-- Update mappers `mapDbToEntry` and `mapEntryToDb` to support `pure_gold_in`, `pure_silver_in`, `cash_rate_per_gram`, `cash_amount`, `pending_cash_liability`, `staff_submitted_at`, and `admin_submitted_at`.
-- Update `currentPureStock` calculation to:
-  `currentPureStock = totalAllocated + totalPureIn - totalPureOut`
-- Add a new **Pending Cash Liability** card visible only to Admin/Super Admin.
-- Add a **Submit daily data** button:
-  - Staff: "Submit to Admin" (sets `staff_submitted_at = now()` for their records).
-  - Admin: "Submit to Super Admin" (sets `admin_submitted_at = now()` for their branch).
-- Add `startDate`/`endDate` inputs to allow searching archived ledger records by date.
-- Update data fetches to filter out submitted records unless a date search is active.
-
-#### [MODIFY] [StaffDashboardScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffDashboardScreen.tsx)
-- Filter out records where `staff_submitted_at` / `admin_submitted_at` is set, unless viewing by date.
-- Hide "Total Cash Collected", "Cash Collection" breakdown, and "UPI Collection" cards if the logged-in user is a Staff member.
-- Strip cash details from task list and transaction lists for Staff.
-
-#### [MODIFY] [StaffBillingScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffBillingScreen.tsx)
-- Filter billing list by submission status.
-- In "By Customer" directory:
-  - Staff: Display only service fee dues (exclude cash settlements) and mask cash figures in intake details with `[Restricted]`.
-  - Admin/Super Admin: Display all dues and complete history.
-
-#### [MODIFY] [CollectionStaffTasksScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/CollectionStaffTasksScreen.tsx)
-- Apply `staff_submitted_at IS NULL` filters to active tasks.
-
-#### [MODIFY] [CollectionStaffBillingScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/CollectionStaffBillingScreen.tsx)
-- Apply `staff_submitted_at IS NULL` filters to active transactions.
-
-#### [MODIFY] [CollectionStaffDashboardScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/CollectionStaffDashboardScreen.tsx)
-- Apply default filters to hide submitted tasks.
+- **Database Queries (`fetchData`):**
+  - Fetch `users`, `tasks`, `transactions`, `branches`, and `customers` to map customers to their creator's branch.
+  - Implement date range constraints based on the active Time Range Mode.
+- **Time Range Sub-feature:**
+  - Add a selector for **Time Range Mode** with the following options:
+    - **Month-wise**: Select a month (Jan - Dec) and a year. Sets date range from the 1st to the last day of that month.
+    - **Annually**: Select a year. Sets date range from Jan 1st to Dec 31st.
+    - **Lifetime**: Disables date filtering in DB query/aggregation.
+    - **Custom Range**: Existing inputs for start and end dates.
+- **Operational, Monetary & Weight Metrics Aggregation:**
+  - Replicate the logic of the "By Customer" feature to aggregate the following 8 work metrics, capturing the **Count (Pieces)**, the **Monetary Amount (₹)**, and the **Pure Weight (g)** where applicable:
+    - **Tunch Pcs**: Total pieces and total amount (₹).
+    - **Marking Pcs**: Total pieces and total amount (₹).
+    - **Shouldering Pcs**: Total pieces and total amount (₹).
+    - **Buy against Tunch**: Total pieces, total amount (₹), and sum of pure weights (g) from cash exchanges.
+    - **Gold against Tunch**: Total pieces, total amount (₹), and sum of pure gold weights (g) from pure gold exchanges.
+    - **Silver against Tunch**: Total pieces, total amount (₹), and sum of pure silver weights (g) from pure silver exchanges.
+    - **Buy Works**: Total count, total amount (₹), and sum of pure weights (g) (split by Gold/Silver).
+    - **Sell Works**: Total count, total amount (₹), and sum of pure weights (g) (split by Gold/Silver).
+- **User Interface Restructuring (Single Unified Screen):**
+  - All branch data will be displayed on this **single, unified screen at the same time**.
+  - We will replace the user-level list with a **Branch Breakdown** section.
+  - For each separate branch, we will display a dedicated card with the **Branch Name clearly printed at the top** as a header.
+  - Directly under each branch header, all **8 operational metrics** will be displayed simultaneously in a structured grid.
+  - Each card in the grid will show its piece count, its total monetary amount, and its metal weights (e.g., `45 Pcs • 120.350g • ₹22,500` or `12 Jobs • 35.120g Au / 140.000g Ag • ₹1,20,000`).
+  - Introduce a **Global Performance Summary** section at the very top of the screen to show combined totals (count, weights, and monetary amounts) of all 8 metrics across all branches.
+  - Adjust the search functionality to filter the branches on this screen in real-time.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Build verification: `npm run build` or equivalent script validation.
+- Build verification: `npm run build`
 
 ### Manual Verification
-- Log in as Staff, complete a Tunch task with **Cash** settlement. Confirm:
-  - Prompt for Front/Back appears.
-  - Selecting "Front" writes metal in the Staff's ledger.
-  - Cash rate/amount is not visible on Staff screens.
-- Log in as Admin, confirm:
-  - "Pending Cash Liability" card appears on Ledger.
-  - Priced task registers cash paid under Admin ledger.
-  - Clicking "Submit to Super Admin" clears the active dashboard, ledger, tasks, and billings.
-- Test "Search by Date" on both roles to query historical cleared data.
+1. **Access Route:** Login as Super Admin, navigate to the Dashboard, open Command Center, and click on **Work** (Operational Metrics).
+2. **Time Filters:** Toggle between Month-wise, Annually, Lifetime, and Custom Range filters. Verify that date ranges update correctly and reload data.
+3. **Weight Accuracy:** Verify that the weights shown for Buy/Gold/Silver against Tunch, and Buy/Sell works are mapped to the sum of pure weights of those transaction types.
+4. **Data Correctness:** Verify that the counts and amounts shown under each branch correspond to the transaction values and task settlements matching that branch.
+5. **Search Filter:** Type a branch name (e.g., Zurich Main, BR-01) in the search bar and verify that only matching branches are displayed.
+6. **Responsiveness:** Ensure that the 8-metric grid scales gracefully on both desktop and mobile viewports.

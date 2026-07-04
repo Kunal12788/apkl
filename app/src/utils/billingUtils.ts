@@ -7,12 +7,10 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
     let computedStatus = 'Unpaid';
     if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
-    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || t.staff_paid || (amtNum > 0 && paidNum >= amtNum)) {
       computedStatus = 'Fully Paid';
     } else if (t.col_staff_paid && !t.staff_paid) {
       computedStatus = 'Awaiting Staff';
-    } else if (!t.col_staff_paid && t.staff_paid) {
-      computedStatus = 'Awaiting Collection Staff';
     }
 
     return {
@@ -58,9 +56,8 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
     const staffPaidVal = task.staff_paid !== null && task.staff_paid !== undefined ? !!task.staff_paid : isPaid;
 
     let computedStatus = 'Unpaid';
-    if (colStaffPaidVal && staffPaidVal) computedStatus = 'Fully Paid';
+    if (staffPaidVal) computedStatus = 'Fully Paid';
     else if (colStaffPaidVal && !staffPaidVal) computedStatus = 'Awaiting Staff';
-    else if (!colStaffPaidVal && staffPaidVal) computedStatus = 'Awaiting Collection Staff';
 
     return {
       metal: task.metal || 'Gold',
@@ -116,12 +113,10 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     let computedStatus = 'Unpaid';
     if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
-    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || (t.col_staff_paid && t.staff_paid) || (amtNum > 0 && paidNum >= amtNum)) {
+    } else if (t.status === 'Fully Paid' || t.status === 'Paid' || t.staff_paid || (amtNum > 0 && paidNum >= amtNum)) {
       computedStatus = 'Fully Paid';
     } else if (t.col_staff_paid && !t.staff_paid) {
       computedStatus = 'Awaiting Staff';
-    } else if (!t.col_staff_paid && t.staff_paid) {
-      computedStatus = 'Awaiting Collection Staff';
     }
 
     return {
@@ -168,9 +163,8 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     const staffPaidVal = task.staff_paid !== null && task.staff_paid !== undefined ? !!task.staff_paid : isPaid;
 
     let computedStatus = 'Unpaid';
-    if (colStaffPaidVal && staffPaidVal) computedStatus = 'Fully Paid';
+    if (staffPaidVal) computedStatus = 'Fully Paid';
     else if (colStaffPaidVal && !staffPaidVal) computedStatus = 'Awaiting Staff';
-    else if (!colStaffPaidVal && staffPaidVal) computedStatus = 'Awaiting Collection Staff';
 
     return {
       metal: task.metal || 'Gold',
@@ -236,7 +230,7 @@ export const analyzeCustomerBehavior = (
 ): BehaviorAnalysis => {
   // Filter out payment receipts or zero-amount items
   const billingItems = ledger.filter(
-    (t: any) => t.workType !== 'Dues Payment' && t.status !== 'Awaiting Staff' && t.status !== 'Awaiting Collection Staff'
+    (t: any) => t.workType !== 'Dues Payment' && t.status !== 'Awaiting Staff'
   );
 
   if (billingItems.length === 0) {
