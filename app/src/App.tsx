@@ -318,7 +318,9 @@ function AppContent() {
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
             const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
-            if (sameBranch) {
+            const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to;
+             
+            if (sameBranch || isRelated) {
                const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
                const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');
                const completedJustNow = oldRecord.status !== 'Completed' && newRecord.status === 'Completed';
@@ -340,8 +342,8 @@ function AppContent() {
                } else if (processedJustNow && newRecord.created_by !== user.id) {
                   triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
                } else if (completedJustNow) {
-                  const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to || user.role === 'Admin' || user.role === 'Super Admin';
-                  if (isRelated) {
+                  const isCompletedParticipant = user.id === newRecord.created_by || user.id === newRecord.assigned_to || user.role === 'Admin' || user.role === 'Super Admin';
+                  if (isCompletedParticipant) {
                      triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
                   }
                } else if ((staffPaidJustNow || colStaffPaidJustNow) && newRecord.created_by !== user.id) {
