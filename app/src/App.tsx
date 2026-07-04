@@ -211,14 +211,19 @@ function AppContent() {
     };
 
     const getUserDetails = async (userId: string) => {
+      if (!userId) {
+        return { name: 'Unknown User', role: 'Staff' };
+      }
       try {
         const { data, error } = await supabase.from('users').select('name, role').eq('id', userId).maybeSingle();
         if (error || !data) {
-          return { name: userId, role: userId.startsWith('ADMIN-') ? 'Admin' : 'Staff' };
+          const isAdm = typeof userId === 'string' && userId.startsWith('ADMIN-');
+          return { name: userId, role: isAdm ? 'Admin' : 'Staff' };
         }
         return data;
       } catch (e) {
-        return { name: userId, role: userId.startsWith('ADMIN-') ? 'Admin' : 'Staff' };
+        const isAdm = typeof userId === 'string' && userId.startsWith('ADMIN-');
+        return { name: userId, role: isAdm ? 'Admin' : 'Staff' };
       }
     };
 
@@ -286,6 +291,8 @@ function AppContent() {
          if (payload.eventType === 'INSERT' && newRecord) {
             const isCreator = newRecord.created_by === user.id;
             const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
+            const isAssignedToMe = newRecord.assigned_to === user.id || 
+               ((newRecord.assigned_to === 'Staff' || newRecord.assigned_to === 'Pending') && user.role === 'Staff');
             
             if (isCreator) {
                triggerBlueToast(
@@ -293,12 +300,26 @@ function AppContent() {
                   'Task Created',
                   'task'
                );
-            } else if (newRecord.assigned_to === user.id) {
-               triggerBlueToast(
-                  `You have a new task assigned to you: ${newRecord.work_type} for ${newRecord.customer_name}. Check Pending/In Progress.`,
-                  'New Task Assigned',
-                  'task'
-               );
+            } else if (isAssignedToMe) {
+               if (newRecord.status === 'Pending') {
+                  triggerBlueToast(
+                     `A new task is waiting for your verification in the Pending category: ${newRecord.work_type} for ${newRecord.customer_name}.`,
+                     'New Task in Pending',
+                     'task'
+                  );
+               } else if (newRecord.status === 'In Progress') {
+                  triggerBlueToast(
+                     `You have a new task in the In Progress category: ${newRecord.work_type} for ${newRecord.customer_name}.`,
+                     'New Task in Progress',
+                     'task'
+                  );
+               } else {
+                  triggerBlueToast(
+                     `You have a new task assigned to you: ${newRecord.work_type} for ${newRecord.customer_name}.`,
+                     'New Task Assigned',
+                     'task'
+                  );
+               }
             } else if (sameBranch) {
                const creatorRole = newRecord.source || 'Staff';
                if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {

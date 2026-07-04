@@ -663,6 +663,65 @@ export const StaffLedgerScreen: React.FC = () => {
 
         triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
       } else {
+        // --- 1. Compute values for Staff Daily Report ---
+        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only');
+
+        const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+        const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
+        const tAllocCash = allocations.reduce((s, a) => s + Number(a.cash_amount || 0), 0);
+
+        const pastEntries = entries.filter(e => e.isoDate < today && e.transactionType !== 'Tunch Only');
+
+        const pastGoldUsed = pastEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+        const pastSilverUsed = pastEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+        const pastCashRecv = pastEntries.reduce((s, e) => s + e.cashReceived, 0);
+        const pastCashPaid = pastEntries.reduce((s, e) => s + e.cashPaid, 0);
+
+        const openingPureGold = tAllocGold - pastGoldUsed;
+        const openingPureSilver = tAllocSilver - pastSilverUsed;
+        const openingCash = tAllocCash + pastCashRecv - pastCashPaid;
+
+        const goldUsed = todayEntries.reduce((s, e) => s + e.pureGoldOut, 0);
+        const silverUsed = todayEntries.reduce((s, e) => s + e.pureSilverOut, 0);
+        const cashUsed = todayEntries.reduce((s, e) => s + e.cashPaid, 0);
+        
+        const cashReceived = todayEntries.reduce((s, e) => s + e.cashReceived, 0) + billingCash;
+        const impureGoldRecv = todayEntries.reduce((s, e) => s + e.impureGoldIn, 0);
+        const impureSilverRecv = todayEntries.reduce((s, e) => s + e.impureSilverIn, 0);
+
+        const closingPureGold = openingPureGold - goldUsed;
+        const closingPureSilver = openingPureSilver - silverUsed;
+        const closingCash = openingCash + cashReceived - cashUsed;
+
+        const validBranchId = (user?.branch_id && user.branch_id.includes('-')) 
+          ? user.branch_id 
+          : 'a3fa8cbc-25f8-4af6-bd86-66e8ae1da904';
+
+        // Insert staff daily report entry
+        const { error: staffReportError } = await supabase.from('branch_daily_reports').insert([{
+          id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
+          branch_id: validBranchId,
+          branch_name: branchName,
+          staff_id: userId,
+          date: 'Today',
+          iso_date: today,
+          opening_pure_gold: openingPureGold,
+          opening_pure_silver: openingPureSilver,
+          opening_cash: openingCash,
+          gold_used: goldUsed,
+          silver_used: silverUsed,
+          cash_used: cashUsed,
+          cash_received: cashReceived,
+          impure_gold_received: impureGoldRecv,
+          impure_silver_received: impureSilverRecv,
+          closing_pure_gold: closingPureGold,
+          closing_pure_silver: closingPureSilver,
+          closing_cash: closingCash,
+          status: 'Submitted'
+        }]);
+
+        if (staffReportError) throw staffReportError;
+
         // --- 3. Staff Clearance (clear from active screens for logged in staff only) ---
         const [r1, r2, r3, r4, r5] = await Promise.all([
           supabase.from('ledger_entries').update({ staff_submitted_at: nowStr }).eq('staff_id', userId).is('staff_submitted_at', null),
