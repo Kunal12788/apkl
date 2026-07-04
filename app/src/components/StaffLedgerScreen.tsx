@@ -211,8 +211,11 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
         ]);
-        const count = (aEntries.count || 0) + (aAlloc.count || 0) + (aTx.count || 0) + (aTasks.count || 0);
-        if (count > 0) hasActiveData = true;
+        const hasTransactionsOrLedger = (aEntries.count || 0) > 0 || (aTx.count || 0) > 0;
+        const totalCount = (aEntries.count || 0) + (aAlloc.count || 0) + (aTx.count || 0) + (aTasks.count || 0);
+        if (totalCount > 0 && hasTransactionsOrLedger) {
+          hasActiveData = true;
+        }
       } else if (user?.role === 'Staff' || user?.role === 'Collection Staff') {
         const [sEntries, sAlloc, sTx, sTasks] = await Promise.all([
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
