@@ -200,6 +200,18 @@ function AppContent() {
       return !!(u && u.branch_id === user.branch_id);
     };
 
+    const getUserDetails = async (userId: string) => {
+      try {
+        const { data, error } = await supabase.from('users').select('name, role').eq('id', userId).maybeSingle();
+        if (error || !data) {
+          return { name: userId, role: userId.startsWith('ADMIN-') ? 'Admin' : 'Staff' };
+        }
+        return data;
+      } catch (e) {
+        return { name: userId, role: userId.startsWith('ADMIN-') ? 'Admin' : 'Staff' };
+      }
+    };
+
     const realtimeChannel = supabase.channel('system_realtime_events')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
          const newRecord = payload.new;
@@ -271,14 +283,31 @@ function AppContent() {
                   'Task Created',
                   'task'
                );
+            } else if (newRecord.assigned_to === user.id) {
+               triggerBlueToast(
+                  `You have a new task assigned to you: ${newRecord.work_type} for ${newRecord.customer_name}. Check Pending/In Progress.`,
+                  'New Task Assigned',
+                  'task'
+               );
             } else if (sameBranch) {
                const creatorRole = newRecord.source || 'Staff';
                if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
-                  triggerBlueToast(
-                     `New Cash task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}. Awaiting Admin pricing.`,
-                     'Awaiting Pricing',
-                     'info'
-                  );
+                  // Only notify Admin and Super Admin for cash tasks (Staff are cash-blind)
+                  if (user.role === 'Admin' || user.role === 'Super Admin') {
+                     if (newRecord.work_type?.toLowerCase() === 'tunch' || newRecord.category?.toLowerCase() === 'tunch') {
+                        triggerBlueToast(
+                           `New Cash Tunch task ${newRecord.id} created by Staff for ${newRecord.customer_name}. Awaiting pricing.`,
+                           'Awaiting Pricing',
+                           'info'
+                        );
+                     } else {
+                        triggerBlueToast(
+                           `New Cash task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}. Awaiting Admin pricing.`,
+                           'Awaiting Pricing',
+                           'info'
+                        );
+                     }
+                  }
                } else {
                   triggerBlueToast(
                      `New ${newRecord.work_type} task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}.`,
@@ -310,8 +339,11 @@ function AppContent() {
                   }
                } else if (processedJustNow && newRecord.created_by !== user.id) {
                   triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
-               } else if (completedJustNow && newRecord.created_by !== user.id) {
-                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
+               } else if (completedJustNow) {
+                  const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to || user.role === 'Admin' || user.role === 'Super Admin';
+                  if (isRelated) {
+                     triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
+                  }
                } else if ((staffPaidJustNow || colStaffPaidJustNow) && newRecord.created_by !== user.id) {
                   let msg = `Task payment updated for ${newRecord.customer_name}`;
                   if (newRecord.staff_paid && newRecord.col_staff_paid) {
@@ -436,20 +468,30 @@ function AppContent() {
             }
          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, async (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'branch_daily_reports', payload } }));
          
          const newRecord = payload.new;
          if (payload.eventType === 'INSERT' && newRecord) {
             const isSelfSubmitted = newRecord.staff_id === user.id;
-            if (!isSelfSubmitted) {
-               const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
-               if (sameBranch) {
-                  triggerBlueToast(
-                    `Daily report submitted for branch ${newRecord.branch_name}.`,
-                    'Daily Report Submitted',
-                    'report'
-                  );
+            const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
+
+            if (isSelfSubmitted) {
+               if (user.role === 'Admin') {
+                  triggerBlueToast(`You have submitted the branch daily report successfully for ${newRecord.branch_name}.`, 'Daily Report Submitted', 'report');
+               } else {
+                  triggerBlueToast(`You have submitted your daily report successfully for ${newRecord.branch_name}.`, 'Daily Report Submitted', 'report');
+               }
+            } else if (sameBranch) {
+               const submitter = await getUserDetails(newRecord.staff_id);
+               if (submitter.role === 'Admin') {
+                  if (user.role === 'Super Admin') {
+                     triggerBlueToast(`Admin ${submitter.name} has submitted the daily report for branch ${newRecord.branch_name}.`, 'Admin Report Submitted', 'report');
+                  }
+               } else {
+                  if (user.role === 'Admin' || user.role === 'Super Admin') {
+                     triggerBlueToast(`Staff ${submitter.name} has submitted the daily report for branch ${newRecord.branch_name}.`, 'Staff Report Submitted', 'report');
+                  }
                }
             }
          }
