@@ -1,39 +1,43 @@
-# Implementation Plan - Detailed Customer Work Analytics in Billing (Super Admin Only)
+# Implementation Plan - Purchase & Sales Analytics Dashboard (Super Admin Stock)
 
-This plan details the modifications to the **Customer Detail View** inside the **Billing & Records** screen (`StaffBillingScreen.tsx`). Currently, the customer card shows only piece/job counts for the 8 operational metrics. We will extend this to display total monetary amounts and pure weights for each category. Crucially, this detailed data will be visible **only to the Super Admin role**.
+This plan details the replacement of the existing Vault Inventory screen (`SuperAdminStockScreen.tsx`) with a high-fidelity **Purchase & Sales Analytics** dashboard. The screen will aggregate transaction-level data to show total purchases (Buy against Tunch + Buy Works) and total sales (Sell Works).
 
 ---
 
 ## Proposed Changes
 
-We will modify [StaffBillingScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffBillingScreen.tsx) to capture and conditionalize these details.
+We will completely rewrite [SuperAdminStockScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/SuperAdminStockScreen.tsx).
 
-### [Component] Billing & Records Screen
+### [Component] Stock Screen Replacement
 
-#### [MODIFY] [StaffBillingScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/StaffBillingScreen.tsx)
+#### [MODIFY] [SuperAdminStockScreen.tsx](file:///c:/Users/HP/Downloads/ppp/pkl/app/src/components/SuperAdminStockScreen.tsx)
 
-- **`Customer` Interface Definition:**
-  - Update `workBreakdown` properties to include optional aggregation properties:
-    - Amounts: `tunchAmount`, `markingAmount`, `shoulderingAmount`, `buyAmount`, `sellAmount`, `buyAgainstTunchAmount`, `pureGoldAgainstTunchAmount`, `pureSilverAgainstTunchAmount`.
-    - Weights: `buyAgainstTunchWeight`, `pureGoldAgainstTunchWeight`, `pureSilverAgainstTunchWeight`, `buyGoldWeight`, `buySilverWeight`, `sellGoldWeight`, `sellSilverWeight`.
-- **Aggregation Logic (`dynamicCustomers`):**
-  - Update the loops over completed tasks and transactions to sum monetary amounts (₹) and pure metal weights (g) alongside the existing piece/job counts.
-- **UI Customization (Customer Details Cards):**
-  - Read the `isSuperSa` flag (checks if user role is `Super Admin`).
-  - In the 8-card metrics grid, render the monetary totals and pure weights (e.g. `120.350g` and `₹45,000`) **only if** `isSuperSa` is `true`.
-  - For all other roles (e.g. Admin, Staff), render only the piece/job counts exactly as they are displayed today.
+1.  **Remove Existing Content:**
+    *   Delete the old vault status cards, metal toggle (Gold/Silver), and raw ledger list.
+2.  **Fetch Relevant Data:**
+    *   Query `transactions`, `tasks` (completed), `branches`, and `users` tables from Supabase.
+3.  **Data Aggregation Logic:**
+    *   **Total Purchase:**
+        *   **Buy against Tunch:** Filter transactions with `workType === 'Tunch'` where details/type indicate a cash exchange. Extract count, cash amount, and pure weight.
+        *   **Buy Works:** Filter transactions with `workType === 'Buy'`. Extract count, cash amount, and pure gold/silver weight.
+    *   **Total Sales:**
+        *   **Sell Works:** Filter transactions with `workType === 'Sell'`. Extract count, cash amount, and pure gold/silver weight.
+4.  **UI Layout Design:**
+    *   **Time Period Selectors:** Month-wise, Annually, Lifetime, and Custom Range options.
+    *   **Branch-wise Breakdowns:** A dropdown or branch card grids showing the breakdown of Purchase and Sales metrics for each branch.
+    *   **Summary Hero Panel:**
+        *   **Total Purchases:** Displays cumulative count (Pcs), total cash spent (₹), and sum of gold/silver weights.
+        *   **Total Sales:** Displays cumulative count (Pcs), total cash received (₹), and sum of gold/silver weights.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-- Build verification: `npm run build`
+- TypeScript compilation check: `npm run build`
 
 ### Manual Verification
-1. **Super Admin Perspective:** Log in as Super Admin, navigate to Billing & Records -> By Customer, select a customer card. Verify that each of the 8 cards shows:
-   - Count (Pieces or Jobs)
-   - Pure weight in grams (if applicable)
-   - Total amount in ₹
-2. **Admin/Staff Perspective:** Log in as regular Admin or Staff, navigate to Billing & Records -> By Customer, select a customer card. Verify that the cards **only** show the piece/job counts without any weights or monetary totals.
-3. **Data Integrity:** Check that the totals shown on the customer detail cards exactly match the values calculated in the Work Metrics page.
+1. Navigate to Super Admin -> Dashboard -> Command Center -> Stock.
+2. Verify that the screen is completely replaced with the **Purchase & Sales** dashboard.
+3. Select different time ranges (Month, Annual, Lifetime) and verify that the counts, weights, and monetary sums update.
+4. Verify that Purchases include both "Buy against Tunch" and "Buy Works", while Sales include "Sell Works".

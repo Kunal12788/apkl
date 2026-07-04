@@ -4,266 +4,603 @@ import { supabase } from '../supabaseClient';
 import { getCachedData, setCachedData } from '../cache';
 import { NotificationBell } from './NotificationBell';
 
-interface StockEntry {
+interface User {
   id: string;
-  date: string;
-  isoDate: string;
-  type: string;
-  branchName?: string;
-  pureGoldChange: number;
-  impureGoldChange: number;
-  pureSilverChange: number;
-  impureSilverChange: number;
-  details: string;
-  createdAt: string;
+  name: string;
+  role: string;
+  branch_id?: string | null;
 }
 
-const mapDbToSaEntry = (db: any): StockEntry => ({
-  id: db.id,
-  date: db.date,
-  isoDate: db.iso_date,
-  type: db.type,
-  branchName: db.branch_name,
-  pureGoldChange: Number(db.pure_gold_change || 0),
-  impureGoldChange: Number(db.impure_gold_change || 0),
-  pureSilverChange: Number(db.pure_silver_change || 0),
-  impureSilverChange: Number(db.impure_silver_change || 0),
-  details: db.details,
-  createdAt: db.created_at
-});
+interface Branch {
+  id: string;
+  name: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  created_by?: string;
+}
+
+interface Transaction {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  metal: 'Gold' | 'Silver';
+  type: string;
+  work_type: string;
+  amount: string;
+  date: string;
+  iso_date: string;
+  details?: string;
+  pure_weight?: string;
+  pureWeight?: string;
+  created_by?: string;
+  createdBy?: string;
+  isCashExchange?: boolean;
+  pieces?: string;
+}
+
+interface Task {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  metal: 'Gold' | 'Silver';
+  work_type: string;
+  status: string;
+  pieces?: string;
+  pure_weight?: string;
+  pureWeight?: string;
+  created_by?: string;
+  iso_date: string;
+  settlement_condition?: string;
+  cash_amount?: number;
+}
+
+interface MetricSummary {
+  purchaseCount: number;
+  purchaseAmount: number;
+  purchaseGoldWeight: number;
+  purchaseSilverWeight: number;
+
+  salesCount: number;
+  salesAmount: number;
+  salesGoldWeight: number;
+  salesSilverWeight: number;
+}
 
 export const SuperAdminStockScreen: React.FC = () => {
   const navigate = useNavigate();
 
-  const cachedSaLedger = getCachedData('super_admin_ledger_all');
-  const initialLedger = cachedSaLedger ? cachedSaLedger.map(mapDbToSaEntry) : [];
+  // Cached lists
+  const cachedUsers = getCachedData('users_list');
+  const cachedBranches = getCachedData('super_admin_branches');
+  const cachedCustomers = getCachedData('db_customers');
 
-  const [ledger, setLedger] = useState<StockEntry[]>(initialLedger);
-  const [loading, setLoading] = useState<boolean>(cachedSaLedger === null);
-  const [activeMetal, setActiveMetal] = useState<'Gold' | 'Silver'>('Gold');
+  // Core state
+  const [users, setUsers] = useState<User[]>(cachedUsers || []);
+  const [branches, setBranches] = useState<Branch[]>(cachedBranches || []);
+  const [customers, setCustomers] = useState<Customer[]>(cachedCustomers || []);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<Task[]>([]);
   
+  const [loading, setLoading] = useState<boolean>(true);
+  const [branchSearch, setBranchSearch] = useState<string>('');
+
+  // Time range filters
+  const [timeRangeMode, setTimeRangeMode] = useState<'month' | 'annual' | 'lifetime' | 'custom'>('lifetime');
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+
+  // Helper pad function for dates
+  const pad = (n: number) => n < 10 ? `0${n}` : n;
+
+  // Sync date range based on Time Mode selection
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('super_admin_ledger')
-          .select('*')
-          .order('created_at', { ascending: false });
+    if (timeRangeMode === 'month') {
+      const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
+      setFromDate(`${selectedYear}-${pad(selectedMonth + 1)}-01`);
+      setToDate(`${selectedYear}-${pad(selectedMonth + 1)}-${pad(lastDay.getDate())}`);
+    } else if (timeRangeMode === 'annual') {
+      setFromDate(`${selectedYear}-01-01`);
+      setToDate(`${selectedYear}-12-31`);
+    } else if (timeRangeMode === 'lifetime') {
+      setFromDate('');
+      setToDate('');
+    }
+  }, [timeRangeMode, selectedMonth, selectedYear]);
 
-        if (error) throw error;
+  // Initial and real-time data fetching
+  const fetchData = async () => {
+    try {
+      const [usersRes, branchesRes, customersRes, transactionsRes, tasksRes] = await Promise.all([
+        supabase.from('users').select('id, name, role, branch_id'),
+        supabase.from('branches').select('id, name'),
+        supabase.from('customers').select('id, name, created_by'),
+        supabase.from('transactions').select('*'),
+        supabase.from('tasks').select('*').eq('status', 'Completed')
+      ]);
 
-        if (data) {
-          setCachedData('super_admin_ledger_all', data);
-          setLedger(data.map(mapDbToSaEntry));
-        }
-      } catch (err) {
-        console.error('Error fetching stock data:', err);
-      } finally {
-        setLoading(false);
+      if (usersRes.data) {
+        setUsers(usersRes.data);
+        setCachedData('users_list', usersRes.data);
       }
-    };
+      if (branchesRes.data) {
+        setBranches(branchesRes.data);
+        setCachedData('super_admin_branches', branchesRes.data);
+      }
+      if (customersRes.data) {
+        setCustomers(customersRes.data);
+        setCachedData('db_customers', customersRes.data);
+      }
+      if (transactionsRes.data) {
+        setTransactions(transactionsRes.data);
+      }
+      if (tasksRes.data) {
+        setCompletedTasks(tasksRes.data);
+      }
+    } catch (err) {
+      console.error('Error fetching dashboard stock metrics:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
+    const syncSub = supabase.channel('public:stock_screen_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => fetchData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => fetchData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(syncSub);
+    };
   }, []);
 
-  const getFilteredEntries = () => {
-    return ledger.filter(entry => {
-      if (activeMetal === 'Gold') {
-        return Math.abs(entry.pureGoldChange) > 0 || Math.abs(entry.impureGoldChange) > 0;
-      } else {
-        return Math.abs(entry.pureSilverChange) > 0 || Math.abs(entry.impureSilverChange) > 0;
+  // Filter items by Date Range
+  const filterByDateRange = (isoDateStr?: string) => {
+    if (!isoDateStr) return false;
+    const datePart = isoDateStr.split('T')[0];
+    if (fromDate && datePart < fromDate) return false;
+    if (toDate && datePart > toDate) return false;
+    return true;
+  };
+
+  // Helper function to resolve the branch name for a task or transaction
+  const getItemBranchName = (item: any) => {
+    const creatorId = item.created_by || item.createdBy || item.staff_id;
+    if (creatorId) {
+      const u = users.find(user => user.id === creatorId);
+      if (u && u.branch_id) {
+        const br = branches.find(b => b.id === u.branch_id);
+        if (br) return br.name;
+      }
+    }
+    
+    // Fallback: lookup by customer creator's branch
+    const custId = item.customer_id || item.customerId;
+    const custName = item.customer_name || item.customerName;
+    if (custId || custName) {
+      const dbCust = customers.find(c => (custId && c.id === custId) || (custName && c.name.trim().toLowerCase() === custName.trim().toLowerCase()));
+      if (dbCust && dbCust.created_by) {
+        const u = users.find(user => user.id === dbCust.created_by);
+        if (u && u.branch_id) {
+          const br = branches.find(b => b.id === u.branch_id);
+          if (br) return br.name;
+        }
+      }
+    }
+    return 'Head Office';
+  };
+
+  // Helper list to prevent double counting completed Tunch tasks
+  const tunchIncrementedTasks = new Set<string>();
+
+  // Process data and aggregate metrics per branch & globally
+  const aggregateMetrics = () => {
+    const breakdown: Record<string, MetricSummary> = {};
+    const global: MetricSummary = {
+      purchaseCount: 0,
+      purchaseAmount: 0,
+      purchaseGoldWeight: 0,
+      purchaseSilverWeight: 0,
+      salesCount: 0,
+      salesAmount: 0,
+      salesGoldWeight: 0,
+      salesSilverWeight: 0
+    };
+
+    tunchIncrementedTasks.clear();
+
+    // 1. Process tasks (for pure gold/silver settled Tunch tasks that lack receipts)
+    completedTasks.forEach(task => {
+      if (!filterByDateRange(task.iso_date)) return;
+
+      const cond = (task.settlement_condition || '').toLowerCase();
+      const isPureGold = cond.includes('pure gold');
+      const isPureSilver = cond.includes('pure silver');
+      
+      if (isPureGold || isPureSilver) {
+        const branchName = getItemBranchName(task);
+        if (!breakdown[branchName]) {
+          breakdown[branchName] = {
+            purchaseCount: 0, purchaseAmount: 0, purchaseGoldWeight: 0, purchaseSilverWeight: 0,
+            salesCount: 0, salesAmount: 0, salesGoldWeight: 0, salesSilverWeight: 0
+          };
+        }
+
+        const pcs = Number(task.pieces || 1) || 1;
+        const pureW = parseFloat(task.pure_weight || task.pureWeight || '0') || 0;
+        
+        let amt = 0;
+        const isCash = cond.includes('cash');
+        if (isCash && task.cash_amount !== null && task.cash_amount !== undefined) {
+          amt = Number(task.cash_amount);
+        } else {
+          const amountMatch = cond.match(/[₹?](\d[\d,]*)/);
+          amt = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+        }
+
+        // Tunch task counts as a purchase category
+        breakdown[branchName].purchaseCount += pcs;
+        global.purchaseCount += pcs;
+
+        breakdown[branchName].purchaseAmount += amt;
+        global.purchaseAmount += amt;
+
+        tunchIncrementedTasks.add(task.id);
+
+        if (isPureGold) {
+          breakdown[branchName].purchaseGoldWeight += pureW;
+          global.purchaseGoldWeight += pureW;
+        } else {
+          breakdown[branchName].purchaseSilverWeight += pureW;
+          global.purchaseSilverWeight += pureW;
+        }
       }
     });
+
+    transactions.forEach(t => {
+      if (!filterByDateRange(t.iso_date)) return;
+      if (t.work_type === 'Dues Payment') return;
+
+      const branchName = getItemBranchName(t);
+      if (!breakdown[branchName]) {
+        breakdown[branchName] = {
+          purchaseCount: 0, purchaseAmount: 0, purchaseGoldWeight: 0, purchaseSilverWeight: 0,
+          salesCount: 0, salesAmount: 0, salesGoldWeight: 0, salesSilverWeight: 0
+        };
+      }
+
+      const pcs = Number(t.pieces || 1) || 1;
+      const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
+      const pureW = parseFloat(t.pureWeight || t.pure_weight || '0') || 0;
+      const metalLower = (t.metal || 'Gold').toLowerCase();
+
+      if (t.work_type === 'Tunch') {
+        const details = (t.details || '').toLowerCase();
+        const type = (t.type || '').toLowerCase();
+        const isServiceFee = type.includes('service fee') || details.includes('service fee');
+
+        if (!isServiceFee) {
+          const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
+          const isPureGold = details.includes('pure gold');
+          const isPureSilver = details.includes('pure silver');
+
+          if (isCash || isPureGold || isPureSilver) {
+            // "Buy Against Tunch" / "Gold Against Tunch" / "Silver Against Tunch" -> Purchase
+            breakdown[branchName].purchaseCount += pcs;
+            global.purchaseCount += pcs;
+
+            breakdown[branchName].purchaseAmount += amtNum;
+            global.purchaseAmount += amtNum;
+
+            if (metalLower.includes('silver') || isPureSilver) {
+              breakdown[branchName].purchaseSilverWeight += pureW;
+              global.purchaseSilverWeight += pureW;
+            } else {
+              breakdown[branchName].purchaseGoldWeight += pureW;
+              global.purchaseGoldWeight += pureW;
+            }
+          }
+        }
+      } else if (t.work_type === 'Buy') {
+        // "Buy Works" -> Purchase
+        breakdown[branchName].purchaseCount += pcs;
+        global.purchaseCount += pcs;
+
+        breakdown[branchName].purchaseAmount += amtNum;
+        global.purchaseAmount += amtNum;
+
+        if (metalLower.includes('silver')) {
+          breakdown[branchName].purchaseSilverWeight += pureW;
+          global.purchaseSilverWeight += pureW;
+        } else {
+          breakdown[branchName].purchaseGoldWeight += pureW;
+          global.purchaseGoldWeight += pureW;
+        }
+      } else if (t.work_type === 'Sell') {
+        // "Sell Works" -> Sales
+        breakdown[branchName].salesCount += pcs;
+        global.salesCount += pcs;
+
+        breakdown[branchName].salesAmount += amtNum;
+        global.salesAmount += amtNum;
+
+        if (metalLower.includes('silver')) {
+          breakdown[branchName].salesSilverWeight += pureW;
+          global.salesSilverWeight += pureW;
+        } else {
+          breakdown[branchName].salesGoldWeight += pureW;
+          global.salesGoldWeight += pureW;
+        }
+      }
+    });
+
+    return { breakdown, global };
   };
 
-  const getStockTotals = () => {
-    const pureGold = ledger.reduce((sum, e) => sum + e.pureGoldChange, 0);
-    const impureGold = ledger.reduce((sum, e) => sum + e.impureGoldChange, 0);
-    const pureSilver = ledger.reduce((sum, e) => sum + e.pureSilverChange, 0);
-    const impureSilver = ledger.reduce((sum, e) => sum + e.impureSilverChange, 0);
-    return { pureGold, impureGold, pureSilver, impureSilver };
-  };
+  const { breakdown, global } = aggregateMetrics();
 
-  const totals = getStockTotals();
-  const currentEntries = getFilteredEntries();
+  // Filter branches list based on search term
+  const filteredBranches = branches.filter(b => b.name.toLowerCase().includes(branchSearch.toLowerCase()));
 
+  // Render loading state
   if (loading) {
     return (
-      <div className="bg-background text-on-background font-body-md min-h-[100svh] flex flex-col items-center justify-center ambient-bg relative z-10 w-full overflow-hidden">
+      <div className="bg-background text-on-background min-h-[100svh] flex flex-col items-center justify-center ambient-bg relative z-10 w-full overflow-hidden">
         <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin mb-4"></div>
-        <p className="font-label-caps text-[10px] tracking-widest text-outline">Retrieving Vault Inventory...</p>
+        <p className="text-[10px] tracking-widest text-outline uppercase font-black">Analyzing transaction registry...</p>
       </div>
     );
   }
 
   return (
     <div className="bg-background text-on-background font-body w-full min-h-[100svh] relative overflow-y-auto hide-scrollbar ambient-bg">
+      {/* Premium Header */}
       <header className="px-6 pt-8 pb-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-outline-variant/20 shadow-sm">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-primary active:scale-95 transition-transform hover:bg-outline-variant/20">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div>
-            <h1 className="font-headline text-xl font-bold text-primary leading-tight">Vault Inventory</h1>
-            <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Detailed Stock History</p>
+            <h1 className="font-headline text-xl font-bold text-primary leading-tight">Purchase & Sales</h1>
+            <p className="text-[10px] text-outline font-bold uppercase tracking-widest">Corporate Trade Volume</p>
           </div>
         </div>
         <NotificationBell />
       </header>
 
-      <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-6">
-        
-
-        {/* Metal Toggle */}
-        <div className="flex flex-col gap-3 bg-white p-3 rounded-[2rem] border border-outline-variant/30 mb-8 shadow-[0_4px_20px_rgb(0,0,0,0.03)] relative z-10">
-          {['Gold', 'Silver'].map((metal) => {
-            const isActive = activeMetal === metal;
-            const isGold = metal === 'Gold';
-            const icon = isGold ? 'workspace_premium' : 'workspace_premium';
-            const purity = isGold ? '24K / 22K' : '99.9% FINE';
-            
-            return (
+      <main className="px-6 pt-6 pb-24 max-w-5xl mx-auto space-y-8">
+        {/* Premium Time Range Selectors */}
+        <section className="bg-white rounded-[2rem] p-5 shadow-[0_4px_30px_rgba(0,0,0,0.02)] border border-outline-variant/20 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: 'month', label: 'Month-wise' },
+              { id: 'annual', label: 'Annually' },
+              { id: 'lifetime', label: 'Lifetime' },
+              { id: 'custom', label: 'Custom' }
+            ].map(mode => (
               <button
-                key={metal}
-                onClick={() => setActiveMetal(metal as 'Gold' | 'Silver')}
-                className={`relative flex items-center p-4 rounded-[1.5rem] transition-all duration-300 ${
-                  isActive 
-                    ? isGold 
-                      ? 'bg-gradient-to-r from-amber-500 to-amber-600 shadow-md ring-1 ring-amber-400 ring-offset-2' 
-                      : 'bg-gradient-to-r from-slate-400 to-slate-500 shadow-md ring-1 ring-slate-400 ring-offset-2'
-                    : 'bg-slate-50/50 hover:bg-slate-50 text-outline'
+                key={mode.id}
+                onClick={() => setTimeRangeMode(mode.id as any)}
+                className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                  timeRangeMode === mode.id
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-surface-container text-outline hover:bg-surface-variant'
                 }`}
               >
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border ${isActive ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-outline-variant/20 text-outline'}`}>
-                    <span className="material-symbols-outlined text-xl">{icon}</span>
-                  </div>
-                  <div className="text-left">
-                    <p className={`text-[10px] uppercase tracking-widest font-bold mb-0.5 ${isActive ? 'text-white/80' : 'text-outline/60'}`}>{purity}</p>
-                    <p className={`text-base font-bold font-headline tracking-wide ${isActive ? 'text-white' : 'text-primary'}`}>{metal} Stock</p>
-                  </div>
-                </div>
+                {mode.label}
               </button>
-            );
-          })}
-        </div>
-
-        {/* Totals Hero Card */}
-        <div className={`relative overflow-hidden rounded-[2rem] p-6 shadow-sm border bg-gradient-to-br ${activeMetal === 'Gold' ? 'from-[#fff9f0] to-[#fff3e0] border-amber-500/20' : 'from-slate-50 to-slate-100 border-slate-400/20'}`}>
-          <div className="relative z-10 flex justify-between items-start mb-6 gap-4">
-            <div className="flex flex-col">
-              <p className={`font-label text-[10px] uppercase tracking-[0.2em] font-extrabold mb-1.5 ${activeMetal === 'Gold' ? 'text-amber-600' : 'text-slate-500'}`}>
-                Corporate Treasury
-              </p>
-              <h2 className="font-headline font-black text-2xl text-primary tracking-wide">
-                {activeMetal} Vault Status
-              </h2>
-            </div>
-            
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center border shadow-sm shrink-0 ${activeMetal === 'Gold' ? 'bg-amber-100/50 border-amber-200 text-amber-600' : 'bg-slate-200/50 border-slate-300 text-slate-500'}`}>
-              <span className="material-symbols-outlined text-2xl">
-                inventory_2
-              </span>
-            </div>
+            ))}
           </div>
-          
-          <div className="relative z-10 w-full">
-            {/* Pure Metal Card Only */}
-            <div className="bg-white p-5 rounded-2xl border border-outline-variant/10 shadow-sm relative overflow-hidden flex flex-col gap-4">
-              <div className={`absolute top-0 left-0 w-1.5 h-full ${activeMetal === 'Gold' ? 'bg-amber-400' : 'bg-slate-300'}`}></div>
-              
-              <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center border ${activeMetal === 'Gold' ? 'border-amber-200 text-amber-500' : 'border-slate-200 text-slate-500'}`}>
-                  <span className="material-symbols-outlined text-2xl">diamond</span>
-                </div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-outline mb-0.5">Total Pure {activeMetal}</p>
-                  <p className="text-xs text-outline/70 font-medium">{activeMetal === 'Gold' ? '24K Standard Vault Weight' : '99.9% Fine Vault Weight'}</p>
-                </div>
-              </div>
-              
-              <div className="flex items-baseline gap-2 mt-2">
-                <p className={`font-headline font-black text-4xl tracking-tighter ${activeMetal === 'Gold' ? 'text-[#755b00]' : 'text-slate-700'}`}>
-                  {(activeMetal === 'Gold' ? totals.pureGold : totals.pureSilver).toFixed(3)}
-                </p>
-                <span className="text-outline font-black text-sm tracking-widest">GRAMS</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* History List */}
-        <div>
-          <h3 className="font-headline font-bold text-lg text-primary mb-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-outline">history</span>
-            Transaction History
-          </h3>
-          
-          {currentEntries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 animate-fade-in">
-              <div className="relative mb-6 group">
-                <div className={`absolute inset-0 rounded-full blur-xl group-hover:blur-2xl transition-all duration-500 ${activeMetal === 'Gold' ? 'bg-amber-500/10' : 'bg-slate-400/10'}`}></div>
-                <div className={`w-20 h-20 rounded-full flex items-center justify-center shadow-inner relative z-10 border-2 border-white ${activeMetal === 'Gold' ? 'bg-gradient-to-br from-amber-500/5 to-amber-500/10 text-amber-600' : 'bg-gradient-to-br from-slate-400/5 to-slate-400/10 text-slate-500'}`}>
-                  <span className="material-symbols-outlined text-4xl">inventory_2</span>
-                </div>
-              </div>
-              <h3 className="font-headline font-bold text-xl text-primary mb-2">No History Found</h3>
-              <p className="text-xs text-outline text-center">There are no vault transactions recorded for {activeMetal} yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {currentEntries.map((entry, idx) => {
-                const pureChange = activeMetal === 'Gold' ? entry.pureGoldChange : entry.pureSilverChange;
-                const impureChange = activeMetal === 'Gold' ? entry.impureGoldChange : entry.impureSilverChange;
-                
-                return (
-                  <div key={idx} className="luxury-card bg-white rounded-3xl border border-outline-variant/20 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
-                    <div className={`absolute top-0 right-0 w-32 h-32 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700 pointer-events-none ${activeMetal === 'Gold' ? 'bg-gradient-to-bl from-amber-500/[0.05] to-transparent' : 'bg-gradient-to-bl from-slate-500/[0.05] to-transparent'}`}></div>
-                    
-                    <div className="p-5 sm:p-6 flex flex-col md:flex-row justify-between md:items-center gap-5 relative z-10">
-                      
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className={`font-black text-[9px] uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-sm border ${activeMetal === 'Gold' ? 'bg-amber-50 text-amber-700 border-amber-200/50' : 'bg-slate-50 text-slate-700 border-slate-200/50'}`}>
-                            {entry.type}
-                          </span>
-                          <div className="flex items-center gap-1.5 text-outline/80">
-                            <span className="material-symbols-outlined text-[14px]">schedule</span>
-                            <span className="text-[10px] font-bold tracking-wider">{new Date(entry.createdAt).toLocaleDateString('en-GB')} {new Date(entry.createdAt).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'})}</span>
-                          </div>
-                        </div>
-                        <h4 className="font-headline font-black text-primary text-lg tracking-wide">{entry.branchName || 'Corporate Head Office'}</h4>
-                        <p className="text-xs text-outline/80 font-medium mt-1.5 leading-relaxed">{entry.details}</p>
-                      </div>
-
-                      <div className="flex gap-3 md:text-right shrink-0">
-                        {Math.abs(pureChange) > 0 && (
-                          <div className={`bg-white border p-3.5 rounded-2xl min-w-[110px] relative overflow-hidden transition-colors ${pureChange > 0 ? 'border-emerald-500/20 group-hover:border-emerald-500/40 shadow-[0_2px_10px_rgba(16,185,129,0.05)]' : pureChange < 0 ? 'border-error/20 group-hover:border-error/40 shadow-[0_2px_10px_rgba(239,68,68,0.05)]' : 'border-outline-variant/20'}`}>
-                            <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${pureChange > 0 ? 'text-emerald-500' : 'text-error'}`}>diamond</span>
-                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-outline mb-1 relative z-10">Pure</p>
-                            <p className={`font-black font-headline text-lg tracking-tight relative z-10 ${pureChange > 0 ? 'text-emerald-600' : pureChange < 0 ? 'text-error' : 'text-primary'}`}>
-                              {pureChange > 0 ? '+' : ''}{pureChange.toFixed(3)}<span className="text-xs ml-0.5">g</span>
-                            </p>
-                          </div>
-                        )}
-                        {Math.abs(impureChange) > 0 && (
-                          <div className={`bg-white border p-3.5 rounded-2xl min-w-[110px] relative overflow-hidden transition-colors ${impureChange > 0 ? 'border-emerald-500/20 group-hover:border-emerald-500/40 shadow-[0_2px_10px_rgba(16,185,129,0.05)]' : impureChange < 0 ? 'border-error/20 group-hover:border-error/40 shadow-[0_2px_10px_rgba(239,68,68,0.05)]' : 'border-outline-variant/20'}`}>
-                            <span className={`material-symbols-outlined absolute -right-2 -bottom-2 text-4xl opacity-[0.03] ${impureChange > 0 ? 'text-emerald-500' : 'text-error'}`}>local_fire_department</span>
-                            <p className="text-[9px] uppercase tracking-[0.2em] font-black text-outline mb-1 relative z-10">Impure</p>
-                            <p className={`font-black font-headline text-lg tracking-tight relative z-10 ${impureChange > 0 ? 'text-emerald-600' : impureChange < 0 ? 'text-error' : 'text-primary'}`}>
-                              {impureChange > 0 ? '+' : ''}{impureChange.toFixed(3)}<span className="text-xs ml-0.5">g</span>
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  </div>
-                );
-              })}
+          {/* Conditional Dropdown bar */}
+          {timeRangeMode === 'month' && (
+            <div className="flex gap-3 animate-fade-in">
+              <select
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(Number(e.target.value))}
+                className="flex-1 bg-surface-container border border-outline-variant/30 rounded-xl px-3 py-2 text-xs font-bold text-primary focus:outline-none"
+              >
+                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => (
+                  <option key={i} value={i}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={e => setSelectedYear(Number(e.target.value))}
+                className="flex-1 bg-surface-container border border-outline-variant/30 rounded-xl px-3 py-2 text-xs font-bold text-primary focus:outline-none"
+              >
+                {[0, 1, 2, 3, 4, 5].map(offset => {
+                  const y = new Date().getFullYear() - offset;
+                  return <option key={y} value={y}>{y}</option>;
+                })}
+              </select>
             </div>
           )}
-        </div>
-        
+
+          {timeRangeMode === 'annual' && (
+            <div className="animate-fade-in">
+              <select
+                value={selectedYear}
+                onChange={e => setSelectedYear(Number(e.target.value))}
+                className="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-3 py-2 text-xs font-bold text-primary focus:outline-none"
+              >
+                {[0, 1, 2, 3, 4, 5].map(offset => {
+                  const y = new Date().getFullYear() - offset;
+                  return <option key={y} value={y}>{y}</option>;
+                })}
+              </select>
+            </div>
+          )}
+
+          {timeRangeMode === 'custom' && (
+            <div className="grid grid-cols-2 gap-3 animate-fade-in">
+              <div>
+                <label className="text-[8px] font-bold uppercase tracking-wider text-outline mb-1 block">From</label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={e => setFromDate(e.target.value)}
+                  className="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-3 py-2 text-xs font-bold text-primary focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[8px] font-bold uppercase tracking-wider text-outline mb-1 block">To</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={e => setToDate(e.target.value)}
+                  className="w-full bg-surface-container border border-outline-variant/30 rounded-xl px-3 py-2 text-xs font-bold text-primary focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Global Summary Panel */}
+        <section className="space-y-4">
+          <h3 className="font-headline font-bold text-sm text-outline uppercase tracking-wider px-1">Global Trade volume</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            {/* Purchase Summary Card */}
+            <div className="luxury-card p-6 bg-gradient-to-br from-emerald-50/50 to-teal-50/10 border-l-4 border-l-emerald-500 shadow-sm relative overflow-hidden flex flex-col justify-between">
+              <span className="material-symbols-outlined absolute -right-4 -top-4 text-7xl opacity-5 text-emerald-600">shopping_bag</span>
+              <div>
+                <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Total Purchases</p>
+                <h4 className="font-headline font-black text-2xl text-primary mt-1">₹{global.purchaseAmount.toLocaleString('en-IN')}</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-3 border-t border-outline-variant/10 pt-4 mt-6 text-left">
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Volume</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.purchaseCount} Pcs</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Gold (Au)</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.purchaseGoldWeight.toFixed(2)}g</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Silver (Ag)</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.purchaseSilverWeight.toFixed(2)}g</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Sales Summary Card */}
+            <div className="luxury-card p-6 bg-gradient-to-br from-amber-50/50 to-orange-50/10 border-l-4 border-l-amber-500 shadow-sm relative overflow-hidden flex flex-col justify-between">
+              <span className="material-symbols-outlined absolute -right-4 -top-4 text-7xl opacity-5 text-amber-600">sell</span>
+              <div>
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Total Sales</p>
+                <h4 className="font-headline font-black text-2xl text-primary mt-1">₹{global.salesAmount.toLocaleString('en-IN')}</h4>
+              </div>
+              <div className="grid grid-cols-3 gap-3 border-t border-outline-variant/10 pt-4 mt-6 text-left">
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Volume</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.salesCount} Pcs</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Gold (Au)</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.salesGoldWeight.toFixed(2)}g</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Silver (Ag)</p>
+                  <p className="text-sm font-extrabold text-primary mt-0.5">{global.salesSilverWeight.toFixed(2)}g</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        {/* Branch Breakdowns */}
+        <section className="space-y-5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-1">
+            <h3 className="font-headline font-bold text-sm text-outline uppercase tracking-wider">Branch Performance</h3>
+            <div className="relative w-full sm:w-64">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-sm text-outline">search</span>
+              <input
+                type="text"
+                placeholder="Search branch name..."
+                value={branchSearch}
+                onChange={e => setBranchSearch(e.target.value)}
+                className="w-full bg-white border border-outline-variant/30 rounded-full pl-9 pr-4 py-2 text-xs font-bold text-primary focus:outline-none focus:border-primary transition-all shadow-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {filteredBranches.map(branch => {
+              const data = breakdown[branch.name] || {
+                purchaseCount: 0, purchaseAmount: 0, purchaseGoldWeight: 0, purchaseSilverWeight: 0,
+                salesCount: 0, salesAmount: 0, salesGoldWeight: 0, salesSilverWeight: 0
+              };
+
+              return (
+                <div key={branch.id} className="luxury-card p-5 bg-white border border-outline-variant/10 shadow-[0_4px_25px_rgba(0,0,0,0.02)] space-y-4">
+                  <div className="flex items-center gap-2 border-b border-outline-variant/5 pb-2.5">
+                    <span className="material-symbols-outlined text-[#003366] text-lg">storefront</span>
+                    <h4 className="font-headline font-extrabold text-primary text-base">{branch.name}</h4>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Branch Purchase Box */}
+                    <div className="bg-surface-container/20 border border-outline-variant/5 rounded-2xl p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">Purchases</span>
+                        <span className="text-xs font-extrabold text-primary">₹{data.purchaseAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-left pt-1.5 border-t border-outline-variant/5">
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Volume</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.purchaseCount} Pcs</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Gold (Au)</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.purchaseGoldWeight.toFixed(2)}g</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Silver (Ag)</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.purchaseSilverWeight.toFixed(2)}g</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Branch Sales Box */}
+                    <div className="bg-surface-container/20 border border-outline-variant/5 rounded-2xl p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">Sales</span>
+                        <span className="text-xs font-extrabold text-primary">₹{data.salesAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-left pt-1.5 border-t border-outline-variant/5">
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Volume</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.salesCount} Pcs</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Gold (Au)</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.salesGoldWeight.toFixed(2)}g</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-bold text-outline uppercase tracking-wider">Silver (Ag)</p>
+                          <p className="text-xs font-bold text-primary mt-0.5">{data.salesSilverWeight.toFixed(2)}g</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {filteredBranches.length === 0 && (
+              <div className="text-center text-outline text-xs font-bold py-10">No branches match your search query.</div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );
