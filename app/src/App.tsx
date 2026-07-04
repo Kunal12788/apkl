@@ -195,9 +195,19 @@ function AppContent() {
     if (!user) return;
 
     const checkSameBranch = async (creatorId: string) => {
+      if (!creatorId) return false;
       if (creatorId === user.id) return false;
-      const { data: u } = await supabase.from('users').select('branch_id').eq('id', creatorId).maybeSingle();
-      return !!(u && u.branch_id === user.branch_id);
+      try {
+        const { data: u, error } = await supabase.from('users').select('branch_id').eq('id', creatorId).maybeSingle();
+        if (error) {
+          console.error("checkSameBranch DB error:", error);
+          return false;
+        }
+        return !!(u && u.branch_id === user.branch_id);
+      } catch (err) {
+        console.error("checkSameBranch exception:", err);
+        return false;
+      }
     };
 
     const getUserDetails = async (userId: string) => {
@@ -235,7 +245,7 @@ function AppContent() {
 
          if (payload.eventType === 'INSERT' && newRecord) {
             if (newRecord.created_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+               const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
                if (sameBranch) {
                   triggerBlueToast(
                     `A new ${newRecord.work_type} transaction has been registered for ${newRecord.customer_name}.`,
@@ -245,7 +255,7 @@ function AppContent() {
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
             if (sameBranch) {
                const wasUnpaid = oldRecord.status === 'Unpaid';
                const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
@@ -275,7 +285,7 @@ function AppContent() {
 
          if (payload.eventType === 'INSERT' && newRecord) {
             const isCreator = newRecord.created_by === user.id;
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
             
             if (isCreator) {
                triggerBlueToast(
@@ -317,7 +327,7 @@ function AppContent() {
                }
             }
          } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.created_by));
+            const sameBranch = user.role === 'Super Admin' || (user.branch_id && newRecord.branch_id === user.branch_id);
             const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to;
              
             if (sameBranch || isRelated) {

@@ -88,7 +88,8 @@ export const GlobalFAB: React.FC = () => {
                 total_weight: data.totalWeight || null,
                 pending_pure_liability: false,
                 pending_cash_liability: false,
-                was_settlement_category: false
+                was_settlement_category: false,
+                branch_id: user?.branch_id || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -287,7 +288,8 @@ export const GlobalFAB: React.FC = () => {
                 impure_weight: String(data.impureWeight || 0),
                 purity_percentage: data.purity || '',
                 cash_rate_per_gram: cashRate,
-                is_cash_exchange: true
+                is_cash_exchange: true,
+                branch_id: user?.branch_id || null
               };
 
               const { error: txnError } = await supabase.from('transactions').insert([newTxn]);
@@ -334,7 +336,8 @@ export const GlobalFAB: React.FC = () => {
                 total_weight: isMarking ? (data.totalWeight || null) : null,
                 pending_pure_liability: false,
                 pending_cash_liability: false,
-                was_settlement_category: false
+                was_settlement_category: false,
+                branch_id: user?.branch_id || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -450,7 +453,8 @@ export const GlobalFAB: React.FC = () => {
                 images: data.images,
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability,
-                was_settlement_category: true
+                was_settlement_category: true,
+                branch_id: user?.branch_id || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -501,7 +505,8 @@ export const GlobalFAB: React.FC = () => {
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   status: data.feeStatus || 'Paid',
                   details: 'Service Fee (Tunch Only)',
-                  created_by: user?.id || ''
+                  created_by: user?.id || '',
+                  branch_id: user?.branch_id || null
                 };
                 await supabase.from('transactions').insert([newTxn]);
               }
@@ -544,7 +549,8 @@ export const GlobalFAB: React.FC = () => {
                 images: data.images,
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability,
-                cash_handling_mode: handlingMode
+                cash_handling_mode: handlingMode,
+                branch_id: user?.branch_id || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -614,7 +620,8 @@ export const GlobalFAB: React.FC = () => {
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   status: data.feeStatus || 'Paid',
                   details: 'Service Fee (Tunch Cash)',
-                  created_by: user?.id || ''
+                  created_by: user?.id || '',
+                  branch_id: user?.branch_id || null
                 };
                 await supabase.from('transactions').insert([newTxn]);
               }

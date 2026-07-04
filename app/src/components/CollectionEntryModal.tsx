@@ -175,6 +175,7 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
         brought_by: 'Collection Staff',
         assigned_to: 'Pending',
         product_type: formData.category === 'TUNCH' ? 'Jewellery' : formData.category === 'MARKING' ? 'Coin Bar' : 'Sample',
+        branch_id: user?.branch_id || null
       };
       
       try {
