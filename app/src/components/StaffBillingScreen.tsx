@@ -81,6 +81,25 @@ interface Customer {
     buyAgainstTunch: number;
     pureGoldAgainstTunch: number;
     pureSilverAgainstTunch: number;
+    
+    // Amounts
+    tunchAmount: number;
+    markingAmount: number;
+    shoulderingAmount: number;
+    buyAmount: number;
+    sellAmount: number;
+    buyAgainstTunchAmount: number;
+    pureGoldAgainstTunchAmount: number;
+    pureSilverAgainstTunchAmount: number;
+
+    // Weights
+    buyAgainstTunchWeight: number;
+    pureGoldAgainstTunchWeight: number;
+    pureSilverAgainstTunchWeight: number;
+    buyGoldWeight: number;
+    buySilverWeight: number;
+    sellGoldWeight: number;
+    sellSilverWeight: number;
   };
   ledger: Transaction[];
   phone?: string;
@@ -1660,7 +1679,26 @@ export const StaffBillingScreen: React.FC = () => {
             sell: 0,
             buyAgainstTunch: 0,
             pureGoldAgainstTunch: 0,
-            pureSilverAgainstTunch: 0
+            pureSilverAgainstTunch: 0,
+            
+            // Amounts
+            tunchAmount: 0,
+            markingAmount: 0,
+            shoulderingAmount: 0,
+            buyAmount: 0,
+            sellAmount: 0,
+            buyAgainstTunchAmount: 0,
+            pureGoldAgainstTunchAmount: 0,
+            pureSilverAgainstTunchAmount: 0,
+
+            // Weights
+            buyAgainstTunchWeight: 0,
+            pureGoldAgainstTunchWeight: 0,
+            pureSilverAgainstTunchWeight: 0,
+            buyGoldWeight: 0,
+            buySilverWeight: 0,
+            sellGoldWeight: 0,
+            sellSilverWeight: 0
           },
           ledger: [],
           phone: c.phone,
@@ -1707,12 +1745,28 @@ export const StaffBillingScreen: React.FC = () => {
 
         if (cust) {
           const pcs = Number(task.pieces || 1) || 1;
+          const pureW = parseFloat(task.pure_weight || task.pureWeight || '0') || 0;
+          
+          let amt = 0;
+          const isCash = cond.includes('cash');
+          if (isCash && (task.cash_amount !== null && task.cash_amount !== undefined)) {
+            amt = Number(task.cash_amount);
+          } else {
+            const amountMatch = cond.match(/[₹?](\d[\d,]*)/);
+            amt = amountMatch ? parseFloat(amountMatch[1].replace(/,/g, '')) : 0;
+          }
+
           cust.workBreakdown.tunch += pcs;
+          cust.workBreakdown.tunchAmount += amt;
           tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
+            cust.workBreakdown.pureGoldAgainstTunchAmount += amt;
+            cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
           } else {
             cust.workBreakdown.pureSilverAgainstTunch += pcs;
+            cust.workBreakdown.pureSilverAgainstTunchAmount += amt;
+            cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;
           }
         }
       }
@@ -1759,7 +1813,26 @@ export const StaffBillingScreen: React.FC = () => {
             sell: 0,
             buyAgainstTunch: 0,
             pureGoldAgainstTunch: 0,
-            pureSilverAgainstTunch: 0
+            pureSilverAgainstTunch: 0,
+
+            // Amounts
+            tunchAmount: 0,
+            markingAmount: 0,
+            shoulderingAmount: 0,
+            buyAmount: 0,
+            sellAmount: 0,
+            buyAgainstTunchAmount: 0,
+            pureGoldAgainstTunchAmount: 0,
+            pureSilverAgainstTunchAmount: 0,
+
+            // Weights
+            buyAgainstTunchWeight: 0,
+            pureGoldAgainstTunchWeight: 0,
+            pureSilverAgainstTunchWeight: 0,
+            buyGoldWeight: 0,
+            buySilverWeight: 0,
+            sellGoldWeight: 0,
+            sellSilverWeight: 0
           },
           ledger: [],
           phone: t.customerPhone,
@@ -1793,6 +1866,9 @@ export const StaffBillingScreen: React.FC = () => {
       }
       
       const pcs = Number(t.pieces || 1) || 1;
+      const pureW = parseFloat(t.pureWeight || '0') || 0;
+      const metalStr = (t.metal || 'Gold').toLowerCase();
+
       if (t.workType === 'Tunch') {
         const details = (t.details || '').toLowerCase();
         const type = (t.type || '').toLowerCase();
@@ -1801,31 +1877,53 @@ export const StaffBillingScreen: React.FC = () => {
         if (isServiceFee) {
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
+            cust.workBreakdown.tunchAmount += amtNum;
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         } else {
           const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
           if (isCash) {
             cust.workBreakdown.buyAgainstTunch += pcs;
+            cust.workBreakdown.buyAgainstTunchAmount += amtNum;
+            cust.workBreakdown.buyAgainstTunchWeight += pureW;
           } else if (details.includes('pure gold')) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
+            cust.workBreakdown.pureGoldAgainstTunchAmount += amtNum;
+            cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
           } else if (details.includes('pure silver')) {
             cust.workBreakdown.pureSilverAgainstTunch += pcs;
+            cust.workBreakdown.pureSilverAgainstTunchAmount += amtNum;
+            cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;
           }
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
+            cust.workBreakdown.tunchAmount += amtNum;
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }
       } else if (t.workType === 'Marking') {
         cust.workBreakdown.marking += pcs;
+        cust.workBreakdown.markingAmount += amtNum;
       } else if (t.workType === 'Shouldering') {
         cust.workBreakdown.shouldering += pcs;
+        cust.workBreakdown.shoulderingAmount += amtNum;
       } else if (t.workType === 'Buy') {
         cust.workBreakdown.buy += pcs;
+        cust.workBreakdown.buyAmount += amtNum;
+        if (metalStr.includes('silver')) {
+          cust.workBreakdown.buySilverWeight += pureW;
+        } else {
+          cust.workBreakdown.buyGoldWeight += pureW;
+        }
       } else if (t.workType === 'Sell') {
         cust.workBreakdown.sell += pcs;
+        cust.workBreakdown.sellAmount += amtNum;
+        if (metalStr.includes('silver')) {
+          cust.workBreakdown.sellSilverWeight += pureW;
+        } else {
+          cust.workBreakdown.sellGoldWeight += pureW;
+        }
       }
     });
 
@@ -2228,60 +2326,84 @@ export const StaffBillingScreen: React.FC = () => {
                   label: 'Tunch Pcs', 
                   val: selectedCustomer.workBreakdown.tunch, 
                   icon: 'science', 
-                  iconColor: 'bg-tertiary/10 text-tertiary'
+                  iconColor: 'bg-tertiary/10 text-tertiary',
+                  amount: selectedCustomer.workBreakdown.tunchAmount || 0,
+                  weightLabel: ''
                 },
                 { 
                   label: 'Buy against Tunch', 
                   val: selectedCustomer.workBreakdown.buyAgainstTunch, 
                   icon: 'payments', 
-                  iconColor: 'bg-emerald-500/10 text-emerald-600'
+                  iconColor: 'bg-emerald-500/10 text-emerald-600',
+                  amount: selectedCustomer.workBreakdown.buyAgainstTunchAmount || 0,
+                  weightLabel: `${(selectedCustomer.workBreakdown.buyAgainstTunchWeight || 0).toFixed(3)}g`
                 },
                 { 
                   label: 'Pure Gold against Tunch', 
                   val: selectedCustomer.workBreakdown.pureGoldAgainstTunch, 
                   icon: 'workspace_premium', 
-                  iconColor: 'bg-yellow-500/10 text-yellow-600'
+                  iconColor: 'bg-yellow-500/10 text-yellow-600',
+                  amount: selectedCustomer.workBreakdown.pureGoldAgainstTunchAmount || 0,
+                  weightLabel: `${(selectedCustomer.workBreakdown.pureGoldAgainstTunchWeight || 0).toFixed(3)}g`
                 },
                 { 
                   label: 'Pure Silver against Tunch', 
                   val: selectedCustomer.workBreakdown.pureSilverAgainstTunch, 
                   icon: 'monetization_on', 
-                  iconColor: 'bg-slate-400/10 text-slate-500'
+                  iconColor: 'bg-slate-400/10 text-slate-500',
+                  amount: selectedCustomer.workBreakdown.pureSilverAgainstTunchAmount || 0,
+                  weightLabel: `${(selectedCustomer.workBreakdown.pureSilverAgainstTunchWeight || 0).toFixed(3)}g`
                 },
                 { 
                   label: 'Marking Pcs', 
                   val: selectedCustomer.workBreakdown.marking, 
                   icon: 'verified', 
-                  iconColor: 'bg-secondary/10 text-secondary'
+                  iconColor: 'bg-secondary/10 text-secondary',
+                  amount: selectedCustomer.workBreakdown.markingAmount || 0,
+                  weightLabel: ''
                 },
                 { 
                   label: 'Shoulder Pcs', 
                   val: selectedCustomer.workBreakdown.shouldering, 
                   icon: 'precision_manufacturing', 
-                  iconColor: 'bg-primary/10 text-primary'
+                  iconColor: 'bg-primary/10 text-primary',
+                  amount: selectedCustomer.workBreakdown.shoulderingAmount || 0,
+                  weightLabel: ''
                 },
                 { 
                   label: 'Buy Jobs', 
                   val: selectedCustomer.workBreakdown.buy, 
                   icon: 'shopping_cart', 
-                  iconColor: 'bg-emerald-500/10 text-emerald-600'
+                  iconColor: 'bg-emerald-500/10 text-emerald-600',
+                  amount: selectedCustomer.workBreakdown.buyAmount || 0,
+                  weightLabel: `Au: ${(selectedCustomer.workBreakdown.buyGoldWeight || 0).toFixed(2)}g / Ag: ${(selectedCustomer.workBreakdown.buySilverWeight || 0).toFixed(2)}g`
                 },
                 { 
                   label: 'Sell Jobs', 
                   val: selectedCustomer.workBreakdown.sell, 
                   icon: 'sell', 
-                  iconColor: 'bg-amber-500/10 text-amber-600'
+                  iconColor: 'bg-amber-500/10 text-amber-600',
+                  amount: selectedCustomer.workBreakdown.sellAmount || 0,
+                  weightLabel: `Au: ${(selectedCustomer.workBreakdown.sellGoldWeight || 0).toFixed(2)}g / Ag: ${(selectedCustomer.workBreakdown.sellSilverWeight || 0).toFixed(2)}g`
                 }
               ].map((breakdown, idx) => (
                 <div 
                   key={idx} 
-                  className="luxury-card p-4 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform flex flex-col items-center text-center"
+                  className="luxury-card p-4 space-y-3 bg-white border border-outline-variant/10 group active:scale-[0.98] transition-transform flex flex-col items-center text-center justify-between"
                 >
                   <div className={`w-8 h-8 rounded-lg ${breakdown.iconColor} flex items-center justify-center`}>
                     <span className="material-symbols-outlined text-lg">{breakdown.icon}</span>
                   </div>
-                  <div className="space-y-0.5">
-                    <p className="font-headline text-lg font-bold text-primary">{breakdown.val}</p>
+                  <div className="space-y-0.5 w-full">
+                    <p className="font-headline text-lg font-bold text-primary">
+                      {breakdown.val} {breakdown.label.includes('Jobs') ? 'Jobs' : 'Pcs'}
+                    </p>
+                    {isSuperSa && (
+                      <div className="mt-1 mb-2 space-y-0.5 text-[10px] font-bold text-outline border-t border-outline-variant/5 pt-1.5 w-full text-center">
+                        {breakdown.weightLabel && <p className="text-secondary leading-none mb-0.5 whitespace-pre-wrap">{breakdown.weightLabel}</p>}
+                        <p className="text-primary/80 leading-none">₹{breakdown.amount.toLocaleString('en-IN')}</p>
+                      </div>
+                    )}
                     <p className="text-[9px] font-bold text-outline uppercase tracking-wider">{breakdown.label}</p>
                   </div>
                 </div>
