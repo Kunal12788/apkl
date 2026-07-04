@@ -31,6 +31,7 @@ interface Transaction {
   status: string;
   colStaffPaid?: boolean;
   staffPaid?: boolean;
+  taskId?: string;
   
   impureWeight?: string;
   pureWeight?: string;
@@ -286,17 +287,14 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
     // Apply optimistic update instantly
     if (onOptimisticUpdate) {
-      onOptimisticUpdate(txn.id, { staffPaid: true, status: txn.colStaffPaid ? 'Fully Paid' : 'Awaiting Collection Staff' });
+      onOptimisticUpdate(txn.id, { staffPaid: true, colStaffPaid: true, status: 'Fully Paid' });
     }
 
     setIsPaying(true);
     onClose(); // Close instantly for better UX
 
     try {
-      const updates: any = { staff_paid: true };
-      if (txn.colStaffPaid) {
-        updates.status = 'Fully Paid';
-      }
+      const updates: any = { staff_paid: true, col_staff_paid: true, status: 'Fully Paid' };
       if (!txn.id.startsWith('TASK-')) {
         supabase.from('transactions').update(updates).eq('id', txn.id).then(() => {
           window.dispatchEvent(new Event('databaseSync'));
@@ -305,7 +303,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
         const taskId = txn.id.replace('TASK-', '');
         const taskUpdates: any = {
           staff_paid: true,
-          col_staff_paid: !!txn.colStaffPaid
+          col_staff_paid: true
         };
         supabase.from('tasks').update(taskUpdates).eq('id', taskId).then(() => {
           window.dispatchEvent(new Event('databaseSync'));
@@ -662,7 +660,7 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ isOpen, onClose
 
   // Filter ledger for items with outstanding dues
   const unpaidItems = useMemo(() => {
-    return customer.ledger.filter(txn => txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Awaiting Staff' || txn.status === 'Awaiting Collection Staff');
+    return customer.ledger.filter(txn => txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Awaiting Staff');
   }, [customer.ledger]);
 
   // Track allocation inputs
@@ -1675,6 +1673,7 @@ export const StaffBillingScreen: React.FC = () => {
     });
 
     const hasDateSearch = startDate || endDate;
+    const tunchIncrementedTasks = new Set<string>();
 
     // Count pure gold/silver settled tasks (since they don't have payout transactions in tx database)
     completedTasks.forEach(task => {
@@ -1708,6 +1707,8 @@ export const StaffBillingScreen: React.FC = () => {
 
         if (cust) {
           const pcs = Number(task.pieces || 1) || 1;
+          cust.workBreakdown.tunch += pcs;
+          tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
           } else {
@@ -1798,7 +1799,10 @@ export const StaffBillingScreen: React.FC = () => {
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
         if (isServiceFee) {
-          cust.workBreakdown.tunch += pcs;
+          if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
+            cust.workBreakdown.tunch += pcs;
+            if (t.taskId) tunchIncrementedTasks.add(t.taskId);
+          }
         } else {
           const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
           if (isCash) {
@@ -1807,8 +1811,11 @@ export const StaffBillingScreen: React.FC = () => {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
           } else if (details.includes('pure silver')) {
             cust.workBreakdown.pureSilverAgainstTunch += pcs;
-          } else {
+          }
+          
+          if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
+            if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }
       } else if (t.workType === 'Marking') {

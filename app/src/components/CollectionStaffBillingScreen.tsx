@@ -30,6 +30,7 @@ interface Transaction {
   status: string;
   colStaffPaid?: boolean;
   staffPaid?: boolean;
+  taskId?: string;
   
   impureWeight?: string;
   pureWeight?: string;
@@ -787,6 +788,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
     });
 
     const hasDateSearch = startDate || endDate;
+    const tunchIncrementedTasks = new Set<string>();
 
     // Count pure gold/silver settled tasks (since they don't have payout transactions in tx database)
     completedTasks.forEach(task => {
@@ -820,6 +822,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
 
         if (cust) {
           const pcs = Number(task.pieces || 1) || 1;
+          cust.piecesBreakdown.tunch += pcs;
+          tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.piecesBreakdown.pureGoldAgainstTunch += pcs;
           } else {
@@ -906,7 +910,10 @@ export const CollectionStaffBillingScreen: React.FC = () => {
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
         if (isServiceFee) {
-          cust.piecesBreakdown.tunch += pcs;
+          if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
+            cust.piecesBreakdown.tunch += pcs;
+            if (t.taskId) tunchIncrementedTasks.add(t.taskId);
+          }
         } else {
           const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
           if (isCash) {
@@ -915,8 +922,11 @@ export const CollectionStaffBillingScreen: React.FC = () => {
             cust.piecesBreakdown.pureGoldAgainstTunch += pcs;
           } else if (details.includes('pure silver')) {
             cust.piecesBreakdown.pureSilverAgainstTunch += pcs;
-          } else {
+          }
+          
+          if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.piecesBreakdown.tunch += pcs;
+            if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }
       } else if (t.workType === 'Marking') {
