@@ -31,6 +31,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
   const [dbCustomers, setDbCustomers] = useState<any[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Sync date range based on Time Mode selection
@@ -53,18 +54,21 @@ export const SuperAdminWorkScreen: React.FC = () => {
     try {
       let tasksQuery = supabase.from('tasks').select('*');
       let txQuery = supabase.from('transactions').select('*');
+      let ledgerQuery = supabase.from('ledger_entries').select('*');
 
       if (timeRangeMode !== 'lifetime' && fromDate && toDate) {
         tasksQuery = tasksQuery.gte('iso_date', fromDate).lte('iso_date', toDate);
         txQuery = txQuery.gte('iso_date', fromDate).lte('iso_date', toDate);
+        ledgerQuery = ledgerQuery.gte('iso_date', fromDate).lte('iso_date', toDate);
       }
 
-      const [usersRes, tasksRes, txRes, branchesRes, customersRes] = await Promise.all([
+      const [usersRes, tasksRes, txRes, branchesRes, customersRes, ledgerRes] = await Promise.all([
         supabase.from('users').select('*').order('name'),
         tasksQuery,
         txQuery,
         supabase.from('branches').select('*'),
-        supabase.from('customers').select('*')
+        supabase.from('customers').select('*'),
+        ledgerQuery
       ]);
 
       if (usersRes.error) throw usersRes.error;
@@ -72,12 +76,14 @@ export const SuperAdminWorkScreen: React.FC = () => {
       if (txRes.error) throw txRes.error;
       if (branchesRes.error) throw branchesRes.error;
       if (customersRes.error) throw customersRes.error;
+      if (ledgerRes.error) throw ledgerRes.error;
 
       setUsers(usersRes.data || []);
       setTasks(tasksRes.data || []);
       setTransactions(txRes.data || []);
       setBranches(branchesRes.data || []);
       setDbCustomers(customersRes.data || []);
+      setLedgerEntries(ledgerRes.data || []);
 
     } catch (err) {
       console.error('Error fetching work metrics:', err);
@@ -103,7 +109,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
         phone: c.phone,
         address: c.address,
         workBreakdown: {
-          tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
+          tunch: 0, tunchUnpaid: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
           buyAgainstTunch: 0, pureGoldAgainstTunch: 0, pureSilverAgainstTunch: 0,
           
           tunchAmount: 0, markingAmount: 0, shoulderingAmount: 0, buyAmount: 0, sellAmount: 0,
@@ -151,6 +157,10 @@ export const SuperAdminWorkScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
+          const isPaid = cond.includes('[collected]') || cond.includes('paid') || !!task.staff_paid || !!task.col_staff_paid;
+          if (!isPaid) {
+            cust.workBreakdown.tunchUnpaid += pcs;
+          }
           tunchIncrementedTasks.add(task.id);
 
           if (isPureGold) {
@@ -194,7 +204,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
           phone: t.customer_phone,
           address: t.customer_address,
           workBreakdown: {
-            tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
+            tunch: 0, tunchUnpaid: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
             buyAgainstTunch: 0, pureGoldAgainstTunch: 0, pureSilverAgainstTunch: 0,
             
             tunchAmount: 0, markingAmount: 0, shoulderingAmount: 0, buyAmount: 0, sellAmount: 0,
@@ -206,11 +216,20 @@ export const SuperAdminWorkScreen: React.FC = () => {
         };
         customers.push(newCust);
         cust = newCust;
-      }
-
-      const pcs = Number(t.pieces || 1) || 1;
+      }      const pcs = Number(t.pieces || 1) || 1;
       const amtNum = parseFloat(String(t.amount || '0').replace(/[^\d.]/g, '')) || 0;
-      const pureW = parseFloat(t.pure_weight || t.pureWeight || '0') || 0;
+      let pureW = parseFloat(t.pure_weight || t.pureWeight || '0') || 0;
+      if (pureW === 0 && (t.details || '').toLowerCase().includes('pure metal exchange') && ledgerEntries.length > 0) {
+        const match = ledgerEntries.find((le: any) => 
+          le.customer_name === t.customer_name &&
+          le.iso_date === t.iso_date &&
+          le.transaction_type === 'Exchange' &&
+          Math.abs(new Date(le.created_at).getTime() - new Date(t.created_at).getTime()) < 60000
+        );
+        if (match) {
+          pureW = t.metal === 'Silver' ? (Number(match.pure_silver_out || match.pure_silver_in || 0)) : (Number(match.pure_gold_out || match.pure_gold_in || 0));
+        }
+      }
       const metalStr = (t.metal || 'Gold').toLowerCase();
 
       if (t.work_type === 'Tunch') {
@@ -218,10 +237,15 @@ export const SuperAdminWorkScreen: React.FC = () => {
         const type = (t.type || '').toLowerCase();
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
 
+        const statusStr = (t.status || '').toLowerCase();
+        const isUnpaid = statusStr === 'unpaid' || statusStr === 'due' || statusStr === 'awaiting staff' || statusStr === 'pending';
+
         if (isServiceFee) {
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
-            cust.workBreakdown.tunchAmount += amtNum;
+            if (isUnpaid) {
+              cust.workBreakdown.tunchUnpaid += pcs;
+            }
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
         } else {
@@ -242,6 +266,9 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
+            if (isUnpaid) {
+              cust.workBreakdown.tunchUnpaid += pcs;
+            }
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
         }
@@ -268,6 +295,22 @@ export const SuperAdminWorkScreen: React.FC = () => {
           cust.workBreakdown.sellGoldWeight += pureW;
         }
       }
+    });
+
+    customers.forEach(c => {
+      let serviceFeeRate = 10;
+      const serviceFeeTx = transactions.find(txn => 
+        ((txn.customer_id && txn.customer_id === c.id) || (txn.customer_name && txn.customer_name.trim().toLowerCase() === c.name.trim().toLowerCase())) && 
+        txn.work_type === 'Tunch' && 
+        ((txn.type || '').toLowerCase().includes('service fee') || (txn.details || '').toLowerCase().includes('service fee') || (txn.details || '').includes('Service Fee'))
+      );
+      if (serviceFeeTx) {
+        const rateVal = parseFloat(String(serviceFeeTx.amount || '').replace(/[^\d.]/g, '')) || 0;
+        if (rateVal > 0) {
+          serviceFeeRate = rateVal;
+        }
+      }
+      c.workBreakdown.tunchAmount = Math.max(0, c.workBreakdown.tunch - c.workBreakdown.tunchUnpaid) * serviceFeeRate;
     });
 
     return customers;

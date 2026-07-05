@@ -413,7 +413,10 @@ export const GlobalFAB: React.FC = () => {
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   status: data.feeStatus || 'Paid',
                   details: 'Service Fee (Pure Metal Exchange)',
-                  created_by: user?.id || ''
+                  created_by: user?.id || '',
+                  pure_weight: String(calculatedPure),
+                  impure_weight: String(data.impureWeight || 0),
+                  purity_percentage: data.purity || ''
                 };
                 await supabase.from('transactions').insert([newTxn]);
               }

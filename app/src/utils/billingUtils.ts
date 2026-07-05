@@ -1,4 +1,4 @@
-export const computeStaffBillingTransactions = (txData: any[], tasksData: any[]): any[] => {
+export const computeStaffBillingTransactions = (txData: any[], tasksData: any[], ledgerData?: any[]): any[] => {
   const txTaskIds = new Set<string>();
   const txEntries = txData.map((t: any) => {
     if (t.task_id) txTaskIds.add(t.task_id);
@@ -13,6 +13,19 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       computedStatus = 'Awaiting Staff';
     }
 
+    let pureWeightVal = t.pure_weight;
+    if ((pureWeightVal === null || pureWeightVal === undefined || parseFloat(String(pureWeightVal)) === 0) && (t.details || '').includes('Pure Metal Exchange') && ledgerData) {
+      const match = ledgerData.find((le: any) => 
+        le.customer_name === t.customer_name &&
+        le.iso_date === t.iso_date &&
+        le.transaction_type === 'Exchange' &&
+        Math.abs(new Date(le.created_at).getTime() - new Date(t.created_at).getTime()) < 60000
+      );
+      if (match) {
+        pureWeightVal = t.metal === 'Silver' ? (match.pure_silver_out || match.pure_silver_in || '') : (match.pure_gold_out || match.pure_gold_in || '');
+      }
+    }
+
     return {
       metal: t.metal || 'Gold', id: t.id, customerId: t.customer_id, customerName: t.customer_name,
       customerPhone: t.customer_phone, customerAddress: t.customer_address, type: t.type || 'Service Fee',
@@ -25,7 +38,7 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[])
       colStaffPaid: !!t.col_staff_paid,
       staffPaid: !!t.staff_paid,
       paidAmount: paidNum,
-      impureWeight: t.impure_weight, pureWeight: t.pure_weight, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
+      impureWeight: t.impure_weight, pureWeight: pureWeightVal, purityPercentage: t.purity_percentage, pieceType: t.piece_type,
       pointsCount: t.points_count, pointsType: t.points_type, caratMarking: t.carat_marking, details: t.details || '',
       createdBy: t.created_by,
       createdAt: t.created_at,

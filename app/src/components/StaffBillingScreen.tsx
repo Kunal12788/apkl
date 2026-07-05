@@ -74,6 +74,7 @@ interface Customer {
   paid: string;
   workBreakdown: {
     tunch: number;
+    tunchUnpaid: number;
     marking: number;
     shouldering: number;
     buy: number;
@@ -1476,7 +1477,7 @@ export const StaffBillingScreen: React.FC = () => {
       if (!isFullyAuthenticated) return;
 
       try {
-        const [usersRes, _branchUsersRes, txRes, tasksRes, branchesRes, paymentsRes, settingsRes] = await Promise.all([
+        const [usersRes, _branchUsersRes, txRes, tasksRes, branchesRes, paymentsRes, settingsRes, ledgerRes] = await Promise.all([
           supabase.from('users').select('id, name, role, branch_id'),
           (!isSuperSa && user?.branch_id)
             ? supabase.from('users').select('id').eq('branch_id', user.branch_id)
@@ -1485,7 +1486,8 @@ export const StaffBillingScreen: React.FC = () => {
           supabase.from('tasks').select('*').eq('status', 'Completed').order('created_at', { ascending: false }),
           supabase.from('branches').select('*'),
           supabase.from('payments').select('*').order('created_at', { ascending: false }),
-          supabase.from('app_settings').select('*')
+          supabase.from('app_settings').select('*'),
+          supabase.from('ledger_entries').select('*')
         ]);
 
         const allUsers = usersRes.data;
@@ -1517,6 +1519,10 @@ export const StaffBillingScreen: React.FC = () => {
           }
         }
 
+        if (ledgerRes.data) {
+          setCachedData('ledger_entries_all', ledgerRes.data);
+        }
+
         let branchUserIds: string[] = [];
         if (!isSuperSa && allUsers) {
           branchUserIds = allUsers
@@ -1542,7 +1548,7 @@ export const StaffBillingScreen: React.FC = () => {
           filteredTasks = filteredTasks.filter((task: any) => !task.created_by || branchUserIds.includes(task.created_by));
         }
 
-        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks);
+        const allTx = computeStaffBillingTransactions(filteredTx, filteredTasks, ledgerRes.data || []);
         setCachedData('staff_billing_tx', allTx);
         const finalTx = allTx;
         setTransactions(finalTx);
@@ -1679,6 +1685,7 @@ export const StaffBillingScreen: React.FC = () => {
           paid: '₹0',
           workBreakdown: { 
             tunch: 0, 
+            tunchUnpaid: 0,
             marking: 0, 
             shouldering: 0, 
             buy: 0, 
@@ -1763,6 +1770,10 @@ export const StaffBillingScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
+          const isPaid = cond.includes('[collected]') || cond.includes('paid') || !!task.staff_paid || !!task.col_staff_paid;
+          if (!isPaid) {
+            cust.workBreakdown.tunchUnpaid += pcs;
+          }
           tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
@@ -1812,6 +1823,7 @@ export const StaffBillingScreen: React.FC = () => {
           paid: '₹0',
           workBreakdown: { 
             tunch: 0, 
+            tunchUnpaid: 0,
             marking: 0, 
             shouldering: 0, 
             buy: 0, 
@@ -1880,6 +1892,9 @@ export const StaffBillingScreen: React.FC = () => {
         const isPureMetalExchange = details.includes('pure metal exchange');
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
+        const statusStr = (t.status || '').toLowerCase();
+        const isUnpaid = statusStr === 'unpaid' || statusStr === 'due' || statusStr === 'awaiting staff' || statusStr === 'pending';
+
         if (isServiceFee) {
           if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
@@ -1893,7 +1908,9 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
-            cust.workBreakdown.tunchAmount += amtNum;
+            if (isUnpaid) {
+              cust.workBreakdown.tunchUnpaid += pcs;
+            }
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         } else {
@@ -1914,6 +1931,9 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
+            if (isUnpaid) {
+              cust.workBreakdown.tunchUnpaid += pcs;
+            }
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }
@@ -1940,6 +1960,22 @@ export const StaffBillingScreen: React.FC = () => {
           cust.workBreakdown.sellGoldWeight += pureW;
         }
       }
+    });
+
+    customers.forEach(c => {
+      let serviceFeeRate = 10;
+      const serviceFeeTx = transactions.find(txn => 
+        (txn.customerId === c.id || txn.customerName === c.name) && 
+        txn.workType === 'Tunch' && 
+        (txn.type?.toLowerCase().includes('service fee') || txn.details?.toLowerCase().includes('service fee') || (txn.details || '').includes('Service Fee'))
+      );
+      if (serviceFeeTx) {
+        const rateVal = parseFloat(String(serviceFeeTx.amount || '').replace(/[^\d.]/g, '')) || 0;
+        if (rateVal > 0) {
+          serviceFeeRate = rateVal;
+        }
+      }
+      c.workBreakdown.tunchAmount = Math.max(0, c.workBreakdown.tunch - c.workBreakdown.tunchUnpaid) * serviceFeeRate;
     });
 
     return customers;
