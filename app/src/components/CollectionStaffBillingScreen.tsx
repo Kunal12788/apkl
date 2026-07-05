@@ -894,10 +894,12 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       if (t.workType === 'Dues Payment') return;
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       const paidAmtNum = t.paidAmount || 0;
-      if (t.status === 'Unpaid') {
+      if (t.status === 'Unpaid' || t.status === 'Rate Pending' || t.status === 'Pending Metal') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹ ${(outstandingNum + amtNum).toLocaleString('en-IN')}`;
+        cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+        cust.paid = `₹ ${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else if (t.status === 'Partially Paid') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
@@ -1283,7 +1285,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                   }
 
                   return filteredLedger.map(txn => {
-                    const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid';
+                    const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Rate Pending' || txn.status === 'Pending Metal';
                     return (
                       <div key={txn.id} onClick={() => setSelectedTxn(txn)} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPending ? 'bg-error' : 'bg-tertiary'}`}></div>

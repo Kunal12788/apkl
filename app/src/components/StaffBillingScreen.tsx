@@ -1974,10 +1974,12 @@ export const StaffBillingScreen: React.FC = () => {
       if (t.workType === 'Dues Payment') return;
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       const paidAmtNum = t.paidAmount || 0;
-      if (t.status === 'Unpaid') {
+      if (t.status === 'Unpaid' || t.status === 'Rate Pending' || t.status === 'Pending Metal') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹${(outstandingNum + amtNum).toLocaleString('en-IN')}`;
+        cust.outstanding = `₹${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
+        cust.paid = `₹${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else if (t.status === 'Partially Paid') {
         cust.activeJobs += 1;
         const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
