@@ -1424,7 +1424,8 @@ export const StaffTasksScreen: React.FC = () => {
         const handlingMode = details.cashHandlingMode || 'Front';
         const serviceFeeAmount = Number(details.serviceFee || 0);
         const serviceFeeMode = details.paymentMode || 'Cash';
-        const serviceFeeCash = serviceFeeMode === 'Cash' ? serviceFeeAmount : 0;
+        const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
+        const serviceFeeCash = (serviceFeeMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
 
         const newLedgerEntry: any = {
           id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -1439,6 +1440,10 @@ export const StaffTasksScreen: React.FC = () => {
         if (condition === 'Only Tunch') {
           newLedgerEntry.transaction_type = 'Tunch Only';
           newLedgerEntry.status = 'No Settlement';
+          newLedgerEntry.cash_received = serviceFeeCash;
+          newLedgerEntry.cash_paid = 0;
+          newLedgerEntry.cash_amount = 0;
+          newLedgerEntry.cash_rate_per_gram = 0;
           newLedgerEntry.impure_gold_in = 0;
           newLedgerEntry.impure_silver_in = 0;
           newLedgerEntry.pure_gold_out = 0;
@@ -1450,6 +1455,10 @@ export const StaffTasksScreen: React.FC = () => {
         } else if (condition === 'Pure Gold' || condition === 'Pure Silver') {
           newLedgerEntry.transaction_type = 'Exchange';
           newLedgerEntry.status = 'Completed';
+          newLedgerEntry.cash_received = serviceFeeCash;
+          newLedgerEntry.cash_paid = 0;
+          newLedgerEntry.cash_amount = 0;
+          newLedgerEntry.cash_rate_per_gram = 0;
           newLedgerEntry.pending_pure_liability = false;
           if (task.metal === 'Silver') {
             newLedgerEntry.impure_silver_in = finalImpure;
@@ -1549,15 +1558,9 @@ export const StaffTasksScreen: React.FC = () => {
         entriesQuery = entriesQuery.in('staff_id', branchUserIds);
       }
       
-      let txQuery = supabase.from('transactions').select('amount, status, type, created_by, staff_submitted_at').is('admin_submitted_at', null);
-      if (!isSuperSa && user?.branch_id) {
-        txQuery = txQuery.in('created_by', branchUserIds);
-      }
-      
-      const [allocationsRes, entriesRes, txRes] = await Promise.all([
+      const [allocationsRes, entriesRes] = await Promise.all([
         allocationsQuery,
-        entriesQuery,
-        txQuery
+        entriesQuery
       ]);
       
       let currentCashStock = 0;
@@ -1573,33 +1576,14 @@ export const StaffTasksScreen: React.FC = () => {
         const totalCashReceived = adminEntries.reduce((s, e) => s + Number(e.cash_received || 0), 0);
         const totalCashPaid = adminEntries.reduce((s, e) => s + Number(e.cash_paid || 0), 0);
         
-        let billingCash = 0;
-        (txRes.data || []).forEach((tx: any) => {
-          const isRelevant = tx.created_by === adminId || tx.createdBy === adminId || tx.staff_submitted_at !== null;
-          const type = tx.type?.trim().toLowerCase() || '';
-          if (isRelevant && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.is_cash_exchange && !tx.isCashExchange) {
-            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-            billingCash += Number(amtStr) || 0;
-          }
-        });
-        
-        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+        currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
       } else {
         // Fallback for Super Admin
         const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
         const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
         const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
         
-        let billingCash = 0;
-        (txRes.data || []).forEach((tx: any) => {
-          const type = tx.type?.trim().toLowerCase() || '';
-          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.is_cash_exchange && !tx.isCashExchange) {
-            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-            billingCash += Number(amtStr) || 0;
-          }
-        });
-        
-        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+        currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
       }
       
       const cashPayout = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
@@ -2522,15 +2506,9 @@ export const StaffTasksScreen: React.FC = () => {
                       entriesQuery = entriesQuery.in('staff_id', branchUserIds);
                     }
                     
-                    let txQuery = supabase.from('transactions').select('amount, status, type, created_by, staff_submitted_at, admin_submitted_at');
-                    if (!isSuperSa && user?.branch_id) {
-                      txQuery = txQuery.in('created_by', branchUserIds);
-                    }
-                    
-                    const [allocationsRes, entriesRes, txRes] = await Promise.all([
+                    const [allocationsRes, entriesRes] = await Promise.all([
                       allocationsQuery,
-                      entriesQuery,
-                      txQuery
+                      entriesQuery
                     ]);
 
                     const msg = user?.role === 'Admin'
@@ -2540,7 +2518,6 @@ export const StaffTasksScreen: React.FC = () => {
                     if (isCashMode) {
                       const branchAllocations = allocationsRes.data || [];
                       const branchEntries = entriesRes.data || [];
-                      const branchTx = txRes.data || [];
 
                       let currentCashStock = 0;
                       const uId = user?.id || '';
@@ -2552,33 +2529,14 @@ export const StaffTasksScreen: React.FC = () => {
                         const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                         const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
 
-                        let billingCash = 0;
-                        branchTx.forEach((tx: any) => {
-                          const type = tx.type?.trim().toLowerCase() || '';
-                          const isAuthorized = tx.created_by === uId || tx.staff_submitted_at !== null;
-                          if (isAuthorized && tx.admin_submitted_at === null && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-                            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-                            billingCash += Number(amtStr) || 0;
-                          }
-                        });
-
-                        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+                        currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
                       } else {
                         // Staff Cash Stock
                         const totalAllocatedCash = branchAllocations.filter((a: any) => a.staff_id === uId).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
                         const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                         const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
 
-                        let billingCash = 0;
-                        branchTx.forEach((tx: any) => {
-                          const type = tx.type?.trim().toLowerCase() || '';
-                          if (tx.created_by === uId && tx.staff_submitted_at === null && (tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash') {
-                            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-                            billingCash += Number(amtStr) || 0;
-                          }
-                        });
-
-                        currentCashStock = totalAllocatedCash + totalCashReceived + billingCash - totalCashPaid;
+                        currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
                       }
 
                       if (cashToPay > currentCashStock) {

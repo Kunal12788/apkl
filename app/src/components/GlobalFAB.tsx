@@ -355,6 +355,9 @@ export const GlobalFAB: React.FC = () => {
               // Stock Validation bypassed as per user request to directly execute without creating task or admin verification
 
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+              const serviceFeeAmount = Number(data.fee || 0);
+              const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
 
               const ledgerEntry: any = {
                 id: entryId,
@@ -367,6 +370,10 @@ export const GlobalFAB: React.FC = () => {
                 staff_id: user?.id || '',
                 pure_gold_out: 0,
                 pure_silver_out: 0,
+                cash_paid: 0,
+                cash_received: serviceFeeCash,
+                cash_amount: 0,
+                cash_rate_per_gram: 0,
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability
               };
@@ -465,6 +472,10 @@ export const GlobalFAB: React.FC = () => {
 
               // Create Ledger Entry
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
+              const serviceFeeAmount = Number(data.fee || 0);
+              const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
+
               const ledgerEntry: any = {
                 id: entryId,
                 date: dateStr,
@@ -478,6 +489,10 @@ export const GlobalFAB: React.FC = () => {
                 pure_silver_out: 0,
                 pure_gold_due: 0,
                 pure_silver_due: 0,
+                cash_paid: 0,
+                cash_received: serviceFeeCash,
+                cash_amount: 0,
+                cash_rate_per_gram: 0,
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability
               };
@@ -562,7 +577,8 @@ export const GlobalFAB: React.FC = () => {
               // Insert Staff's initial ledger entry
               const entryId = `LGR-S-${Math.floor(1000 + Math.random() * 9000)}`;
               const serviceFeeAmount = Number(data.fee || 0);
-              const serviceFeeCash = data.feePaymentMode === 'Cash' ? serviceFeeAmount : 0;
+              const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
 
               const staffLedgerEntry: any = {
                 id: entryId,
