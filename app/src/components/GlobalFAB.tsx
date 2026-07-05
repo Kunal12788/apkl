@@ -110,7 +110,7 @@ export const GlobalFAB: React.FC = () => {
               const initialCashGiven = Number(data.initialCashGiven || 0);
 
               const calculatedPure = Number(data.pureWeight || 0);
-              const totalAmount = (isBuy && isPriceLater) ? initialCashGiven : Number(data.cashAmount || 0);
+              const totalAmount = (isBuy && isDue) ? (initialCashGiven || Number(data.cashAmount || 0)) : Number(data.cashAmount || 0);
               const cashRate = isPriceLater ? 0 : Number(data.cashRate || 0);
 
               const isSuperSa = user?.role === 'Super Admin';
