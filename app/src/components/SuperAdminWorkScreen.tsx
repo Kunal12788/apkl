@@ -228,13 +228,19 @@ export const SuperAdminWorkScreen: React.FC = () => {
       }
       const metalStr = (t.metal || 'Gold').toLowerCase();
 
+      const statusStr = (t.status || '').toLowerCase();
+      const isPaid = statusStr === 'paid' || statusStr === 'fully paid';
+      if (isPaid && !t.isCashExchange && !t.is_cash_exchange) {
+        const wt = (t.work_type || 'Tunch').toUpperCase();
+        if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') {
+          cust.workBreakdown.tunchAmount += amtNum;
+        }
+      }
+
       if (t.work_type === 'Tunch') {
         const details = (t.details || '').toLowerCase();
         const type = (t.type || '').toLowerCase();
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
-
-        const statusStr = (t.status || '').toLowerCase();
-        const isUnpaid = statusStr === 'unpaid' || statusStr === 'due' || statusStr === 'awaiting staff' || statusStr === 'pending';
 
         if (isServiceFee) {
           if (details.includes('pure gold')) {
@@ -247,9 +253,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
-            if (!isUnpaid) {
-              cust.workBreakdown.tunchAmount += amtNum;
-            }
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
         } else {

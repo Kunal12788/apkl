@@ -1879,15 +1879,21 @@ export const StaffBillingScreen: React.FC = () => {
       const pureW = parseFloat(t.pureWeight || '0') || 0;
       const metalStr = (t.metal || 'Gold').toLowerCase();
 
+      const statusStr = (t.status || '').toLowerCase();
+      const isPaid = statusStr === 'paid' || statusStr === 'fully paid';
+      if (isPaid && !t.isCashExchange) {
+        const wt = (t.workType || 'Tunch').toUpperCase();
+        if (wt === 'TUNCH' || wt === 'PURE' || wt === 'CASH') {
+          cust.workBreakdown.tunchAmount += amtNum;
+        }
+      }
+
       if (t.workType === 'Tunch') {
         const details = (t.details || '').toLowerCase();
         const type = (t.type || '').toLowerCase();
         const isPureMetalExchange = details.includes('pure metal exchange');
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
-        const statusStr = (t.status || '').toLowerCase();
-        const isUnpaid = statusStr === 'unpaid' || statusStr === 'due' || statusStr === 'awaiting staff' || statusStr === 'pending';
-
         if (isServiceFee) {
           if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
@@ -1899,9 +1905,6 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
-            if (!isUnpaid) {
-              cust.workBreakdown.tunchAmount += amtNum;
-            }
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         } else {
