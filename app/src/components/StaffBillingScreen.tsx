@@ -1878,9 +1878,20 @@ export const StaffBillingScreen: React.FC = () => {
       if (t.workType === 'Tunch') {
         const details = (t.details || '').toLowerCase();
         const type = (t.type || '').toLowerCase();
+        const isPureMetalExchange = details.includes('pure metal exchange');
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
         if (isServiceFee) {
+          if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
+            cust.workBreakdown.pureGoldAgainstTunch += pcs;
+            cust.workBreakdown.pureGoldAgainstTunchAmount += amtNum;
+            cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
+          } else if (details.includes('pure silver') || (isPureMetalExchange && t.metal === 'Silver')) {
+            cust.workBreakdown.pureSilverAgainstTunch += pcs;
+            cust.workBreakdown.pureSilverAgainstTunchAmount += amtNum;
+            cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;
+          }
+          
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
             cust.workBreakdown.tunchAmount += amtNum;
@@ -1892,11 +1903,11 @@ export const StaffBillingScreen: React.FC = () => {
             cust.workBreakdown.buyAgainstTunch += pcs;
             cust.workBreakdown.buyAgainstTunchAmount += amtNum;
             cust.workBreakdown.buyAgainstTunchWeight += pureW;
-          } else if (details.includes('pure gold')) {
+          } else if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
             cust.workBreakdown.pureGoldAgainstTunchAmount += amtNum;
             cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
-          } else if (details.includes('pure silver')) {
+          } else if (details.includes('pure silver') || (isPureMetalExchange && t.metal === 'Silver')) {
             cust.workBreakdown.pureSilverAgainstTunch += pcs;
             cust.workBreakdown.pureSilverAgainstTunchAmount += amtNum;
             cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;

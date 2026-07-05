@@ -913,9 +913,16 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       if (t.workType === 'Tunch') {
         const details = (t.details || '').toLowerCase();
         const type = (t.type || '').toLowerCase();
+        const isPureMetalExchange = details.includes('pure metal exchange');
         const isServiceFee = type.includes('service fee') || details.includes('service fee');
         
         if (isServiceFee) {
+          if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
+            cust.piecesBreakdown.pureGoldAgainstTunch += pcs;
+          } else if (details.includes('pure silver') || (isPureMetalExchange && t.metal === 'Silver')) {
+            cust.piecesBreakdown.pureSilverAgainstTunch += pcs;
+          }
+          
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.piecesBreakdown.tunch += pcs;
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
@@ -924,9 +931,9 @@ export const CollectionStaffBillingScreen: React.FC = () => {
           const isCash = type.includes('cash') || t.isCashExchange || details.includes('cash');
           if (isCash) {
             cust.piecesBreakdown.buyAgainstTunch += pcs;
-          } else if (details.includes('pure gold')) {
+          } else if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
             cust.piecesBreakdown.pureGoldAgainstTunch += pcs;
-          } else if (details.includes('pure silver')) {
+          } else if (details.includes('pure silver') || (isPureMetalExchange && t.metal === 'Silver')) {
             cust.piecesBreakdown.pureSilverAgainstTunch += pcs;
           }
           
