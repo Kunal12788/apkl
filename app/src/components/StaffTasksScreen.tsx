@@ -1572,7 +1572,7 @@ export const StaffTasksScreen: React.FC = () => {
         const toStaffActive = branchAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
         const totalAllocatedCash = fromSuper - toStaffActive;
         
-        const adminEntries = (entriesRes.data || []).filter((e: any) => e.staff_id === adminId || e.staff_submitted_at !== null);
+        const adminEntries = (entriesRes.data || []).filter((e: any) => (e.staff_id === adminId || e.staff_submitted_at !== null) && e.status !== 'Pending Cash' && !e.pending_cash_liability);
         const totalCashReceived = adminEntries.reduce((s, e) => s + Number(e.cash_received || 0), 0);
         const totalCashPaid = adminEntries.reduce((s, e) => s + Number(e.cash_paid || 0), 0);
         
@@ -1580,7 +1580,7 @@ export const StaffTasksScreen: React.FC = () => {
       } else {
         // Fallback for Super Admin
         const totalAllocatedCash = (allocationsRes.data || []).filter((a: any) => a.staff_id === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-        const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+        const totalCashReceived = (entriesRes.data || []).filter((e: any) => e.status !== 'Pending Cash' && !e.pending_cash_liability).reduce((s, e) => s + Number(e.cash_received || 0), 0);
         const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
         
         currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
@@ -1668,9 +1668,7 @@ export const StaffTasksScreen: React.FC = () => {
 
       if (!isOnlyTunch) {
         const staffUserId = (task.assignedTo && task.assignedTo !== 'Staff') ? task.assignedTo : (task.createdBy || '');
-        const serviceFeeAmount = Number(finalPrice || 0);
-        const serviceFeeMode = extractPaymentMode(task.settlementCondition);
-        const serviceFeeCash = serviceFeeMode === 'Cash' ? serviceFeeAmount : 0;
+        const serviceFeeCash = 0; // Unpaid dues are not added to staff cash stock until explicitly paid via Dues Settlement
 
         if (isCashSettlement && handlingMode === 'Front') {
           // Front mode: Update the Staff's existing Pending Cash ledger entry with rate, amount, and status Completed.
@@ -2526,14 +2524,14 @@ export const StaffTasksScreen: React.FC = () => {
                         const toStaffActive = branchAllocations.filter((a: any) => a.staff_id !== null && a.staff_submitted_at === null).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
                         const totalAllocatedCash = fromSuper - toStaffActive;
 
-                        const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                        const totalCashReceived = branchEntries.filter((e: any) => (e.staff_id === uId || e.staff_submitted_at !== null) && e.status !== 'Pending Cash' && !e.pending_cash_liability).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                         const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId || e.staff_submitted_at !== null).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
 
                         currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
                       } else {
                         // Staff Cash Stock
                         const totalAllocatedCash = branchAllocations.filter((a: any) => a.staff_id === uId).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-                        const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                        const totalCashReceived = branchEntries.filter((e: any) => e.staff_id === uId && e.status !== 'Pending Cash' && !e.pending_cash_liability).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                         const totalCashPaid = branchEntries.filter((e: any) => e.staff_id === uId).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
 
                         currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;

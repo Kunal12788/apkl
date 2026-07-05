@@ -149,7 +149,7 @@ export const GlobalFAB: React.FC = () => {
               } else {
                 // Buying: Validation for Cash Stock
                 const totalAllocatedCash = (allocationsRes.data || []).reduce((s, a) => s + Number(a.cash_amount || 0), 0);
-                const totalCashReceived = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_received || 0), 0);
+                const totalCashReceived = (entriesRes.data || []).filter((e: any) => e.status !== 'Pending Cash' && !e.pending_cash_liability).reduce((s, e) => s + Number(e.cash_received || 0), 0);
                 const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
                 const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
 
@@ -357,7 +357,8 @@ export const GlobalFAB: React.FC = () => {
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
               const serviceFeeAmount = Number(data.fee || 0);
               const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
-              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
+              const isFeePaid = data.feeStatus === 'Paid';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper && isFeePaid) ? serviceFeeAmount : 0;
 
               const ledgerEntry: any = {
                 id: entryId,
@@ -474,7 +475,8 @@ export const GlobalFAB: React.FC = () => {
               const entryId = `LGR-${Math.floor(1000 + Math.random() * 9000)}`;
               const serviceFeeAmount = Number(data.fee || 0);
               const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
-              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
+              const isFeePaid = data.feeStatus === 'Paid';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper && isFeePaid) ? serviceFeeAmount : 0;
 
               const ledgerEntry: any = {
                 id: entryId,
@@ -578,7 +580,8 @@ export const GlobalFAB: React.FC = () => {
               const entryId = `LGR-S-${Math.floor(1000 + Math.random() * 9000)}`;
               const serviceFeeAmount = Number(data.fee || 0);
               const isUserAdminOrSuper = user?.role === 'Admin' || user?.role === 'Super Admin';
-              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper) ? serviceFeeAmount : 0;
+              const isFeePaid = data.feeStatus === 'Paid';
+              const serviceFeeCash = (data.feePaymentMode === 'Cash' && !isUserAdminOrSuper && isFeePaid) ? serviceFeeAmount : 0;
 
               const staffLedgerEntry: any = {
                 id: entryId,

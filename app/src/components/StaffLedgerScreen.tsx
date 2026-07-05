@@ -134,9 +134,10 @@ export const StaffLedgerScreen: React.FC = () => {
   let initialBillingCash = 0;
   cachedBillingTx.forEach((tx: any) => {
     const type = tx.type?.trim().toLowerCase() || '';
-    if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.isCashExchange && !tx.is_cash_exchange) {
-      const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-      initialBillingCash += Number(amtStr) || 0;
+    const workType = tx.workType?.trim().toLowerCase() || '';
+    const isServiceFee = ['tunch', 'marking', 'shouldering'].includes(workType);
+    if (type === 'cash' && isServiceFee && !tx.isCashExchange && !tx.is_cash_exchange) {
+      initialBillingCash += Number(tx.paidAmount || tx.paid_amount || 0);
     }
   });
 
@@ -325,9 +326,10 @@ export const StaffLedgerScreen: React.FC = () => {
         let cash = 0;
         allTx.forEach((tx: any) => {
           const type = tx.type?.trim().toLowerCase() || '';
-          if ((tx.status === 'Paid' || tx.status === 'Fully Paid') && type === 'cash' && !tx.isCashExchange) {
-            const amtStr = typeof tx.amount === 'string' ? tx.amount.replace(/[^\d.]/g, '') : tx.amount;
-            cash += Number(amtStr) || 0;
+          const workType = tx.workType?.trim().toLowerCase() || '';
+          const isServiceFee = ['tunch', 'marking', 'shouldering'].includes(workType);
+          if (type === 'cash' && isServiceFee && !tx.isCashExchange && !tx.is_cash_exchange) {
+            cash += Number(tx.paidAmount || tx.paid_amount || 0);
           }
         });
         setBillingCash(cash);
@@ -416,7 +418,7 @@ export const StaffLedgerScreen: React.FC = () => {
     }
     return allocations.reduce((s, a) => s + Number(a.cash_amount || 0), 0);
   }, [allocations, user?.role]);
-  const totalCashReceived = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashReceived || 0), 0), [entries]);
+  const totalCashReceived = React.useMemo(() => entries.filter(e => e.status !== 'Pending Cash' && !e.pendingCashLiability).reduce((s, e) => s + Number(e.cashReceived || 0), 0), [entries]);
   const totalCashPaid = React.useMemo(() => entries.reduce((s, e) => s + Number(e.cashPaid || 0), 0), [entries]);
 
   const currentPureStock = (activeMetal === 'Gold' ? totalAllocatedPureGold : totalAllocatedPureSilver) + totalPureReceived - totalPureGiven;
@@ -599,7 +601,7 @@ export const StaffLedgerScreen: React.FC = () => {
 
       if (isAdmin) {
         // --- 1. Compute values for Branch Daily Report ---
-        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only');
+        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only' && e.status !== 'Pending Cash' && !e.pendingCashLiability);
 
         const tAllocGold = allocations.filter(a => a.staff_id === null && a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
         const tAllocSilver = allocations.filter(a => a.staff_id === null && a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
@@ -689,7 +691,7 @@ export const StaffLedgerScreen: React.FC = () => {
         triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
       } else {
         // --- 1. Compute values for Staff Daily Report ---
-        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only');
+        const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only' && e.status !== 'Pending Cash' && !e.pendingCashLiability);
 
         const tAllocGold = allocations.filter(a => a.metal === 'Gold').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
         const tAllocSilver = allocations.filter(a => a.metal === 'Silver').reduce((s, a) => s + Number(a.pure_weight || 0), 0);
