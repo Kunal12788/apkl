@@ -5,7 +5,9 @@ export const computeStaffBillingTransactions = (txData: any[], tasksData: any[],
     const amtNum = Number(t.amount) || 0;
     const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (paidNum > 0 && paidNum < amtNum) {
+    if (t.status === 'Rate Pending' || t.status === 'Pending Metal') {
+      computedStatus = t.status;
+    } else if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
     } else if (t.status === 'Fully Paid' || t.status === 'Paid' || t.staff_paid || (amtNum > 0 && paidNum >= amtNum)) {
       computedStatus = 'Fully Paid';
@@ -124,7 +126,9 @@ export const computeCollectionStaffBillingTransactions = (txData: any[], tasksDa
     const amtNum = Number(t.amount) || 0;
     const paidNum = Number(t.paid_amount || 0);
     let computedStatus = 'Unpaid';
-    if (paidNum > 0 && paidNum < amtNum) {
+    if (t.status === 'Rate Pending' || t.status === 'Pending Metal') {
+      computedStatus = t.status;
+    } else if (paidNum > 0 && paidNum < amtNum) {
       computedStatus = 'Partially Paid';
     } else if (t.status === 'Fully Paid' || t.status === 'Paid' || t.staff_paid || (amtNum > 0 && paidNum >= amtNum)) {
       computedStatus = 'Fully Paid';

@@ -180,7 +180,7 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 customer_name: data.customerName || 'Walk-in Customer',
                 transaction_type: isBuy ? 'Buy' : 'Sell',
-                status: isDue ? (isBuy ? 'Pending Metal' : 'Pending Cash') : 'Completed',
+                status: isBuy ? (isDue ? 'Pending Metal' : 'Completed') : 'Completed',
                 purity: data.purity || '',
                 staff_id: user?.id || '',
                 pure_gold_out: 0,
@@ -196,7 +196,7 @@ export const GlobalFAB: React.FC = () => {
                 cash_rate_per_gram: cashRate,
                 cash_amount: calculatedTotal || upfrontCash,
                 pending_pure_liability: isBuy && isDue,
-                pending_cash_liability: !isBuy && isDue
+                pending_cash_liability: false
               };
 
               if (isSilver) {
@@ -308,7 +308,7 @@ export const GlobalFAB: React.FC = () => {
                 purity_percentage: data.purity || '',
                 cash_rate_per_gram: cashRate,
                 cash_amount: totalAmount,
-                paid_amount: isDue ? 0 : totalAmount,
+                paid_amount: isDue ? upfrontCash : totalAmount,
                 is_cash_exchange: true,
                 branch_id: user?.branch_id || null
               };
