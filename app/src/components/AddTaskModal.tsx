@@ -1097,11 +1097,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       const pureVal = e.target.value;
                       up('pureWeight', pureVal);
                       
-                      // Auto calculate cash amount
+                      // Auto calculate cash amount only if Paid
                       const rateNum = parseFloat(formData.cashRate) || 0;
                       const pureNum = parseFloat(pureVal) || 0;
                       const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
-                      up('cashAmount', calculatedAmt);
+                      if (formData.paymentStatus === 'Paid') {
+                        up('cashAmount', calculatedAmt);
+                      }
                     }} />
                     {errMsg('pureWeight')}
                   </div>
@@ -1116,7 +1118,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         value={formData.paymentStatus} 
                         onChange={v => {
                           up('paymentStatus', v);
-                          if (v === 'Paid') up('pricingMode', 'NOW');
+                          if (v === 'Paid') {
+                            up('pricingMode', 'NOW');
+                            const rateNum = parseFloat(formData.cashRate) || 0;
+                            const pureNum = parseFloat(formData.pureWeight) || 0;
+                            const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
+                            up('cashAmount', calculatedAmt);
+                          } else {
+                            up('cashAmount', '');
+                          }
                         }} 
                       />
                     </div>
@@ -1157,7 +1167,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                             const pureNum = parseFloat(formData.pureWeight) || 0;
                             const rateNum = parseFloat(rateVal) || 0;
                             const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
-                            up('cashAmount', calculatedAmt);
+                            if (formData.paymentStatus === 'Paid') {
+                              up('cashAmount', calculatedAmt);
+                            }
                           }} />
                         </div>
                         {errMsg('cashRate')}
