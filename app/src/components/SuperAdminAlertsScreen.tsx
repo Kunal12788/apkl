@@ -268,7 +268,51 @@ export const SuperAdminAlertsScreen: React.FC = () => {
         if (txData) {
           const pureWeight = parseFloat(txData.pure_weight || txData.pureWeight || '0') || 0;
           const finalCalculatedPrice = pureWeight * newRate;
+          const isBuy = String(txData.work_type || txData.workType || '').toLowerCase() === 'buy';
+          const isSilver = String(txData.metal || '').toLowerCase() === 'silver';
+          const upfrontCash = parseFloat(String(txData.paid_amount || txData.paidAmount || txData.cash_amount || txData.cashAmount || '0')) || 0;
 
+          // 1. Insert Ledger Entry
+          const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
+          const adjLedgerEntry: any = {
+            id: adjLedgerId,
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: new Date().toISOString().split('T')[0],
+            customer_name: txData.customer_name || txData.customerName || 'Customer',
+            transaction_type: isBuy ? 'Buy Settlement' : 'Sell Settlement',
+            status: 'Completed',
+            staff_id: req.requested_by || 'Admin',
+            cash_rate_per_gram: newRate,
+            cash_amount: finalCalculatedPrice
+          };
+
+          if (isBuy) {
+            const diff = finalCalculatedPrice - upfrontCash;
+            adjLedgerEntry.pure_gold_in = isSilver ? 0 : pureWeight;
+            adjLedgerEntry.pure_silver_in = isSilver ? pureWeight : 0;
+            adjLedgerEntry.pure_gold_out = 0;
+            adjLedgerEntry.pure_silver_out = 0;
+            adjLedgerEntry.pure_gold_due = 0;
+            adjLedgerEntry.pure_silver_due = 0;
+            if (diff > 0) {
+              adjLedgerEntry.cash_paid = diff;
+              adjLedgerEntry.cash_received = 0;
+            } else if (diff < 0) {
+              adjLedgerEntry.cash_received = Math.abs(diff);
+              adjLedgerEntry.cash_paid = 0;
+            } else {
+              adjLedgerEntry.cash_paid = 0;
+              adjLedgerEntry.cash_received = 0;
+            }
+          } else {
+            const remainingDue = Math.max(0, finalCalculatedPrice - upfrontCash);
+            adjLedgerEntry.cash_received = remainingDue;
+            adjLedgerEntry.cash_paid = 0;
+          }
+
+          await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+          // 2. Update Transaction
           await supabase.from('transactions').update({
             cash_rate_per_gram: newRate,
             amount: finalCalculatedPrice.toString(),

@@ -392,7 +392,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
           <span className={`text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${
             txn.status === 'Fully Paid' || txn.status === 'Paid' ? 'bg-success/10 text-success border-success/20' : 'bg-error/10 text-error border-error/20'
           }`}>
-            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
+            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (String(txn.workType || '').toLowerCase() === 'buy' ? 'Settled' : 'Paid') : txn.status}
           </span>
         </div>
 
@@ -487,8 +487,8 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
           </div>
 
           {/* Section: Dues & Pricing Breakdown (for Buy/Sell) */}
-          {['Buy', 'Sell'].includes(txn.workType || '') && (() => {
-            const isBuy = txn.workType === 'Buy';
+          {['buy', 'sell'].includes(String(txn.workType || '').toLowerCase()) && (() => {
+            const isBuy = String(txn.workType || '').toLowerCase() === 'buy';
             const rateVal = parseFloat(String(txn.cashRatePerGram || '0')) || 0;
             const weightVal = parseFloat(txn.pureWeight || '0') || 0;
             const amtNum = parseFloat(String(txn.amount || '0').replace(/[^\d.]/g, '')) || 0;
@@ -601,7 +601,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                  <div className="text-right">
                    <p className="text-[8px] font-bold uppercase tracking-widest" style={{ color: '#C9A646' }}>{txn.type} Settlement</p>
                    <p className="text-[10px] mt-0.5 font-medium" style={{ color: 'rgba(255, 255, 255, 0.8)' }}>
-                     {txn.status === 'Paid' || txn.status === 'Fully Paid' ? (txn.workType === 'Buy' ? 'Settled & Cleared' : 'Paid & Cleared') : 'Payment Due'}
+                     {txn.status === 'Paid' || txn.status === 'Fully Paid' ? (String(txn.workType || '').toLowerCase() === 'buy' ? 'Settled & Cleared' : 'Paid & Cleared') : 'Payment Due'}
                    </p>
                  </div>
                </div>
@@ -958,16 +958,21 @@ export const CollectionStaffBillingScreen: React.FC = () => {
       if (t.workType === 'Dues Payment') return;
       const amtNum = parseFloat(t.amount.replace(/[^\d.]/g, '')) || 0;
       const paidAmtNum = t.paidAmount || 0;
+      const isBuyTx = String(t.workType || '').toLowerCase() === 'buy';
       if (t.status === 'Unpaid' || t.status === 'Rate Pending' || t.status === 'Pending Metal') {
         cust.activeJobs += 1;
-        const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        if (!isBuyTx) {
+          const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+          cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        }
         const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
         cust.paid = `₹ ${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else if (t.status === 'Partially Paid') {
         cust.activeJobs += 1;
-        const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
-        cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        if (!isBuyTx) {
+          const outstandingNum = parseFloat(cust.outstanding.replace(/[^\d.]/g, '')) || 0;
+          cust.outstanding = `₹ ${(outstandingNum + (amtNum - paidAmtNum)).toLocaleString('en-IN')}`;
+        }
         const paidNum = parseFloat(cust.paid.replace(/[^\d.]/g, '')) || 0;
         cust.paid = `₹ ${(paidNum + paidAmtNum).toLocaleString('en-IN')}`;
       } else {
@@ -1370,7 +1375,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
                             (txn.status === 'Fully Paid' || txn.status === 'Paid') ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
                           }`}>
-                            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
+                            {(txn.status === 'Fully Paid' || txn.status === 'Paid') ? (String(txn.workType || '').toLowerCase() === 'buy' ? 'Settled' : 'Paid') : txn.status}
                           </span>
                         </div>
                       </div>
@@ -1452,7 +1457,7 @@ export const CollectionStaffBillingScreen: React.FC = () => {
                         {txn.details}
                       </p>
                       <span className={`text-[9px] font-bold uppercase tracking-[0.2em] px-2.5 py-1 rounded-full ${isPending ? 'bg-error text-white' : 'bg-secondary/10 text-secondary'}`}>
-                        {(txn.status === 'Fully Paid' || txn.status === 'Paid' || txn.status === 'Completed') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
+                        {(txn.status === 'Fully Paid' || txn.status === 'Paid' || txn.status === 'Completed') ? (String(txn.workType || '').toLowerCase() === 'buy' ? 'Settled' : 'Paid') : txn.status}
                       </span>
                     </div>
                   </div>
