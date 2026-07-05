@@ -113,7 +113,7 @@ export const GlobalFAB: React.FC = () => {
               const cashRate = isPriceLater ? 0 : Number(data.cashRate || 0);
               const upfrontCash = isDue ? (initialCashGiven || Number(data.cashAmount || 0)) : Number(data.cashAmount || 0);
               const calculatedTotal = isPriceLater ? 0 : (Number(data.cashAmount || 0) || (calculatedPure * cashRate));
-              const totalAmount = isDue ? upfrontCash : (calculatedTotal || Number(data.cashAmount || 0));
+              const totalAmount = (isDue && !isPriceLater) ? calculatedTotal : (isPriceLater ? upfrontCash : (calculatedTotal || Number(data.cashAmount || 0)));
 
               const isSuperSa = user?.role === 'Super Admin';
               let allocationsQuery = supabase.from('stock_allocations').select('*');
