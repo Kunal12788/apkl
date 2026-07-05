@@ -181,7 +181,7 @@ export const GlobalFAB: React.FC = () => {
                 pure_silver_in: 0,
                 impure_gold_in: 0,
                 impure_silver_in: 0,
-                cash_paid: isBuy ? totalAmount : 0,
+                cash_paid: (isBuy && !depositToWallet) ? totalAmount : 0,
                 cash_received: isBuy ? 0 : totalAmount,
                 cash_rate_per_gram: cashRate,
                 cash_amount: totalAmount,
