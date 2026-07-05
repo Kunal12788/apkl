@@ -214,7 +214,7 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
           supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('branch_id', user?.branch_id).is('admin_submitted_at', null),
           supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+          supabase.from('tasks').select('id', { count: 'exact', head: true }).in('created_by', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
         ]);
         const hasTransactionsOrLedger = (aEntries.count || 0) > 0 || (aTx.count || 0) > 0;
         const totalCount = (aEntries.count || 0) + (aAlloc.count || 0) + (aTx.count || 0) + (aTasks.count || 0);
@@ -229,7 +229,7 @@ export const StaffLedgerScreen: React.FC = () => {
             supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).in('staff_id', staffIds).is('staff_submitted_at', null),
             supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).in('staff_id', staffIds).is('staff_submitted_at', null),
             supabase.from('transactions').select('id', { count: 'exact', head: true }).in('created_by', staffIds).is('staff_submitted_at', null),
-            supabase.from('tasks').select('id', { count: 'exact', head: true }).in('assigned_to', staffIds).is('staff_submitted_at', null),
+            supabase.from('tasks').select('id', { count: 'exact', head: true }).in('assigned_to', staffIds).is('staff_submitted_at', null).neq('status', 'Settlement'),
           ]);
           const staffCount = (sEntries.count || 0) + (sAlloc.count || 0) + (sTx.count || 0) + (sTasks.count || 0);
           if (staffCount > 0) {
@@ -241,7 +241,7 @@ export const StaffLedgerScreen: React.FC = () => {
           supabase.from('ledger_entries').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
           supabase.from('stock_allocations').select('id', { count: 'exact', head: true }).eq('staff_id', userId).is('staff_submitted_at', null),
           supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('created_by', userId).is('staff_submitted_at', null),
-          supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('created_by', userId).is('staff_submitted_at', null),
+          supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('created_by', userId).is('staff_submitted_at', null).neq('status', 'Settlement'),
         ]);
         const count = (sEntries.count || 0) + (sAlloc.count || 0) + (sTx.count || 0) + (sTasks.count || 0);
         if (count > 0) hasActiveData = true;
