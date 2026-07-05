@@ -1763,7 +1763,6 @@ export const StaffBillingScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
-          cust.workBreakdown.tunchAmount += amt;
           tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
@@ -1915,7 +1914,6 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
-            cust.workBreakdown.tunchAmount += amtNum;
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }

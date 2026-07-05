@@ -151,7 +151,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
-          cust.workBreakdown.tunchAmount += amt;
           tunchIncrementedTasks.add(task.id);
 
           if (isPureGold) {
@@ -243,7 +242,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
-            cust.workBreakdown.tunchAmount += amtNum;
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
         }
