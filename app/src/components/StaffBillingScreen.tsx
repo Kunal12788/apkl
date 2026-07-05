@@ -1114,6 +1114,11 @@ export const StaffBillingScreen: React.FC = () => {
   const [adjMetalRate, setAdjMetalRate] = useState<string>(''); // For adjusting metal converting to cash
   const [adjWeightAmount, setAdjWeightAmount] = useState<string>(''); // grams of gold/silver
 
+  // Direct Settle Due State
+  const [directSettleTx, setDirectSettleTx] = useState<any | null>(null);
+  const [settleRate, setSettleRate] = useState<string>('');
+  const [settleWeight, setSettleWeight] = useState<string>('');
+
   const loadWalletLogs = async (customerId: string) => {
     try {
       setLoadingWalletLogs(true);
@@ -2757,7 +2762,7 @@ export const StaffBillingScreen: React.FC = () => {
                 }
 
                 return filteredHistoryLedger.map(txn => {
-                  const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid';
+                  const isPending = txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Rate Pending' || txn.status === 'Pending Metal' || (txn as any).pending_pure_liability || (txn as any).pending_cash_liability;
                   return (
                     <div key={txn.id} onClick={() => setSearchParams({ transactionId: txn.id, customerId: selectedCustomer.id, tab: activeTab })} className="luxury-card p-4 border border-outline-variant/10 relative overflow-hidden group cursor-pointer active:scale-[0.99] transition-transform bg-white">
                       <div className={`absolute left-0 top-0 bottom-0 w-1 ${isPending ? 'bg-error' : 'bg-tertiary'}`}></div>
@@ -2786,6 +2791,24 @@ export const StaffBillingScreen: React.FC = () => {
                           {(txn.status === 'Fully Paid' || txn.status === 'Paid' || txn.status === 'Completed') ? (txn.workType === 'Buy' ? 'Settled' : 'Paid') : txn.status}
                         </span>
                       </div>
+                      {isPending && (
+                        <div className="pl-14 pt-2.5 border-t border-outline-variant/10 mt-2 flex justify-end">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDirectSettleTx(txn);
+                              const rateVal = (txn as any).cashRate || (txn as any).cash_rate_per_gram;
+                              const weightVal = (txn as any).pureWeight || (txn as any).pure_weight;
+                              setSettleRate(rateVal ? String(rateVal) : '');
+                              setSettleWeight(weightVal ? String(weightVal) : '');
+                            }}
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-[10px] font-black uppercase tracking-wider rounded-lg shadow-sm flex items-center gap-1 transition-all active:scale-95"
+                          >
+                            <span className="material-symbols-outlined text-[14px]">task_alt</span>
+                            Settle Dues
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 });
@@ -3173,7 +3196,14 @@ export const StaffBillingScreen: React.FC = () => {
                   <div>
                     <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1.5 block">Select Outstanding Job / Due *</label>
                     {(() => {
-                      const pendingTx = walletCustomer.ledger.filter(t => t.status === 'Unpaid' || t.status === 'Partially Paid');
+                      const pendingTx = walletCustomer.ledger.filter(t => 
+                        t.status === 'Unpaid' || 
+                        t.status === 'Partially Paid' || 
+                        t.status === 'Rate Pending' || 
+                        t.status === 'Pending Metal' ||
+                        (t as any).pending_pure_liability || 
+                        (t as any).pending_cash_liability
+                      );
                       if (pendingTx.length === 0) {
                         return <div className="text-center p-4 text-xs font-semibold text-outline bg-slate-50 rounded-xl border border-dashed">No outstanding dues to adjust!</div>;
                       }
@@ -3325,6 +3355,239 @@ export const StaffBillingScreen: React.FC = () => {
           <span className="font-label text-[10px] uppercase tracking-widest">Profile</span>
         </a>
       </nav>
+
+      {/* DIRECT SETTLE BUY/SELL DUE MODAL */}
+      {directSettleTx && (() => {
+        const isBuy = directSettleTx.workType === 'Buy';
+        const isSilver = directSettleTx.metal === 'Silver';
+        const metalName = isSilver ? 'Silver' : 'Gold';
+        const upfrontCash = parseFloat(String(directSettleTx.paidAmount || directSettleTx.cashAmount || '0')) || 0;
+        const weight = parseFloat(settleWeight || directSettleTx.pureWeight || '0') || 0;
+        const rate = parseFloat(settleRate) || 0;
+        const calculatedTotal = weight * rate;
+        const cashDiff = isBuy ? (calculatedTotal - upfrontCash) : (calculatedTotal - upfrontCash);
+
+        const handleDirectSettleSubmit = async () => {
+          if (!weight || isNaN(weight) || weight <= 0) {
+            alert("Please enter a valid pure weight in grams.");
+            return;
+          }
+          if (!rate || isNaN(rate) || rate <= 0) {
+            alert("Please enter a valid price per gram.");
+            return;
+          }
+
+          setIsSubmittingWallet(true);
+          try {
+            const finalCalculatedPrice = weight * rate;
+            const custName = directSettleTx.customerName || selectedCustomer?.name || 'Customer';
+
+            if (isBuy) {
+              const diff = finalCalculatedPrice - upfrontCash;
+              const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
+              const adjLedgerEntry: any = {
+                id: adjLedgerId,
+                date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                iso_date: new Date().toISOString().split('T')[0],
+                customer_name: custName,
+                transaction_type: 'Buy Settlement',
+                status: 'Completed',
+                staff_id: user?.id,
+                pure_gold_in: isSilver ? 0 : weight,
+                pure_silver_in: isSilver ? weight : 0,
+                pure_gold_out: 0,
+                pure_silver_out: 0,
+                pure_gold_due: 0,
+                pure_silver_due: 0,
+                cash_rate_per_gram: rate,
+                cash_amount: finalCalculatedPrice
+              };
+
+              if (diff > 0) {
+                adjLedgerEntry.cash_paid = diff;
+                adjLedgerEntry.cash_received = 0;
+              } else if (diff < 0) {
+                adjLedgerEntry.cash_received = Math.abs(diff);
+                adjLedgerEntry.cash_paid = 0;
+              } else {
+                adjLedgerEntry.cash_paid = 0;
+                adjLedgerEntry.cash_received = 0;
+              }
+
+              await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+              await supabase.from('transactions').update({
+                cash_rate_per_gram: rate,
+                amount: finalCalculatedPrice.toString(),
+                paid_amount: finalCalculatedPrice,
+                pure_weight: weight.toString(),
+                status: 'Fully Paid',
+                staff_paid: true,
+                col_staff_paid: true
+              }).eq('id', directSettleTx.id);
+
+              triggerBlueToast(`Buy settlement complete! Final Price: ₹${finalCalculatedPrice.toLocaleString('en-IN')}. ${diff > 0 ? 'Admin paid remaining ₹' + diff.toLocaleString('en-IN') : diff < 0 ? 'Customer refunded excess ₹' + Math.abs(diff).toLocaleString('en-IN') : 'Balanced.'}`, "Settlement Complete", "success");
+
+            } else {
+              // Sell Settlement
+              const remainingDue = Math.max(0, finalCalculatedPrice - upfrontCash);
+              const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
+              const adjLedgerEntry: any = {
+                id: adjLedgerId,
+                date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+                iso_date: new Date().toISOString().split('T')[0],
+                customer_name: custName,
+                transaction_type: 'Sell Settlement',
+                status: 'Completed',
+                staff_id: user?.id,
+                cash_received: remainingDue,
+                cash_paid: 0,
+                cash_rate_per_gram: rate,
+                cash_amount: finalCalculatedPrice
+              };
+
+              await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+              await supabase.from('transactions').update({
+                cash_rate_per_gram: rate,
+                amount: finalCalculatedPrice.toString(),
+                paid_amount: finalCalculatedPrice,
+                status: 'Fully Paid',
+                staff_paid: true,
+                col_staff_paid: true
+              }).eq('id', directSettleTx.id);
+
+              triggerBlueToast(`Sell settlement complete! Collected remaining ₹${remainingDue.toLocaleString('en-IN')} from customer.`, "Settlement Complete", "success");
+            }
+
+            setDirectSettleTx(null);
+            window.dispatchEvent(new Event('databaseSync'));
+          } catch (err: any) {
+            console.error(err);
+            alert("Failed to complete settlement: " + err.message);
+          } finally {
+            setIsSubmittingWallet(false);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-outline-variant/20 flex flex-col gap-4 text-left">
+              
+              {/* Header */}
+              <div className="flex justify-between items-center pb-3 border-b border-outline-variant/10">
+                <div>
+                  <h3 className="text-base font-black text-primary flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-600">task_alt</span>
+                    Settle {isBuy ? 'Buy Due' : 'Sell Due'} ({directSettleTx.id})
+                  </h3>
+                  <p className="text-[10px] text-outline font-bold uppercase tracking-wider mt-0.5">
+                    Customer: {directSettleTx.customerName || selectedCustomer?.name}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setDirectSettleTx(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              </div>
+
+              {/* Transaction Info Summary Card */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-outline font-semibold">Pure Metal Weight:</span>
+                  <span className="font-extrabold text-primary">{weight.toFixed(3)}g Pure {metalName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-outline font-semibold">{isBuy ? 'Upfront Cash Paid to Customer:' : 'Upfront Cash Received:'}</span>
+                  <span className="font-extrabold text-emerald-600">₹{upfrontCash.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* Rate & Weight Inputs */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1 block">Price per Gram (₹) *</label>
+                  <input
+                    type="number"
+                    value={settleRate}
+                    onChange={e => setSettleRate(e.target.value)}
+                    placeholder="e.g. 7000"
+                    className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                {isBuy && (
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline mb-1 block">Delivered Pure Metal Weight (g) *</label>
+                    <input
+                      type="number"
+                      step="0.001"
+                      value={settleWeight}
+                      onChange={e => setSettleWeight(e.target.value)}
+                      placeholder="e.g. 10.000"
+                      className="w-full bg-slate-50 border border-outline-variant/30 rounded-xl px-4 py-2.5 text-xs font-bold text-primary focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Calculation Live Summary */}
+              {rate > 0 && (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-emerald-800 font-semibold">Calculated Total Price:</span>
+                    <span className="font-black text-emerald-700 text-sm">₹{calculatedTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  {isBuy ? (
+                    <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
+                      <span className="text-emerald-900 font-bold">
+                        {cashDiff > 0 ? 'Shop Remaining Cash Payout:' : cashDiff < 0 ? 'Customer Excess Refund:' : 'Settlement Status:'}
+                      </span>
+                      <span className={`font-black text-xs ${cashDiff > 0 ? 'text-amber-700' : cashDiff < 0 ? 'text-blue-700' : 'text-emerald-700'}`}>
+                        {cashDiff > 0 ? `₹${cashDiff.toLocaleString('en-IN')} (Pay)` : cashDiff < 0 ? `₹${Math.abs(cashDiff).toLocaleString('en-IN')} (Receive)` : 'Balanced'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center pt-1 border-t border-emerald-200/60">
+                      <span className="text-emerald-900 font-bold">Remaining Cash to Collect:</span>
+                      <span className="font-black text-xs text-error">
+                        ₹{Math.max(0, calculatedTotal - upfrontCash).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setDirectSettleTx(null)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDirectSettleSubmit}
+                  disabled={isSubmittingWallet || !rate}
+                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {isSubmittingWallet ? (
+                    <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                      Confirm Settlement
+                    </>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
