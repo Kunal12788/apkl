@@ -685,7 +685,13 @@ const RecordPaymentModal: React.FC<RecordPaymentModalProps> = ({ isOpen, onClose
 
   // Filter ledger for items with outstanding dues
   const unpaidItems = useMemo(() => {
-    return customer.ledger.filter(txn => txn.status === 'Unpaid' || txn.status === 'Partially Paid' || txn.status === 'Awaiting Staff');
+    return customer.ledger.filter(txn => 
+      txn.status === 'Unpaid' || 
+      txn.status === 'Partially Paid' || 
+      txn.status === 'Awaiting Staff' ||
+      txn.status === 'Rate Pending' ||
+      txn.status === 'Pending Metal'
+    );
   }, [customer.ledger]);
 
   // Track allocation inputs
@@ -1415,46 +1421,146 @@ export const StaffBillingScreen: React.FC = () => {
         }).eq('id', targetTx.id);
       }
 
-      const paymentId = `PAY-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
-      const allocationArray = [{ id: targetTx.id, amount: adjustValueInCash }];
-      const newPayment = {
-        id: paymentId,
-        customer_id: walletCustomer.id,
-        customer_name: walletCustomer.name,
-        amount: adjustValueInCash,
-        payment_method: `Wallet ${walletAsset}`,
-        recorded_by: user?.id,
-        allocations: allocationArray
-      };
-      await supabase.from('payments').insert([newPayment]);
+      if (targetTx.status === 'Rate Pending' || targetTx.status === 'Pending Metal') {
+        // Rate & Weight Reconciliation Workflow
+        const isBuy = targetTx.workType === 'Buy';
+        const isSilver = targetTx.metal === 'Silver';
+        const weight = parseFloat(adjWeightAmount || targetTx.pureWeight || '0');
+        const rate = parseFloat(adjMetalRate);
 
-      // Create Ledger Entry for Wallet Adjustment
-      const adjLedgerId = `LGR-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
-      const adjLedgerEntry: any = {
-        id: adjLedgerId,
-        date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
-        iso_date: new Date().toISOString().split('T')[0],
-        customer_name: walletCustomer.name,
-        transaction_type: 'Wallet Adjustment',
-        status: 'Completed',
-        staff_id: user?.id
-      };
+        if (!weight || isNaN(weight) || weight <= 0) {
+          alert("Please enter a valid pure weight in grams.");
+          setIsSubmittingWallet(false);
+          return;
+        }
+        if (!rate || isNaN(rate) || rate <= 0) {
+          alert("Please enter a valid price per gram.");
+          setIsSubmittingWallet(false);
+          return;
+        }
 
-      if (walletAsset === 'Cash') {
-        adjLedgerEntry.cash_received = adjustValueInCash;
-        adjLedgerEntry.cash_paid = 0;
-      } else if (walletAsset === 'Pure Gold') {
-        const weightVal = parseFloat(adjWeightAmount) || 0;
-        adjLedgerEntry.pure_gold_in = weightVal;
-        adjLedgerEntry.pure_gold_out = 0;
-      } else if (walletAsset === 'Pure Silver') {
-        const weightVal = parseFloat(adjWeightAmount) || 0;
-        adjLedgerEntry.pure_silver_in = weightVal;
-        adjLedgerEntry.pure_silver_out = 0;
+        const finalCalculatedPrice = weight * rate;
+
+        if (isBuy) {
+          const initialCash = parseFloat(targetTx.cashAmount || targetTx.amount || '0') || 0;
+          const cashDiff = finalCalculatedPrice - initialCash;
+
+          const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
+          const adjLedgerEntry: any = {
+            id: adjLedgerId,
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: new Date().toISOString().split('T')[0],
+            customer_name: walletCustomer.name,
+            transaction_type: 'Buy Settlement',
+            status: 'Completed',
+            staff_id: user?.id,
+            pure_gold_in: isSilver ? 0 : weight,
+            pure_silver_in: isSilver ? weight : 0,
+            pure_gold_out: 0,
+            pure_silver_out: 0,
+            pure_gold_due: 0,
+            pure_silver_due: 0,
+            cash_rate_per_gram: rate,
+            cash_amount: finalCalculatedPrice
+          };
+
+          if (cashDiff > 0) {
+            adjLedgerEntry.cash_paid = cashDiff;
+            adjLedgerEntry.cash_received = 0;
+          } else if (cashDiff < 0) {
+            adjLedgerEntry.cash_received = Math.abs(cashDiff);
+            adjLedgerEntry.cash_paid = 0;
+          } else {
+            adjLedgerEntry.cash_paid = 0;
+            adjLedgerEntry.cash_received = 0;
+          }
+
+          await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+          await supabase.from('transactions').update({
+            cash_rate_per_gram: rate,
+            amount: finalCalculatedPrice.toString(),
+            paid_amount: finalCalculatedPrice,
+            pure_weight: weight.toString(),
+            status: 'Fully Paid',
+            staff_paid: true,
+            col_staff_paid: true
+          }).eq('id', targetTx.id);
+
+          triggerBlueToast(`Buy reconciliation complete! Final Price: ₹${finalCalculatedPrice.toLocaleString('en-IN')}. ${cashDiff > 0 ? 'Admin paid extra ₹' + cashDiff.toLocaleString('en-IN') : cashDiff < 0 ? 'Customer refunded excess ₹' + Math.abs(cashDiff).toLocaleString('en-IN') : 'Balanced.'}`, "Reconciliation Complete", "success");
+        } else {
+          // Sell Rate Reconciliation
+          const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
+          const adjLedgerEntry: any = {
+            id: adjLedgerId,
+            date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            iso_date: new Date().toISOString().split('T')[0],
+            customer_name: walletCustomer.name,
+            transaction_type: 'Sell Settlement',
+            status: 'Completed',
+            staff_id: user?.id,
+            cash_received: finalCalculatedPrice,
+            cash_paid: 0,
+            cash_rate_per_gram: rate,
+            cash_amount: finalCalculatedPrice
+          };
+
+          await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+          await supabase.from('transactions').update({
+            cash_rate_per_gram: rate,
+            amount: finalCalculatedPrice.toString(),
+            paid_amount: finalCalculatedPrice,
+            status: 'Fully Paid',
+            staff_paid: true,
+            col_staff_paid: true
+          }).eq('id', targetTx.id);
+
+          triggerBlueToast(`Sell reconciliation complete! Collected ₹${finalCalculatedPrice.toLocaleString('en-IN')} from customer.`, "Reconciliation Complete", "success");
+        }
+      } else {
+        // Standard Dues Adjustment via Wallet
+        const paymentId = `PAY-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
+        const allocationArray = [{ id: targetTx.id, amount: adjustValueInCash }];
+        const newPayment = {
+          id: paymentId,
+          customer_id: walletCustomer.id,
+          customer_name: walletCustomer.name,
+          amount: adjustValueInCash,
+          payment_method: `Wallet ${walletAsset}`,
+          recorded_by: user?.id,
+          allocations: allocationArray
+        };
+        await supabase.from('payments').insert([newPayment]);
+
+        // Create Ledger Entry for Wallet Adjustment
+        const adjLedgerId = `LGR-ADJ-${Math.floor(1000 + Math.random() * 9000)}`;
+        const adjLedgerEntry: any = {
+          id: adjLedgerId,
+          date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+          iso_date: new Date().toISOString().split('T')[0],
+          customer_name: walletCustomer.name,
+          transaction_type: 'Wallet Adjustment',
+          status: 'Completed',
+          staff_id: user?.id
+        };
+
+        if (walletAsset === 'Cash') {
+          adjLedgerEntry.cash_received = adjustValueInCash;
+          adjLedgerEntry.cash_paid = 0;
+        } else if (walletAsset === 'Pure Gold') {
+          const weightVal = parseFloat(adjWeightAmount) || 0;
+          adjLedgerEntry.pure_gold_in = weightVal;
+          adjLedgerEntry.pure_gold_out = 0;
+        } else if (walletAsset === 'Pure Silver') {
+          const weightVal = parseFloat(adjWeightAmount) || 0;
+          adjLedgerEntry.pure_silver_in = weightVal;
+          adjLedgerEntry.pure_silver_out = 0;
+        }
+        await supabase.from('ledger_entries').insert([adjLedgerEntry]);
+
+        triggerBlueToast("Wallet adjustment processed & ledger updated successfully.", "Adjustment Complete", "success");
       }
-      await supabase.from('ledger_entries').insert([adjLedgerEntry]);
-
-      triggerBlueToast("Wallet adjustment processed & ledger updated successfully.", "Adjustment Complete", "success");
       
       setWalletAmount('');
       setAdjWeightAmount('');

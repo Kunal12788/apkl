@@ -103,9 +103,15 @@ export const GlobalFAB: React.FC = () => {
             // Rule 0: Direct Buy and Sell direct transaction (Bypasses tasks, inserts completed ledger and transactions)
             if (data.workType === 'BUY_SELL') {
               const isBuy = data.settlementCondition === 'Buy';
+              const paymentStatus = data.paymentStatus || 'Paid';
+              const pricingMode = data.pricingMode || 'NOW';
+              const isDue = paymentStatus === 'Due';
+              const isPriceLater = pricingMode === 'LATER';
+              const initialCashGiven = Number(data.initialCashGiven || 0);
+
               const calculatedPure = Number(data.pureWeight || 0);
-              const totalAmount = Number(data.cashAmount || 0);
-              const cashRate = Number(data.cashRate || 0);
+              const totalAmount = (isBuy && isPriceLater) ? initialCashGiven : Number(data.cashAmount || 0);
+              const cashRate = isPriceLater ? 0 : Number(data.cashRate || 0);
 
               const isSuperSa = user?.role === 'Super Admin';
               let allocationsQuery = supabase.from('stock_allocations').select('*');
@@ -172,7 +178,7 @@ export const GlobalFAB: React.FC = () => {
                 iso_date: isoDateStr,
                 customer_name: data.customerName || 'Walk-in Customer',
                 transaction_type: isBuy ? 'Buy' : 'Sell',
-                status: 'Completed',
+                status: isDue ? (isBuy ? 'Pending Metal' : 'Pending Cash') : 'Completed',
                 purity: data.purity || '',
                 staff_id: user?.id || '',
                 pure_gold_out: 0,
@@ -181,25 +187,35 @@ export const GlobalFAB: React.FC = () => {
                 pure_silver_in: 0,
                 impure_gold_in: 0,
                 impure_silver_in: 0,
+                pure_gold_due: 0,
+                pure_silver_due: 0,
                 cash_paid: (isBuy && !depositToWallet) ? totalAmount : 0,
-                cash_received: isBuy ? 0 : totalAmount,
+                cash_received: (isBuy || isDue) ? 0 : totalAmount,
                 cash_rate_per_gram: cashRate,
                 cash_amount: totalAmount,
-                pending_pure_liability: false,
-                pending_cash_liability: false
+                pending_pure_liability: isBuy && isDue,
+                pending_cash_liability: !isBuy && isDue
               };
 
               if (isSilver) {
                 if (isBuy) {
-                  ledgerEntry.impure_silver_in = 0;
-                  ledgerEntry.pure_silver_in = calculatedPure;
+                  if (isDue) {
+                    ledgerEntry.pure_silver_due = calculatedPure;
+                    ledgerEntry.pure_silver_in = 0;
+                  } else {
+                    ledgerEntry.pure_silver_in = calculatedPure;
+                  }
                 } else {
                   ledgerEntry.pure_silver_out = depositToWallet ? 0 : calculatedPure;
                 }
               } else {
                 if (isBuy) {
-                  ledgerEntry.impure_gold_in = 0;
-                  ledgerEntry.pure_gold_in = calculatedPure;
+                  if (isDue) {
+                    ledgerEntry.pure_gold_due = calculatedPure;
+                    ledgerEntry.pure_gold_in = 0;
+                  } else {
+                    ledgerEntry.pure_gold_in = calculatedPure;
+                  }
                 } else {
                   ledgerEntry.pure_gold_out = depositToWallet ? 0 : calculatedPure;
                 }
@@ -268,6 +284,7 @@ export const GlobalFAB: React.FC = () => {
               }
 
               // 2. Create Transaction Entry
+              const txnStatus = isDue ? (isPriceLater ? 'Rate Pending' : 'Unpaid') : 'Paid';
               const newTxn = {
                 id: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
                 customer_id: generatedCustomerId,
@@ -279,15 +296,17 @@ export const GlobalFAB: React.FC = () => {
                 date: dateStr,
                 iso_date: isoDateStr,
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: 'Paid',
+                status: txnStatus,
                 details: depositToWallet
                   ? `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Yield auto-deposited to customer wallet. Pure Weight: ${calculatedPure}g.`
-                  : `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} completed. Pure Weight: ${calculatedPure}g at ₹${cashRate}/g.`,
+                  : `${data.metal} ${isBuy ? 'Purchase (Buy)' : 'Sale (Sell)'} (${paymentStatus}, ${pricingMode === 'LATER' ? 'Price Later' : 'Price Now'}). Pure Weight: ${calculatedPure}g.`,
                 created_by: user?.id || '',
                 pure_weight: String(calculatedPure),
                 impure_weight: String(data.impureWeight || 0),
                 purity_percentage: data.purity || '',
                 cash_rate_per_gram: cashRate,
+                cash_amount: totalAmount,
+                paid_amount: isDue ? 0 : totalAmount,
                 is_cash_exchange: true,
                 branch_id: user?.branch_id || null
               };
