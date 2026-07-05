@@ -492,6 +492,73 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             )}
           </div>
 
+          {/* Section: Dues & Pricing Breakdown (for Buy/Sell) */}
+          {['Buy', 'Sell'].includes(txn.workType || '') && (() => {
+            const isBuy = txn.workType === 'Buy';
+            const rateVal = parseFloat(String(txn.cashRatePerGram || '0')) || 0;
+            const weightVal = parseFloat(txn.pureWeight || '0') || 0;
+            const amtNum = parseFloat(String(txn.amount || '0').replace(/[^\d.]/g, '')) || 0;
+            const paidNum = parseFloat(String(txn.paidAmount || '0')) || 0;
+            
+            const isRatePending = txn.status === 'Rate Pending' || rateVal === 0;
+            const totalCalculated = isRatePending ? 0 : (amtNum || (weightVal * rateVal));
+            const remainingDue = Math.max(0, totalCalculated - paidNum);
+            const isPending = ['Unpaid', 'Partially Paid', 'Rate Pending', 'Pending Metal'].includes(txn.status || '');
+
+            return (
+              <div className="space-y-3">
+                {/* Pending Banner */}
+                {isPending && (
+                  <div className={`p-3 rounded-2xl border text-[11px] font-semibold flex items-start gap-2 ${
+                    isBuy ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-error/5 border-error/20 text-error'
+                  }`}>
+                    <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">warning</span>
+                    <div>
+                      <p className="font-bold">{isBuy ? 'Pending Metal Payout' : 'Pending Cash Due'}</p>
+                      <p className="text-[10px] opacity-90 mt-0.5">
+                        {isBuy 
+                          ? `Customer owes pure metal weight. Shop paid ₹${paidNum.toLocaleString('en-IN')} advance.`
+                          : `Customer owes remaining ₹${remainingDue.toLocaleString('en-IN')} cash due to the shop.`
+                        }
+                      </p>
+                      <p className="text-[9.5px] font-bold mt-1 text-[#003366] hover:underline">
+                        💡 Go to "By Customer" directory to settle this due.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Breakdown Details */}
+                <div className="rounded-2xl border border-outline-variant/15 p-3.5 bg-surface-container-lowest space-y-2 text-left">
+                  <p className="text-[8px] font-black uppercase tracking-[0.15em] text-[#C9A646] mb-1">Pricing & Dues Breakdown</p>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
+                    <div>
+                      <span className={lbl}>Price per Gram</span>
+                      <p className={val}>{isRatePending ? 'Later (Pending)' : `₹${rateVal.toLocaleString('en-IN')}/g`}</p>
+                    </div>
+                    <div>
+                      <span className={lbl}>Total Price</span>
+                      <p className={val}>{isRatePending ? 'Pending Rate' : `₹${totalCalculated.toLocaleString('en-IN')}`}</p>
+                    </div>
+                    <div>
+                      <span className={lbl}>{isBuy ? 'Advance Cash Given' : 'Advance Cash Received'}</span>
+                      <p className="text-xs font-bold text-emerald-600 truncate">₹{paidNum.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div>
+                      <span className={lbl}>{isBuy ? 'Remaining Metal Due' : 'Remaining Cash Due'}</span>
+                      <p className={`text-xs font-black truncate ${isPending ? 'text-error animate-pulse' : 'text-primary'}`}>
+                        {isBuy 
+                          ? `${weightVal}g Pure Metal`
+                          : `₹${remainingDue.toLocaleString('en-IN')}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Section 3: Settlement Summary Card */}
           <div className="rounded-2xl p-4 relative overflow-hidden shadow-md" style={{ background: 'linear-gradient(135deg, #001e40 0%, #003366 100%)', color: '#ffffff' }}>
             <div className="absolute right-0 bottom-0 w-16 h-16 rounded-full blur-lg -mr-4 -mb-4" style={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}></div>
