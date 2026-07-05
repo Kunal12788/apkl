@@ -1441,16 +1441,16 @@ export const StaffBillingScreen: React.FC = () => {
       };
 
       if (walletAsset === 'Cash') {
-        adjLedgerEntry.cash_paid = adjustValueInCash;
-        adjLedgerEntry.cash_received = 0;
+        adjLedgerEntry.cash_received = adjustValueInCash;
+        adjLedgerEntry.cash_paid = 0;
       } else if (walletAsset === 'Pure Gold') {
         const weightVal = parseFloat(adjWeightAmount) || 0;
-        adjLedgerEntry.pure_gold_out = weightVal;
-        adjLedgerEntry.pure_gold_in = 0;
+        adjLedgerEntry.pure_gold_in = weightVal;
+        adjLedgerEntry.pure_gold_out = 0;
       } else if (walletAsset === 'Pure Silver') {
         const weightVal = parseFloat(adjWeightAmount) || 0;
-        adjLedgerEntry.pure_silver_out = weightVal;
-        adjLedgerEntry.pure_silver_in = 0;
+        adjLedgerEntry.pure_silver_in = weightVal;
+        adjLedgerEntry.pure_silver_out = 0;
       }
       await supabase.from('ledger_entries').insert([adjLedgerEntry]);
 
