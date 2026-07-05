@@ -1891,11 +1891,9 @@ export const StaffBillingScreen: React.FC = () => {
         if (isServiceFee) {
           if (details.includes('pure gold') || (isPureMetalExchange && t.metal === 'Gold')) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
-            cust.workBreakdown.pureGoldAgainstTunchAmount += amtNum;
             cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
           } else if (details.includes('pure silver') || (isPureMetalExchange && t.metal === 'Silver')) {
             cust.workBreakdown.pureSilverAgainstTunch += pcs;
-            cust.workBreakdown.pureSilverAgainstTunchAmount += amtNum;
             cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;
           }
           

@@ -237,6 +237,14 @@ export const SuperAdminWorkScreen: React.FC = () => {
         const isUnpaid = statusStr === 'unpaid' || statusStr === 'due' || statusStr === 'awaiting staff' || statusStr === 'pending';
 
         if (isServiceFee) {
+          if (details.includes('pure gold')) {
+            cust.workBreakdown.pureGoldAgainstTunch += pcs;
+            cust.workBreakdown.pureGoldAgainstTunchWeight += pureW;
+          } else if (details.includes('pure silver')) {
+            cust.workBreakdown.pureSilverAgainstTunch += pcs;
+            cust.workBreakdown.pureSilverAgainstTunchWeight += pureW;
+          }
+
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
             if (!isUnpaid) {
