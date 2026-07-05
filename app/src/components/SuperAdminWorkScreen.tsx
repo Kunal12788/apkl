@@ -109,7 +109,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
         phone: c.phone,
         address: c.address,
         workBreakdown: {
-          tunch: 0, tunchUnpaid: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
+          tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
           buyAgainstTunch: 0, pureGoldAgainstTunch: 0, pureSilverAgainstTunch: 0,
           
           tunchAmount: 0, markingAmount: 0, shoulderingAmount: 0, buyAmount: 0, sellAmount: 0,
@@ -157,10 +157,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
-          const isPaid = cond.includes('[collected]') || cond.includes('paid') || !!task.staff_paid || !!task.col_staff_paid;
-          if (!isPaid) {
-            cust.workBreakdown.tunchUnpaid += pcs;
-          }
           tunchIncrementedTasks.add(task.id);
 
           if (isPureGold) {
@@ -204,7 +200,7 @@ export const SuperAdminWorkScreen: React.FC = () => {
           phone: t.customer_phone,
           address: t.customer_address,
           workBreakdown: {
-            tunch: 0, tunchUnpaid: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
+            tunch: 0, marking: 0, shouldering: 0, buy: 0, sell: 0,
             buyAgainstTunch: 0, pureGoldAgainstTunch: 0, pureSilverAgainstTunch: 0,
             
             tunchAmount: 0, markingAmount: 0, shoulderingAmount: 0, buyAmount: 0, sellAmount: 0,
@@ -243,8 +239,8 @@ export const SuperAdminWorkScreen: React.FC = () => {
         if (isServiceFee) {
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
-            if (isUnpaid) {
-              cust.workBreakdown.tunchUnpaid += pcs;
+            if (!isUnpaid) {
+              cust.workBreakdown.tunchAmount += amtNum;
             }
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
@@ -266,9 +262,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
 
           if (!t.task_id || !tunchIncrementedTasks.has(t.task_id)) {
             cust.workBreakdown.tunch += pcs;
-            if (isUnpaid) {
-              cust.workBreakdown.tunchUnpaid += pcs;
-            }
             if (t.task_id) tunchIncrementedTasks.add(t.task_id);
           }
         }
@@ -295,22 +288,6 @@ export const SuperAdminWorkScreen: React.FC = () => {
           cust.workBreakdown.sellGoldWeight += pureW;
         }
       }
-    });
-
-    customers.forEach(c => {
-      let serviceFeeRate = 10;
-      const serviceFeeTx = transactions.find(txn => 
-        ((txn.customer_id && txn.customer_id === c.id) || (txn.customer_name && txn.customer_name.trim().toLowerCase() === c.name.trim().toLowerCase())) && 
-        txn.work_type === 'Tunch' && 
-        ((txn.type || '').toLowerCase().includes('service fee') || (txn.details || '').toLowerCase().includes('service fee') || (txn.details || '').includes('Service Fee'))
-      );
-      if (serviceFeeTx) {
-        const rateVal = parseFloat(String(serviceFeeTx.amount || '').replace(/[^\d.]/g, '')) || 0;
-        if (rateVal > 0) {
-          serviceFeeRate = rateVal;
-        }
-      }
-      c.workBreakdown.tunchAmount = Math.max(0, c.workBreakdown.tunch - c.workBreakdown.tunchUnpaid) * serviceFeeRate;
     });
 
     return customers;

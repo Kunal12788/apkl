@@ -74,7 +74,6 @@ interface Customer {
   paid: string;
   workBreakdown: {
     tunch: number;
-    tunchUnpaid: number;
     marking: number;
     shouldering: number;
     buy: number;
@@ -1685,7 +1684,6 @@ export const StaffBillingScreen: React.FC = () => {
           paid: '₹0',
           workBreakdown: { 
             tunch: 0, 
-            tunchUnpaid: 0,
             marking: 0, 
             shouldering: 0, 
             buy: 0, 
@@ -1770,10 +1768,6 @@ export const StaffBillingScreen: React.FC = () => {
           }
 
           cust.workBreakdown.tunch += pcs;
-          const isPaid = cond.includes('[collected]') || cond.includes('paid') || !!task.staff_paid || !!task.col_staff_paid;
-          if (!isPaid) {
-            cust.workBreakdown.tunchUnpaid += pcs;
-          }
           tunchIncrementedTasks.add(task.id);
           if (isPureGold) {
             cust.workBreakdown.pureGoldAgainstTunch += pcs;
@@ -1823,7 +1817,6 @@ export const StaffBillingScreen: React.FC = () => {
           paid: '₹0',
           workBreakdown: { 
             tunch: 0, 
-            tunchUnpaid: 0,
             marking: 0, 
             shouldering: 0, 
             buy: 0, 
@@ -1908,8 +1901,8 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
-            if (isUnpaid) {
-              cust.workBreakdown.tunchUnpaid += pcs;
+            if (!isUnpaid) {
+              cust.workBreakdown.tunchAmount += amtNum;
             }
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
@@ -1931,9 +1924,6 @@ export const StaffBillingScreen: React.FC = () => {
           
           if (!t.taskId || !tunchIncrementedTasks.has(t.taskId)) {
             cust.workBreakdown.tunch += pcs;
-            if (isUnpaid) {
-              cust.workBreakdown.tunchUnpaid += pcs;
-            }
             if (t.taskId) tunchIncrementedTasks.add(t.taskId);
           }
         }
@@ -1960,22 +1950,6 @@ export const StaffBillingScreen: React.FC = () => {
           cust.workBreakdown.sellGoldWeight += pureW;
         }
       }
-    });
-
-    customers.forEach(c => {
-      let serviceFeeRate = 10;
-      const serviceFeeTx = transactions.find(txn => 
-        (txn.customerId === c.id || txn.customerName === c.name) && 
-        txn.workType === 'Tunch' && 
-        (txn.type?.toLowerCase().includes('service fee') || txn.details?.toLowerCase().includes('service fee') || (txn.details || '').includes('Service Fee'))
-      );
-      if (serviceFeeTx) {
-        const rateVal = parseFloat(String(serviceFeeTx.amount || '').replace(/[^\d.]/g, '')) || 0;
-        if (rateVal > 0) {
-          serviceFeeRate = rateVal;
-        }
-      }
-      c.workBreakdown.tunchAmount = Math.max(0, c.workBreakdown.tunch - c.workBreakdown.tunchUnpaid) * serviceFeeRate;
     });
 
     return customers;
