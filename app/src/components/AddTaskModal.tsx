@@ -1175,7 +1175,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                       </div>
                       
                       <div>
-                        <label className={lbl}>{formData.settlementCondition === 'Buy' ? 'Actual Amount Given *' : 'Actual Amount Received *'}</label>
+                        <label className={lbl}>
+                          {formData.paymentStatus === 'Due'
+                            ? (formData.settlementCondition === 'Buy' ? 'Initial / Advance Cash Given to Customer (₹)' : 'Actual / Advance Cash Received from Customer (₹)')
+                            : (formData.settlementCondition === 'Buy' ? 'Actual Amount Given *' : 'Actual Amount Received *')}
+                        </label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
                           <input className={`${inp(errors.cashAmount)} pl-8 font-bold text-secondary`} placeholder="0.00" type="number" value={formData.cashAmount} onChange={e => up('cashAmount', e.target.value)} />
@@ -1187,7 +1191,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     /* Mode = LATER */
                     <div className="space-y-3">
                       <div>
-                        <label className={lbl}>{formData.settlementCondition === 'Buy' ? 'Advance Cash Given to Customer (₹)' : 'Advance Cash Received from Customer (₹)'}</label>
+                        <label className={lbl}>
+                          {formData.settlementCondition === 'Buy' 
+                            ? 'Initial / Advance Cash Given to Customer (₹)' 
+                            : 'Actual / Advance Cash Received from Customer (₹)'}
+                        </label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
                           <input 

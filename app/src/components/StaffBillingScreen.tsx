@@ -1489,7 +1489,10 @@ export const StaffBillingScreen: React.FC = () => {
 
           triggerBlueToast(`Buy reconciliation complete! Final Price: ₹${finalCalculatedPrice.toLocaleString('en-IN')}. ${cashDiff > 0 ? 'Admin paid extra ₹' + cashDiff.toLocaleString('en-IN') : cashDiff < 0 ? 'Customer refunded excess ₹' + Math.abs(cashDiff).toLocaleString('en-IN') : 'Balanced.'}`, "Reconciliation Complete", "success");
         } else {
-          // Sell Rate Reconciliation
+          // Sell Rate & Due Reconciliation
+          const initialCash = parseFloat(String(targetTx.paidAmount || targetTx.cashAmount || '0')) || 0;
+          const remainingCashDue = Math.max(0, finalCalculatedPrice - initialCash);
+
           const adjLedgerId = `LGR-REC-${Math.floor(1000 + Math.random() * 9000)}`;
           const adjLedgerEntry: any = {
             id: adjLedgerId,
@@ -1499,7 +1502,7 @@ export const StaffBillingScreen: React.FC = () => {
             transaction_type: 'Sell Settlement',
             status: 'Completed',
             staff_id: user?.id,
-            cash_received: finalCalculatedPrice,
+            cash_received: remainingCashDue,
             cash_paid: 0,
             cash_rate_per_gram: rate,
             cash_amount: finalCalculatedPrice
@@ -1516,7 +1519,7 @@ export const StaffBillingScreen: React.FC = () => {
             col_staff_paid: true
           }).eq('id', targetTx.id);
 
-          triggerBlueToast(`Sell reconciliation complete! Collected ₹${finalCalculatedPrice.toLocaleString('en-IN')} from customer.`, "Reconciliation Complete", "success");
+          triggerBlueToast(`Sell reconciliation complete! Collected remaining ₹${remainingCashDue.toLocaleString('en-IN')} from customer.`, "Reconciliation Complete", "success");
         }
       } else {
         // Standard Dues Adjustment via Wallet

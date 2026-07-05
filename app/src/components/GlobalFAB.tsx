@@ -110,8 +110,10 @@ export const GlobalFAB: React.FC = () => {
               const initialCashGiven = Number(data.initialCashGiven || 0);
 
               const calculatedPure = Number(data.pureWeight || 0);
-              const totalAmount = (isBuy && isDue) ? (initialCashGiven || Number(data.cashAmount || 0)) : Number(data.cashAmount || 0);
               const cashRate = isPriceLater ? 0 : Number(data.cashRate || 0);
+              const upfrontCash = isDue ? (initialCashGiven || Number(data.cashAmount || 0)) : Number(data.cashAmount || 0);
+              const calculatedTotal = isPriceLater ? 0 : (Number(data.cashAmount || 0) || (calculatedPure * cashRate));
+              const totalAmount = isDue ? upfrontCash : (calculatedTotal || Number(data.cashAmount || 0));
 
               const isSuperSa = user?.role === 'Super Admin';
               let allocationsQuery = supabase.from('stock_allocations').select('*');
@@ -159,7 +161,7 @@ export const GlobalFAB: React.FC = () => {
                 const totalCashPaid = (entriesRes.data || []).reduce((s, e) => s + Number(e.cash_paid || 0), 0);
                 const currentCashStock = totalAllocatedCash + totalCashReceived - totalCashPaid;
 
-                if (totalAmount > currentCashStock) {
+                if (upfrontCash > currentCashStock) {
                   const msg = user?.role === 'Admin'
                     ? "Required cash stock is not present, kindly talk to the Super Admin."
                     : "Required cash stock is not present, kindly talk to the Admin.";
@@ -189,10 +191,10 @@ export const GlobalFAB: React.FC = () => {
                 impure_silver_in: 0,
                 pure_gold_due: 0,
                 pure_silver_due: 0,
-                cash_paid: (isBuy && !depositToWallet) ? totalAmount : 0,
-                cash_received: (isBuy || isDue) ? 0 : totalAmount,
+                cash_paid: (isBuy && !depositToWallet) ? upfrontCash : 0,
+                cash_received: isBuy ? 0 : upfrontCash,
                 cash_rate_per_gram: cashRate,
-                cash_amount: totalAmount,
+                cash_amount: calculatedTotal || upfrontCash,
                 pending_pure_liability: isBuy && isDue,
                 pending_cash_liability: !isBuy && isDue
               };
