@@ -120,15 +120,15 @@ const getWorkIcon = (workType: string, txn?: any) => {
     if (isServiceFee && !isPureMetalExchange) {
       return 'science';
     }
-    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
-    if (isCash) {
-      return 'payments';
-    }
     if (details.includes('pure gold') || (isPureMetalExchange && txn.metal === 'Gold')) {
       return 'workspace_premium';
     }
     if (details.includes('pure silver') || (isPureMetalExchange && txn.metal === 'Silver')) {
       return 'monetization_on';
+    }
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'payments';
     }
   }
   switch(workType) {
@@ -152,15 +152,15 @@ const getWorkColor = (workType: string, txn?: any) => {
     if (isServiceFee && !isPureMetalExchange) {
       return 'text-tertiary bg-tertiary-fixed/30';
     }
-    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
-    if (isCash) {
-      return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
-    }
     if (details.includes('pure gold') || (isPureMetalExchange && txn.metal === 'Gold')) {
       return 'text-yellow-600 bg-yellow-500/10 border border-yellow-500/20';
     }
     if (details.includes('pure silver') || (isPureMetalExchange && txn.metal === 'Silver')) {
       return 'text-slate-500 bg-slate-400/10 border border-slate-400/20';
+    }
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/20';
     }
   }
   switch(workType) {
@@ -185,15 +185,15 @@ const getWorkLabel = (txn: any) => {
     if (isServiceFee && !isPureMetalExchange) {
       return 'Tunch Only';
     }
-    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
-    if (isCash) {
-      return 'Buy against Tunch';
-    }
     if (details.includes('pure gold') || (isPureMetalExchange && txn.metal === 'Gold')) {
       return 'Pure Gold against Tunch';
     }
     if (details.includes('pure silver') || (isPureMetalExchange && txn.metal === 'Silver')) {
       return 'Pure Silver against Tunch';
+    }
+    const isCash = type.includes('cash') || txn.isCashExchange || details.includes('cash');
+    if (isCash) {
+      return 'Buy against Tunch';
     }
     return 'Tunch Only';
   }
