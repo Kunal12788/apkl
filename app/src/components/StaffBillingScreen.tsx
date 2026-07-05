@@ -3364,6 +3364,9 @@ export const StaffBillingScreen: React.FC = () => {
         const upfrontCash = parseFloat(String(directSettleTx.paidAmount || directSettleTx.cashAmount || '0')) || 0;
         const weight = parseFloat(settleWeight || directSettleTx.pureWeight || '0') || 0;
         const rate = parseFloat(settleRate) || 0;
+        const originalRate = parseFloat(String((directSettleTx as any).cashRate || (directSettleTx as any).cash_rate_per_gram || '0')) || 0;
+        const isPriceModeNow = (directSettleTx as any).pricingMode === 'NOW' || originalRate > 0;
+        const isRateModified = isPriceModeNow && originalRate > 0 && Math.abs(rate - originalRate) > 0.01;
         const calculatedTotal = weight * rate;
         const cashDiff = isBuy ? (calculatedTotal - upfrontCash) : (calculatedTotal - upfrontCash);
 
@@ -3381,6 +3384,25 @@ export const StaffBillingScreen: React.FC = () => {
           try {
             const finalCalculatedPrice = weight * rate;
             const custName = directSettleTx.customerName || selectedCustomer?.name || 'Customer';
+
+            if (isRateModified) {
+              // Submit Approval Request to Super Admin Command Center / Alerts
+              const reqId = `REQ-RATE-${Math.floor(1000 + Math.random() * 9000)}`;
+              const { error } = await supabase.from('deletion_requests').insert([{
+                id: reqId,
+                item_type: 'RateChange',
+                item_id: directSettleTx.id,
+                requested_by: user?.id || 'Admin',
+                reason: `Rate Change Request: Change rate from ₹${originalRate}/g to ₹${rate}/g for ${directSettleTx.workType} due (${directSettleTx.id}). Customer: ${custName}. New Calculated Total: ₹${finalCalculatedPrice.toLocaleString('en-IN')}`,
+                status: 'Pending'
+              }]);
+              if (error) throw error;
+
+              triggerBlueToast("Rate change approval request sent to Super Admin Command Center Alerts!", "Approval Request Sent", "info");
+              setDirectSettleTx(null);
+              window.dispatchEvent(new Event('databaseSync'));
+              return;
+            }
 
             if (isBuy) {
               const diff = finalCalculatedPrice - upfrontCash;
@@ -3560,6 +3582,16 @@ export const StaffBillingScreen: React.FC = () => {
                 </div>
               )}
 
+              {isRateModified && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[10px] text-amber-800 font-semibold flex items-start gap-2">
+                  <span className="material-symbols-outlined text-amber-600 text-base shrink-0">warning</span>
+                  <div>
+                    <p className="font-bold">Fixed Rate Modification Detected</p>
+                    <p className="text-[9.5px] text-amber-700 mt-0.5">Changing rate from <strong>₹{originalRate}/g</strong> to <strong>₹{rate}/g</strong> requires approval from Super Admin. Request will be sent to Command Center Alerts.</p>
+                  </div>
+                </div>
+              )}
+
               {/* Action Buttons */}
               <div className="flex gap-3 pt-2">
                 <button
@@ -3571,14 +3603,14 @@ export const StaffBillingScreen: React.FC = () => {
                 <button
                   onClick={handleDirectSettleSubmit}
                   disabled={isSubmittingWallet || !rate}
-                  className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className={`flex-1 py-3 ${isRateModified ? 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800' : 'bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800'} text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50`}
                 >
                   {isSubmittingWallet ? (
                     <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                      Confirm Settlement
+                      <span className="material-symbols-outlined text-[16px]">{isRateModified ? 'send' : 'check_circle'}</span>
+                      {isRateModified ? 'Request Super Admin Approval' : 'Confirm Settlement'}
                     </>
                   )}
                 </button>

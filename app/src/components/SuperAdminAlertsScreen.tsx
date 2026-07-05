@@ -15,13 +15,18 @@ export const SuperAdminAlertsScreen: React.FC = () => {
     if (!error && data) {
        const formattedAlerts = data.map(req => {
           const isMismatch = req.item_type === 'Mismatch';
+          const isRateChange = req.item_type === 'RateChange';
           return {
             id: req.id,
             status: req.status === 'Pending' ? 'unresolved' : 'resolved',
-            severity: isMismatch ? 'high' : 'critical',
-            type: isMismatch ? 'staff' : 'system',
+            severity: isRateChange ? 'high' : (isMismatch ? 'high' : 'critical'),
+            type: isRateChange ? 'inventory' : (isMismatch ? 'staff' : 'system'),
             timestamp: req.created_at,
-            title: isMismatch ? `Intake Mismatch: Task ${req.item_id}` : `Deletion Request: ${req.item_type} ${req.item_id}`,
+            title: isRateChange 
+              ? `Rate Change Approval: Task ${req.item_id}` 
+              : isMismatch 
+              ? `Intake Mismatch: Task ${req.item_id}` 
+              : `Deletion Request: ${req.item_type} ${req.item_id}`,
             description: `Requested by ${req.users?.name || req.requested_by}. ${req.reason || 'No description provided.'}`,
             originalReq: req
           };
@@ -58,13 +63,18 @@ export const SuperAdminAlertsScreen: React.FC = () => {
                  setAlerts(prev => {
                     if (prev.some(a => a.id === newReq.id)) return prev;
                     const isMismatch = newReq.item_type === 'Mismatch';
+                    const isRateChange = newReq.item_type === 'RateChange';
                     const newAlert = {
                         id: newReq.id,
                         status: newReq.status === 'Pending' ? 'unresolved' : 'resolved',
-                        severity: isMismatch ? 'high' : 'critical',
-                        type: isMismatch ? 'staff' : 'system',
+                        severity: isRateChange ? 'high' : (isMismatch ? 'high' : 'critical'),
+                        type: isRateChange ? 'inventory' : (isMismatch ? 'staff' : 'system'),
                         timestamp: newReq.created_at,
-                        title: isMismatch ? `Intake Mismatch: Task ${newReq.item_id}` : `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
+                        title: isRateChange 
+                          ? `Rate Change Approval: Task ${newReq.item_id}` 
+                          : isMismatch 
+                          ? `Intake Mismatch: Task ${newReq.item_id}` 
+                          : `Deletion Request: ${newReq.item_type} ${newReq.item_id}`,
                         description: `Requested by ${userName}. ${newReq.reason || 'No description provided.'}`,
                         originalReq: newReq
                     };
@@ -246,6 +256,52 @@ export const SuperAdminAlertsScreen: React.FC = () => {
     }
   };
 
+  const handleApproveRateChange = async (alert: any) => {
+    if (!window.confirm("Approve rate change request?")) return;
+    try {
+      const req = alert.originalReq;
+      const match = (req.reason || '').match(/to ₹([\d.]+)\/g/);
+      const newRate = match ? parseFloat(match[1]) : 0;
+
+      if (newRate > 0) {
+        const { data: txData } = await supabase.from('transactions').select('*').eq('id', req.item_id).maybeSingle();
+        if (txData) {
+          const pureWeight = parseFloat(txData.pure_weight || txData.pureWeight || '0') || 0;
+          const finalCalculatedPrice = pureWeight * newRate;
+
+          await supabase.from('transactions').update({
+            cash_rate_per_gram: newRate,
+            amount: finalCalculatedPrice.toString(),
+            paid_amount: finalCalculatedPrice,
+            status: 'Fully Paid',
+            staff_paid: true,
+            col_staff_paid: true
+          }).eq('id', req.item_id);
+        }
+      }
+
+      await supabase.from('deletion_requests').update({ status: 'Approved' }).eq('id', req.id);
+      setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Approved)' } : a));
+      window.alert("Rate change approved successfully!");
+      window.dispatchEvent(new Event('databaseSync'));
+    } catch(e: any) {
+      console.error(e);
+      window.alert("Failed to approve rate change: " + e.message);
+    }
+  };
+
+  const handleRejectRateChange = async (alert: any) => {
+    if (!window.confirm("Reject rate change request?")) return;
+    try {
+      await supabase.from('deletion_requests').update({ status: 'Rejected' }).eq('id', alert.originalReq.id);
+      setAlerts(prev => prev.map(a => a.id === alert.id ? { ...a, status: 'resolved', title: a.title + ' (Rejected)' } : a));
+      window.alert("Rate change request rejected.");
+      window.dispatchEvent(new Event('databaseSync'));
+    } catch(e: any) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="bg-surface text-on-surface font-body w-full min-h-[100svh] relative overflow-y-auto hide-scrollbar">
       
@@ -372,7 +428,21 @@ export const SuperAdminAlertsScreen: React.FC = () => {
 
                   <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-outline-variant/10">
                     {alert.status === 'unresolved' ? (
-                      alert.originalReq.item_type === 'Mismatch' ? (
+                      alert.originalReq.item_type === 'RateChange' ? (
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => handleRejectRateChange(alert)}
+                            className="bg-surface-container hover:bg-surface-variant text-primary font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-sm transition-all active:scale-95">
+                            Reject
+                          </button>
+                          <button 
+                            onClick={() => handleApproveRateChange(alert)}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5">
+                            <span>Approve Rate Change</span>
+                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                          </button>
+                        </div>
+                      ) : alert.originalReq.item_type === 'Mismatch' ? (
                         <button 
                           onClick={() => handleDismissMismatch(alert)}
                           className="bg-[#003366] hover:bg-[#002244] text-white font-bold text-[10px] uppercase tracking-widest py-2 px-4 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5"
