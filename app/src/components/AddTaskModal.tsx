@@ -1108,7 +1108,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
 
                 <SectionCard title="Payment & Pricing Configuration" icon="tune" color="bg-primary/5 text-primary">
-                  <div className={`grid ${formData.settlementCondition === 'Buy' && formData.paymentStatus === 'Paid' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
+                  <div className={`grid ${formData.paymentStatus === 'Paid' ? 'grid-cols-1' : 'grid-cols-2'} gap-3`}>
                     <div>
                       <label className={lbl}>Transaction Status *</label>
                       <ToggleBtn 
@@ -1120,7 +1120,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         }} 
                       />
                     </div>
-                    {!(formData.settlementCondition === 'Buy' && formData.paymentStatus === 'Paid') && (
+                    {formData.paymentStatus !== 'Paid' && (
                       <div>
                         <label className={lbl}>Price per Gram Mode *</label>
                         <ToggleBtn 
@@ -1144,40 +1144,50 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                 </SectionCard>
 
                 <SectionCard title="Pricing & Cash" icon="payments" color="bg-emerald-500/5 text-emerald-600">
-                  {/* Case 1: Buy + Due */}
-                  {formData.settlementCondition === 'Buy' && formData.paymentStatus === 'Due' ? (
+                  {/* Pricing Section */}
+                  {formData.pricingMode === 'NOW' ? (
                     <div className="space-y-3">
-                      {formData.pricingMode === 'NOW' && (
-                        <>
-                          <div>
-                            <label className={lbl}>Price Per Gram (₹) *</label>
-                            <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                              <input className={`${inp(errors.cashRate)} pl-8 font-bold text-secondary`} placeholder="e.g. 7000" type="number" value={formData.cashRate} onChange={e => {
-                                const rateVal = e.target.value;
-                                up('cashRate', rateVal);
-                                const pureNum = parseFloat(formData.pureWeight) || 0;
-                                const rateNum = parseFloat(rateVal) || 0;
-                                const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
-                                up('cashAmount', calculatedAmt);
-                              }} />
-                            </div>
-                            {errMsg('cashRate')}
-                          </div>
-                          <div>
-                            <label className={lbl}>Calculated Total Price</label>
-                            <div className="w-full h-12 bg-emerald-500/5 border border-emerald-500/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-emerald-600">
-                              ₹ {(() => {
-                                const pureNum = parseFloat(formData.pureWeight) || 0;
-                                const rateNum = parseFloat(formData.cashRate) || 0;
-                                return pureNum && rateNum ? (pureNum * rateNum).toLocaleString('en-IN') : '0.00';
-                              })()}
-                            </div>
-                          </div>
-                        </>
-                      )}
                       <div>
-                        <label className={lbl}>Initial Cash Advance Given to Customer (₹) *</label>
+                        <label className={lbl}>Price Per Gram (₹) *</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                          <input className={`${inp(errors.cashRate)} pl-8 font-bold text-secondary`} placeholder="e.g. 7000" type="number" value={formData.cashRate} onChange={e => {
+                            const rateVal = e.target.value;
+                            up('cashRate', rateVal);
+                            const pureNum = parseFloat(formData.pureWeight) || 0;
+                            const rateNum = parseFloat(rateVal) || 0;
+                            const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
+                            up('cashAmount', calculatedAmt);
+                          }} />
+                        </div>
+                        {errMsg('cashRate')}
+                      </div>
+                      
+                      <div>
+                        <label className={lbl}>Calculated Total Price</label>
+                        <div className="w-full h-12 bg-emerald-500/5 border border-emerald-500/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-emerald-600">
+                          ₹ {(() => {
+                            const pureNum = parseFloat(formData.pureWeight) || 0;
+                            const rateNum = parseFloat(formData.cashRate) || 0;
+                            return pureNum && rateNum ? (pureNum * rateNum).toLocaleString('en-IN') : '0.00';
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className={lbl}>{formData.settlementCondition === 'Buy' ? 'Actual Amount Given *' : 'Actual Amount Received *'}</label>
+                        <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                          <input className={`${inp(errors.cashAmount)} pl-8 font-bold text-secondary`} placeholder="0.00" type="number" value={formData.cashAmount} onChange={e => up('cashAmount', e.target.value)} />
+                        </div>
+                        {errMsg('cashAmount')}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Mode = LATER */
+                    <div className="space-y-3">
+                      <div>
+                        <label className={lbl}>{formData.settlementCondition === 'Buy' ? 'Advance Cash Given to Customer (₹)' : 'Advance Cash Received from Customer (₹)'}</label>
                         <div className="relative">
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
                           <input 
@@ -1191,54 +1201,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         {errMsg('initialCashGiven')}
                       </div>
                     </div>
-                  ) : (
-                    /* Case 2: Paid or Sell */
-                    <>
-                      {formData.pricingMode === 'NOW' ? (
-                        <>
-                          <div>
-                            <label className={lbl}>Price Per Gram (₹) *</label>
-                            <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                              <input className={`${inp(errors.cashRate)} pl-8 font-bold text-secondary`} placeholder="e.g. 7000" type="number" value={formData.cashRate} onChange={e => {
-                                const rateVal = e.target.value;
-                                up('cashRate', rateVal);
-                                const pureNum = parseFloat(formData.pureWeight) || 0;
-                                const rateNum = parseFloat(rateVal) || 0;
-                                const calculatedAmt = pureNum && rateNum ? (pureNum * rateNum).toFixed(2) : '';
-                                up('cashAmount', calculatedAmt);
-                              }} />
-                            </div>
-                            {errMsg('cashRate')}
-                          </div>
-                          
-                          <div className="mt-3">
-                            <label className={lbl}>Calculated Total Price</label>
-                            <div className="w-full h-12 bg-emerald-500/5 border border-emerald-500/20 rounded-DEFAULT px-4 flex items-center text-sm font-extrabold text-emerald-600">
-                              ₹ {(() => {
-                                const pureNum = parseFloat(formData.pureWeight) || 0;
-                                const rateNum = parseFloat(formData.cashRate) || 0;
-                                return pureNum && rateNum ? (pureNum * rateNum).toLocaleString('en-IN') : '0.00';
-                              })()}
-                            </div>
-                          </div>
-                          
-                          <div className="mt-3">
-                            <label className={lbl}>{formData.settlementCondition === 'Buy' ? 'Actual Amount Given *' : 'Actual Amount Received *'}</label>
-                            <div className="relative">
-                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
-                              <input className={`${inp(errors.cashAmount)} pl-8 font-bold text-secondary`} placeholder="0.00" type="number" value={formData.cashAmount} onChange={e => up('cashAmount', e.target.value)} />
-                            </div>
-                            {errMsg('cashAmount')}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                          <p className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">Price per Gram: LATER</p>
-                          <p className="text-[11px] text-slate-600 mt-0.5">Rate and total pricing will be calculated later when adjusting dues in the customer ledger.</p>
-                        </div>
-                      )}
-                    </>
                   )}
 
                   {formData.customerId && formData.customerId !== 'CUST-COL' && formData.paymentStatus !== 'Due' && (
