@@ -21,8 +21,6 @@ import { CollectionStaffBillingScreen } from './components/CollectionStaffBillin
 import { CollectionStaffTasksScreen } from './components/CollectionStaffTasksScreen';
 import { GlobalFAB } from './components/GlobalFAB';
 import { GlobalChat } from './components/GlobalChat';
-import { playNotificationSound } from './utils/audio';
-import { triggerBlueToast } from './components/AppleToast';
 import { SessionProvider, useSession } from './context/SessionContext';
 import { SessionInitializationScreen } from './components/SessionInitializationScreen';
 import { SuperAdminRefineryScreen } from './components/SuperAdminRefineryScreen';
@@ -194,293 +192,28 @@ function AppContent() {
   useEffect(() => {
     if (!user) return;
 
-    const checkSameBranch = async (creatorId: string) => {
-      if (!creatorId) return false;
-      if (creatorId === user.id) return false;
-      try {
-        const { data: u, error } = await supabase.from('users').select('branch_id').eq('id', creatorId).maybeSingle();
-        if (error) {
-          console.error("checkSameBranch DB error:", error);
-          return false;
-        }
-        return !!(u && u.branch_id === user.branch_id);
-      } catch (err) {
-        console.error("checkSameBranch exception:", err);
-        return false;
-      }
-    };
-
-    const getUserDetails = async (userId: string) => {
-      if (!userId) {
-        return { name: 'Unknown User', role: 'Staff' };
-      }
-      try {
-        const { data, error } = await supabase.from('users').select('name, role').eq('id', userId).maybeSingle();
-        if (error || !data) {
-          const isAdm = typeof userId === 'string' && userId.startsWith('ADMIN-');
-          return { name: userId, role: isAdm ? 'Admin' : 'Staff' };
-        }
-        return data;
-      } catch (e) {
-        const isAdm = typeof userId === 'string' && userId.startsWith('ADMIN-');
-        return { name: userId, role: isAdm ? 'Admin' : 'Staff' };
-      }
-    };
-
     const realtimeChannel = supabase.channel('system_realtime_events')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, (payload: any) => {
-         const newRecord = payload.new;
-         const oldRecord = payload.old;
-         
-         // Invalidate any local screen caches and trigger live re-fetch
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => {
          window.dispatchEvent(new CustomEvent('databaseSync'));
-
-         if (newRecord && newRecord.status === 'Approved' && (!oldRecord || oldRecord.status !== 'Approved')) {
-            if ((user.role === 'Collection Staff' || user.role === 'Staff') && (newRecord.created_by === user.id || user.role === 'Collection Staff')) {
-               triggerBlueToast(`Customer ${newRecord.name} approved! You can now create tasks for them.`, 'Customer Approved', 'success');
-            }
-         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, async (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'transactions', payload } }));
-         
-         const newRecord = payload.new;
-         const oldRecord = payload.old;
-
-         if (payload.eventType === 'INSERT' && newRecord) {
-            if (newRecord.created_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
-               if (sameBranch) {
-                  triggerBlueToast(
-                    `A new ${newRecord.work_type} transaction has been registered for ${newRecord.customer_name}.`,
-                    'Work Creation',
-                    'task'
-                  );
-               }
-            }
-         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
-            if (sameBranch) {
-               const wasUnpaid = oldRecord.status === 'Unpaid';
-               const isPaid = newRecord.status === 'Paid' || newRecord.status === 'Fully Paid';
-               const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
-               const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
-
-               if ((wasUnpaid && isPaid) || staffPaidJustNow || colStaffPaidJustNow) {
-                  let msg = `Payment cleared for ${newRecord.customer_name}: ${newRecord.amount}`;
-                  if (newRecord.status === 'Fully Paid' || (newRecord.staff_paid && newRecord.col_staff_paid)) {
-                    msg = `Payment Fully Cleared: ${newRecord.customer_name} (₹${newRecord.amount})`;
-                  } else if (staffPaidJustNow) {
-                    msg = `Payment approved by Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
-                  } else if (colStaffPaidJustNow) {
-                    msg = `Payment collected by Field Staff: ${newRecord.customer_name} (₹${newRecord.amount})`;
-                  }
-                  triggerBlueToast(msg, 'Payment Received', 'success');
-               }
-            }
-         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, async (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'tasks', payload } }));
-
-         const newRecord = payload.new;
-         const oldRecord = payload.old;
-
-         if (payload.eventType === 'INSERT' && newRecord) {
-            const isCreator = newRecord.created_by === user.id;
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
-            const isAssignedToMe = newRecord.assigned_to === user.id || 
-               ((newRecord.assigned_to === 'Staff' || newRecord.assigned_to === 'Pending') && user.role === 'Staff');
-            
-            if (isCreator) {
-               triggerBlueToast(
-                  `Task ${newRecord.id} created successfully for ${newRecord.customer_name}.`,
-                  'Task Created',
-                  'task'
-               );
-            } else if (isAssignedToMe) {
-               if (newRecord.status === 'Pending') {
-                  triggerBlueToast(
-                     `A new task is waiting for your verification in the Pending category: ${newRecord.work_type} for ${newRecord.customer_name}.`,
-                     'New Task in Pending',
-                     'task'
-                  );
-               } else if (newRecord.status === 'In Progress') {
-                  triggerBlueToast(
-                     `You have a new task in the In Progress category: ${newRecord.work_type} for ${newRecord.customer_name}.`,
-                     'New Task in Progress',
-                     'task'
-                  );
-               } else {
-                  triggerBlueToast(
-                     `You have a new task assigned to you: ${newRecord.work_type} for ${newRecord.customer_name}.`,
-                     'New Task Assigned',
-                     'task'
-                  );
-               }
-            } else if (sameBranch) {
-               const creatorRole = newRecord.source || 'Staff';
-               if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
-                  // Only notify Admin and Super Admin for cash tasks (Staff are cash-blind)
-                  if (user.role === 'Admin' || user.role === 'Super Admin') {
-                     if (newRecord.work_type?.toLowerCase() === 'tunch' || newRecord.category?.toLowerCase() === 'tunch') {
-                        triggerBlueToast(
-                           `New Cash Tunch task ${newRecord.id} created by Staff for ${newRecord.customer_name}. Awaiting pricing.`,
-                           'Awaiting Pricing',
-                           'info'
-                        );
-                     } else {
-                        triggerBlueToast(
-                           `New Cash task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}. Awaiting Admin pricing.`,
-                           'Awaiting Pricing',
-                           'info'
-                        );
-                     }
-                  }
-               } else {
-                  triggerBlueToast(
-                     `New ${newRecord.work_type} task ${newRecord.id} created by ${creatorRole} for ${newRecord.customer_name}.`,
-                     'Task Registered',
-                     'task'
-                  );
-               }
-            }
-         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            const sameBranch = user.role === 'Super Admin' || (user.branch_id && (newRecord.branch_id === user.branch_id || await checkSameBranch(newRecord.created_by)));
-            const isRelated = user.id === newRecord.created_by || user.id === newRecord.assigned_to;
-             
-            if (sameBranch || isRelated) {
-               const verifiedJustNow = oldRecord.status === 'Pending' && newRecord.status === 'In Progress';
-               const processedJustNow = oldRecord.status === 'In Progress' && (newRecord.status === 'Settlement' || newRecord.status === 'Pending');
-               const completedJustNow = oldRecord.status !== 'Completed' && newRecord.status === 'Completed';
-               const staffPaidJustNow = newRecord.staff_paid && !oldRecord.staff_paid;
-               const colStaffPaidJustNow = newRecord.col_staff_paid && !oldRecord.col_staff_paid;
-
-               if (verifiedJustNow) {
-                  if (newRecord.settlement_condition?.toLowerCase().includes('cash')) {
-                     if (user.role === 'Admin' || user.role === 'Super Admin') {
-                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} verified & set to Cash. Awaiting Admin pricing.`, 'Awaiting Pricing', 'info');
-                     } else if (newRecord.assigned_to !== user.id) {
-                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} verified & set to Cash.`, 'Task Verified', 'success');
-                      }
-                  } else {
-                     if (newRecord.assigned_to !== user.id) {
-                        triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been verified.`, 'Task Verified', 'success');
-                     }
-                  }
-               } else if (processedJustNow && newRecord.created_by !== user.id) {
-                  triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} is processed and ready for pricing/settlement.`, 'Task Processed', 'info');
-               } else if (completedJustNow) {
-                  const isCompletedParticipant = user.id === newRecord.created_by || user.id === newRecord.assigned_to || user.role === 'Admin' || user.role === 'Super Admin';
-                  if (isCompletedParticipant) {
-                     triggerBlueToast(`Task ${newRecord.id} for ${newRecord.customer_name} has been completed successfully.`, 'Task Completed', 'success');
-                  }
-               } else if ((staffPaidJustNow || colStaffPaidJustNow) && newRecord.created_by !== user.id) {
-                  let msg = `Task payment updated for ${newRecord.customer_name}`;
-                  if (newRecord.staff_paid && newRecord.col_staff_paid) {
-                    msg = `Task payment Fully Cleared for ${newRecord.customer_name}`;
-                  } else if (staffPaidJustNow) {
-                    msg = `Task payment approved by Staff: ${newRecord.customer_name}`;
-                  } else if (colStaffPaidJustNow) {
-                    msg = `Task payment collected by Field Staff: ${newRecord.customer_name}`;
-                  }
-                  triggerBlueToast(msg, 'Payment Received', 'success');
-               }
-            }
-         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock_allocations' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'stock_allocations', payload } }));
-
-         const newRecord = payload.new;
-         if (payload.eventType === 'INSERT' && newRecord) {
-            const isSelfAllocated = newRecord.allocated_by === user.id;
-            const isAllocatedToMe = newRecord.staff_id === user.id;
-            const myBranch = user.branch_id && newRecord.branch_id === user.branch_id;
-            
-            let detailsText = '';
-            const metalStr = newRecord.metal || 'Gold';
-            if (Number(newRecord.pure_weight || 0) > 0) detailsText += `${newRecord.pure_weight}g Pure ${metalStr} `;
-            if (Number(newRecord.cash_amount || 0) > 0) detailsText += `₹${Number(newRecord.cash_amount).toLocaleString('en-IN')} Cash`;
-
-            if (isSelfAllocated) {
-               triggerBlueToast(
-                  `Stock allocation of ${detailsText} logged successfully.`,
-                  'Allocation Confirmed',
-                  'allocation'
-               );
-            } else if (isAllocatedToMe) {
-               triggerBlueToast(
-                  `You have been allocated stock: ${detailsText} by Admin.`,
-                  'Stock Received',
-                  'allocation'
-               );
-            } else if (myBranch && !newRecord.staff_id) {
-               triggerBlueToast(
-                  `Your branch received a stock allocation: ${detailsText} from Head Office.`,
-                  'Branch Stock Received',
-                  'allocation'
-               );
-            } else if (user.role === 'Super Admin' && !isSelfAllocated) {
-               triggerBlueToast(
-                  `Stock allocated to ${newRecord.branch_name || newRecord.branch_id}: ${detailsText}`,
-                  'Stock Allocated',
-                  'allocation'
-               );
-            }
-         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, async (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ledger_entries' }, (payload: any) => {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'ledger_entries', payload } }));
-
-          const newRecord = payload.new;
-          if (payload.eventType === 'INSERT' && newRecord) {
-             if (newRecord.staff_id !== user.id && ['Exchange', 'Tunch Only', 'Buy', 'Sell'].includes(newRecord.transaction_type)) {
-                const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.staff_id));
-                if (sameBranch) {
-                   const actionLabel = newRecord.transaction_type === 'Exchange' ? 'pure metal exchange' : newRecord.transaction_type.toLowerCase();
-                   triggerBlueToast(
-                     `A new ${actionLabel} ledger entry was registered for ${newRecord.customer_name}.`,
-                     `${newRecord.transaction_type} Registered`,
-                     'task'
-                   );
-                }
-             }
-          }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, async (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'deletion_requests' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'deletion_requests', payload } }));
-         
-         const newRecord = payload.new;
-         const oldRecord = payload.old;
-
-         if (payload.eventType === 'INSERT' && newRecord) {
-            if (newRecord.requested_by !== user.id) {
-               const sameBranch = user.role === 'Super Admin' || (user.branch_id && await checkSameBranch(newRecord.requested_by));
-               if (sameBranch && (user.role === 'Admin' || user.role === 'Super Admin')) {
-                  triggerBlueToast(
-                     `Deletion request submitted by Staff for item ${newRecord.item_id || ''}.`,
-                     'Deletion Requested',
-                     'info'
-                  );
-               }
-            }
-         } else if (payload.eventType === 'UPDATE' && newRecord && oldRecord) {
-            if (newRecord.requested_by === user.id) {
-               const resolvedJustNow = oldRecord.status === 'Pending' && newRecord.status !== 'Pending';
-               if (resolvedJustNow) {
-                  triggerBlueToast(
-                     `Your deletion request for item ${newRecord.item_id || ''} has been ${newRecord.status.toLowerCase()}.`,
-                     `Request ${newRecord.status}`,
-                     newRecord.status === 'Approved' ? 'success' : 'info'
-                  );
-               }
-            }
-         }
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, (payload: any) => {
          clearAllDataCaches();
@@ -490,44 +223,12 @@ function AppContent() {
          clearAllDataCaches();
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'app_settings', payload } }));
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
-         const newMsg = payload.new;
-         if (newMsg && newMsg.receiver_id === user.id && !newMsg.is_read) {
-            playNotificationSound();
-            if (newMsg.type === 'notification') {
-               triggerBlueToast(newMsg.content, 'New Notification', 'info');
-            } else {
-               triggerBlueToast(`New message from user!`, 'Chat Message', 'info');
-            }
-         }
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+         // Live sync for messages without audio/toast alerts
+         window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'messages' } }));
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, async (payload: any) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branch_daily_reports' }, (payload: any) => {
          window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'branch_daily_reports', payload } }));
-         
-         const newRecord = payload.new;
-         if (payload.eventType === 'INSERT' && newRecord) {
-            const isSelfSubmitted = newRecord.staff_id === user.id;
-            const sameBranch = user.role === 'Super Admin' || (newRecord.branch_id === user.branch_id);
-
-            if (isSelfSubmitted) {
-               if (user.role === 'Admin') {
-                  triggerBlueToast(`You have submitted the branch daily report successfully for ${newRecord.branch_name}.`, 'Daily Report Submitted', 'report');
-               } else {
-                  triggerBlueToast(`You have submitted your daily report successfully for ${newRecord.branch_name}.`, 'Daily Report Submitted', 'report');
-               }
-            } else if (sameBranch) {
-               const submitter = await getUserDetails(newRecord.staff_id);
-               if (submitter.role === 'Admin') {
-                  if (user.role === 'Super Admin') {
-                     triggerBlueToast(`Admin ${submitter.name} has submitted the daily report for branch ${newRecord.branch_name}.`, 'Admin Report Submitted', 'report');
-                  }
-               } else {
-                  if (user.role === 'Admin' || user.role === 'Super Admin') {
-                     triggerBlueToast(`Staff ${submitter.name} has submitted the daily report for branch ${newRecord.branch_name}.`, 'Staff Report Submitted', 'report');
-                  }
-               }
-            }
-         }
       })
       .subscribe((status) => {
          console.log('Realtime System Events Channel Status:', status);
@@ -536,30 +237,6 @@ function AppContent() {
     return () => {
        supabase.removeChannel(realtimeChannel);
     };
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    
-    const checkUnreadOnLogin = async () => {
-      try {
-        const { count } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('receiver_id', user.id)
-          .eq('is_read', false);
-        
-        if (count && count > 0) {
-          setTimeout(() => {
-            playNotificationSound();
-          }, 1500);
-        }
-      } catch (err) {
-        console.error('Error checking unread messages on login:', err);
-      }
-    };
-    
-    checkUnreadOnLogin();
   }, [user]);
 
   const handleComplete = () => {

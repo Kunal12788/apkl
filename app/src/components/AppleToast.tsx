@@ -1,7 +1,6 @@
 import React from 'react';
 import toast, { type Toast } from 'react-hot-toast';
 import { LogOut, Bell, Key, Layers, CheckCircle2, TrendingUp, Coins } from 'lucide-react';
-import { playNotificationSound } from '../utils/audio';
 
 interface AppleToastProps {
   t: Toast;
@@ -122,39 +121,18 @@ export const AppleToast: React.FC<AppleToastProps> = ({ t, title, message, type 
   );
 };
 
-export const triggerAppleToast = (title: string, message: string, type: 'login' | 'logout') => {
-  playNotificationSound();
-  toast.custom(
-    (t) => <AppleToast t={t} title={title} message={message} type={type} />,
-    { duration: 2500 }
-  );
+export const triggerAppleToast = (_title: string, _message: string, _type: 'login' | 'logout') => {
+  // Toasts disabled per notification system removal
 };
 
 export const triggerBlueToast = (
-  message: string,
-  title?: string,
-  type: 'login' | 'logout' | 'info' | 'success' | 'task' | 'report' | 'allocation' = 'info'
+  _message: string,
+  _title?: string,
+  _type: 'login' | 'logout' | 'info' | 'success' | 'task' | 'report' | 'allocation' = 'info'
 ) => {
-  playNotificationSound();
-  const defaultTitle = 
-    type === 'success' ? 'Task Completed' : 
-    type === 'task' ? 'Work Creation' : 
-    type === 'allocation' ? 'Stock Allocation' : 
-    type === 'report' ? 'Report Submission' : 
-    'AURORA Alert';
-
-  toast.custom(
-    (t) => (
-      <AppleToast 
-        t={t} 
-        title={title || defaultTitle} 
-        message={message} 
-        type={type} 
-      />
-    ),
-    { duration: 4000, position: 'top-center' }
-  );
+  // Toasts disabled per notification system removal
 };
+
 
 
 

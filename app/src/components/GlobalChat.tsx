@@ -129,14 +129,12 @@ const AudioPlayer: React.FC<{ url: string; duration?: number | null; isSelf?: bo
 export const GlobalChat: React.FC = () => {
   const { user } = useSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'chats' | 'notifications'>('chats');
   const [contacts, setContacts] = useState<UserContact[]>([]);
   const [selectedContact, setSelectedContact] = useState<UserContact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   
-  const [notifications, setNotifications] = useState<Message[]>([]);
   const [isLoadingContacts, setIsLoadingContacts] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 
@@ -239,11 +237,9 @@ export const GlobalChat: React.FC = () => {
     fetchContacts();
   }, [isOpen, user]);
 
-  // Fetch unread chat counts per contact & fetch system notifications
-  const fetchUnreadAndNotifications = async () => {
+  const fetchUnreadCounts = async () => {
     if (!user) return;
     try {
-      // 1. Fetch Chat counts
       const { data: unreadData } = await supabase
         .from('messages')
         .select('sender_id')
@@ -258,30 +254,18 @@ export const GlobalChat: React.FC = () => {
         }
       });
       setUnreadCounts(counts);
-
-      // 2. Fetch Notifications
-      const { data: notifData } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('receiver_id', user.id)
-        .eq('type', 'notification')
-        .order('created_at', { ascending: false });
-
-      if (notifData) {
-        setNotifications(notifData);
-      }
     } catch (err) {
-      console.error('Error loading notification and unread states:', err);
+      console.error('Error loading unread chat states:', err);
     }
   };
 
   useEffect(() => {
     if (!isOpen || !user) return;
-    fetchUnreadAndNotifications();
+    fetchUnreadCounts();
 
     const channel = supabase.channel('global_unread_notif_sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        fetchUnreadAndNotifications();
+        fetchUnreadCounts();
       })
       .subscribe();
 
@@ -344,7 +328,7 @@ export const GlobalChat: React.FC = () => {
                   .update({ is_read: true })
                   .eq('id', newMsg.id)
                   .then(() => {
-                    fetchUnreadAndNotifications();
+                    fetchUnreadCounts();
                   });
               }
             }
@@ -387,21 +371,7 @@ export const GlobalChat: React.FC = () => {
     }
   };
 
-  const handleMarkAllNotificationsAsRead = async () => {
-    if (!user) return;
-    try {
-      await supabase
-        .from('messages')
-        .update({ is_read: true })
-        .eq('receiver_id', user.id)
-        .eq('type', 'notification')
-        .eq('is_read', false);
-      
-      fetchUnreadAndNotifications();
-    } catch (err) {
-      console.error('Failed to clear notifications:', err);
-    }
-  };
+
 
   // Attachment Triggers
   const triggerFileSelect = (type: 'image' | 'video' | 'document') => {
@@ -641,36 +611,7 @@ export const GlobalChat: React.FC = () => {
           </button>
         </div>
 
-        {/* Tab selection (only show if not inside a thread) */}
-        {!selectedContact && (
-          <div className="shrink-0 bg-slate-50/80 p-1.5 rounded-2xl mx-5 my-4 flex border border-slate-200/30">
-            <button 
-              onClick={() => setActiveTab('chats')}
-              className={`flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
-                activeTab === 'chats' 
-                  ? 'bg-white text-[#003366] shadow-sm font-extrabold border border-slate-100' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">chat</span>
-              Chats
-            </button>
-            <button 
-              onClick={() => setActiveTab('notifications')}
-              className={`flex-1 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-2 relative ${
-                activeTab === 'notifications' 
-                  ? 'bg-white text-[#003366] shadow-sm font-extrabold border border-slate-100' 
-                  : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <span className="material-symbols-outlined text-sm">notifications</span>
-              Notifications
-              {notifications.some(n => !n.is_read) && (
-                <span className="absolute top-2.5 right-6 w-2 h-2 bg-rose-500 rounded-full border border-white shadow-sm animate-pulse"></span>
-              )}
-            </button>
-          </div>
-        )}
+
 
         {/* Body Content */}
         <div className="flex-grow overflow-y-auto hide-scrollbar bg-slate-50/40 p-5">
@@ -777,10 +718,8 @@ export const GlobalChat: React.FC = () => {
               )}
             </div>
           ) : (
-            // Tabs views
-            activeTab === 'chats' ? (
-              // Contacts list block
-              <div className="space-y-4">
+            /* Contacts List */
+            <div className="space-y-4">
                 {/* Search Bar */}
                 <div className="relative shrink-0 mb-1 z-10">
                   <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">search</span>
@@ -854,63 +793,6 @@ export const GlobalChat: React.FC = () => {
                   </div>
                 )}
               </div>
-            ) : (
-              // System Notifications block
-              <div className="space-y-4">
-                {notifications.length > 0 && (
-                  <div className="flex justify-end pr-1">
-                    <button 
-                      onClick={handleMarkAllNotificationsAsRead}
-                      className="text-[9px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-3 py-1.5 uppercase tracking-widest transition-colors flex items-center gap-1.5"
-                    >
-                      <span className="material-symbols-outlined text-sm">done_all</span>
-                      Clear Notifications
-                    </button>
-                  </div>
-                )}
-                {notifications.length === 0 ? (
-                  <div className="text-center py-16 px-6 space-y-4 bg-white rounded-3xl border border-slate-100 shadow-xs">
-                    <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto">
-                      <span className="material-symbols-outlined text-2xl">notifications_off</span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-600">All caught up!</p>
-                      <p className="text-[10px] text-slate-400 mt-1 font-medium">No new notifications from the system.</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {notifications.map(n => (
-                      <div 
-                        key={n.id} 
-                        className={`bg-white p-4 rounded-2xl border ${
-                          n.is_read ? 'border-slate-100 opacity-80' : 'border-blue-100 bg-blue-50/[0.12] shadow-xs'
-                        } flex items-start gap-3.5 relative overflow-hidden transition-all hover:shadow-md`}
-                      >
-                        {!n.is_read && (
-                          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#003366]"></div>
-                        )}
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                          n.is_read ? 'bg-slate-100 text-slate-400' : 'bg-[#003366]/5 text-[#003366]'
-                        }`}>
-                          <span className="material-symbols-outlined text-base">info</span>
-                        </div>
-                        <div className="flex-grow min-w-0">
-                          <p className={`text-[12px] font-medium leading-relaxed ${
-                            n.is_read ? 'text-slate-500' : 'text-slate-800'
-                          }`}>
-                            {n.content}
-                          </p>
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mt-2.5">
-                            {new Date(n.created_at).toLocaleDateString([], { day: '2-digit', month: 'short' })} • {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
           )}
         </div>
 
