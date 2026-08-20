@@ -158,16 +158,15 @@ export const CameraCaptureOverlay: React.FC<CameraCaptureOverlayProps> = ({
 
         {/* Camera Feed Box */}
         <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-black border border-outline-variant/20 flex items-center justify-center shadow-inner">
-          {isCameraActive ? (
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-3 text-white/50 text-xs">
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted
+            className={`w-full h-full object-cover ${isCameraActive ? 'block' : 'hidden'}`}
+          />
+          {!isCameraActive && (
+            <div className="flex flex-col items-center gap-3 text-white/50 text-xs absolute inset-0 justify-center">
               <Loader2 className="w-8 h-8 animate-spin text-secondary" />
               <p>Initializing camera feed...</p>
             </div>
