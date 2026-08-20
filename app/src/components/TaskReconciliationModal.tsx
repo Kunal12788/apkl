@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
+import { CameraCaptureOverlay } from './CameraCaptureOverlay';
 
 interface TaskReconciliationModalProps {
   isOpen: boolean;
@@ -28,6 +29,10 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
   const [result, setResult] = useState<'IDLE' | 'MATCH' | 'MISMATCH'>('IDLE');
   const [auditImages, setAuditImages] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [latitude, setLatitude] = useState<string>('');
+  const [longitude, setLongitude] = useState<string>('');
+  const [locationName, setLocationName] = useState<string>('');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   if (!isOpen || !collectionTask) return null;
 
@@ -82,7 +87,10 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
           status: 'In Progress', 
           verifiedBy: 'Staff Member', 
           verifiedAt: new Date().toISOString(), 
-          audit_images: uploadedUrls 
+          audit_images: uploadedUrls,
+          latitude: latitude || null,
+          longitude: longitude || null,
+          location_name: locationName || null
         },
         result === 'MISMATCH',
         result === 'MISMATCH' ? { pieces: formData.pieces, weight: formData.weight } : undefined
@@ -92,12 +100,6 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
       alert("Reconciliation failed. Please try again.");
     } finally {
       setIsUploading(false);
-    }
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setAuditImages(prev => [...prev, ...Array.from(e.target.files!)]);
     }
   };
 
@@ -205,8 +207,10 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                          </button>
                       </div>
                     ))}
-                    <div className="relative w-20 h-20 border-2 border-dashed border-outline-variant/40 rounded-xl flex flex-col items-center justify-center shrink-0 hover:bg-surface-container/50 transition-colors cursor-pointer bg-white">
-                       <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                    <div 
+                       onClick={() => setIsCameraOpen(true)}
+                       className="relative w-20 h-20 border-2 border-dashed border-outline-variant/40 rounded-xl flex flex-col items-center justify-center shrink-0 hover:bg-surface-container/50 transition-colors cursor-pointer bg-white"
+                    >
                        <span className="material-symbols-outlined text-outline text-2xl mb-1">add_a_photo</span>
                        <p className="text-[8px] font-bold text-outline uppercase">Upload</p>
                     </div>
@@ -269,8 +273,19 @@ export const TaskReconciliationModal: React.FC<TaskReconciliationModalProps> = (
                    </button>
                 </div>
             )}
-         </div>
-      </div>
+             <CameraCaptureOverlay
+                isOpen={isCameraOpen}
+                onClose={() => setIsCameraOpen(false)}
+                onCapture={(file, lat, lng, locName) => {
+                   setAuditImages(prev => [...prev, file]);
+                   setLatitude(lat);
+                   setLongitude(lng);
+                   setLocationName(locName);
+                }}
+                title={`Reconciliation Audit Photo #${auditImages.length + 1}`}
+             />
+          </div>
+       </div>
     </div>
   );
 };

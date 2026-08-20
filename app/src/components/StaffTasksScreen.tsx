@@ -1249,6 +1249,15 @@ export const StaffTasksScreen: React.FC = () => {
        if (verifiedTask.audit_images) {
          updates.audit_images = verifiedTask.audit_images;
        }
+       if (verifiedTask.latitude) {
+         updates.latitude = verifiedTask.latitude;
+       }
+       if (verifiedTask.longitude) {
+         updates.longitude = verifiedTask.longitude;
+       }
+       if (verifiedTask.location_name) {
+         updates.location_name = verifiedTask.location_name;
+       }
        
        if (isMismatch && verifiedDetails) {
          updates.pieces = verifiedDetails.pieces;

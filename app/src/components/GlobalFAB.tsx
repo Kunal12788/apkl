@@ -89,7 +89,10 @@ export const GlobalFAB: React.FC = () => {
                 pending_pure_liability: false,
                 pending_cash_liability: false,
                 was_settlement_category: false,
-                branch_id: user?.branch_id || null
+                branch_id: user?.branch_id || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
+                location_name: data.locationName || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -358,7 +361,10 @@ export const GlobalFAB: React.FC = () => {
                 pending_pure_liability: false,
                 pending_cash_liability: false,
                 was_settlement_category: false,
-                branch_id: user?.branch_id || null
+                branch_id: user?.branch_id || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
+                location_name: data.locationName || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -486,7 +492,10 @@ export const GlobalFAB: React.FC = () => {
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability,
                 was_settlement_category: true,
-                branch_id: user?.branch_id || null
+                branch_id: user?.branch_id || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
+                location_name: data.locationName || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);
@@ -591,7 +600,10 @@ export const GlobalFAB: React.FC = () => {
                 pending_pure_liability: !!data.pendingPureLiability,
                 pending_cash_liability: !!data.pendingCashLiability,
                 cash_handling_mode: handlingMode,
-                branch_id: user?.branch_id || null
+                branch_id: user?.branch_id || null,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
+                location_name: data.locationName || null
               };
 
               const { error: taskError } = await supabase.from('tasks').insert([newTask]);

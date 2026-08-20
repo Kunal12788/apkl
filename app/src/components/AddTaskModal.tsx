@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSession } from '../context/SessionContext';
 import { supabase } from '../supabaseClient';
+import { CameraCaptureOverlay } from './CameraCaptureOverlay';
 import type { BehaviorAnalysis } from '../utils/billingUtils';
 import { analyzeCustomerBehavior, computeStaffBillingTransactions } from '../utils/billingUtils';
 
@@ -99,6 +100,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const [uploadingSlots, setUploadingSlots] = useState<Record<number, boolean>>({});
   const [uploadedUrls, setUploadedUrls] = useState<Record<number, string>>({});
   const [isUploading, setIsUploading] = useState(false);
+  const [latitude, setLatitude] = useState<string>('');
+  const [longitude, setLongitude] = useState<string>('');
+  const [locationName, setLocationName] = useState<string>('');
+  const [activeCameraSlot, setActiveCameraSlot] = useState<number | null>(null);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -392,6 +397,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
         workType, 
         pieceCategories,
         images: urls,
+        latitude,
+        longitude,
+        locationName,
         id: isCollection ? `COL-${serialId}` : `TASK-${serialId}`, 
         date: 'Just Now', 
         status: 'In Progress', 
@@ -405,6 +413,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       setTaskImages({});
       setUploadingSlots({});
       setUploadedUrls({});
+      setLatitude('');
+      setLongitude('');
+      setLocationName('');
       setFormData({ metal: 'Gold', customerName: '', address: '', phone: '', customerId: '', impureWeight: '', purity: '', pureWeight: '', settlementCondition: 'Only Tunch', fee: '', feeStatus: 'Paid', feePaymentMode: 'Cash', productType: 'Jewellery', logoName: '', carat: '22k', pieces: '', broughtBy: 'Customer', pointsUsed: '', pointSuggestion: 'Gold', totalWeight: '', pendingPureLiability: false, pendingCashLiability: false, cashHandlingMode: 'Front', cashRate: '', cashAmount: '', depositToWallet: false, paymentStatus: 'Paid', pricingMode: 'NOW', initialCashGiven: '' });
       onClose();
     } catch (err) {
@@ -423,38 +434,6 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       return totalPieces - (maxSlots - 1) * 10;
     }
     return 10;
-  };
-
-  const handleImageChange = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      // Store the image locally first for preview
-      setTaskImages(prev => ({ ...prev, [index]: file }));
-      if (errors['images']) {
-         setErrors(errs => { const n = {...errs}; delete n['images']; return n; });
-      }
-
-      // Mark slot as uploading
-      setUploadingSlots(prev => ({ ...prev, [index]: true }));
-
-      try {
-        // Upload image to Supabase storage to get its path
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_task_${index}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-        
-        const { error: uploadError } = await supabase.storage.from('task_images').upload(fileName, file);
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
-        setUploadedUrls(prev => ({ ...prev, [index]: publicUrl }));
-      } catch (err: any) {
-        console.error("Upload error:", err);
-        alert("Failed to upload image. Please try again.");
-      } finally {
-        setUploadingSlots(prev => ({ ...prev, [index]: false }));
-      }
-    }
   };
 
   const getSlotLabel = (idx: number, totalPieces: number) => {
@@ -526,20 +505,16 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     </button>
                   </>
                 ) : (
-                  <>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      capture="environment" 
-                      onChange={(e) => handleImageChange(idx, e)} 
-                      className="absolute inset-0 opacity-0 cursor-pointer" 
-                    />
+                  <div 
+                    onClick={() => setActiveCameraSlot(idx)}
+                    className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-surface-container/30 transition-colors"
+                  >
                     <span className="material-symbols-outlined text-outline-variant text-3xl mb-1.5">add_a_photo</span>
                     <span className="text-[9px] font-bold text-outline uppercase tracking-wider">{getSlotLabel(idx, numPieces)}</span>
                     <span className="text-[7px] text-outline/50 uppercase tracking-widest mt-0.5">
                       {getExpectedPiecesForSlot(idx, numPieces)} Pieces
                     </span>
-                  </>
+                  </div>
                 )}
               </div>
             );
@@ -1520,6 +1495,36 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
           animation: pingOnce 1.5s ease-in-out infinite;
         }
       `}</style>
+      <CameraCaptureOverlay
+        isOpen={activeCameraSlot !== null}
+        onClose={() => setActiveCameraSlot(null)}
+        onCapture={async (file, lat, lng, locName) => {
+          if (activeCameraSlot === null) return;
+          const index = activeCameraSlot;
+          setTaskImages(prev => ({ ...prev, [index]: file }));
+          setUploadingSlots(prev => ({ ...prev, [index]: true }));
+          setLatitude(lat);
+          setLongitude(lng);
+          setLocationName(locName);
+
+          try {
+            const fileExt = file.name.split('.').pop() || 'jpg';
+            const fileName = `${Date.now()}_task_${index}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage.from('task_images').upload(fileName, file);
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage.from('task_images').getPublicUrl(fileName);
+            setUploadedUrls(prev => ({ ...prev, [index]: publicUrl }));
+          } catch (err: any) {
+            console.error("Upload error:", err);
+            alert("Failed to upload image. Please try again.");
+          } finally {
+            setUploadingSlots(prev => ({ ...prev, [index]: false }));
+          }
+        }}
+        title={activeCameraSlot !== null ? `Capture photo for ${getSlotLabel(activeCameraSlot, parseInt(formData.pieces) || 0)}` : undefined}
+      />
     </div>
   );
 };

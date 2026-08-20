@@ -36,6 +36,9 @@ ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS impure_silver_cha
 ALTER TABLE public.super_admin_ledger ADD COLUMN IF NOT EXISTS calculated_pure_silver NUMERIC(10,3) DEFAULT 0.000;
 
 ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS metal TEXT DEFAULT 'Gold';
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS latitude TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS longitude TEXT;
+ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS location_name TEXT;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metal TEXT DEFAULT 'Gold';
 
 -- Seed Initial Users
@@ -163,6 +166,9 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     carat TEXT,
     point_suggestion TEXT,
     created_by TEXT,
+    latitude TEXT,
+    longitude TEXT,
+    location_name TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
