@@ -256,13 +256,8 @@ export const StaffLedgerScreen: React.FC = () => {
           allocationsQuery = allocationsQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
           txQuery = txQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
           tasksQuery = tasksQuery.is('staff_submitted_at', null).is('admin_submitted_at', null);
-        } else if (user?.role === 'Admin') {
-          entriesQuery = entriesQuery.or(`staff_id.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
-          allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
-          txQuery = txQuery.or(`created_by.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
-          tasksQuery = tasksQuery.or(`created_by.eq.${userId},assigned_to.eq.${userId},staff_submitted_at.not.is.null`).is('admin_submitted_at', null);
         } else {
-          // For Super Admin viewing active branch ledger
+          // For Admin and Super Admin viewing active branch ledger
           entriesQuery = entriesQuery.is('admin_submitted_at', null);
           allocationsQuery = allocationsQuery.is('admin_submitted_at', null);
           txQuery = txQuery.is('admin_submitted_at', null);
