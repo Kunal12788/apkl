@@ -32,9 +32,9 @@ const ToggleBtn = ({ options, value, onChange }: { options: string[]; value: str
   </div>
 );
 
-const SectionCard = ({ title, icon, color, children }: { title: string; icon: string; color: string; children: React.ReactNode }) => (
-  <div className="luxury-card overflow-hidden">
-    <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-outline-variant/10 ${color}`}>
+const SectionCard = ({ title, icon, color, children, className = "" }: { title: string; icon: string; color: string; children: React.ReactNode; className?: string }) => (
+  <div className={`luxury-card ${className}`}>
+    <div className={`px-5 py-3 flex items-center gap-2.5 border-b border-outline-variant/10 rounded-t-[1.5rem] ${color}`}>
       <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: '"FILL" 1' }}>{icon}</span>
       <p className="text-[10px] font-black uppercase tracking-[0.15em]">{title}</p>
     </div>
@@ -155,17 +155,90 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
       if (!isOpen) return;
 
       try {
-        const { data, error } = await supabase
-          .from('customers')
-          .select('*')
-          .order('name', { ascending: true });
+        const [custRes, txRes, tasksRes] = await Promise.all([
+          supabase.from('customers').select('*'),
+          supabase.from('transactions').select('customer_id, customer_name, customer_phone, customer_address'),
+          supabase.from('tasks').select('customer_id, customer_name, customer_phone, customer_address')
+        ]);
 
-        if (error) throw error;
-        if (data) {
-          const approved = data.filter((c: any) => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved');
-          setCustomers(approved);
-          setCachedData('db_customers', data);
+        const customerMap = new Map<string, Customer>();
+
+        // 1. From db_customers cache
+        const cached = getCachedData('db_customers', Infinity);
+        if (Array.isArray(cached)) {
+          cached.forEach((c: any) => {
+            if (c.name && (!c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved')) {
+              customerMap.set(c.name.trim().toLowerCase(), {
+                id: c.id,
+                name: c.name.trim(),
+                phone: c.phone || '',
+                address: c.address || '',
+                status: c.status || 'Approved',
+                advance_cash: c.advance_cash,
+                advance_pure_gold: c.advance_pure_gold,
+                advance_pure_silver: c.advance_pure_silver
+              });
+            }
+          });
         }
+
+        // 2. From Supabase customers table
+        if (custRes.data) {
+          custRes.data.forEach((c: any) => {
+            if (c.name && (!c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved')) {
+              customerMap.set(c.name.trim().toLowerCase(), {
+                id: c.id,
+                name: c.name.trim(),
+                phone: c.phone || '',
+                address: c.address || '',
+                status: c.status || 'Approved',
+                advance_cash: c.advance_cash,
+                advance_pure_gold: c.advance_pure_gold,
+                advance_pure_silver: c.advance_pure_silver
+              });
+            }
+          });
+          setCachedData('db_customers', custRes.data);
+        }
+
+        // 3. From Transactions table (to catch any existing customer)
+        if (txRes.data) {
+          txRes.data.forEach((t: any) => {
+            if (t.customer_name && t.customer_name.trim()) {
+              const key = t.customer_name.trim().toLowerCase();
+              if (!customerMap.has(key)) {
+                customerMap.set(key, {
+                  id: t.customer_id || `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+                  name: t.customer_name.trim(),
+                  phone: t.customer_phone || '',
+                  address: t.customer_address || '',
+                  status: 'Approved'
+                });
+              }
+            }
+          });
+        }
+
+        // 4. From Tasks table (to catch any customer with active/past tasks)
+        if (tasksRes.data) {
+          tasksRes.data.forEach((tk: any) => {
+            if (tk.customer_name && tk.customer_name.trim()) {
+              const key = tk.customer_name.trim().toLowerCase();
+              if (!customerMap.has(key)) {
+                customerMap.set(key, {
+                  id: tk.customer_id || `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+                  name: tk.customer_name.trim(),
+                  phone: tk.customer_phone || '',
+                  address: tk.customer_address || '',
+                  status: 'Approved'
+                });
+              }
+            }
+          });
+        }
+
+        const fullList = Array.from(customerMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+        setCustomers(fullList);
       } catch (err) {
         console.error('Error fetching customers in AddTaskModal:', err);
       }
@@ -649,10 +722,15 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
               )}
 
               {/* Client Section - Shared across all Work Types */}
-              <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary">
+              <SectionCard title="Client Details" icon="person" color="bg-secondary/5 text-secondary" className="overflow-visible relative z-30">
                 <div className="relative">
                     <label className={lbl}>Customer Name *</label>
                     <input 
+                      type="text"
+                      name="customer_search_input_field"
+                      autoComplete="off"
+                      data-lpignore="true"
+                      data-form-type="other"
                       className={inp(errors.customerName)} 
                       placeholder="Type customer name or phone..." 
                       value={formData.customerName} 
@@ -670,11 +748,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                         }
                       }} 
                       onFocus={() => setShowDropdown(true)}
-                      onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
+                      onBlur={() => setTimeout(() => setShowDropdown(false), 300)}
                     />
                     {errMsg('customerName')}
                     {showDropdown && (
-                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                       <div className="absolute left-0 right-0 top-full z-[100] mt-1 bg-white border border-outline-variant/30 rounded-2xl shadow-2xl max-h-60 overflow-y-auto divide-y divide-outline-variant/10">
                           {(() => {
                             const query = formData.customerName.trim().toLowerCase();
                             const matches = customers.filter(c => 
@@ -684,13 +762,14 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                             );
                             if (matches.length === 0) {
                               return (
-                                <div className="px-4 py-3 text-center">
+                                <div className="px-4 py-4 text-center">
                                   <p className="text-xs text-outline font-medium">Customer "{formData.customerName}" not found</p>
+                                  <p className="text-[10px] text-outline/70 mt-0.5">You can submit a new customer request below</p>
                                 </div>
                               );
                             }
                             return matches.slice(0, 30).map(c => (
-                              <div key={c.id} className="px-4 py-2.5 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10 transition-colors"
+                              <div key={c.id} className="px-4 py-3 hover:bg-surface-container cursor-pointer transition-colors"
                                  onMouseDown={(e) => {
                                     e.preventDefault();
                                     up('customerName', c.name);
@@ -709,12 +788,11 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                               >
                                  <div className="flex justify-between items-center">
                                     <p className="text-sm font-bold text-primary">{c.name}</p>
-                                    <span className="text-[9px] font-mono font-bold text-outline">{c.id}</span>
+                                    <span className="text-[9px] font-mono font-bold px-2 py-0.5 bg-surface-container rounded-full text-outline">{c.id}</span>
                                  </div>
-                                 <p className="text-[10px] text-outline mt-0.5">
-                                    {c.phone ? `📞 ${c.phone}` : ''}
-                                    {c.phone && c.address ? ' • ' : ''}
-                                    {c.address ? `📍 ${c.address}` : ''}
+                                 <p className="text-[11px] text-outline mt-0.5 flex items-center gap-2">
+                                    {c.phone && <span>📞 {c.phone}</span>}
+                                    {c.address && <span>📍 {c.address}</span>}
                                  </p>
                               </div>
                             ));
