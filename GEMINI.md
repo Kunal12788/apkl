@@ -7,4 +7,5 @@ As requested by the user, this repository is now in **LOCKDOWN** mode. No modifi
 1. **No Automatic Code Changes**: Do not add, delete, or modify any existing code, styles, configurations, or features autonomously.
 2. **Prior Permission Requirement**: Before proposing or executing any code modification, you MUST explicitly ask the user for permission.
 3. **Provide Detailed Justification**: When asking for permission, you must provide a clear and compelling reason explaining **why** the change is necessary, what files will be affected, and what the impact will be.
-4. **Wait for Approval**: Do not start implementing or editing files until the user gives explicit approval to proceed.
+4. **Password Verification Required**: Whenever any function, feature, or logic modification is proposed, you MUST ask the user to provide the security password to authenticate and approve the modification before executing any changes.
+5. **Wait for Approval & Password**: Do not start implementing or editing files until the user gives explicit approval and confirms the correct password.

@@ -92,7 +92,10 @@ const LedgerWrapper = () => {
   if (user.role === 'Super Admin') {
     return <SuperAdminLedgerScreen />;
   }
-  return <StaffLedgerScreen />;
+  if (user.role === 'Admin' || user.role === 'Staff') {
+    return <StaffLedgerScreen />;
+  }
+  return <Navigate to="/dashboard" replace />;
 };
 
 const RefineryWrapper = () => {
