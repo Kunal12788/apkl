@@ -9,6 +9,8 @@ import { generateCustomerPDFReport } from '../utils/pdfUtils';
 import { NotificationBell } from './NotificationBell';
 import toast from 'react-hot-toast';
 import { triggerBlueToast } from './AppleToast';
+import { WorkPinModal, type PinWorkType } from './WorkPinModal';
+import { generateCustomerReceiptPDF, sendReceiptViaWhatsApp } from '../utils/receiptGenerator';
 
 type TabView = 'all' | 'customer';
 
@@ -294,6 +296,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
   const { user } = useSession();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
   
   if (!isOpen || !txn) return null;
 
@@ -339,23 +342,25 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
     }
   };
 
+  const executeDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const isTask = txn.id.startsWith('TASK-');
+      const targetTable = isTask ? 'tasks' : 'transactions';
+      const targetId = isTask ? txn.id.replace('TASK-', '') : txn.id;
+      if (isTask) {
+        await deleteStorageImagesForTasks([targetId]);
+      }
+      await supabase.from(targetTable).delete().eq('id', targetId);
+      window.dispatchEvent(new Event('databaseSync'));
+      onClose();
+    } catch(e) { alert('Failed to delete'); }
+    setIsDeleting(false);
+  };
+
   const handleDelete = async () => {
     if (user?.role === 'Super Admin') {
-      if (window.confirm("Are you sure you want to instantly delete this transaction?")) {
-         setIsDeleting(true);
-         try {
-           const isTask = txn.id.startsWith('TASK-');
-           const targetTable = isTask ? 'tasks' : 'transactions';
-           const targetId = isTask ? txn.id.replace('TASK-', '') : txn.id;
-           if (isTask) {
-             await deleteStorageImagesForTasks([targetId]);
-           }
-           await supabase.from(targetTable).delete().eq('id', targetId);
-           window.dispatchEvent(new Event('databaseSync'));
-           onClose();
-         } catch(e) { alert('Failed to delete'); }
-         setIsDeleting(false);
-      }
+      setPinModalOpen(true);
     } else {
       const reason = window.prompt("Please provide a reason for deleting this transaction:");
       if (!reason) return;
@@ -635,6 +640,56 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
 
         </div>
 
+        {/* Instant Digital Customer Receipt Share */}
+        <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-outline-variant/15">
+          <button
+            onClick={() => {
+              sendReceiptViaWhatsApp({
+                receiptId: txn.id,
+                customerName: txn.customerName,
+                customerPhone: txn.customerPhone,
+                workType: txn.workType,
+                metal: txn.metal || 'Gold',
+                grossWeight: txn.impureWeight,
+                purity: txn.purityPercentage,
+                pureWeight: txn.pureWeight,
+                carat: txn.caratMarking,
+                amount: txn.amount ? txn.amount.replace(/[^\d.]/g, '') : undefined,
+                paymentMode: txn.type,
+                status: txn.status,
+                date: txn.date
+              });
+            }}
+            className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+          >
+            <span className="material-symbols-outlined text-sm">chat</span>
+            WhatsApp
+          </button>
+          <button
+            onClick={() => {
+              generateCustomerReceiptPDF({
+                receiptId: txn.id,
+                customerName: txn.customerName,
+                customerPhone: txn.customerPhone,
+                workType: txn.workType,
+                metal: txn.metal || 'Gold',
+                grossWeight: txn.impureWeight,
+                purity: txn.purityPercentage,
+                pureWeight: txn.pureWeight,
+                carat: txn.caratMarking,
+                amount: txn.amount ? txn.amount.replace(/[^\d.]/g, '') : undefined,
+                paymentMode: txn.type,
+                status: txn.status,
+                date: txn.date
+              });
+            }}
+            className="py-2.5 bg-[#001e40] hover:bg-[#002b5c] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            PDF Slip
+          </button>
+        </div>
+
         {/* Action Buttons */}
         <div className="mt-4 space-y-2">
           {txn.status !== 'Fully Paid' && txn.status !== 'Paid' && !txn.staffPaid && (
@@ -657,7 +712,7 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
                 : 'bg-error/5 text-error hover:bg-error/10 border border-error/10'
             }`}
           >
-            {isDeleting ? 'Processing...' : (user?.role === 'Super Admin' ? 'Delete Transaction' : 'Request Deletion')}
+            {isDeleting ? 'Processing...' : (user?.role === 'Super Admin' ? 'Delete Transaction (PIN Protected)' : 'Request Deletion')}
           </button>
           
           <button 
@@ -667,6 +722,14 @@ export const BillingDetailsModal: React.FC<BillingDetailsModalProps> = ({ isOpen
             Dismiss Receipt
           </button>
         </div>
+
+        <WorkPinModal
+          isOpen={pinModalOpen}
+          onClose={() => setPinModalOpen(false)}
+          onSuccess={executeDelete}
+          workType="deletion_clear"
+          actionDescription={`Authenticate permanent deletion of transaction ${txn.id}.`}
+        />
 
       </div>
     </div>
@@ -1160,6 +1223,19 @@ export const StaffBillingScreen: React.FC = () => {
   const [walletLogs, setWalletLogs] = useState<any[]>([]);
   const [loadingWalletLogs, setLoadingWalletLogs] = useState(false);
 
+  // Security Master PIN Modal State
+  const [pinModalConfig, setPinModalConfig] = useState<{
+    isOpen: boolean;
+    workType: PinWorkType;
+    actionDescription: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    workType: 'cash_payout',
+    actionDescription: '',
+    onSuccess: () => {}
+  });
+
   const [walletTab, setWalletTab] = useState<'history' | 'action' | 'adjust'>('history');
   const [walletType, setWalletType] = useState<'Deposit' | 'Withdrawal'>('Deposit');
   const [walletAsset, setWalletAsset] = useState<'Cash' | 'Pure Gold' | 'Pure Silver'>('Cash');
@@ -1194,29 +1270,8 @@ export const StaffBillingScreen: React.FC = () => {
     }
   };
 
-  const handleWalletTxnSubmit = async () => {
+  const executeWalletTxn = async (amt: number) => {
     if (!walletCustomer) return;
-    const amt = parseFloat(walletAmount);
-    if (!amt || isNaN(amt) || amt <= 0) {
-      alert("Please enter a valid amount.");
-      return;
-    }
-    
-    if (walletType === 'Withdrawal') {
-      const balance = walletAsset === 'Cash' 
-        ? walletCustomer.advance_cash 
-        : walletAsset === 'Pure Gold' 
-          ? walletCustomer.advance_pure_gold 
-          : walletCustomer.advance_pure_silver;
-      if (amt > (balance || 0)) {
-        alert(`Insufficient funds. Available balance is only ${walletAsset === 'Cash' ? '₹' + (balance || 0).toLocaleString('en-IN') : (balance || 0) + 'g'}.`);
-        return;
-      }
-    }
-
-    const confirmMsg = `Confirm ${walletType} of ${walletAsset === 'Cash' ? '₹' + amt.toLocaleString('en-IN') : amt + 'g ' + walletAsset}?`;
-    if (!window.confirm(confirmMsg)) return;
-
     setIsSubmittingWallet(true);
     try {
       const factor = walletType === 'Deposit' ? 1 : -1;
@@ -1343,6 +1398,52 @@ export const StaffBillingScreen: React.FC = () => {
     } finally {
       setIsSubmittingWallet(false);
     }
+  };
+
+  const handleWalletTxnSubmit = async () => {
+    if (!walletCustomer) return;
+    const amt = parseFloat(walletAmount);
+    if (!amt || isNaN(amt) || amt <= 0) {
+      alert("Please enter a valid amount.");
+      return;
+    }
+    
+    if (walletType === 'Withdrawal') {
+      const balance = walletAsset === 'Cash' 
+        ? walletCustomer.advance_cash 
+        : walletAsset === 'Pure Gold' 
+          ? walletCustomer.advance_pure_gold 
+          : walletCustomer.advance_pure_silver;
+      if (amt > (balance || 0)) {
+        alert(`Insufficient funds. Available balance is only ${walletAsset === 'Cash' ? '₹' + (balance || 0).toLocaleString('en-IN') : (balance || 0) + 'g'}.`);
+        return;
+      }
+    }
+
+    const confirmMsg = `Confirm ${walletType} of ${walletAsset === 'Cash' ? '₹' + amt.toLocaleString('en-IN') : amt + 'g ' + walletAsset}?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    if (walletType === 'Withdrawal') {
+      if (walletAsset === 'Cash' && amt >= 50000) {
+        setPinModalConfig({
+          isOpen: true,
+          workType: 'cash_payout',
+          actionDescription: `Authorize high-value wallet cash payout of ₹${amt.toLocaleString('en-IN')} to ${walletCustomer.name}.`,
+          onSuccess: () => executeWalletTxn(amt)
+        });
+        return;
+      } else if ((walletAsset === 'Pure Gold' && amt >= 20) || (walletAsset === 'Pure Silver' && amt >= 200)) {
+        setPinModalConfig({
+          isOpen: true,
+          workType: 'bullion_transfer',
+          actionDescription: `Authorize physical bullion transfer of ${amt}g ${walletAsset} to ${walletCustomer.name}.`,
+          onSuccess: () => executeWalletTxn(amt)
+        });
+        return;
+      }
+    }
+
+    executeWalletTxn(amt);
   };
 
   const handleWalletAdjustSubmit = async () => {
@@ -1801,9 +1902,7 @@ export const StaffBillingScreen: React.FC = () => {
     setDbCustomers(prev => [newCust, ...prev]);
   };
 
-  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete customer ${customerName}? This will erase ALL their tasks and transactions.`)) return;
-    
+  const executeDeleteCustomer = async (customerId: string, customerName: string) => {
     try {
       const { data: customerTasks } = await supabase
         .from('tasks')
@@ -1837,6 +1936,21 @@ export const StaffBillingScreen: React.FC = () => {
     } catch(err: any) {
       console.error(err);
       alert(`Failed to delete customer: ${err.message || err}`);
+    }
+  };
+
+  const handleDeleteCustomer = async (customerId: string, customerName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete customer ${customerName}? This will erase ALL their tasks and transactions.`)) return;
+    
+    if (user?.role === 'Super Admin') {
+      setPinModalConfig({
+        isOpen: true,
+        workType: 'deletion_clear',
+        actionDescription: `Authenticate permanent erasure of customer ${customerName} and all associated ledger records.`,
+        onSuccess: () => executeDeleteCustomer(customerId, customerName)
+      });
+    } else {
+      executeDeleteCustomer(customerId, customerName);
     }
   };
 
@@ -3685,6 +3799,14 @@ export const StaffBillingScreen: React.FC = () => {
           </div>
         );
       })()}
+
+      <WorkPinModal
+        isOpen={pinModalConfig.isOpen}
+        onClose={() => setPinModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onSuccess={pinModalConfig.onSuccess}
+        workType={pinModalConfig.workType}
+        actionDescription={pinModalConfig.actionDescription}
+      />
     </div>
   );
 };

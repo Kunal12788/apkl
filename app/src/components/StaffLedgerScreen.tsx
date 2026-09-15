@@ -7,6 +7,7 @@ import { useSession } from '../context/SessionContext';
 import { computeStaffBillingTransactions } from '../utils/billingUtils';
 import { triggerBlueToast } from './AppleToast';
 import { NotificationBell } from './NotificationBell';
+import { EODTallyModal } from './EODTallyModal';
 
 interface LedgerEntry {
   pureSilverOut: number;
@@ -142,8 +143,9 @@ export const StaffLedgerScreen: React.FC = () => {
   });
 
   const [billingCash, setBillingCash] = useState(initialBillingCash);
-
   const [branchName, setBranchName] = useState('Delhi Branch');
+  const [showEODModal, setShowEODModal] = useState(false);
+  const [eodExpectedData, setEodExpectedData] = useState<any>(null);
 
   // Dynamically resolve the staff member's assigned branch name from the database
   useEffect(() => {
@@ -569,6 +571,50 @@ export const StaffLedgerScreen: React.FC = () => {
     }
   };
 
+  const executeAdminClearance = async () => {
+    try {
+      const nowStr = new Date().toISOString();
+      const validBranchId = (user?.branch_id && user.branch_id.includes('-')) 
+        ? user.branch_id 
+        : 'a3fa8cbc-25f8-4af6-bd86-66e8ae1da904';
+
+      let branchUserIds: string[] = [];
+      if (user?.branch_id) {
+        const { data: bUsers } = await supabase
+          .from('users')
+          .select('id')
+          .eq('branch_id', user.branch_id);
+        if (bUsers) {
+          branchUserIds = bUsers.map((bu: any) => bu.id);
+        }
+      }
+      if (branchUserIds.length === 0) {
+        branchUserIds = [userId];
+      }
+
+      const [r1, r2, r3, r4, r5] = await Promise.all([
+        supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
+        supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
+        supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
+        supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
+        supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', validBranchId).is('admin_submitted_at', null)
+      ]);
+
+      if (r1.error) throw r1.error;
+      if (r2.error) throw r2.error;
+      if (r3.error) throw r3.error;
+      if (r4.error) throw r4.error;
+      if (r5.error) throw r5.error;
+
+      clearAllDataCaches();
+      fetchEntries();
+      window.dispatchEvent(new Event('databaseSync'));
+      triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
+    } catch (err: any) {
+      console.error('Clearance error:', err);
+    }
+  };
+
   const handleSubmitReport = async () => {
     if (user?.role !== 'Admin' && user?.role !== 'Staff') {
       alert("Only Staff and Admin are permitted to submit reports.");
@@ -630,65 +676,23 @@ export const StaffLedgerScreen: React.FC = () => {
         const closingPureSilver = openingPureSilver - silverUsed;
         const closingCash = openingCash + cashReceived - cashUsed;
 
-        // Insert daily report
-        const validBranchId = (user?.branch_id && user.branch_id.includes('-')) 
-          ? user.branch_id 
-          : 'a3fa8cbc-25f8-4af6-bd86-66e8ae1da904';
-
-        const { error: saReportError } = await supabase.from('branch_daily_reports').insert([{
-          id: `REP-${Math.floor(1000 + Math.random() * 9000)}`,
-          branch_id: validBranchId,
-          branch_name: branchName,
-          staff_id: userId,
-          date: 'Today',
-          iso_date: today,
-          opening_pure_gold: openingPureGold,
-          opening_pure_silver: openingPureSilver,
-          opening_cash: openingCash,
-          gold_used: goldUsed,
-          silver_used: silverUsed,
-          cash_used: cashUsed,
-          cash_received: cashReceived,
-          impure_gold_received: impureGoldRecv,
-          impure_silver_received: impureSilverRecv,
-          closing_pure_gold: closingPureGold,
-          closing_pure_silver: closingPureSilver,
-          closing_cash: closingCash,
-          status: 'Submitted'
-        }]);
-
-        if (saReportError) throw saReportError;
-
-        // --- 2. Admin Clearance (clear from active screens for all branch staff) ---
-        let branchUserIds: string[] = [];
-        if (user?.branch_id) {
-          const { data: bUsers } = await supabase
-            .from('users')
-            .select('id')
-            .eq('branch_id', user.branch_id);
-          if (bUsers) {
-            branchUserIds = bUsers.map((bu: any) => bu.id);
-          }
-        }
-        if (branchUserIds.length === 0) {
-          branchUserIds = [userId];
-        }
-
-        const [r1, r2, r3, r4, r5] = await Promise.all([
-          supabase.from('ledger_entries').update({ admin_submitted_at: nowStr }).in('staff_id', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('transactions').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('created_by', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
-          supabase.from('tasks').update({ admin_submitted_at: nowStr }).in('assigned_to', branchUserIds).is('admin_submitted_at', null).neq('status', 'Settlement'),
-          supabase.from('stock_allocations').update({ admin_submitted_at: nowStr }).eq('branch_id', validBranchId).is('admin_submitted_at', null)
-        ]);
-
-        if (r1.error) throw r1.error;
-        if (r2.error) throw r2.error;
-        if (r3.error) throw r3.error;
-        if (r4.error) throw r4.error;
-        if (r5.error) throw r5.error;
-
-        triggerBlueToast('Daily report submitted and active lists cleared successfully!', 'Report Submitted', 'report');
+        // Open verified EOD Tally Modal with 3 mandatory live photos & GPS watermark
+        setEodExpectedData({
+          closingCash,
+          closingPureGold,
+          closingPureSilver,
+          impureGoldRecv,
+          openingCash,
+          openingPureGold,
+          openingPureSilver,
+          cashReceived,
+          cashUsed,
+          goldUsed,
+          silverUsed,
+          impureSilverRecv
+        });
+        setShowEODModal(true);
+        return;
       } else {
         // --- 1. Compute values for Staff Daily Report ---
         const todayEntries = entries.filter(e => e.isoDate === today && e.transactionType !== 'Tunch Only' && e.status !== 'Pending Cash' && !e.pendingCashLiability);
@@ -1513,6 +1517,17 @@ export const StaffLedgerScreen: React.FC = () => {
         )}
 
 
+        {showEODModal && eodExpectedData && (
+          <EODTallyModal
+            isOpen={showEODModal}
+            onClose={() => setShowEODModal(false)}
+            expected={eodExpectedData}
+            branchName={branchName}
+            branchId={user?.branch_id || ''}
+            userId={userId}
+            onSuccess={executeAdminClearance}
+          />
+        )}
       </main>
 
       {/* Bottom Nav Bar */}

@@ -6,6 +6,8 @@ import { NotificationBell } from './NotificationBell';
 import { useSession } from '../context/SessionContext';
 import { getCachedData, setCachedData } from '../cache';
 import { triggerBlueToast } from './AppleToast';
+import { WorkPinModal, type PinWorkType } from './WorkPinModal';
+import { generateCustomerReceiptPDF, sendReceiptViaWhatsApp } from '../utils/receiptGenerator';
 
 type TaskStatus = 'In Progress' | 'Pending' | 'Completed' | 'Settlement';
 
@@ -900,6 +902,58 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
         </div>
 
+        {/* Completed Task Digital Receipts */}
+        {task.status === 'Completed' && (
+          <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-outline-variant/15 w-full">
+            <button
+              onClick={() => {
+                sendReceiptViaWhatsApp({
+                  receiptId: task.id,
+                  customerName: task.customerName,
+                  customerPhone: task.customerPhone,
+                  workType: task.workType,
+                  metal: task.metal || 'Gold',
+                  grossWeight: task.impureWeight || task.totalWeight || task.weight,
+                  purity: task.purity,
+                  pureWeight: task.pureWeight,
+                  carat: task.carat,
+                  amount: task.cashAmount || (extractFee(task.settlementCondition) || undefined),
+                  paymentMode: extractPaymentMode(task.settlementCondition) || 'Cash',
+                  status: 'Completed',
+                  date: task.dateGiven
+                });
+              }}
+              className="py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+            >
+              <span className="material-symbols-outlined text-sm">chat</span>
+              WhatsApp
+            </button>
+            <button
+              onClick={() => {
+                generateCustomerReceiptPDF({
+                  receiptId: task.id,
+                  customerName: task.customerName,
+                  customerPhone: task.customerPhone,
+                  workType: task.workType,
+                  metal: task.metal || 'Gold',
+                  grossWeight: task.impureWeight || task.totalWeight || task.weight,
+                  purity: task.purity,
+                  pureWeight: task.pureWeight,
+                  carat: task.carat,
+                  amount: task.cashAmount || (extractFee(task.settlementCondition) || undefined),
+                  paymentMode: extractPaymentMode(task.settlementCondition) || 'Cash',
+                  status: 'Completed',
+                  date: task.dateGiven
+                });
+              }}
+              className="py-2.5 bg-[#001e40] hover:bg-[#002b5c] text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+            >
+              <span className="material-symbols-outlined text-sm">download</span>
+              PDF Slip
+            </button>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex gap-3 mt-5 items-center">
           {task.status === 'In Progress' && userRole === 'Staff' ? (
@@ -1053,6 +1107,20 @@ export const StaffTasksScreen: React.FC = () => {
   const [stockSource, setStockSource] = useState<'Staff' | 'Admin'>('Staff');
   const [walletDepositSelected, setWalletDepositSelected] = useState<boolean>(false);
   const [cashRateInput, setCashRateInput] = useState('');
+  
+  // Security Master PIN state
+  const [pinModalConfig, setPinModalConfig] = useState<{
+    isOpen: boolean;
+    workType: PinWorkType;
+    actionDescription: string;
+    onSuccess: () => void;
+  }>({
+    isOpen: false,
+    workType: 'cash_payout',
+    actionDescription: '',
+    onSuccess: () => {}
+  });
+
   const showToast = (msg: string) => {
     triggerBlueToast(msg);
   };
@@ -1213,9 +1281,7 @@ export const StaffTasksScreen: React.FC = () => {
      return matchesTab && matchesSearch(t);
   });
 
-  const handleDeleteTask = async (id: string) => {
-    const reason = window.prompt("Please provide a reason for deleting this task:");
-    if (!reason) return;
+  const executeDeleteTask = async (id: string, reason: string) => {
     try {
       await supabase.from('deletion_requests').insert([{
          item_type: 'Task',
@@ -1237,6 +1303,22 @@ export const StaffTasksScreen: React.FC = () => {
     } catch(e) {
       console.error(e);
       showToast("Failed to submit request.");
+    }
+  };
+
+  const handleDeleteTask = async (id: string) => {
+    const reason = window.prompt("Please provide a reason for deleting this task:");
+    if (!reason) return;
+    
+    if (user?.role === 'Super Admin') {
+      setPinModalConfig({
+        isOpen: true,
+        workType: 'deletion_clear',
+        actionDescription: `Authorize permanent deletion request for task ${id}.`,
+        onSuccess: () => executeDeleteTask(id, reason)
+      });
+    } else {
+      executeDeleteTask(id, reason);
     }
   };
 
@@ -1539,7 +1621,7 @@ export const StaffTasksScreen: React.FC = () => {
     }
   };
 
-  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string, walletAction?: 'Giveaway' | 'Wallet') => {
+  const executeFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string, walletAction?: 'Giveaway' | 'Wallet') => {
     try {
       const modeStr = paymentMode || 'Cash';
       const isSilver = task.metal === 'Silver';
@@ -1914,6 +1996,23 @@ export const StaffTasksScreen: React.FC = () => {
       console.error(e);
       showToast('Error finalizing pricing');
     }
+  };
+
+  const handleFinalizePricing = async (task: Task, finalPrice: string, paymentMode?: 'Cash' | 'UPI', cashRate?: string, cashAmount?: string, walletAction?: 'Giveaway' | 'Wallet') => {
+    const cashPayout = cashAmount ? Number(cashAmount) : Number(finalPrice || 0);
+    const modeStr = paymentMode || 'Cash';
+    
+    if (modeStr === 'Cash' && cashPayout >= 50000 && walletAction !== 'Wallet') {
+      setPinModalConfig({
+        isOpen: true,
+        workType: 'cash_payout',
+        actionDescription: `Authorize high-value cash payout of ₹${cashPayout.toLocaleString('en-IN')} for task ${task.id} (${task.customerName}).`,
+        onSuccess: () => executeFinalizePricing(task, finalPrice, paymentMode, cashRate, cashAmount, walletAction)
+      });
+      return;
+    }
+
+    executeFinalizePricing(task, finalPrice, paymentMode, cashRate, cashAmount, walletAction);
   };
 
   const handleUpdateStatus = async (task: Task, action?: string) => {
@@ -2840,6 +2939,14 @@ export const StaffTasksScreen: React.FC = () => {
           <span className="font-label text-[10px] uppercase tracking-widest">Profile</span>
         </a>
       </nav>
+
+      <WorkPinModal
+        isOpen={pinModalConfig.isOpen}
+        onClose={() => setPinModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onSuccess={pinModalConfig.onSuccess}
+        workType={pinModalConfig.workType}
+        actionDescription={pinModalConfig.actionDescription}
+      />
     </div>
   );
 };

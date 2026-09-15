@@ -5,6 +5,9 @@ import { NotificationBell } from './NotificationBell';
 import { getCachedData, setCachedData } from '../cache';
 import { useSession } from '../context/SessionContext';
 import { fitText } from '../utils';
+import { exportFullDatabaseBackup, exportExecutivePDF } from '../utils/backupExporter';
+import { triggerAppleToast } from './AppleToast';
+import { Shield, Download, FileSpreadsheet, FileText, Eye, EyeOff, Check } from 'lucide-react';
 
 export const SuperAdminDashboardScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -185,7 +188,83 @@ export const SuperAdminDashboardScreen: React.FC = () => {
     };
   }, [userId, isFullyAuthenticated]);
 
+  // Security PINs & Backup States
+  const [securityPins, setSecurityPins] = useState({
+    cash_payout_pin: '556677',
+    cash_threshold: 50000,
+    bullion_transfer_pin: '889900',
+    bullion_threshold_grams: 20,
+    deletion_clear_pin: '991122'
+  });
+  const [showPins, setShowPins] = useState(false);
+  const [isSavingPins, setIsSavingPins] = useState(false);
+  const [isExportingCSV, setIsExportingCSV] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
+  useEffect(() => {
+    const fetchSecurityPins = async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'security_pins')
+          .maybeSingle();
+        if (data && data.value) {
+          setSecurityPins(prev => ({ ...prev, ...data.value }));
+        }
+      } catch (e) {
+        console.error('Error loading PINs:', e);
+      }
+    };
+    if (isFullyAuthenticated) {
+      fetchSecurityPins();
+    }
+  }, [isFullyAuthenticated]);
+
+  const handleSavePins = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingPins(true);
+    try {
+      const { error } = await supabase
+        .from('app_settings')
+        .upsert({
+          key: 'security_pins',
+          value: securityPins,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+      triggerAppleToast('Security PINs Updated', 'Work-specific authorization PINs successfully saved.', 'login');
+    } catch (err: any) {
+      console.error('Error saving PINs:', err);
+      triggerAppleToast('Failed to Save PINs', err.message || 'Error', 'logout');
+    } finally {
+      setIsSavingPins(false);
+    }
+  };
+
+  const handleExportCSV = async () => {
+    setIsExportingCSV(true);
+    try {
+      await exportFullDatabaseBackup();
+      triggerAppleToast('Export Completed', 'Full database master backup downloaded as CSV.', 'login');
+    } catch (e: any) {
+      triggerAppleToast('Export Failed', e.message || 'Error downloading backup', 'logout');
+    } finally {
+      setIsExportingCSV(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    setIsExportingPDF(true);
+    try {
+      await exportExecutivePDF();
+      triggerAppleToast('Export Completed', 'Executive master summary downloaded as PDF.', 'login');
+    } catch (e: any) {
+      triggerAppleToast('Export Failed', e.message || 'Error generating PDF', 'logout');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
 
   // Quick Action config
   const quickActions = [
@@ -369,6 +448,172 @@ export const SuperAdminDashboardScreen: React.FC = () => {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Master Backup Section */}
+        <section className="space-y-3 relative z-10">
+          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 flex items-center justify-between">
+            <span>Disaster Recovery & Data Vault</span>
+            <span className="text-[10px] text-emerald-600 font-black">100% Encrypted</span>
+          </h3>
+
+          <div className="luxury-card p-5 bg-white border border-outline-variant/20 rounded-3xl shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
+                <Download className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-headline text-sm font-bold text-primary">One-Click Master Database Backup</h4>
+                <p className="text-xs text-outline">Download live snapshots of all branches, ledgers, and transactions.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleExportCSV}
+                disabled={isExportingCSV}
+                className="py-3 px-4 bg-surface-container-highest/60 hover:bg-surface-container-highest border border-outline-variant/30 rounded-2xl text-xs font-bold text-primary flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>{isExportingCSV ? 'Generating CSV...' : 'Download Master Excel/CSV'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExportPDF}
+                disabled={isExportingPDF}
+                className="py-3 px-4 bg-surface-container-highest/60 hover:bg-surface-container-highest border border-outline-variant/30 rounded-2xl text-xs font-bold text-primary flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50"
+              >
+                <FileText className="w-4 h-4 text-secondary" />
+                <span>{isExportingPDF ? 'Building PDF...' : 'Download Executive PDF Summary'}</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Work-Specific Security PINs Management */}
+        <section className="space-y-3 relative z-10">
+          <h3 className="font-label text-[11px] uppercase tracking-[0.2em] text-outline font-bold px-1 flex items-center justify-between">
+            <span>Work-Specific Authorization PINs</span>
+            <button
+              type="button"
+              onClick={() => setShowPins(!showPins)}
+              className="flex items-center gap-1 text-[10px] text-primary hover:text-secondary font-bold uppercase tracking-wider"
+            >
+              {showPins ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span>{showPins ? 'Hide PINs' : 'Reveal PINs'}</span>
+            </button>
+          </h3>
+
+          <form onSubmit={handleSavePins} className="luxury-card p-5 bg-white border border-outline-variant/20 rounded-3xl shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-700">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-headline text-sm font-bold text-primary">Director Security Protocol</h4>
+                <p className="text-xs text-outline">Configure separate security PINs for sensitive branch operations.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 pt-2">
+              {/* PIN 1: Cash Payout */}
+              <div className="p-3.5 bg-surface-container-highest/30 border border-outline-variant/20 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                    💵 1. Cash Payout Authorization PIN
+                  </span>
+                  <span className="text-[10px] text-outline font-semibold">
+                    Triggered for payouts &gt; ₹{Number(securityPins.cash_threshold || 50000).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline block mb-1">6-Digit PIN</label>
+                    <input
+                      type={showPins ? "text" : "password"}
+                      maxLength={8}
+                      value={securityPins.cash_payout_pin}
+                      onChange={e => setSecurityPins({ ...securityPins, cash_payout_pin: e.target.value })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-outline-variant/30 rounded-xl outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline block mb-1">Threshold Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={securityPins.cash_threshold}
+                      onChange={e => setSecurityPins({ ...securityPins, cash_threshold: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-outline-variant/30 rounded-xl outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* PIN 2: Bullion Movement */}
+              <div className="p-3.5 bg-surface-container-highest/30 border border-outline-variant/20 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                    🪙 2. Bullion Transfer Authorization PIN
+                  </span>
+                  <span className="text-[10px] text-outline font-semibold">
+                    Triggered for transfers &gt; {securityPins.bullion_threshold_grams || 20}g
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline block mb-1">6-Digit PIN</label>
+                    <input
+                      type={showPins ? "text" : "password"}
+                      maxLength={8}
+                      value={securityPins.bullion_transfer_pin}
+                      onChange={e => setSecurityPins({ ...securityPins, bullion_transfer_pin: e.target.value })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-outline-variant/30 rounded-xl outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold uppercase tracking-wider text-outline block mb-1">Threshold Pure Gold (g)</label>
+                    <input
+                      type="number"
+                      value={securityPins.bullion_threshold_grams}
+                      onChange={e => setSecurityPins({ ...securityPins, bullion_threshold_grams: Number(e.target.value) })}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-outline-variant/30 rounded-xl outline-none focus:border-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* PIN 3: Deletion & Clear */}
+              <div className="p-3.5 bg-surface-container-highest/30 border border-outline-variant/20 rounded-2xl space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-primary flex items-center gap-1.5">
+                    🗑️ 3. Deletion & Ledger Clear PIN
+                  </span>
+                  <span className="text-[10px] text-error font-semibold">Critical Security Action</span>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold uppercase tracking-wider text-outline block mb-1">6-Digit Master Deletion PIN</label>
+                  <input
+                    type={showPins ? "text" : "password"}
+                    maxLength={8}
+                    value={securityPins.deletion_clear_pin}
+                    onChange={e => setSecurityPins({ ...securityPins, deletion_clear_pin: e.target.value })}
+                    className="w-full px-3 py-2 text-xs font-mono font-bold bg-white border border-outline-variant/30 rounded-xl outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingPins}
+              className="w-full py-3 button-gradient text-white text-xs font-bold rounded-2xl shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              <span>{isSavingPins ? 'Saving Security PINs...' : 'Save & Update Authorization PINs'}</span>
+            </button>
+          </form>
         </section>
 
       </main>
