@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient';
 import { CameraCaptureOverlay } from './CameraCaptureOverlay';
 import type { BehaviorAnalysis } from '../utils/billingUtils';
 import { analyzeCustomerBehavior, computeStaffBillingTransactions } from '../utils/billingUtils';
+import { getCachedData, setCachedData } from '../cache';
 
 type WorkType = 'TUNCH' | 'MARKING' | 'SHOULDERING' | 'BUY_SELL' | 'WALLET_TXN';
 
@@ -105,7 +106,13 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
   const [locationName, setLocationName] = useState<string>('');
   const [activeCameraSlot, setActiveCameraSlot] = useState<number | null>(null);
 
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    const cached = getCachedData('db_customers', Infinity);
+    if (Array.isArray(cached)) {
+      return cached.filter((c: any) => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved');
+    }
+    return [];
+  });
   const [showDropdown, setShowDropdown] = useState(false);
   
   const [customerBehavior, setCustomerBehavior] = useState<BehaviorAnalysis | null>(null);
@@ -147,26 +154,20 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     const fetchCustomers = async () => {
       if (!isOpen) return;
 
-      let branchUserIds: string[] = [];
-      const isSuperSa = user?.role === 'Super Admin';
-      if (!isSuperSa) {
-        const { data: uList } = await supabase
-          .from('users')
-          .select('id, role, branch_id');
-        if (uList) {
-          branchUserIds = uList
-            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
-            .map((u: any) => u.id);
-        }
-      }
+      try {
+        const { data, error } = await supabase
+          .from('customers')
+          .select('*')
+          .order('name', { ascending: true });
 
-      const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
-      if (data) {
-        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
-          setCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
-        } else {
-          setCustomers(data);
+        if (error) throw error;
+        if (data) {
+          const approved = data.filter((c: any) => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved');
+          setCustomers(approved);
+          setCachedData('db_customers', data);
         }
+      } catch (err) {
+        console.error('Error fetching customers in AddTaskModal:', err);
       }
     };
     fetchCustomers();
@@ -175,7 +176,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
     return () => {
       window.removeEventListener('databaseSync', fetchCustomers);
     };
-  }, [isOpen, user?.branch_id, user?.role]);
+  }, [isOpen]);
 
   const handleRequestCustomer = async () => {
       if (!formData.customerName || !formData.phone || !formData.address) {
@@ -218,7 +219,9 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
             created_by: user?.id
          };
          await supabase.from('customers').insert([newCust]);
-         setCustomers(prev => [...prev, newCust]);
+         setCustomers(prev => [newCust, ...prev]);
+         up('customerId', newId);
+         window.dispatchEvent(new Event('databaseSync'));
          alert('Customer added successfully!');
          setShowDropdown(false);
       } catch (e) {
@@ -651,38 +654,71 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ isOpen, onClose, onS
                     <label className={lbl}>Customer Name *</label>
                     <input 
                       className={inp(errors.customerName)} 
-                      placeholder="Full name" 
+                      placeholder="Type customer name or phone..." 
                       value={formData.customerName} 
-                      onChange={e => { up('customerName', e.target.value); up('customerId', ''); setShowDropdown(true); }} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        up('customerName', val);
+                        setShowDropdown(true);
+                        const exactMatch = customers.find(c => c.name.trim().toLowerCase() === val.trim().toLowerCase());
+                        if (exactMatch) {
+                          up('customerId', exactMatch.id);
+                          if (!formData.phone) up('phone', exactMatch.phone || '');
+                          if (!formData.address) up('address', exactMatch.address || '');
+                        } else {
+                          up('customerId', '');
+                        }
+                      }} 
                       onFocus={() => setShowDropdown(true)}
                       onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
                     />
                     {errMsg('customerName')}
-                    {showDropdown && formData.customerName && (
-                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                          {customers.filter(c => c.name.trim().toLowerCase().includes(formData.customerName.trim().toLowerCase())).map(c => (
-                             <div key={c.id} className="px-4 py-2 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10"
-                                onClick={() => {
-                                   up('customerName', c.name);
-                                   up('phone', c.phone || '');
-                                   up('address', c.address || '');
-                                   up('customerId', c.id);
-                                   setShowDropdown(false);
-                                }}
-                             >
-                                <p className="text-sm font-bold text-primary">{c.name}</p>
-                                <p className="text-[10px] text-outline">
-                                   {c.phone ? `${c.phone}` : ''}
-                                   {c.phone && c.address ? ' • ' : ''}
-                                   {c.address ? `${c.address}` : ''}
-                                </p>
-                             </div>
-                          ))}
-                          {customers.filter(c => c.name.trim().toLowerCase().includes(formData.customerName.trim().toLowerCase())).length === 0 && (
-                             <div className="px-4 py-3 text-center">
-                                <p className="text-xs text-outline">Customer not found</p>
-                             </div>
-                          )}
+                    {showDropdown && (
+                       <div className="absolute z-50 w-full mt-1 bg-white border border-outline-variant/30 rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                          {(() => {
+                            const query = formData.customerName.trim().toLowerCase();
+                            const matches = customers.filter(c => 
+                              !query || 
+                              c.name.toLowerCase().includes(query) || 
+                              (c.phone && c.phone.includes(query))
+                            );
+                            if (matches.length === 0) {
+                              return (
+                                <div className="px-4 py-3 text-center">
+                                  <p className="text-xs text-outline font-medium">Customer "{formData.customerName}" not found</p>
+                                </div>
+                              );
+                            }
+                            return matches.slice(0, 30).map(c => (
+                              <div key={c.id} className="px-4 py-2.5 hover:bg-surface-container cursor-pointer border-b border-outline-variant/10 transition-colors"
+                                 onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    up('customerName', c.name);
+                                    up('phone', c.phone || '');
+                                    up('address', c.address || '');
+                                    up('customerId', c.id);
+                                    setShowDropdown(false);
+                                 }}
+                                 onClick={() => {
+                                    up('customerName', c.name);
+                                    up('phone', c.phone || '');
+                                    up('address', c.address || '');
+                                    up('customerId', c.id);
+                                    setShowDropdown(false);
+                                 }}
+                              >
+                                 <div className="flex justify-between items-center">
+                                    <p className="text-sm font-bold text-primary">{c.name}</p>
+                                    <span className="text-[9px] font-mono font-bold text-outline">{c.id}</span>
+                                 </div>
+                                 <p className="text-[10px] text-outline mt-0.5">
+                                    {c.phone ? `📞 ${c.phone}` : ''}
+                                    {c.phone && c.address ? ' • ' : ''}
+                                    {c.address ? `📍 ${c.address}` : ''}
+                                 </p>
+                              </div>
+                            ));
+                          })()}
                        </div>
                     )}
                   </div>
