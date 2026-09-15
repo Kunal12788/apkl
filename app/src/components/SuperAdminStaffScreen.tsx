@@ -67,16 +67,23 @@ export const SuperAdminStaffScreen: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [usersRes, branchesRes, settingsRes, logsRes] = await Promise.all([
+      const [usersRes, branchesRes, settingsRes, logsRes, secretsRes] = await Promise.all([
         supabase.from('users').select('*').order('name'),
         supabase.from('branches').select('*').order('name'),
         supabase.from('login_settings').select('*').eq('id', 'login_allowed').maybeSingle(),
-        supabase.from('staff_logs').select('*').order('created_at', { ascending: false }).limit(100)
+        supabase.from('staff_logs').select('*').order('created_at', { ascending: false }).limit(100),
+        supabase.from('user_secrets').select('*')
       ]);
       if (usersRes.error) throw usersRes.error;
       if (branchesRes.error) throw branchesRes.error;
       
-      setUsers(usersRes.data || []);
+      const secretsMap = new Map((secretsRes?.data || []).map((s: any) => [s.user_id, s.passkey]));
+      const enrichedUsers = (usersRes.data || []).map((u: any) => ({
+        ...u,
+        passkey: secretsMap.get(u.id) || ''
+      }));
+
+      setUsers(enrichedUsers);
       setBranches(branchesRes.data || []);
       
       if (settingsRes.data) {
@@ -180,6 +187,13 @@ export const SuperAdminStaffScreen: React.FC = () => {
 
       const { error: dbError } = await supabase.from('users').insert([newUser]);
       if (dbError) throw dbError;
+
+      if (hireForm.passkey) {
+        await supabase.from('user_secrets').insert([{
+          user_id: newId,
+          passkey: hireForm.passkey
+        }]);
+      }
 
       setHireForm({ name: '', email: '', phone: '', role: 'Staff', passkey: '', branch_id: '' });
       setShowHireModal(false);

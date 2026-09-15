@@ -15,3 +15,7 @@ search.txt
 *.png
 *.jpg
 *.jpeg
+
+# Scratch scripts & temporary audits
+scratch/
+
