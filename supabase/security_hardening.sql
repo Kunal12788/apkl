@@ -23,14 +23,9 @@ DROP POLICY IF EXISTS "Customers: UPDATE allowed for same branch or SA" ON publi
 DROP POLICY IF EXISTS "Customers: DELETE allowed only for SA" ON public.customers;
 
 -- Create strict policies for customers
-CREATE POLICY "Customers: SELECT same branch or SA" ON public.customers
+CREATE POLICY "Customers: SELECT all authenticated" ON public.customers
     FOR SELECT USING (
-      auth.role() = 'authenticated' AND (
-        public.get_my_role() = 'Super Admin' 
-        OR branch_id = public.get_my_branch_id() 
-        OR (SELECT branch_id FROM public.users WHERE id = created_by) = public.get_my_branch_id()
-        OR created_by IS NULL
-      )
+      auth.role() = 'authenticated'
     );
 
 CREATE POLICY "Customers: INSERT allowed for authenticated" ON public.customers
@@ -243,12 +238,9 @@ CREATE POLICY "Payments: INSERT/UPDATE authenticated" ON public.payments
     FOR ALL USING (auth.role() = 'authenticated')
     WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Customer Advances: SELECT same branch or SA" ON public.customer_advances
+CREATE POLICY "Customer Advances: SELECT all authenticated" ON public.customer_advances
     FOR SELECT USING (
-      public.get_my_role() = 'Super Admin' 
-      OR branch_id = public.get_my_branch_id() 
-      OR (SELECT branch_id FROM public.users WHERE id = created_by) = public.get_my_branch_id()
-      OR created_by IS NULL
+      auth.role() = 'authenticated'
     );
 
 CREATE POLICY "Customer Advances: INSERT/UPDATE authenticated" ON public.customer_advances
