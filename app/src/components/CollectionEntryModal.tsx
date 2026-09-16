@@ -55,26 +55,9 @@ export const CollectionEntryModal: React.FC<CollectionEntryModalProps> = ({ isOp
     const fetchCustomers = async () => {
       if (!isOpen) return;
 
-      let branchUserIds: string[] = [];
-      const isSuperSa = user?.role === 'Super Admin';
-      if (!isSuperSa) {
-        const { data: uList } = await supabase
-          .from('users')
-          .select('id, role, branch_id');
-        if (uList) {
-          branchUserIds = uList
-            .filter((u: any) => u.branch_id === user?.branch_id || u.role === 'Super Admin')
-            .map((u: any) => u.id);
-        }
-      }
-
       const { data } = await supabase.from('customers').select('*').eq('status', 'Approved');
       if (data) {
-        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
-          setCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
-        } else {
-          setCustomers(data);
-        }
+        setCustomers(data);
       }
     };
     fetchCustomers();

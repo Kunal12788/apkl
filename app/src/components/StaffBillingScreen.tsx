@@ -1185,12 +1185,9 @@ export const StaffBillingScreen: React.FC = () => {
 
   const currentUserId = user?.id || '';
   const isSuperSa = user?.role === 'Super Admin';
-  const branchUserIdsCache = getCachedData(`branch_users_${user?.branch_id || 'unknown'}`, Infinity) || [currentUserId];
 
   const cachedDbCust = getCachedData('db_customers', Infinity);
-  const initialDbCust = cachedDbCust
-    ? (isSuperSa ? cachedDbCust : cachedDbCust.filter((c: any) => branchUserIdsCache.includes(c.created_by)))
-    : [];
+  const initialDbCust = cachedDbCust || [];
 
   const cachedStaffTx = getCachedData('staff_billing_tx', Infinity) || [];
 
@@ -1856,11 +1853,7 @@ export const StaffBillingScreen: React.FC = () => {
           setCachedData('db_customers_hash', newDbHash);
           setCachedData('db_customers', data);
         }
-        if (!isSuperSa && user?.branch_id && branchUserIds.length > 0) {
-          setDbCustomers(data.filter(c => branchUserIds.includes(c.created_by)));
-        } else {
-          setDbCustomers(data);
-        }
+        setDbCustomers(data);
       }
     };
 
