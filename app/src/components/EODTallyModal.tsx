@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, CheckCircle2, AlertTriangle, X, MapPin, UploadCloud } from 'lucide-react';
+import { Camera, CheckCircle2, AlertTriangle, X, MapPin, UploadCloud, Smartphone } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { triggerAppleToast } from './AppleToast';
 
@@ -51,6 +51,7 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
 
   // Camera stream & GPS states
   const videoRef = useRef<HTMLVideoElement>(null);
+  const nativeInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [locationName, setLocationName] = useState<string>('Detecting location...');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -109,17 +110,52 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
   // Camera Management
   const startCamera = async (photoType: PhotoType) => {
     setActivePhotoStep(photoType);
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+    
+    // Check if getUserMedia is supported in this context (requires HTTPS on mobile Chrome)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.warn('WebRTC getUserMedia not available on mobile HTTP');
+      triggerAppleToast('Notice', 'Live feed requires HTTPS on mobile. Use "Open Phone Camera" below.', 'logout');
+      return;
+    }
+
+    let mediaStream: MediaStream | null = null;
+    const constraintList: MediaStreamConstraints[] = [
+      {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      },
+      {
+        video: {
+          facingMode: { ideal: 'environment' }
+        }
+      },
+      {
+        video: true
+      }
+    ];
+
+    for (const constraints of constraintList) {
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (mediaStream) break;
+      } catch (err) {
+        console.warn('Camera constraint attempt failed:', constraints, err);
+      }
+    }
+
+    if (mediaStream) {
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.warn("Video play error:", e));
+        };
       }
-    } catch (err) {
-      console.error('Camera open error:', err);
-      triggerAppleToast('Camera Error', 'Unable to access live camera. Please grant permissions.', 'logout');
+    } else {
+      triggerAppleToast('Live Feed Unavailable', 'Please tap "Open Phone Camera" below to take the photo.', 'logout');
     }
   };
 
@@ -131,7 +167,7 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
     setActivePhotoStep(null);
   };
 
-  // Capture with embedded watermark
+  // Capture with embedded watermark (from live video feed)
   const handleSnapPhoto = () => {
     if (!videoRef.current || !activePhotoStep) return;
     setIsCapturing(true);
@@ -141,14 +177,18 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
     canvas.width = video.videoWidth || 1280;
     canvas.height = video.videoHeight || 720;
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) {
+      setIsCapturing(false);
+      return;
+    }
 
     // Draw frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     // Watermark Overlay Banner
+    const bannerHeight = Math.max(90, Math.round(canvas.height * 0.12));
     ctx.fillStyle = 'rgba(0, 20, 40, 0.85)';
-    ctx.fillRect(0, canvas.height - 90, canvas.width, 90);
+    ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, bannerHeight);
 
     // Watermark Text
     const label = 
@@ -156,13 +196,13 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
       activePhotoStep === 'impure_gold' ? '🟠 PHYSICAL IMPURE GOLD STOCK' : '🟢 PHYSICAL CASH DRAWER STOCK';
 
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 22px Arial, sans-serif';
-    ctx.fillText(`${label} — ${branchName}`, 24, canvas.height - 52);
+    ctx.font = `bold ${Math.max(18, Math.round(bannerHeight * 0.25))}px Arial, sans-serif`;
+    ctx.fillText(`${label} — ${branchName}`, 24, canvas.height - (bannerHeight * 0.55));
 
     ctx.fillStyle = '#cbd5e1';
-    ctx.font = '16px Arial, sans-serif';
+    ctx.font = `${Math.max(13, Math.round(bannerHeight * 0.18))}px Arial, sans-serif`;
     const timeStr = new Date().toLocaleString('en-IN');
-    ctx.fillText(`📅 ${timeStr}   📍 ${locationName} (${coords?.lat.toFixed(4) || '0'}, ${coords?.lng.toFixed(4) || '0'})`, 24, canvas.height - 20);
+    ctx.fillText(`📅 ${timeStr}   📍 ${locationName} (${coords?.lat ? coords.lat.toFixed(4) : '0'}, ${coords?.lng ? coords.lng.toFixed(4) : '0'})`, 24, canvas.height - (bannerHeight * 0.2));
 
     // Get Data URL
     const photoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
@@ -174,6 +214,61 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
     stopCamera();
     setIsCapturing(false);
     triggerAppleToast('Photo Verified', `${label} captured with GPS watermark!`, 'login');
+  };
+
+  // Fallback native photo capture directly from mobile camera app
+  const handleNativePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePhotoStep) return;
+    setIsCapturing(true);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width || 1280;
+        canvas.height = img.height || 720;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setIsCapturing(false);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Watermark Overlay Banner
+        const bannerHeight = Math.max(90, Math.round(canvas.height * 0.12));
+        ctx.fillStyle = 'rgba(0, 20, 40, 0.85)';
+        ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, bannerHeight);
+
+        const label = 
+          activePhotoStep === 'pure_gold' ? '🟡 PHYSICAL PURE GOLD STOCK' :
+          activePhotoStep === 'impure_gold' ? '🟠 PHYSICAL IMPURE GOLD STOCK' : '🟢 PHYSICAL CASH DRAWER STOCK';
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.max(18, Math.round(bannerHeight * 0.25))}px Arial, sans-serif`;
+        ctx.fillText(`${label} — ${branchName}`, 24, canvas.height - (bannerHeight * 0.55));
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = `${Math.max(13, Math.round(bannerHeight * 0.18))}px Arial, sans-serif`;
+        const timeStr = new Date().toLocaleString('en-IN');
+        ctx.fillText(`📅 ${timeStr}   📍 ${locationName} (${coords?.lat ? coords.lat.toFixed(4) : '0'}, ${coords?.lng ? coords.lng.toFixed(4) : '0'})`, 24, canvas.height - (bannerHeight * 0.2));
+
+        const photoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+        if (activePhotoStep === 'pure_gold') setPureGoldPhoto(photoDataUrl);
+        if (activePhotoStep === 'impure_gold') setImpureGoldPhoto(photoDataUrl);
+        if (activePhotoStep === 'cash') setCashPhoto(photoDataUrl);
+
+        stopCamera();
+        setIsCapturing(false);
+        triggerAppleToast('Photo Verified', `${label} captured with GPS watermark!`, 'login');
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   if (!isOpen) return null;
@@ -317,8 +412,34 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
               </button>
             </div>
 
-            <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-outline-variant/30 shadow-inner">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            {/* Hidden native mobile camera input */}
+            <input
+              ref={nativeInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleNativePhotoUpload}
+            />
+
+            <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-outline-variant/30 shadow-inner flex items-center justify-center">
+              <video ref={videoRef} autoPlay playsInline muted className={`w-full h-full object-cover ${stream ? 'block' : 'hidden'}`} />
+              
+              {!stream && (
+                <div className="flex flex-col items-center gap-2 text-white/70 text-xs p-4 text-center">
+                  <Camera className="w-8 h-8 text-amber-400 opacity-80" />
+                  <p className="font-semibold text-white/90">Live Feed Not Active</p>
+                  <button
+                    type="button"
+                    onClick={() => nativeInputRef.current?.click()}
+                    className="mt-1 px-4 py-2 bg-secondary text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Open Phone Camera
+                  </button>
+                </div>
+              )}
+
               <div className="absolute bottom-3 left-3 right-3 p-2 bg-black/70 backdrop-blur-sm rounded-xl text-white text-[11px] flex items-center justify-between">
                 <div className="flex items-center gap-1.5 truncate">
                   <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -331,18 +452,32 @@ export const EODTallyModal: React.FC<EODTallyModalProps> = ({
             </div>
 
             <p className="text-[11px] text-center text-outline font-medium">
-              ⚠️ Live camera only (gallery upload disabled). Photo will be permanently stamped with GPS and timestamp.
+              ⚠️ Live camera or device camera only. Photo will be permanently stamped with GPS and timestamp.
             </p>
 
-            <button
-              type="button"
-              onClick={handleSnapPhoto}
-              disabled={isCapturing}
-              className="w-full py-3.5 button-gradient text-white rounded-2xl text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
-            >
-              <Camera className="w-5 h-5" />
-              {isCapturing ? 'Stamping Watermark...' : 'Snap & Verify Photo'}
-            </button>
+            <div className="flex gap-2 w-full">
+              {stream && (
+                <button
+                  type="button"
+                  onClick={handleSnapPhoto}
+                  disabled={isCapturing}
+                  className="flex-1 py-3.5 button-gradient text-white rounded-2xl text-xs sm:text-sm font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  {isCapturing ? 'Stamping Watermark...' : 'Snap & Verify'}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => nativeInputRef.current?.click()}
+                disabled={isCapturing}
+                className={`${stream ? 'px-4 text-xs' : 'flex-1 text-xs sm:text-sm py-3.5'} bg-secondary text-white rounded-2xl font-bold shadow-md flex items-center justify-center gap-2 hover:bg-secondary/90 active:scale-95 transition-all`}
+              >
+                <Smartphone className="w-4 h-4" />
+                {stream ? 'Phone Camera' : 'Open Phone Camera'}
+              </button>
+            </div>
           </div>
         ) : (
           /* Normal Reconciliation Flow */
