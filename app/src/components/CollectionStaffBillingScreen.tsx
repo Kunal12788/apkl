@@ -827,8 +827,8 @@ export const CollectionStaffBillingScreen: React.FC = () => {
   const dynamicCustomers = useMemo(() => {
     const customers: Customer[] = [];
 
-    // First, add all approved dbCustomers to customers
-    dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+    // First, add all approved/valid dbCustomers to customers
+    dbCustomers.filter(c => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved' || c.status !== 'Pending').forEach(c => {
         const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
         customers.push({
           id: c.id,

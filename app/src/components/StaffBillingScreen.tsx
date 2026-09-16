@@ -1880,7 +1880,12 @@ export const StaffBillingScreen: React.FC = () => {
   const handleApproveCustomer = async (id: string) => {
     try {
        await supabase.from('customers').update({ status: 'Approved' }).eq('id', id);
-       setDbCustomers(prev => prev.map(c => c.id === id ? { ...c, status: 'Approved' } : c));
+       setDbCustomers(prev => {
+         const updated = prev.map(c => c.id === id ? { ...c, status: 'Approved' } : c);
+         setCachedData('db_customers', updated);
+         return updated;
+       });
+       window.dispatchEvent(new CustomEvent('databaseSync', { detail: { table: 'customers' } }));
     } catch(e) { console.error(e); }
   }
 
@@ -1951,8 +1956,8 @@ export const StaffBillingScreen: React.FC = () => {
   const dynamicCustomers = React.useMemo(() => {
     const customers: Customer[] = [];
 
-    // First, add all dbCustomers to customers
-    dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+    // First, add all approved/valid dbCustomers to customers
+    dbCustomers.filter(c => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved' || c.status !== 'Pending').forEach(c => {
         const initials = c.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
         customers.push({
           id: c.id,
@@ -2444,7 +2449,7 @@ export const StaffBillingScreen: React.FC = () => {
             )}
 
             <div className="space-y-6">
-              {isSuperSa ? (
+              {true ? (
                 (() => {
                   const groups: Record<string, typeof filteredCustomers> = {};
                   filteredCustomers.forEach(customer => {

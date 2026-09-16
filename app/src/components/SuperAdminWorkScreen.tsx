@@ -100,8 +100,8 @@ export const SuperAdminWorkScreen: React.FC = () => {
   const dynamicCustomers = useMemo(() => {
     const customers: any[] = [];
 
-    // Initialize all dbCustomers
-    dbCustomers.filter(c => c.status === 'Approved').forEach(c => {
+    // Initialize all approved/valid dbCustomers
+    dbCustomers.filter(c => !c.status || c.status === 'Approved' || String(c.status).toLowerCase() === 'approved' || c.status !== 'Pending').forEach(c => {
       customers.push({
         id: c.id,
         name: c.name,
